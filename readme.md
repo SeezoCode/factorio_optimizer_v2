@@ -171,6 +171,7 @@ Unknown keys are an error. Everything except `targets` has a default.
   "blocks": { "max_machines": 120, "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
               "link_belt_share": 0.9, "split_at_weight": 0.1, "block_time_share": 0.9,
               "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
+              "pass_through": true, "rotate": true, "floorplan_tries": 3,
               "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3 },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
@@ -236,15 +237,22 @@ belts and pipes, in one blueprint:
    gives the item. A block that ends up on an allowed edge (`"any"`, or a whole side) takes that input or output
    straight through it; the others run through the corridors to the edge.
 3. **Blocks.** Every belt between two blocks is a link with an exact rate (at most `link_belt_share` of a belt).
+   What one supplier (a block, or the factory edge for raw inputs) sends to several blocks passes through them in
+   a chain (`pass_through`, on by default): the nearest block keeps its share and passes the rest on to the next,
+   as long as the chain fits one belt and each next block is nearer the chain's end than the supplier. Blocks
+   inside the factory get their plates from a neighbour instead of each on its own belt from the edge.
    Every fluid traded between blocks gets one pipe tree through the corridors joining one port on each block
    that makes or uses it (and the factory edge, if it enters or leaves there), so any number of blocks can share
    a fluid. Each block is generated on its own, at its planned aspect, with its share of the time budget.
-4. **Floorplan and stitch.** The finished blocks are arranged again with their real sizes and port positions,
+4. **Floorplan and stitch.** The finished blocks are arranged again with their real sizes and port positions, each
+   block turned in whichever quarter turn packs best (`rotate`; its ports turn with it),
    keeping free space around each block for the corridors (half a `corridor` plus room for that side's ports;
    none on a side whose ports leave the factory straight out, which must stay on the factory's edge). The belts
    and pipes are routed through the corridors. Where routing fails, the block sides near the trouble get more
-   room and it tries again; once it routes, lines of corridor that stayed empty are given back and it routes
-   again, and finally the blocks are rearranged with the corridors as measured. Poles cover the whole factory and
+   room and it tries again; once it routes, lines of corridor that stayed empty are given back, the blocks are
+   rearranged with the corridors as measured, and single corridor lines are squeezed out one block side at a time
+   while it still routes (for the stitching share of the time budget). This is done from `floorplan_tries`
+   different floorplans and the smallest valid factory wins. Poles cover the whole factory and
    the result is validated end to end against the full plan. A pipe port right beside another fluid's pipe is
    left through a pipe-to-ground pair.
 5. Rows and columns that only straight belts, straight pipes or underground spans cross are removed
