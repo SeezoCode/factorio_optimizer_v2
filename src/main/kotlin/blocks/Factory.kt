@@ -642,7 +642,10 @@ fun stitchRoute(
     val blockTiles = HashSet<Tile>()
     for (b in 0 until k) for (y in oy[b] until oy[b] + results[b].h) for (x in ox[b] until ox[b] + results[b].w) blockTiles += Tile(x, y)
     arr.reserved.forEach { r -> blockTiles += r.tiles() }
+    // Nothing tunnels under a block, nor under an underground belt or pipe-to-ground of one outside its box (a ring
+    // port): ours would pair with it.
     val noTunnel = HashSet(blockTiles)
+    entities.filter { it.kind == Kind.PIPE_UG || it.kind == Kind.UG_IN || it.kind == Kind.UG_OUT }.forEach { noTunnel += it.rect.tiles() }
     fun foreign(t: Tile, fluid: String, port: Tile) = Dir.entries.any { d ->
         val u = t + d
         u != port && byTile[u]?.let { e -> (e.kind == Kind.PIPE && e.fluid != fluid) || (e.kind == Kind.PIPE_UG && e.fluid != fluid && e.dir == d.opposite) || e.kind == Kind.MACHINE } == true
@@ -663,6 +666,11 @@ fun stitchRoute(
             return next
         }
         return null
+    }
+    // A corridor belt or pipe starts and ends inside the factory: a port side squeezed to its ring alone on the
+    // factory's border leaves no tile for it.
+    (starts.values + ends.values).map { it.first }.filter { it.x !in 0 until W || it.y !in 0 until H }.takeIf { it.isNotEmpty() }?.let {
+        return StitchAttempt(null, it, "${it.size} link end(s) outside the factory")
     }
     for (l in corridorLinks.filter { it.fluid }) {
         starts[l.id]?.let { (t, d) -> starts[l.id] = (dive(l, t, d) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot leave its port")) to d }

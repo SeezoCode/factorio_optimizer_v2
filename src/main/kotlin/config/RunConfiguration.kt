@@ -272,6 +272,12 @@ data class BlocksConfig(
     @SerialName("wire_weight") val wireWeight: Double = 2.0,
     /** Share of the time budget spent generating blocks; the rest is left for stitching them together. */
     @SerialName("block_time_share") val blockTimeShare: Double = 0.9,
+    /**
+     * What one block (or the factory edge) sends to several blocks may pass through them in a chain: the nearest
+     * keeps its share and passes the rest on, so blocks inside the factory get plates from a neighbour, not each its
+     * own belt from the edge.
+     */
+    @SerialName("pass_through") val passThrough: Boolean = true,
     /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */
     val rotate: Boolean = true,
     /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */

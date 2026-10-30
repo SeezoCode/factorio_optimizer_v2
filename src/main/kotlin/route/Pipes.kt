@@ -86,7 +86,8 @@ internal class PipeRouter(private val pf: PathFinder) {
             (srcTs.drop(1) + outTs.filter { it !== output }).forEach { t ->
                 val tiles = portCandidates(plan.ports[t.port!!].specs, pf.W, pf.H).map { it.first }.filter { dims.inFull(it.x, it.y) }.map { dims.idx(it) }
                 tiles.forEach { connNet[it] = idx }
-                if (tiles.isNotEmpty()) groups += tiles.toIntArray()
+                // A port with no tile on the grid cannot be reached: an empty group keeps the net from routing.
+                groups += tiles.toIntArray()
             }
             var portTiles = IntArray(0); var portOut = IntArray(0)
             if (source != null) {
@@ -200,6 +201,8 @@ internal class PipeRouter(private val pf: PathFinder) {
                 for (j in 1..maxJ) {
                     if (!dims.inFull(qx + pf.dX[d] * j, qy + pf.dY[d] * j)) break
                     val e = q + pf.dIdx[d] * j
+                    // Not under a block of a factory: its own pipe-to-ground on this line would pair with ours.
+                    if (pf.noTunnel[e]) break
                     chanAcc += chanCost(axis * N + e)
                     if (!pipeOk(e, n.idx) || connNet[e] >= 0) continue
                     val cost = gS + pipeCost(q, false) + pipeCost(e, false) + (tun.ugPenalty + tun.ugPenaltyPerTile * j).toFloat() + chanAcc

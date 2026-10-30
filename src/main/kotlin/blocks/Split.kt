@@ -253,8 +253,7 @@ fun linksFor(
             giveLeft[a] = giveLeft.getValue(a) - r; takeLeft[b] = takeLeft.getValue(b) - r
             flows.merge(a to b, r, Double::plus)
         }
-        flows.forEach { (ab, r) ->
-            val (a, b) = ab
+        fun emit(a: Int, b: Int, r: Double) {
             when {
                 a == EDGE -> {
                     val ds = directSide(b, inDirect)
@@ -267,6 +266,28 @@ fun linksFor(
                     else { val n = pieces(r); repeat(n) { raw += Link(0, net.item, r / n, a, EDGE, false, routed = true) } }
                 }
                 else -> { val n = pieces(r); repeat(n) { raw += Link(0, net.item, r / n, a, b, false) } }
+            }
+        }
+        // Pass-through chains: what one supplier sends to several blocks goes to the nearest, which keeps its share and
+        // passes the rest on to the next block, and so on, as long as the chain fits one belt and each next block is
+        // nearer the chain's end than the supplier. Hand-built factories run a bus through their blocks the same way.
+        val cap = cfg.linkBeltShare * beltThroughput
+        flows.entries.groupBy { it.key.first }.forEach { (src, es) ->
+            val left = es.filter { cfg.passThrough && it.key.second >= 0 && it.value <= cap }.map { it.key.second to it.value }.toMutableList()
+            es.filter { (it.key.second to it.value) !in left }.forEach { emit(src, it.key.second, it.value) }
+            while (left.isNotEmpty()) {
+                val first = left.minBy { dist(src, it.first) }
+                left.remove(first)
+                val chain = arrayListOf(first)
+                var total = first.second
+                while (true) {
+                    val end = chain.last().first
+                    val next = left.filter { total + it.second <= cap && centreDistance(g.boxes[end], g.boxes[it.first]) < dist(src, it.first) }
+                        .minByOrNull { centreDistance(g.boxes[end], g.boxes[it.first]) } ?: break
+                    left.remove(next); chain += next; total += next.second
+                }
+                var from = src; var rest = total
+                chain.forEach { (b, r) -> emit(from, b, rest); rest -= r; from = b }
             }
         }
     }
