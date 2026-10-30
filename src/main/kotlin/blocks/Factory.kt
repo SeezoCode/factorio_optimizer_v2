@@ -76,9 +76,9 @@ class Factory(
  * only if the factory gets smaller. Every better factory is written to [out] (blueprint, render, ports.json;
  * factory.txt logs it all), each block to `block_<n>`.
  */
-fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, out: File): Factory? {
+fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: ProductionPlan, out: File): Factory? {
     val cfg = config.blocks!!
-    require(plan.ports.none { p -> p.specs.any { it.edge == null } }) {
+    require(input.ports.none { p -> p.specs.any { it.edge == null } }) {
         "a factory of blocks takes its inputs and outputs by edge (with from and to), not by x and y"
     }
     out.mkdirs()
@@ -92,7 +92,10 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, plan: P
     }
     fun left() = (deadline - System.currentTimeMillis()) / 1000.0
     val tier = GameConstants.beltTier(config.beltTier)
-    var split = splitPlan(plan, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved)
+    var split = splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved)
+    // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
+    val plan = split.plan
+    plan.write(File(out, "plan_rebalanced.json").path)
     split.warnings.forEach { say("WARNING: $it") }
     sayPlan(split, plan, ::say)
     var bps = split.blocks.indices.map { blockPlan(plan, split, it, tuning) }
@@ -226,7 +229,7 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, plan: P
 private fun sayPlan(split: Split, plan: ProductionPlan, say: (String) -> Unit) {
     val p = split.partition
     say("${plan.machines.size} machines in ${split.blocks.size} blocks: " + split.blocks.mapIndexed { b, ms -> "block ${b + 1}: ${ms.size}" }.joinToString(", ") +
-        (p?.let { "; ${it.ports} ports between blocks and edges (greedy split: ${it.greedyPorts}), cost ${"%.1f".format(it.cost)} (greedy ${"%.1f".format(it.greedyCost)})" } ?: ""))
+        (p?.let { "; ${it.ports} ports between blocks and edges (greedy split: ${it.greedyPorts}; ${split.ports} with machine rates rebalanced), cost ${"%.1f".format(it.cost)} (greedy ${"%.1f".format(it.greedyCost)})" } ?: ""))
     split.blocks.forEachIndexed { b, ms ->
         val box = split.geometry.boxes[b]
         say("  block ${b + 1}: " + ms.groupingBy { plan.machines[it].recipe }.eachCount().entries.sortedByDescending { it.value }.joinToString(", ") { "${it.value}x ${it.key}" } +
@@ -293,7 +296,7 @@ fun mergeBlocks(split: Split, a: Int, b: Int): Split {
         max(boxes[a].x2, boxes[b].x2) - min(boxes[a].x, boxes[b].x) + 1, max(boxes[a].y2, boxes[b].y2) - min(boxes[a].y, boxes[b].y) + 1)
     val g = BlockGeometry(split.geometry.boxes.indices.filter { it != gone }.map { if (it == keep) union else boxes[it] }, split.geometry.w, split.geometry.h,
         split.geometry.touches.indices.filter { it != gone }.map { if (it == keep) split.geometry.touches[a] + split.geometry.touches[b] else split.geometry.touches[it] })
-    return Split(blocks, links.mapIndexed { i, l -> l.copy(id = i) }, split.warnings, g, split.partition)
+    return Split(blocks, links.mapIndexed { i, l -> l.copy(id = i) }, split.warnings, g, split.plan, split.partition, split.ports)
 }
 
 /** For each block, the aspect a floorplan of the real block areas with free shapes would give it. */

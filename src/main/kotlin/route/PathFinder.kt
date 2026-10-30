@@ -161,6 +161,8 @@ class PathFinder(internal val p: RouteProblem) {
         val item2: String? = null, val sourceRate2: Double = 0.0,
         /** Plan ports this chain starts from and ends at (-1: none), for telling ports of one item apart. */
         val srcPort: Int = -1, val outPort: Int = -1,
+        /** Plan port of [item2] on a shared belt (-1: none). */
+        val srcPort2: Int = -1,
     )
     private val nets = ArrayList<RNet>()
 
@@ -1314,8 +1316,8 @@ class PathFinder(internal val p: RouteProblem) {
                 val r = routed[n.idx]?.takeIf { it.sourceTile >= 0 } ?: return@flatMap emptyList()
                 val t = dims.tile(r.sourceTile)
                 if (n.item2 == null) listOf(SourceSpec(t, n.item, n.sourceRate, port = n.srcPort))
-                else listOfNotNull(SourceSpec(t, n.item, n.sourceRate, lane = 0).takeIf { n.sourceRate > 0 },
-                    SourceSpec(t, n.item2, n.sourceRate2, lane = 1).takeIf { n.sourceRate2 > 0 })
+                else listOfNotNull(SourceSpec(t, n.item, n.sourceRate, lane = 0, port = n.srcPort).takeIf { n.sourceRate > 0 },
+                    SourceSpec(t, n.item2, n.sourceRate2, lane = 1, port = n.srcPort2).takeIf { n.sourceRate2 > 0 })
             } + (pr?.sources() ?: emptyList()),
             outputs = nets.mapNotNull { n -> routed[n.idx]?.takeIf { it.outTile >= 0 }?.let { OutputSpec(dims.tile(it.outTile), n.item, n.outRate, port = n.outPort) } } +
                 (pr?.outputs() ?: emptyList()),
@@ -1544,7 +1546,7 @@ class PathFinder(internal val p: RouteProblem) {
                 tiles = keep.map { first.portTiles[it] }.toIntArray(); outs = keep.map { first.portOut[it] }.toIntArray()
             }
             nets += RNet(idx, first.planId, first.item, first.terms + second.terms, tiles, outs, maxOf(first.hpwl, second.hpwl),
-                first.sourceRate, item2 = second.item, sourceRate2 = second.sourceRate)
+                first.sourceRate, item2 = second.item, sourceRate2 = second.sourceRate, srcPort = first.srcPort, srcPort2 = second.srcPort)
             log += "shared belt: ${first.item} (left lane) with ${second.item} (right lane)"
         }
         vts.forEach { it.net = remap.getValue(it.net) }

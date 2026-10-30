@@ -23,9 +23,10 @@ class FactoryTest {
         assertTrue(split.blocks.all { it.size <= 5 }, "${split.blocks}")
         assertEquals(plan.machines.size, split.blocks.sumOf { it.size })
         // Each block's links in and out balance what its machines make and use.
-        plan.nets.forEach { net ->
+        // Against the split's own plan: machine rates are rebalanced for the split.
+        split.plan.nets.forEach { net ->
             split.blocks.indices.forEach { b ->
-                val ts = plan.netTerminals(net).filter { it.machine != null && it.machine in split.blocks[b] }
+                val ts = split.plan.netTerminals(net).filter { it.machine != null && it.machine in split.blocks[b] }
                 val made = ts.filter { it.role == Role.PRODUCER }.sumOf { it.rate }
                 val used = ts.filter { it.role == Role.CONSUMER }.sumOf { it.rate }
                 val inflow = split.links.filter { it.item == net.item && it.to == b }.sumOf { it.rate }

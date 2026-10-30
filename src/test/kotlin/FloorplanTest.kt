@@ -6,7 +6,9 @@ import blocks.FpShape
 import blocks.FpState
 import blocks.Floorplanner
 import blocks.HUB
+import blocks.PartitionModel
 import blocks.partitionPlan
+import blocks.rebalance
 import blocks.splitPlan
 import config.BlocksConfig
 import geom.Dir
@@ -82,9 +84,10 @@ class FloorplanTest {
             assertTrue(ls.any { it.to == HUB }, "$item has no supply: $ls")
         }
         // Rates still balance per block and item, fluids included.
-        plan.nets.forEach { net ->
+        // Against the split's own plan: machine rates are rebalanced for the split.
+        split.plan.nets.forEach { net ->
             split.blocks.indices.forEach { b ->
-                val ts = plan.netTerminals(net).filter { it.machine != null && it.machine in split.blocks[b] }
+                val ts = split.plan.netTerminals(net).filter { it.machine != null && it.machine in split.blocks[b] }
                 val made = ts.filter { it.role == Role.PRODUCER }.sumOf { it.rate }
                 val used = ts.filter { it.role == Role.CONSUMER }.sumOf { it.rate }
                 val inflow = split.links.filter { it.item == net.item && it.to == b }.sumOf { it.rate }
@@ -101,5 +104,22 @@ class FloorplanTest {
                 assertTrue(Dir.fromName(l.side(b)!!) in split.geometry.touches[b], "$l")
             }
         }
+    }
+
+    @Test
+    fun `rebalancing machine rates keeps every recipe's total and machine limits and never adds ports`() {
+        val job = TestData.job("t4")
+        val plan = buildPlan(TestData.data, job)
+        val cfg = BlocksConfig(maxMachines = 4)
+        val blocks = partitionPlan(plan, cfg, 30.0, seed = 3).blocks
+        val r = rebalance(plan, blocks)
+        plan.machines.groupBy { it.recipe }.forEach { (recipe, ms) ->
+            assertEquals(ms.sumOf { it.crafts }, r.machines.filter { it.recipe == recipe }.sumOf { it.crafts }, 1e-9, recipe)
+        }
+        r.machines.forEach { m -> assertTrue(m.crafts <= maxOf(plan.machines[m.id].crafts, m.maxCrafts) + 1e-9, "${m.label} ${m.crafts} > ${m.maxCrafts}") }
+        val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
+        val before = PartitionModel(plan, cfg, 30.0).ports(blockOf, blocks.size)
+        val after = PartitionModel(r, cfg, 30.0).ports(blockOf, blocks.size)
+        assertTrue(after <= before, "$after ports after rebalancing, $before before")
     }
 }

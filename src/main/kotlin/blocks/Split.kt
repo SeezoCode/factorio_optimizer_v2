@@ -40,13 +40,14 @@ data class Link(
 
 /**
  * The plan split into blocks (machine ids of the full plan, upstream first) and the links between them, with the
- * preliminary floorplan the links' sides were chosen on: [shapes] is the box each block was planned at (w, h; the
- * block is searched at that aspect), [touch] the factory edges each block must stay on (its ports that leave the
- * factory straight out).
+ * preliminary floorplan the links' sides were chosen on ([geometry]: each block's planned box, whose aspect it is
+ * searched at). [plan] is the full plan with machine rates rebalanced for this split (see [rebalance]); [ports]
+ * counts the (block, item) pairs that trade after that. [touch]: the factory edges each block must stay on (its
+ * ports that leave the factory straight out).
  */
 class Split(
     val blocks: List<List<Int>>, val links: List<Link>, val warnings: List<String>,
-    val geometry: BlockGeometry, val partition: Partition? = null,
+    val geometry: BlockGeometry, val plan: ProductionPlan, val partition: Partition? = null, val ports: Int = 0,
 ) {
     val touch: List<Set<Dir>> get() = blocks.indices.map { b -> links.filter { !it.throughCorridor && (it.from == b || it.to == b) }.mapNotNull { it.side(b) }.map(Dir::fromName).toSet() }
 }
@@ -113,24 +114,34 @@ private fun centreDistance(a: Rect, b: Rect): Double =
  * [linksFor]).
  */
 fun splitPlan(
-    plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L,
+    input: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L,
     aspect: Double = 1.0, reserved: List<ReservedArea> = emptyList(),
 ): Split {
     val warnings = ArrayList<String>()
-    val part = partitionPlan(plan, cfg, beltThroughput, seed)
-    val depth = machineDepth(plan)
-    val blocks = part.blocks.map { it.sorted() }.sortedBy { ms -> ms.map { depth[it] }.average() }
+    val part = partitionPlan(input, cfg, beltThroughput, seed)
+    // Each candidate split with its machine rates rebalanced (see [rebalance]); the cheapest after that wins.
+    val depth = machineDepth(input)
+    data class Candidate(val blocks: List<List<Int>>, val blockOf: IntArray, val plan: ProductionPlan, val ports: Int, val cost: Double)
+    val chosen = part.candidates.distinct().map { c ->
+        val bl = c.map { it.sorted() }.sortedBy { ms -> ms.map { depth[it] }.average() }
+        val bo = IntArray(input.machines.size).also { a -> bl.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
+        val p = rebalance(input, bl)
+        val model = PartitionModel(p, cfg, beltThroughput)
+        Candidate(bl, bo, p, model.ports(bo, bl.size), model.cost(bo, bl.size))
+    }.minBy { it.cost }
+    val blocks = chosen.blocks
     val k = blocks.size
-    val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
+    val blockOf = chosen.blockOf
+    val plan = chosen.plan
+    val tradePorts = chosen.ports
 
     // Preliminary floorplan: soft shapes of the estimated area; one net per item between the blocks trading it,
     // and one per block and raw input or product towards the edges it may use.
     val bal = balances(plan, blocks, blockOf)
     val fpNets = ArrayList<FpNet>()
     plan.nets.forEach { net ->
-        val members = (0 until k).filter { abs(bal[net.id][it]) > PartitionModel.EPS }
+        val inner = (0 until k).filter { abs(bal[net.id][it]) > PartitionModel.EPS }
         val w = if (net.fluid) 2.0 else 1.0
-        val inner = members.filter { bal[net.id][it] != 0.0 }
         val (inEdges, _) = edgesOf(plan, net.item, false)
         val (outEdges, _) = edgesOf(plan, net.item, true)
         val external = plan.netTerminals(net).any { it.role == Role.SOURCE || it.role == Role.OUTPUT }
@@ -147,7 +158,7 @@ fun splitPlan(
     val fp = Floorplanner(fpBlocks, fpNets, FpParams(aspect = aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = seed)).optimise()
     val geometry = BlockGeometry(fp.boxes.take(k), fp.w, fp.h, fp.touches.take(k), fp.state)
     val links = linksFor(plan, cfg, beltThroughput, blocks, geometry, warnings)
-    return Split(blocks, links, warnings, geometry, part)
+    return Split(blocks, links, warnings, geometry, plan, part, tradePorts)
 }
 
 /** A reserved area as a floorplan block: fixed size, on its corner (by default the corners in turn). */
@@ -224,7 +235,7 @@ fun linksFor(
         }
 
         val give = ArrayList<Pair<Int, Double>>(); val take = ArrayList<Pair<Int, Double>>()
-        (0 until k).forEach { b -> val r = bal[net.id][b]; if (r > 1e-9) give += b to r else if (r < -1e-9) take += b to -r }
+        (0 until k).forEach { b -> val r = bal[net.id][b]; if (r > PartitionModel.EPS) give += b to r else if (r < -PartitionModel.EPS) take += b to -r }
         if (source > 1e-9) give += EDGE to source
         if (output > 1e-9) take += EDGE to output
         fun dist(a: Int, b: Int): Double = when {

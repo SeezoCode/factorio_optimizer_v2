@@ -36,6 +36,11 @@ data class MachineInstance(
     val fluidIn: Map<String, Int> = emptyMap(),
     val fluidOut: Map<String, Int> = emptyMap(),
     val crafts: Double = 0.0,
+    /**
+     * Crafts/s this instance could run at: its crafting speed, and what its inserters (as many as [crafts] needs)
+     * can move. Machines of a recipe in different blocks of a factory may run at different rates up to this.
+     */
+    val maxCrafts: Double = 0.0,
 ) {
     val label: String get() = "$recipe#$id"
     /** Items (not fluids) this machine makes. */
@@ -159,6 +164,9 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         while (inserters(n) > room && n < base * 20) n++
         if (n > base) warn("${r.name}: ${n - base} more ${c.machine} than its rate needs, so each one's inserters fit around it")
         val crafts = x / n
+        val insCap = demandPer.values.filter { it > 1e-12 }.map { a -> inserterCount(crafts * a, pickRate0) * pickRate0 / a } +
+            itemOut.values.map { a -> inserterCount(crafts * a, dropRate0) * dropRate0 / a }
+        val maxCrafts = maxOf(crafts, minOf(1.0 / c.machineTime, insCap.minOrNull() ?: Double.MAX_VALUE))
         val products = productsPer.mapValues { crafts * it.value }
         val demand = demandPer.mapValues { crafts * it.value }
         repeat(n) {
@@ -177,6 +185,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 fluidIn = fluidIngredients.mapIndexed { i, ing -> ing.name to (ing.fluidboxIndex ?: (i + 1)) }.toMap(),
                 fluidOut = fluidProducts.mapIndexed { i, p -> p.name to (p.fluidboxIndex ?: (i + 1)) }.toMap(),
                 crafts = crafts,
+                maxCrafts = maxCrafts,
             )
         }
     }

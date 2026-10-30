@@ -108,7 +108,11 @@ class PartitionModel(val plan: ProductionPlan, val cfg: BlocksConfig, beltThroug
 }
 
 /** A split of the machines into blocks: machine ids per block, and the cost under [PartitionModel]. */
-class Partition(val blocks: List<List<Int>>, val cost: Double, val ports: Int, val greedyCost: Double, val greedyPorts: Int)
+class Partition(
+    val blocks: List<List<Int>>, val cost: Double, val ports: Int, val greedyCost: Double, val greedyPorts: Int,
+    /** Every split the search ended with (the greedy one first, then each annealing run's best), cheapest first. */
+    val candidates: List<List<List<Int>>> = listOf(blocks),
+)
 
 /**
  * Splits [plan] into blocks of at most [BlocksConfig.maxMachines] machines, minimising [PartitionModel]'s cost:
@@ -158,14 +162,12 @@ fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Doubl
     val greedyPorts = model.ports(start, k)
 
     // 2. Annealing from the greedy split.
-    var bestAssign = start.clone(); var bestCost = greedyCost
-    val runs = 3
-    for (run in 0 until runs) {
-        val (a, c) = anneal(model, start, k, max, SplittableRandom(seed * 7919 + run))
-        if (c < bestCost - 1e-9) { bestCost = c; bestAssign = a }
-    }
-    val blocks = (0 until k).map { b -> (0 until n).filter { bestAssign[it] == b } }.filter { it.isNotEmpty() }
-    return Partition(blocks, bestCost, model.ports(bestAssign, k), greedyCost, greedyPorts)
+    val found = arrayListOf(start.clone() to greedyCost)
+    repeat(3) { run -> found += anneal(model, start, k, max, SplittableRandom(seed * 7919 + run)) }
+    fun blocksOf(a: IntArray) = (0 until k).map { b -> (0 until n).filter { a[it] == b } }.filter { it.isNotEmpty() }
+    val sorted = found.sortedBy { it.second }
+    val (bestAssign, bestCost) = sorted.first()
+    return Partition(blocksOf(bestAssign), bestCost, model.ports(bestAssign, k), greedyCost, greedyPorts, sorted.map { blocksOf(it.first) })
 }
 
 /** Simulated annealing over the assignment; returns the best assignment seen and its cost. */
