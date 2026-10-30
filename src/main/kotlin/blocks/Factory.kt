@@ -157,9 +157,9 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
     }
     fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String) =
         runCatching {
-            // Squeezing the corridors gets the time left for stitching, at least half a minute.
-            val squeeze = maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
-            assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong())
+            // Compaction gets blocks.compact_s, or else the time left for stitching (at least half a minute).
+            val squeeze = cfg.compactS ?: maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
+            assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong()) { consider(it, "$what (compacting)") }
         }
             .getOrElse { e -> say("$what: failed with $e"); e.printStackTrace(); null }
     val first = assemble(split, bps, variants, split.geometry.state, "factory")
@@ -408,24 +408,59 @@ private fun floorplanInput(
 fun assembleFactory(
     data: RootData, config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, split: Split, bps: List<BlockPlan>,
     variants: List<List<TrialResult>>, start: FpState?, say: (String) -> Unit, what: String,
-    /** When the last try's squeezing stops (epoch ms). */
+    /** When compaction stops (epoch ms). */
     deadline: Long = System.currentTimeMillis() + 30_000,
+    /** Called with a finished, valid factory whenever compaction has made one smaller (at most once a minute). */
+    onBetter: (Pair<Factory, FpState>) -> Unit = {},
 ): Pair<Factory, FpState>? {
     val cfg = config.blocks!!
     val input = floorplanInput(plan, split, variants, cfg, config, bps = bps)
     val tries = cfg.floorplanTries.coerceAtLeast(1)
-    val ok = ArrayList<Pair<Stitched, FpState>>()
+    val t0 = System.currentTimeMillis()
+    // 1. Every floorplan routed, tightened and squeezed for a share of a quarter of the time.
+    val stitchings = ArrayList<Stitching>()
     for (t in 0 until tries) {
         val label = if (tries > 1) "$what (floorplan ${t + 1}/$tries)" else what
-        val now = System.currentTimeMillis()
-        val until = now + (deadline - now) / (tries - t)
         val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 1009L * t)
         val st = if (t == 0) start?.takeIf { it.plus.size == input.blocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(input.blocks.size)) } else null
-        ok += stitchFloorplan(config, tuning, plan, split, bps, input, params, st, say, label, until)
+        val s = Stitching(config, tuning, plan, split, bps, input, params, say, label)
+        s.start(st)
+        if (!s.routed) continue
+        val n = s.squeeze(t0 + (deadline - t0) / 4 * (t + 1) / tries)
+        if (n > 0) say("$label: squeezed $n corridor lines out: ${s.fp.w} x ${s.fp.h}")
+        stitchings += s
     }
-    if (ok.isEmpty()) return null
-    val sorted = ok.sortedBy { it.first.w * it.first.h }
-    if (tries > 1) say("$what: smallest routed factory ${sorted[0].first.w} x ${sorted[0].first.h} of ${ok.size} routed")
+    if (stitchings.isEmpty()) return null
+    // 2. Compaction: the smallest one, until the time is up: squeeze; when that stalls, floorplan again from the current
+    //    arrangement with a fresh seed and a lighter price on belt length (longer belts for a tighter packing).
+    val best = stitchings.minBy { it.area }
+    if (tries > 1) say("$what: compacting the smallest floorplan, ${best.fp.w} x ${best.fp.h}")
+    var lastSave = System.currentTimeMillis()
+    var savedArea = Int.MAX_VALUE
+    fun checkpoint(force: Boolean = false) {
+        if (!force && System.currentTimeMillis() - lastSave < 60_000) return
+        lastSave = System.currentTimeMillis()
+        val (s, st) = best.ok.minBy { it.first.w * it.first.h }
+        if (s.w * s.h >= savedArea) return
+        val f = finishFactory(data, config, plan, s)
+        if (f.success) { savedArea = s.w * s.h; onBetter(f to st) }
+    }
+    var wire = cfg.wireWeight
+    var seed = config.search.seed + 7919
+    var stalls = 0
+    while (System.currentTimeMillis() < deadline) {
+        val before = best.area
+        val n = best.squeeze(deadline) { checkpoint() }
+        if (n > 0) say("$what: squeezed $n corridor lines out: ${best.fp.w} x ${best.fp.h}")
+        if (System.currentTimeMillis() >= deadline) break
+        if (best.reshuffle(seed++, wire)) say("$what: floorplanned again (belt length at ${"%.2f".format(wire)}): ${best.fp.w} x ${best.fp.h}")
+        else wire = maxOf(cfg.wireWeight * 0.05, wire * 0.6)
+        if (best.area < before) stalls = 0 else if (++stalls >= 12) break
+        checkpoint()
+    }
+    val all = stitchings.flatMap { it.ok }
+    val sorted = all.sortedBy { it.first.w * it.first.h }
+    say("$what: smallest routed factory ${sorted[0].first.w} x ${sorted[0].first.h} of ${all.size} routed")
     // Finish the smallest; if validation finds anything, the next smallest.
     var last: Pair<Factory, FpState>? = null
     for ((s, st) in sorted.take(8)) {
@@ -437,55 +472,58 @@ fun assembleFactory(
     return last
 }
 
-/** One floorplan try of [assembleFactory]: every factory that routed on the way, with its floorplan state. */
-private fun stitchFloorplan(
-    config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, split: Split, bps: List<BlockPlan>, input: FloorplanInput,
-    params: FpParams, start: FpState?, say: (String) -> Unit, what: String, deadline: Long,
-): List<Pair<Stitched, FpState>> {
+/**
+ * One floorplan of [assembleFactory] and what has been routed on it: [start] routes it (widening the corridors
+ * where routing fails, then giving back padding lines nothing uses), [squeeze] takes single padding lines out (one
+ * block side at a time, one tile less, kept when the factory shrinks and still routes; a side without ports may go
+ * to nothing, validation catches anything that then touches across), and [reshuffle] floorplans again from the
+ * current arrangement with the padding as it now is, kept when it is smaller and routes.
+ */
+private class Stitching(
+    val config: RunConfiguration, val tuning: Tuning, val plan: ProductionPlan, val split: Split, val bps: List<BlockPlan>,
+    val input: FloorplanInput, val params: FpParams, val say: (String) -> Unit, val what: String,
+) {
     val k = split.blocks.size
-    val fpBlocks = input.blocks
-    val planner = Floorplanner(fpBlocks, input.nets, params)
-    var fp = planner.optimise(start)
-    if (fp.violations > 0) say("$what: the floorplan leaves ${fp.violations} block side(s) off the factory edge they need")
-    var pads = fpBlocks.map { it.pad.clone() }
-    fun layoutOf(p: FpPlan) = Arrangement(p.boxes.take(k), p.boxes.drop(k), p.w, p.h, IntArray(k) { p.state.shape[it] },
-        IntArray(k) { fpBlocks[it].shapes[p.state.shape[it]].rot })
-    fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p))
+    val planner = Floorplanner(input.blocks, input.nets, params)
+    var fp: FpPlan = planner.optimise(null)
+    var pads = input.blocks.map { it.pad.clone() }
+    /** Everything routed so far, with its floorplan state, oldest first. */
     val ok = ArrayList<Pair<Stitched, FpState>>()
-    var routedOnce = false
-    for (attempt in 0 until 6) {
-        val arr = layoutOf(fp)
-        val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr)
-        if (r.stitched != null) { ok += r.stitched to fp.state; routedOnce = true; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 0) " (attempt ${attempt + 1})" else ""}"); break }
-        say("$what: corridors at ${fp.w} x ${fp.h} did not route (${r.why}); widening near ${r.trouble.size} trouble tiles ${r.trouble.take(4)}")
-        pads = grow(pads, arr, r.trouble, r.edges, k)
-        fp = planner.pack(fp.state, pads)
-    }
-    if (!routedOnce) return ok
-    // Tighten: give back padding lines nothing uses; re-floorplan with the measured padding; keep what routes.
-    for (round in 0 until 3) {
-        val tighter = tighten(pads, ok.last().first, k)
-        if (tighter.indices.all { tighter[it].contentEquals(pads[it]) }) break
-        val p2 = planner.pack(fp.state, tighter)
-        if (p2.area >= fp.area) break
-        val r = route(p2)
-        if (r.stitched == null) { say("$what: tighter corridors (${p2.w} x ${p2.h}) did not route"); break }
-        say("$what: tighter corridors: ${p2.w} x ${p2.h}")
-        ok += r.stitched to p2.state; pads = tighter; fp = p2
-    }
-    // Then, while it helps and time is left: floorplan again with the padding as it now is, and squeeze single
-    // padding lines out (one block side at a time, one tile less, kept when the factory shrinks and still routes; a
-    // side without ports may go to nothing, validation catches anything that then touches across).
-    val portSides = (0 until k).map { b -> split.links.filter { it.from == b || it.to == b }.mapNotNull { it.side(b) }.map { Dir.fromName(it).ordinal }.toSet() }
-    var squeezed = 0
-    for (round in 0 until 4) {
-        val before = fp.area
-        val re = Floorplanner(fpBlocks.mapIndexed { i, b -> FpBlock(b.shapes, pads[i], b.touch) }, input.nets, params).optimise(fp.state)
-        if (re.area < fp.area && re.violations == 0) {
-            val p2 = planner.pack(re.state, pads)
-            val r = route(p2)
-            if (r.stitched != null) { say("$what: floorplanned again with the corridors as they are: ${p2.w} x ${p2.h}"); ok += r.stitched to p2.state; fp = p2 }
+    val routed get() = ok.isNotEmpty()
+    val area get() = fp.area
+    private val portSides = (0 until k).map { b -> split.links.filter { it.from == b || it.to == b }.mapNotNull { it.side(b) }.map { Dir.fromName(it).ordinal }.toSet() }
+
+    fun layoutOf(p: FpPlan) = Arrangement(p.boxes.take(k), p.boxes.drop(k), p.w, p.h, IntArray(k) { p.state.shape[it] },
+        IntArray(k) { input.blocks[it].shapes[p.state.shape[it]].rot })
+    private fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p))
+
+    fun start(from: FpState?) {
+        fp = planner.optimise(from)
+        if (fp.violations > 0) say("$what: the floorplan leaves ${fp.violations} block side(s) off the factory edge they need")
+        for (attempt in 0 until 6) {
+            val arr = layoutOf(fp)
+            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr)
+            if (r.stitched != null) { ok += r.stitched to fp.state; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 0) " (attempt ${attempt + 1})" else ""}"); break }
+            say("$what: corridors at ${fp.w} x ${fp.h} did not route (${r.why}); widening near ${r.trouble.size} trouble tiles ${r.trouble.take(4)}")
+            pads = grow(pads, arr, r.trouble, r.edges, k)
+            fp = planner.pack(fp.state, pads)
         }
+        if (!routed) return
+        for (round in 0 until 3) {
+            val tighter = tighten(pads, ok.last().first, k)
+            if (tighter.indices.all { tighter[it].contentEquals(pads[it]) }) break
+            val p2 = planner.pack(fp.state, tighter)
+            if (p2.area >= fp.area) break
+            val r = route(p2)
+            if (r.stitched == null) { say("$what: tighter corridors (${p2.w} x ${p2.h}) did not route"); break }
+            say("$what: tighter corridors: ${p2.w} x ${p2.h}")
+            ok += r.stitched to p2.state; pads = tighter; fp = p2
+        }
+    }
+
+    /** Squeezes until a full pass over the sides gains nothing or [deadline]; the number of lines taken out. */
+    fun squeeze(deadline: Long, onBetter: () -> Unit = {}): Int {
+        var squeezed = 0
         var improved = true
         while (improved && System.currentTimeMillis() < deadline) {
             improved = false
@@ -497,13 +535,23 @@ private fun stitchFloorplan(
                 val p2 = planner.pack(fp.state, trial)
                 if (p2.area >= fp.area) continue
                 val r = route(p2)
-                if (r.stitched != null) { ok += r.stitched to p2.state; pads = trial; fp = p2; improved = true; squeezed++ }
+                if (r.stitched != null) { ok += r.stitched to p2.state; pads = trial; fp = p2; improved = true; squeezed++; onBetter() }
             }
         }
-        if (fp.area >= before || System.currentTimeMillis() >= deadline) break
+        return squeezed
     }
-    if (squeezed > 0) say("$what: squeezed $squeezed corridor lines out: ${fp.w} x ${fp.h}")
-    return ok
+
+    /** Floorplans again from the current arrangement (seed [seed], wire length weighted [wire]); true if kept. */
+    fun reshuffle(seed: Long, wire: Double): Boolean {
+        val p = FpParams(params.aspect, params.aspectWeight, wire, seed, params.restarts, params.movesPerBlock)
+        val re = Floorplanner(input.blocks.mapIndexed { i, b -> FpBlock(b.shapes, pads[i], b.touch) }, input.nets, p).optimise(fp.state)
+        if (re.area >= fp.area || re.violations > 0) return false
+        val p2 = planner.pack(re.state, pads)
+        val r = route(p2)
+        if (r.stitched == null) return false
+        ok += r.stitched to p2.state; fp = p2
+        return true
+    }
 }
 
 /** Where everything goes: block boxes, reserved boxes, the factory size, which shape of each block and its turn. */

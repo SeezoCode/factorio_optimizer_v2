@@ -20,13 +20,14 @@ import java.time.format.DateTimeFormatter
  *   --resume=<dir>                continue a factory-of-blocks run in <dir>: its saved split and finished blocks are
  *                                 kept, missing blocks are searched, then it floorplans and stitches again (the job
  *                                 is the one saved there unless --config is given)
+ *   --compact=<s>                 seconds to compact a factory of blocks (blocks.compact_s), e.g. with --resume
  */
 fun main(args: Array<String>) {
     val flags = args.filter { it.startsWith("--") }.associate {
         val eq = it.indexOf('=')
         if (eq < 0) it.removePrefix("--") to "true" else it.substring(2, eq) to it.substring(eq + 1)
     }
-    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume")
+    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact")
     (flags.keys - known).takeIf { it.isNotEmpty() }?.let { error("Unknown flags: $it (known: $known)") }
 
     flags["render"]?.let { dir -> renderOutput(java.io.File(dir)); return }
@@ -52,7 +53,9 @@ fun main(args: Array<String>) {
     val loaded = flags["config"]?.let { RunConfiguration.load(it) }
         ?: resume?.let { blocks.savedJob(java.io.File(it)) ?: error("--resume: no saved job in $it (give --config)") }
         ?: RunConfiguration.load("config.json")
-    val config = flags["engine"]?.let { loaded.copy(engine = it).also { c -> c.validate() } } ?: loaded
+    val config = (flags["engine"]?.let { loaded.copy(engine = it).also { c -> c.validate() } } ?: loaded).let { c ->
+        flags["compact"]?.let { s -> c.copy(blocks = c.blocks?.copy(compactS = s.toDouble())) } ?: c
+    }
     // tuning.json on the classpath holds the measured defaults; the job's tuning section overrides them.
     val tuning = (flags["tuning"]?.let { Tuning.load(it) } ?: Tuning.defaults()).withOverrides(config.tuning)
     if (flags.containsKey("print-tuning")) {

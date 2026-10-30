@@ -282,6 +282,12 @@ data class BlocksConfig(
     @SerialName("lane_pairs") val lanePairs: Boolean = true,
     /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */
     val rotate: Boolean = true,
+    /**
+     * Seconds spent compacting the stitched factory (squeezing corridor lines out and floorplanning again, belts
+     * growing longer if need be); every smaller valid factory is saved on the way. Default: the time left for
+     * stitching by [blockTimeShare], at least half a minute.
+     */
+    @SerialName("compact_s") val compactS: Double? = null,
     /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */
     @SerialName("floorplan_tries") val floorplanTries: Int = 3,
     /** Remove rows and columns that only straight belts and pipes cross from the stitched factory. */
