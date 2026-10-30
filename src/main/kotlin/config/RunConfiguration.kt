@@ -288,6 +288,13 @@ data class BlocksConfig(
      * stitching by [blockTimeShare], at least half a minute.
      */
     @SerialName("compact_s") val compactS: Double? = null,
+    /**
+     * Each block is also searched at its aspect times each of these (e.g. [0.6, 1.7]), and the floorplan picks among
+     * all its shapes (and their turns): blocks whose shapes fit together leave fewer holes.
+     */
+    @SerialName("shape_variants") val shapeVariants: List<Double> = emptyList(),
+    /** Seconds per shape variant (default: half the block's own share). */
+    @SerialName("shape_variant_s") val shapeVariantS: Double? = null,
     /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */
     @SerialName("floorplan_tries") val floorplanTries: Int = 3,
     /** Remove rows and columns that only straight belts and pipes cross from the stitched factory. */

@@ -141,6 +141,26 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
         saveBlock(out, b, variants[b])
     }
 
+    // 1b. Shape variants: each block also searched at its aspect times each of blocks.shape_variants, so the floorplan
+    //     can pick shapes that pack together (a hole between mismatched blocks is space no squeezing gets back).
+    if (cfg.shapeVariants.isNotEmpty()) {
+        val allEffort = split.blocks.indices.sumOf(::effort)
+        for (b in split.blocks.indices) {
+            val base = variants[b][0]
+            for ((i, m) in cfg.shapeVariants.withIndex()) {
+                if (variants[b].size > i + 1 || left() < 10) continue   // searched already (resume), or no time
+                val budget = minOf(left(), cfg.shapeVariantS ?: (config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) * effort(b) / allEffort * 0.5))
+                val aspect = base.w.toDouble() / base.h * m
+                val r = runCatching {
+                    Search(data, blockConfig(budget, aspect, ceil(sqrt(base.area * 1.1)).toInt()), tuning, bps[b].plan, File(out, "block_${b + 1}/shape_${i + 1}")).run().best
+                }.getOrElse { e -> say("block ${b + 1} shape x${"%.2f".format(m)}: failed with $e"); null } ?: base
+                variants[b] += r   // the base layout stands in when nothing is found, so indices stay aligned
+                saveBlock(out, b, variants[b])
+                say("block ${b + 1} shape x${"%.2f".format(m)}: ${r.w} x ${r.h} (base ${base.w} x ${base.h})")
+            }
+        }
+    }
+
     // 2. Floorplan the finished blocks and stitch them. Keep the smallest valid factory.
     var best: Factory? = null
     var bestState: FpState? = null
@@ -537,8 +557,33 @@ private class Stitching(
                 val r = route(p2)
                 if (r.stitched != null) { ok += r.stitched to p2.state; pads = trial; fp = p2; improved = true; squeezed++; onBetter() }
             }
+            // No single side shortens every longest chain: take a line from each block on them at once (the larger of
+            // its two sides across), all of them, else half of them by position.
+            if (!improved && System.currentTimeMillis() < deadline) improved = batch(deadline, onBetter).also { if (it) squeezed++ }
         }
         return squeezed
+    }
+
+    private fun batch(deadline: Long, onBetter: () -> Unit): Boolean {
+        val (cx, cy) = planner.critical(fp.state, pads)
+        fun rot(b: Int) = input.blocks[b].shapes[fp.state.shape[b]].rot
+        fun idx(b: Int, d: Dir) = (d.ordinal - rot(b)).mod(4)
+        fun min(b: Int, i: Int) = if (i in portSides[b]) 1 else 0
+        for ((blocks, sides) in listOf(cx to listOf(Dir.E, Dir.W), cy to listOf(Dir.N, Dir.S))) {
+            val cands = blocks.mapNotNull { b -> sides.map { idx(b, it) }.filter { pads[b][it] > min(b, it) }.maxByOrNull { pads[b][it] }?.let { b to it } }
+            if (cands.isEmpty()) continue
+            val centre = { b: Int -> if (sides[0] == Dir.E) fp.boxes[b].x else fp.boxes[b].y }
+            val sorted = cands.sortedBy { centre(it.first) }
+            for (subset in listOf(sorted, sorted.take(sorted.size / 2), sorted.drop(sorted.size / 2)).filter { it.isNotEmpty() }) {
+                if (System.currentTimeMillis() >= deadline) return false
+                val trial = pads.map { it.clone() }.also { t -> subset.forEach { (b, i) -> t[b][i]-- } }
+                val p2 = planner.pack(fp.state, trial)
+                if (p2.area >= fp.area) continue
+                val r = route(p2)
+                if (r.stitched != null) { ok += r.stitched to p2.state; pads = trial; fp = p2; onBetter(); return true }
+            }
+        }
+        return false
     }
 
     /** Floorplans again from the current arrangement (seed [seed], wire length weighted [wire]); true if kept. */

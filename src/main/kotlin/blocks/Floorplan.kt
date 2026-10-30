@@ -127,6 +127,26 @@ class Floorplanner(val blocks: List<FpBlock>, val nets: List<FpNet>, val params:
         return FpPlan(s, boxes, w, h, cost, wire, violations, touches)
     }
 
+    /**
+     * Blocks on a longest chain across the factory (no slack to move without the factory growing): (in x, in y). The
+     * factory gets narrower (lower) only if every such chain gets shorter.
+     */
+    fun critical(s: FpState, padOverride: List<IntArray>): Pair<Set<Int>, Set<Int>> {
+        val pp = IntArray(k); val pm = IntArray(k)
+        s.plus.forEachIndexed { i, b -> pp[b] = i }
+        s.minus.forEachIndexed { i, b -> pm[b] = i }
+        val pad = (0 until k).map { b -> val r = blocks[b].shapes[s.shape[b]].rot; IntArray(4) { d -> padOverride[b][(d - r).mod(4)] } }
+        val bw = IntArray(k) { b -> blocks[b].shapes[s.shape[b]].w + pad[b][Dir.E.ordinal] + pad[b][Dir.W.ordinal] }
+        val bh = IntArray(k) { b -> blocks[b].shapes[s.shape[b]].h + pad[b][Dir.N.ordinal] + pad[b][Dir.S.ordinal] }
+        val x = IntArray(k); val y = IntArray(k)
+        for (i in 0 until k) { val b = s.plus[i]; for (j in 0 until i) { val a = s.plus[j]; if (pm[a] < pm[b]) x[b] = max(x[b], x[a] + bw[a]) else y[b] = max(y[b], y[a] + bh[a]) } }
+        val w = (0 until k).maxOf { x[it] + bw[it] }; val h = (0 until k).maxOf { y[it] + bh[it] }
+        // Latest start without growing the factory, from the far side back.
+        val lx = IntArray(k) { w - bw[it] }; val ly = IntArray(k) { h - bh[it] }
+        for (i in k - 1 downTo 0) { val a = s.plus[i]; for (j in i + 1 until k) { val b = s.plus[j]; if (pm[a] < pm[b]) lx[a] = min(lx[a], lx[b] - bw[a]) else ly[a] = min(ly[a], ly[b] - bh[a]) } }
+        return (0 until k).filter { lx[it] == x[it] }.toSet() to (0 until k).filter { ly[it] == y[it] }.toSet()
+    }
+
     /** Where pin [pin] of block [b] lies in the factory (its centre if the shape does not list it). */
     fun pinTile(boxes: List<Rect>, s: FpState, b: Int, pin: Int): Tile {
         val box = boxes[b]
