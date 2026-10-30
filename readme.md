@@ -166,6 +166,7 @@ Unknown keys are an error. Everything except `targets` has a default.
   "test_mode": false,
   "blocks": { "max_machines": 120, "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
               "link_belt_share": 0.9, "split_at_weight": 0.1, "block_time_share": 0.9,
+              "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
               "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3 },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
@@ -209,37 +210,52 @@ Unknown keys are an error. Everything except `targets` has a default.
 ### Big jobs: a factory of blocks
 
 With a `blocks` section, a job with more than `max_machines` machines is built as several blocks connected by
-belts, in one blueprint:
+belts and pipes, in one blueprint:
 
-1. The whole job is planned once, so every rate is exact, then split into blocks of at most `max_machines`
-   machines that trade as little as possible. Machines joined by pipes stay in one block. Items in `split_at`
-   are preferred cut points (plates are a natural choice).
-2. Blocks are ordered upstream first and laid out in one row (up to three blocks) or two (`rows` overrides), so
-   every block touches the outer edge: the top for the first row, the bottom for the second.
-3. Every belt between two blocks is a link with an exact rate (at most 90% of a belt). Each block is generated
-   on its own, with its link ports on the edge facing the block it trades with, and its share of the time
-   budget.
-4. The blocks are placed in their rows with `corridor` tiles between them, the link belts are routed through
-   the corridors, poles cover the whole factory, and the result is validated end to end against the full plan.
-   If the corridor belts do not fit, the corridors widen and it tries again.
-
-   Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block.
-   A block that touches an allowed edge (`"any"`, or the whole side its row is on) uses it directly; otherwise
-   each input or output gets its own belt (or pipe) through the corridors to that edge, `from` and `to`
-   counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.
+1. **Split.** The whole job is planned once, so every rate is exact, then its machines are divided into blocks of
+   at most `max_machines`. The split pays for what it cuts: every item a block makes more or less of than it uses
+   is a port on that block and a belt (or pipe) through the corridors, so it costs `link_cost` per belt
+   (`fluid_link_cost` per pipe port), plus a little per belt's worth of rate, plus `block_cost` per block.
+   Items in `split_at` cost `split_at_weight` times as much (plates are natural cut points). A greedy merge of
+   same-recipe groups gives a first split; simulated annealing then moves single machines, swaps two, and moves
+   whole recipe groups between blocks. `factory.txt` reports the ports of the split against the greedy one.
+   Machines joined by pipes may end up in different blocks: oil processing no longer has to be one block.
+2. **Plan the floorplan.** The blocks, with shapes estimated from their machines' area, are arranged by
+   simulated annealing over sequence pairs: any arrangement, not just rows. It minimises the factory's area,
+   its distance from the job's `box.aspect` (`aspect_weight`), and the length of the belts between blocks
+   (`wire_weight` per tile, to the factory's edge for inputs and outputs). This plan decides each block's shape
+   and which side of the block each port goes on: towards the block it trades with, or towards the edge the job
+   gives the item. A block that ends up on an allowed edge (`"any"`, or a whole side) takes that input or output
+   straight through it; the others run through the corridors to the edge.
+3. **Blocks.** Every belt between two blocks is a link with an exact rate (at most `link_belt_share` of a belt).
+   Every fluid traded between blocks gets one pipe tree through the corridors joining one port on each block
+   that makes or uses it (and the factory edge, if it enters or leaves there), so any number of blocks can share
+   a fluid. Each block is generated on its own, at its planned aspect, with its share of the time budget.
+4. **Floorplan and stitch.** The finished blocks are arranged again with their real sizes and port positions,
+   keeping free space around each block for the corridors (half a `corridor` plus room for that side's ports;
+   none on a side whose ports leave the factory straight out, which must stay on the factory's edge). The belts
+   and pipes are routed through the corridors. Where routing fails, the block sides near the trouble get more
+   room and it tries again; once it routes, lines of corridor that stayed empty are given back and it routes
+   again, and finally the blocks are rearranged with the corridors as measured. Poles cover the whole factory and
+   the result is validated end to end against the full plan. A pipe port right beside another fluid's pipe is
+   left through a pipe-to-ground pair.
 5. Rows and columns that only straight belts, straight pipes or underground spans cross are removed
    (`compact`, on by default; the factory is validated again, and kept as stitched if that ever fails).
-6. With `repack`, every block is searched again at a common height per row (the row's tallest block, and
-   heights that make the factory about square), and each row is kept repacked if the factory gets smaller.
-7. With `merge`, until the time budget runs out, two neighbouring blocks of a row become one block, searched
-   starting from their placements side by side, kept if the factory gets smaller (merged blocks have at most
+6. With `repack`, a floorplan of the blocks' real areas with free shapes says which shape each block should have;
+   blocks far from it are searched again at that aspect, and the floorplan then picks, per block, the layout that
+   packs best. Kept if the factory gets smaller.
+7. With `merge`, until the time budget runs out, two neighbouring blocks become one block, searched starting from
+   their placements as they lie in the factory, kept if the factory gets smaller (merged blocks have at most
    `merge_max_machines`, default twice `max_machines`).
+
+Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block, with
+`from` and `to` counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.
+Reserved areas are placed by the floorplan in their corners. `rows` is ignored now (old job files still load).
 
 Every smaller valid factory is saved as it is found, so stopping the run early keeps the best so far.
 
 The output folder holds the factory (`best_output_string.txt`, `best.png`, `ports.json`, `factory.txt` with the
-split and the links) and each block in `block_<n>/`. Fluids are never piped from one block to another (only between a block and the
-factory's edge); a pipe-joined group larger than `max_machines` stays one block (with a warning).
+split, the links, the pipe trees and every stitching step) and each block in `block_<n>/`.
 
 ### Space Age
 

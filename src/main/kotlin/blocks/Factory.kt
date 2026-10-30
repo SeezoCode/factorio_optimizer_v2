@@ -136,7 +136,11 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, plan: P
         return true
     }
     fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String) =
-        runCatching { assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what) }
+        runCatching {
+            // Squeezing the corridors gets the time left for stitching, at least half a minute.
+            val squeeze = maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
+            assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong())
+        }
             .getOrElse { e -> say("$what: failed with $e"); e.printStackTrace(); null }
     val first = assemble(split, bps, variants, split.geometry.state, "factory")
     if (first == null || !first.first.success) {
@@ -361,6 +365,8 @@ private fun floorplanInput(
 fun assembleFactory(
     data: RootData, config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, split: Split, bps: List<BlockPlan>,
     variants: List<List<TrialResult>>, start: FpState?, say: (String) -> Unit, what: String,
+    /** When squeezing the corridors stops (epoch ms). */
+    deadline: Long = System.currentTimeMillis() + 30_000,
 ): Pair<Factory, FpState>? {
     val cfg = config.blocks!!
     val k = split.blocks.size
@@ -402,9 +408,28 @@ fun assembleFactory(
             if (r.stitched != null) { say("$what: re-floorplanned with the measured corridors: ${re.w} x ${re.h}"); ok += r.stitched; fp = re }
         }
     }
-    // Finish the smallest; if validation finds anything, the next smallest (it should not).
+    // Squeeze: one block side at a time, one tile less, kept when the factory gets smaller and still routes. A side
+    // without ports may go to nothing; validation below catches anything that then touches across.
+    val portSides = (0 until k).map { b -> split.links.filter { it.from == b || it.to == b }.mapNotNull { it.side(b) }.map { Dir.fromName(it).ordinal }.toSet() }
+    var squeezed = 0
+    var improved = true
+    while (improved && System.currentTimeMillis() < deadline) {
+        improved = false
+        val order = (0 until k).flatMap { b -> (0..3).map { b to it } }
+            .filter { (b, d) -> pads[b][d] > (if (d in portSides[b]) 1 else 0) }.sortedByDescending { (b, d) -> pads[b][d] }
+        for ((b, d) in order) {
+            if (System.currentTimeMillis() >= deadline) break
+            val trial = pads.map { it.clone() }.also { it[b][d]-- }
+            val p2 = planner.pack(fp.state, trial)
+            if (p2.area >= fp.area) continue
+            val r = stitchRoute(config, tuning, plan, split, bps, variants, layoutOf(p2))
+            if (r.stitched != null) { ok += r.stitched; pads = trial; fp = p2; improved = true; squeezed++ }
+        }
+    }
+    if (squeezed > 0) say("$what: squeezed $squeezed corridor lines out: ${fp.w} x ${fp.h}")
+    // Finish the smallest; if validation finds anything, the next smallest.
     var last: Factory? = null
-    for (s in ok.sortedBy { it.w * it.h }.take(3)) {
+    for (s in ok.sortedBy { it.w * it.h }.take(8)) {
         val f = finishFactory(data, config, plan, s)
         if (f.success) return f to fp.state
         say("$what: ${f.layout.w} x ${f.layout.h} has ${f.errors.size} validation errors: ${f.errors.take(5)}")
