@@ -1631,7 +1631,10 @@ class PathFinder(internal val p: RouteProblem) {
                 .coerceAtMost(parts.size)
             return if (g == 1) listOf(parts) else groupConsumers(parts, g, center)
         }
-        // 1. Output ports.
+        // 1. Output ports. An output chain fed from a single-belt input port (an item passing through a block of a
+        // factory) waits for step 2: the consumers that port feeds join it, so the port stays one belt.
+        class Pending(val parts: List<EffectiveTerminal>, val srcRate: Double, val out: EffectiveTerminal, val outRate: Double)
+        val pending = HashMap<EffectiveTerminal, MutableList<Pending>>()
         outputs.forEach { o ->
             val pieces = if (plan.ports[o.base.port!!].single) 1 else maxOf(1, kotlin.math.ceil(o.rate / beltCap - 1e-9).toInt())
             repeat(pieces) {
@@ -1644,7 +1647,8 @@ class PathFinder(internal val p: RouteProblem) {
                     if (src != null) { srcRate = min(missing, srcLeft.getValue(src)); srcLeft[src] = srcLeft.getValue(src) - srcRate }
                 }
                 if (missing - srcRate > 1e-6) log += "net ${net.id} (${net.item}): output chain short of ${"%.2f".format(missing - srcRate)}/s"
-                addChain(net, parts, src, srcRate, o, r, rectOf)
+                if (src != null && plan.ports[src.base.port!!].single) pending.getOrPut(src) { ArrayList() } += Pending(parts, srcRate, o, r)
+                else addChain(net, parts, src, srcRate, o, r, rectOf)
             }
         }
         // 2. Consumers nearest each input port, fed by it.
@@ -1661,10 +1665,16 @@ class PathFinder(internal val p: RouteProblem) {
                 mine += part(c, take, pickRate)
             }
             srcLeft[s] = left
-            // A link port is one belt: one chain (branches serve many consumers), so it pairs with its other end.
-            val groups = if (plan.ports[s.base.port!!].single) listOf(mine).filter { it.isNotEmpty() } else chainsOf(mine, portTilesOf(s.base.port).size)
-            groups.forEach { group -> addChain(net, group, s, group.sumOf { it.rate }, null, 0.0, rectOf) }
+            // A link port is one belt: one chain (branches serve many consumers), so it pairs with its other end; an item
+            // passing through runs past these consumers on to its output port.
+            if (plan.ports[s.base.port!!].single) {
+                val through = pending.remove(s)?.firstOrNull()
+                if (through != null) addChain(net, mine + through.parts, s, through.srcRate + mine.sumOf { it.rate }, through.out, through.outRate, rectOf)
+                else if (mine.isNotEmpty()) addChain(net, mine, s, mine.sumOf { it.rate }, null, 0.0, rectOf)
+            } else chainsOf(mine, portTilesOf(s.base.port).size).forEach { group -> addChain(net, group, s, group.sumOf { it.rate }, null, 0.0, rectOf) }
         }
+        // Pass-through chains whose port fed no consumers here.
+        pending.forEach { (s, ps) -> ps.forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) } }
         // 3. The rest from producers.
         val rest = need.filter { it.value > 1e-9 }.map { (c, r) -> part(c, r, pickRate) }
         chainsOf(rest).forEach { group ->

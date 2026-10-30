@@ -724,7 +724,10 @@ fun stitchRoute(
             if (listOf(-1, 1).any { a -> listOf(-1, 1).any { b -> !free(Tile(j.x + a, j.y + b)) } }) continue
             // Each item best comes from its own side, so neither belt crosses the shared one.
             val lv = h.ccw; val sideL = (sl.x - j.x) * lv.dx + (sl.y - j.y) * lv.dy; val sideR = (sr.x - j.x) * lv.dx + (sr.y - j.y) * lv.dy
-            val score = j.manhattan(mid) + 0.2 * j.manhattan(end) + (if (sideL > 0) 0 else 6) + (if (sideR < 0) 0 else 6)
+            // Facing the consumer matters most (a junction facing back towards the supplier starts in a pocket); an
+            // item coming from the wrong side only has to cross the shared belt, which an underground does.
+            val toward = (end.x - j.x) * h.dx + (end.y - j.y) * h.dy
+            val score = j.manhattan(mid) + 0.2 * j.manhattan(end) + (if (sideL > 0) 0 else 3) + (if (sideR < 0) 0 else 3) + (if (toward > 0) 0 else 12)
             if (score < bestScore) { bestScore = score; best = j to h }
         }
         val (j, h) = best ?: return StitchAttempt(null, listOf(sl, sr), "no room for the junction of ${left.item} and ${right.item}")
@@ -795,7 +798,9 @@ fun stitchRoute(
         val edges = routed.failedNets.flatMap { n -> (linksOfNet[n] ?: emptyList()).filter { it.from == EDGE || it.to == EDGE } }
             .flatMap { l -> plan.ports.first { it.item == l.item && it.output == (l.to == EDGE) }.specs }
             .flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
-        return StitchAttempt(null, trouble, "${routed.conflicts.size} conflicts, ${routed.failedNets.size} unrouted", edges)
+        val unrouted = routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }
+        return StitchAttempt(null, trouble, "${routed.conflicts.size} conflicts, ${routed.failedNets.size} unrouted" +
+            (if (unrouted.isNotEmpty()) " $unrouted; ${routed.log.filter { l -> unrouted.any { it in l } }.takeLast(2)}" else ""), edges)
     }
     entities += routed.entities.map { it.copy(net = global(it, stitchPlan)) }
     sources += routed.sources.filter { it.port in edgePorts }.map { it.copy(port = -1) }

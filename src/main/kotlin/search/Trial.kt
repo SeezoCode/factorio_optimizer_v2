@@ -285,7 +285,12 @@ fun runTrial(
             ringed.sources.map { it.tile }
         val spec = validationSpec(data, plan, config, placement, sources, requirePower = config.power.mode != "none", outsideAllowed = outsideAllowed,
             outputs = ringed.outputs)
-        val errors = validate(layout, spec)
+        // A port that must be one belt (a link between blocks of a factory) is one belt: its other end is one belt.
+        val split = (ringed.sources.map { it.port to it.tile } + ringed.outputs.map { it.port to it.tile })
+            .filter { (p, _) -> p >= 0 && plan.ports[p].single }.groupBy({ it.first }, { it.second })
+            .filter { (_, ts) -> ts.distinct().size > 1 }
+            .map { (p, ts) -> ValidationError(validate.ErrorType.UNSUPPORTED, ts.first(), "${plan.ports[p].item} must be one belt at its port, uses ${ts.distinct().size}") }
+        val errors = validate(layout, spec) + split
         if (!ok) return fail("power", result, errors, layout)
         if (errors.isNotEmpty()) return fail("validate", result, errors, layout)
         return TrialResult(true, w, h, seed, layout, placement, errors, result, score(layout, config), "ok", annealer.lastT0,
