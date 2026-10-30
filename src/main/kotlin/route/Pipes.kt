@@ -75,8 +75,19 @@ internal class PipeRouter(private val pf: PathFinder) {
             val groups = ts.filter { it.machine != null }.map { t ->
                 val pm = placement.machines.first { it.id == t.machine }
                 placement.connections(plan, pm).filter { it.fluid == net.item }.map { dims.idx(it.tile) }.toIntArray()
-            }.filter { it.isNotEmpty() }
-            val source = ts.firstOrNull { it.role == Role.SOURCE }
+            }.filter { it.isNotEmpty() }.toMutableList()
+            // Several ports (a fluid's pipe tree between the blocks of a factory): the first source is the root, an
+            // output on an edge is reached last, and every other port is a terminal the tree must reach like a
+            // machine connection.
+            val srcTs = ts.filter { it.role == Role.SOURCE }
+            val outTs = ts.filter { it.role == Role.OUTPUT }
+            val source = srcTs.firstOrNull()
+            val output = outTs.firstOrNull { t -> plan.ports[t.port!!].specs.any { it.edge != null } } ?: outTs.firstOrNull()
+            (srcTs.drop(1) + outTs.filter { it !== output }).forEach { t ->
+                val tiles = portCandidates(plan.ports[t.port!!].specs, pf.W, pf.H).map { it.first }.filter { dims.inFull(it.x, it.y) }.map { dims.idx(it) }
+                tiles.forEach { connNet[it] = idx }
+                if (tiles.isNotEmpty()) groups += tiles.toIntArray()
+            }
             var portTiles = IntArray(0); var portOut = IntArray(0)
             if (source != null) {
                 val cands = portCandidates(plan.ports[source.port!!].specs, pf.W, pf.H)
@@ -85,7 +96,6 @@ internal class PipeRouter(private val pf: PathFinder) {
                 portOut = cands.map { it.second?.ordinal ?: -1 }.toIntArray()
                 cands.forEach { (t, out) -> if (out == null) connNet[dims.idx(t)] = idx }
             }
-            val output = ts.firstOrNull { it.role == Role.OUTPUT }
             var outTiles = IntArray(0)
             if (output != null) {
                 val cands = portCandidates(plan.ports[output.port!!].specs, pf.W, pf.H).filter { (t, _) -> dims.inBox(t.x, t.y) }

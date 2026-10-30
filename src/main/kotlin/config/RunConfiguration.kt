@@ -145,7 +145,8 @@ data class RunConfiguration(
         blocks?.let { b ->
             require(b.maxMachines >= 2) { "blocks.max_machines must be at least 2" }
             require(b.corridor >= 2) { "blocks.corridor must be at least 2" }
-            b.rows?.let { require(it in 1..2) { "blocks.rows must be 1 or 2" } }
+            require(b.linkCost > 0 && b.fluidLinkCost > 0 && b.blockCost >= 0) { "blocks.link_cost and fluid_link_cost must be positive, block_cost not negative" }
+            require(b.aspectWeight >= 0 && b.wireWeight >= 0) { "blocks.aspect_weight and wire_weight must not be negative" }
             require(b.linkBeltShare > 0 && b.linkBeltShare <= 1) { "blocks.link_belt_share must be in (0, 1]" }
             require(b.splitAtWeight >= 0) { "blocks.split_at_weight must not be negative" }
             require(b.blockTimeShare > 0 && b.blockTimeShare <= 1) { "blocks.block_time_share must be in (0, 1]" }
@@ -241,9 +242,10 @@ data class BoxConfig(
 )
 
 /**
- * A factory made of several blocks: the plan is split into blocks of at most [maxMachines] machines (machines
- * joined by pipes stay together), each block is generated on its own with its ports facing the blocks it
- * trades with, and the belts between them are routed through corridors. Jobs with fewer machines stay one block.
+ * A factory made of several blocks: the plan is split into blocks of at most [maxMachines] machines (by a cost on
+ * the ports and belts between them, see blocks.PartitionModel), the blocks are floorplanned in any arrangement, each
+ * is generated on its own with its ports facing what it trades with, and the belts and pipes between them are
+ * routed through corridors. Jobs with fewer machines stay one block.
  */
 @Serializable
 data class BlocksConfig(
@@ -252,24 +254,35 @@ data class BlocksConfig(
     @SerialName("split_at") val splitAt: List<String> = emptyList(),
     /** Corridor width between blocks in tiles (it widens by itself if the belts between blocks do not fit). */
     val corridor: Int = 4,
-    /** Rows of blocks: 1 or 2 (default: 1 up to 3 blocks, else 2). */
+    /** Ignored: blocks are floorplanned in any arrangement now (kept so old job files load). */
     val rows: Int? = null,
     /** A link between two blocks above this share of a belt is split over several belts. */
     @SerialName("link_belt_share") val linkBeltShare: Double = 0.9,
-    /** Weight of [splitAt] items' traffic when deciding which machines share a block (1 = like any other item). */
+    /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,
+    /** Price of a belt between blocks when splitting (a port on each block and a belt through the corridors). */
+    @SerialName("link_cost") val linkCost: Double = 1.0,
+    /** Price of a block's port on a fluid's pipe tree between blocks (pipes take more corridor than belts). */
+    @SerialName("fluid_link_cost") val fluidLinkCost: Double = 3.0,
+    /** Price of one more block, in links: fewer, fuller blocks unless splitting saves more links than this. */
+    @SerialName("block_cost") val blockCost: Double = 4.0,
+    /** Floorplan: how much a factory off the job's box aspect costs (area x weight x (ratio - 1)^2). */
+    @SerialName("aspect_weight") val aspectWeight: Double = 0.5,
+    /** Floorplan: price of one tile of belt between blocks, in tiles of factory area. */
+    @SerialName("wire_weight") val wireWeight: Double = 2.0,
     /** Share of the time budget spent generating blocks; the rest is left for stitching them together. */
     @SerialName("block_time_share") val blockTimeShare: Double = 0.9,
     /** Remove rows and columns that only straight belts and pipes cross from the stitched factory. */
     val compact: Boolean = true,
     /**
-     * After the first factory: search every block again at a common height per row, chosen so the factory comes
-     * out about square, and keep the result if the factory is smaller ([repackShare] of the time budget).
+     * After the first factory: search blocks again at the shapes a floorplan of their real areas asks for, and let
+     * the floorplan pick each block's shape among all it has; kept if the factory is smaller ([repackShare] of the
+     * time budget).
      */
     val repack: Boolean = false,
     @SerialName("repack_share") val repackShare: Double = 0.25,
     /**
-     * Then, until the time budget runs out: merge two neighbouring blocks of a row into one, search it starting
+     * Then, until the time budget runs out: merge two neighbouring blocks into one, search it starting
      * from their current placements side by side, and keep it if the factory gets smaller ([mergeShare] of the
      * budget is set aside for it; a merged block has at most [mergeMaxMachines] machines, default twice
      * [maxMachines]).

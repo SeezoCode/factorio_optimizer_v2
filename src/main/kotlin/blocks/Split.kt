@@ -2,7 +2,11 @@ package blocks
 
 import config.BlocksConfig
 import config.ConfigSource
+import config.RESERVED_CORNERS
+import config.ReservedArea
 import config.Tuning
+import geom.Dir
+import geom.Rect
 import plan.Net
 import plan.Port
 import plan.ProductionPlan
@@ -11,94 +15,55 @@ import plan.Terminal
 import kotlin.math.abs
 import kotlin.math.ceil
 
+/** Link end that is the factory's outer edge (raw inputs, products). */
+const val EDGE = -1
+/** Link end that is a fluid's pipe tree through the corridors, which joins every block trading that fluid. */
+const val HUB = -2
+
 /**
- * [rate] of [item] going from block [from] to block [to]; -1 is the factory's outer edge (raw inputs, products).
- * [routed]: an edge link whose block does not touch an edge the job allows for it, so it runs through the
- * corridors to the factory's edge instead of leaving the block directly.
+ * [rate] of [item] going from block [from] to block [to] ([EDGE]: the factory's edge, [HUB]: the fluid's pipe tree
+ * between blocks). [routed]: an edge link that runs through the corridors to the factory's edge instead of leaving
+ * its block straight out of the factory. [fromSide], [toSide]: the side of each block its port is on.
  */
-data class Link(val id: Int, val item: String, val rate: Double, val from: Int, val to: Int, val fluid: Boolean, val routed: Boolean = false) {
-    /** Between two blocks: one belt, routed through the corridors. Edge links leave or enter a block directly. */
+data class Link(
+    val id: Int, val item: String, val rate: Double, val from: Int, val to: Int, val fluid: Boolean,
+    val routed: Boolean = false, val fromSide: String? = null, val toSide: String? = null,
+) {
+    /** Between two blocks: one belt, routed through the corridors. */
     val inner: Boolean get() = from >= 0 && to >= 0
-    /** One belt (or pipe) through the corridors: between two blocks, or between a block and the factory's edge. */
-    val throughCorridor: Boolean get() = inner || routed
+    /** Part of a fluid's pipe tree between blocks. */
+    val hub: Boolean get() = from == HUB || to == HUB
+    /** One belt (or pipe) through the corridors; the other links leave their block straight out of the factory. */
+    val throughCorridor: Boolean get() = inner || routed || hub
+    fun side(b: Int): String? = if (from == b) fromSide else if (to == b) toSide else null
 }
 
-/** A block's place in the factory grid; blocks snake through the rows so neighbours in order sit side by side. */
-data class Slot(val row: Int, val col: Int)
-
-/** The plan split into blocks (machine ids of the full plan, upstream first), their slots and the links. */
-class Split(val blocks: List<List<Int>>, val slots: List<Slot>, val rows: Int, val cols: Int, val links: List<Link>, val warnings: List<String>)
+/**
+ * The plan split into blocks (machine ids of the full plan, upstream first) and the links between them, with the
+ * preliminary floorplan the links' sides were chosen on: [shapes] is the box each block was planned at (w, h; the
+ * block is searched at that aspect), [touch] the factory edges each block must stay on (its ports that leave the
+ * factory straight out).
+ */
+class Split(
+    val blocks: List<List<Int>>, val links: List<Link>, val warnings: List<String>,
+    val geometry: BlockGeometry, val partition: Partition? = null,
+) {
+    val touch: List<Set<Dir>> get() = blocks.indices.map { b -> links.filter { !it.throughCorridor && (it.from == b || it.to == b) }.mapNotNull { it.side(b) }.map(Dir::fromName).toSet() }
+}
 
 /**
- * Splits [plan] into blocks of at most [BlocksConfig.maxMachines] machines. Machines joined by a pipe stay
- * together (fluids never cross a block border); then units merge greedily along the heaviest item flow between
- * them (items in [BlocksConfig.splitAt] count [BlocksConfig.splitAtWeight] as much) while the merged block stays within the limit, and small
- * leftovers merge with each other. Blocks are ordered upstream first and snaked through one or two rows, so
- * every block touches the factory's outer edge, where raw inputs enter and products leave. Each item's surplus
- * and deficit per block become links, nearest blocks first; links between blocks are cut into belts of at most
- * [BlocksConfig.linkBeltShare] of the belt tier.
+ * Where blocks are (or are planned to be) in a [w] x [h] factory, which factory edges each touches, and the
+ * floorplan's sequence pair if it came from one (the final floorplan starts from it).
  */
-fun splitPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double): Split {
-    val n = plan.machines.size
-    val warnings = ArrayList<String>()
-    // 1. Units: machines joined through fluid nets.
-    val parent = IntArray(n) { it }
-    fun find(x: Int): Int { var a = x; while (parent[a] != a) { parent[a] = parent[parent[a]]; a = parent[a] }; return a }
-    plan.nets.filter { it.fluid }.forEach { net ->
-        val ms = plan.netTerminals(net).mapNotNull { it.machine }
-        ms.drop(1).forEach { m -> val a = find(ms[0]); val b = find(m); if (a != b) parent[a] = b }
-    }
-    val clusters = HashMap<Int, MutableList<Int>>()
-    (0 until n).forEach { clusters.getOrPut(find(it)) { mutableListOf() } += it }
-    val clusterOf = IntArray(n)
-    val members = HashMap<Int, MutableList<Int>>()
-    clusters.values.forEachIndexed { i, ms -> members[i] = ms; ms.forEach { clusterOf[it] = i } }
-    members.values.filter { it.size > cfg.maxMachines }.forEach {
-        warnings += "${it.size} machines are joined by pipes and stay one block, above the ${cfg.maxMachines}-machine limit"
-    }
+class BlockGeometry(val boxes: List<Rect>, val w: Int, val h: Int, val touches: List<Set<Dir>>, val state: FpState? = null)
 
-    // 2. Flow between clusters.
-    val weight = HashMap<Long, Double>()
-    fun key(a: Int, b: Int) = if (a < b) a.toLong() * 1_000_000 + b else b.toLong() * 1_000_000 + a
-    plan.nets.filter { !it.fluid }.forEach { net ->
-        val ts = plan.netTerminals(net)
-        val prod = ts.filter { it.role == Role.PRODUCER && it.machine != null }
-        val cons = ts.filter { it.role == Role.CONSUMER && it.machine != null }
-        val total = cons.sumOf { it.rate }
-        if (total < 1e-12) return@forEach
-        val f = if (net.item in cfg.splitAt) cfg.splitAtWeight else 1.0
-        prod.forEach { p -> cons.forEach { c ->
-            val a = clusterOf[p.machine!!]; val b = clusterOf[c.machine!!]
-            if (a != b) weight.merge(key(a, b), f * p.rate * c.rate / total, Double::plus)
-        } }
-    }
+/** Estimated box area of a block of these machines (blocks get sparser as they grow). */
+fun estimatedArea(plan: ProductionPlan, ms: List<Int>): Double =
+    ms.sumOf { plan.machines[it].w * plan.machines[it].h }.toDouble() * (2.5 + ms.size / 20.0).coerceAtMost(7.0)
 
-    // 3. Greedy merging along the heaviest flow, within the size limit; then small leftovers together.
-    fun size(c: Int) = members.getValue(c).size
-    fun merge(a: Int, b: Int) {
-        members.getValue(a) += members.getValue(b)
-        members.remove(b)
-        members.getValue(a).forEach { clusterOf[it] = a }
-        val moved = weight.keys.filter { (it / 1_000_000).toInt() == b || (it % 1_000_000).toInt() == b }
-        moved.forEach { k ->
-            val w = weight.remove(k)!!
-            val o = if ((k / 1_000_000).toInt() == b) (k % 1_000_000).toInt() else (k / 1_000_000).toInt()
-            if (o != a) weight.merge(key(a, o), w, Double::plus)
-        }
-    }
-    while (true) {
-        val best = weight.entries.filter { (k, _) -> size((k / 1_000_000).toInt()) + size((k % 1_000_000).toInt()) <= cfg.maxMachines }
-            .maxByOrNull { it.value } ?: break
-        merge((best.key / 1_000_000).toInt(), (best.key % 1_000_000).toInt())
-    }
-    while (true) {
-        val small = members.keys.sortedBy { size(it) }
-        if (small.size < 2 || size(small[0]) + size(small[1]) > cfg.maxMachines) break
-        merge(small[0], small[1])
-    }
-
-    // 4. Order upstream first: production depth of each machine (longest chain from inputs, capped for loops).
-    val depth = DoubleArray(n)
+/** Production depth of each machine: the longest chain from raw inputs to it (capped for loops). */
+fun machineDepth(plan: ProductionPlan): DoubleArray {
+    val depth = DoubleArray(plan.machines.size)
     repeat(40) {
         val itemDepth = HashMap<String, Double>()
         plan.machines.forEach { m -> m.products.keys.forEach { p -> itemDepth.merge(p, depth[m.id], ::maxOf) } }
@@ -107,113 +72,237 @@ fun splitPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double): 
             depth[m.id] = 1 + (ins.maxOfOrNull { itemDepth[it] ?: 0.0 } ?: 0.0).coerceAtMost(60.0)
         }
     }
-    val blocks = members.values.map { ms -> ms.sorted() }.sortedBy { ms -> ms.map { depth[it] }.average() }
-    val k = blocks.size
-    val rows = cfg.rows?.coerceAtMost(k) ?: if (k <= 3) 1 else 2
-    val cols = (k + rows - 1) / rows
-    val slots = (0 until k).map { i -> val r = i / cols; Slot(r, if (r == 0) i % cols else cols - 1 - i % cols) }
-    val blockOf = IntArray(n).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
+    return depth
+}
 
-    // 5. Links: per item, block surpluses to block deficits (nearest first), the edge supplying raw inputs
-    //    and taking products. An edge link goes straight out of its block when the block touches an edge the job
-    //    allows for the item (any edge, or its whole side); otherwise it is routed through the corridors.
-    val links = ArrayList<Link>()
-    fun routed(item: String, output: Boolean, b: Int): Boolean {
-        val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return false
-        val side = outerSide(rows, slots[b])
-        return specs.none { it.edge == "any" || (it.edge == side && it.from == null && it.to == null) }
+/** The factory edges an input ([output] false) or output of [item] may use, and those a block can use directly. */
+private fun edgesOf(plan: ProductionPlan, item: String, output: Boolean): Pair<Set<Dir>, Set<Dir>> {
+    val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return emptySet<Dir>() to emptySet()
+    val all = HashSet<Dir>(); val direct = HashSet<Dir>()
+    specs.forEach { s ->
+        val e = s.edge ?: return@forEach
+        val ds = if (e == "any") Dir.entries.toList() else listOf(Dir.fromName(e))
+        all += ds
+        if (e == "any" || (s.from == null && s.to == null)) direct += ds
     }
-    fun dist(a: Int, b: Int): Int = if (a < 0 || b < 0) 0 else abs(slots[a].row - slots[b].row) * 2 + abs(slots[a].col - slots[b].col)
+    return all to direct
+}
+
+/** Distance from [box] to factory edge [d] of a [w] x [h] factory. */
+private fun edgeDistance(box: Rect, d: Dir, w: Int, h: Int): Int = when (d) {
+    Dir.N -> box.y; Dir.S -> h - 1 - box.y2; Dir.W -> box.x; Dir.E -> w - 1 - box.x2
+}
+
+/** Sides of [a] in order of preference for a port towards [b]: the axis they are further apart on first. */
+private fun sidesToward(a: Rect, b: Rect): List<Dir> {
+    val dx = (b.x + b.w / 2.0) - (a.x + a.w / 2.0)
+    val dy = (b.y + b.h / 2.0) - (a.y + a.h / 2.0)
+    val sx = abs(dx) - (a.w + b.w) / 2.0
+    val sy = abs(dy) - (a.h + b.h) / 2.0
+    val hx = if (dx >= 0) Dir.E else Dir.W
+    val hy = if (dy >= 0) Dir.S else Dir.N
+    return if (sx >= sy) listOf(hx, hy, hy.opposite, hx.opposite) else listOf(hy, hx, hx.opposite, hy.opposite)
+}
+
+private fun centreDistance(a: Rect, b: Rect): Double =
+    abs((a.x + a.w / 2.0) - (b.x + b.w / 2.0)) + abs((a.y + a.h / 2.0) - (b.y + b.h / 2.0))
+
+/**
+ * Splits [plan] into blocks (see [partitionPlan]), orders them upstream first, plans where they go (see
+ * [Floorplanner]; shapes estimated from machine area) and derives the links between them on that floorplan (see
+ * [linksFor]).
+ */
+fun splitPlan(
+    plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L,
+    aspect: Double = 1.0, reserved: List<ReservedArea> = emptyList(),
+): Split {
+    val warnings = ArrayList<String>()
+    val part = partitionPlan(plan, cfg, beltThroughput, seed)
+    val depth = machineDepth(plan)
+    val blocks = part.blocks.map { it.sorted() }.sortedBy { ms -> ms.map { depth[it] }.average() }
+    val k = blocks.size
+    val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
+
+    // Preliminary floorplan: soft shapes of the estimated area; one net per item between the blocks trading it,
+    // and one per block and raw input or product towards the edges it may use.
+    val bal = balances(plan, blocks, blockOf)
+    val fpNets = ArrayList<FpNet>()
     plan.nets.forEach { net ->
-        val ts = plan.netTerminals(net)
-        val balance = DoubleArray(k)
-        ts.forEach { t ->
+        val members = (0 until k).filter { abs(bal[net.id][it]) > PartitionModel.EPS }
+        val w = if (net.fluid) 2.0 else 1.0
+        val inner = members.filter { bal[net.id][it] != 0.0 }
+        val (inEdges, _) = edgesOf(plan, net.item, false)
+        val (outEdges, _) = edgesOf(plan, net.item, true)
+        val external = plan.netTerminals(net).any { it.role == Role.SOURCE || it.role == Role.OUTPUT }
+        if (inner.size >= 2) fpNets += FpNet(inner.map { it to -1 }, weight = w)
+        if (external) inner.forEach { b -> fpNets += FpNet(listOf(b to -1), inEdges + outEdges, w) }
+    }
+    val ports = IntArray(k) { b -> plan.nets.count { abs(bal[it.id][b]) > PartitionModel.EPS } }
+    val fpBlocks = ArrayList<FpBlock>()
+    blocks.forEachIndexed { b, ms ->
+        val p = (cfg.corridor + 1) / 2 + ports[b] / 8
+        fpBlocks += FpBlock(softShapes(estimatedArea(plan, ms)), IntArray(4) { p })
+    }
+    reserved.forEachIndexed { i, r -> fpBlocks += reservedBlock(r, i, cfg.corridor) }
+    val fp = Floorplanner(fpBlocks, fpNets, FpParams(aspect = aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = seed)).optimise()
+    val geometry = BlockGeometry(fp.boxes.take(k), fp.w, fp.h, fp.touches.take(k), fp.state)
+    val links = linksFor(plan, cfg, beltThroughput, blocks, geometry, warnings)
+    return Split(blocks, links, warnings, geometry, part)
+}
+
+/** A reserved area as a floorplan block: fixed size, on its corner (by default the corners in turn). */
+fun reservedBlock(r: ReservedArea, i: Int, corridor: Int): FpBlock {
+    val corner = r.corner ?: RESERVED_CORNERS[i % 4]
+    val touch = setOf(if (corner.startsWith("north")) Dir.N else Dir.S, if (corner.endsWith("west")) Dir.W else Dir.E)
+    val pad = IntArray(4) { d -> if (Dir.entries[d] in touch) 0 else (corridor + 1) / 2 }
+    return FpBlock(listOf(FpShape(r.w, r.h)), pad, touch)
+}
+
+/** Per net (by id) and block: what the block's machines make of it minus what they use. */
+fun balances(plan: ProductionPlan, blocks: List<List<Int>>, blockOf: IntArray): Array<DoubleArray> {
+    val bal = Array(plan.nets.size) { DoubleArray(blocks.size) }
+    plan.nets.forEach { net ->
+        plan.netTerminals(net).forEach { t ->
             val m = t.machine ?: return@forEach
             when (t.role) {
-                Role.PRODUCER -> balance[blockOf[m]] += t.rate
-                Role.CONSUMER -> balance[blockOf[m]] -= t.rate
+                Role.PRODUCER -> bal[net.id][blockOf[m]] += t.rate
+                Role.CONSUMER -> bal[net.id][blockOf[m]] -= t.rate
                 else -> {}
             }
         }
-        val give = ArrayList<Pair<Int, Double>>()
-        val take = ArrayList<Pair<Int, Double>>()
-        (0 until k).forEach { b -> if (balance[b] > 1e-9) give += b to balance[b] else if (balance[b] < -1e-9) take += b to -balance[b] }
-        ts.filter { it.role == Role.SOURCE }.sumOf { it.rate }.takeIf { it > 1e-9 }?.let { give += -1 to it }
-        ts.filter { it.role == Role.OUTPUT }.sumOf { it.rate }.takeIf { it > 1e-9 }?.let { take += -1 to it }
-        val left = HashMap<Pair<Int, Int>, Double>()
-        val pairs = give.flatMap { g -> take.map { t -> g.first to t.first } }.filter { (a, b) -> a != b }.sortedBy { (a, b) -> dist(a, b) }
+    }
+    return bal
+}
+
+/**
+ * The links of a split on a floorplan. Per item, the blocks with a surplus (and the edge for raw inputs) supply the
+ * blocks with a deficit (and the edge for products), nearest first; links between blocks are cut into belts of at
+ * most [BlocksConfig.linkBeltShare] of a belt. A raw input or product goes straight out of a block that touches an
+ * edge the job allows for it, else through the corridors. Every fluid traded between blocks gets one pipe tree
+ * through the corridors that joins one port on each block trading it (and the factory edge, if it enters or leaves
+ * there), so any number of blocks can make and use the same fluid. Each port faces what it connects to.
+ */
+fun linksFor(
+    plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, blocks: List<List<Int>>,
+    g: BlockGeometry, warnings: MutableList<String> = ArrayList(),
+): List<Link> {
+    val k = blocks.size
+    val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
+    val bal = balances(plan, blocks, blockOf)
+    val raw = ArrayList<Link>()
+    fun pieces(r: Double) = maxOf(1, ceil(r / (cfg.linkBeltShare * beltThroughput) - 1e-9).toInt())
+
+    plan.nets.forEach { net ->
+        val ts = plan.netTerminals(net)
+        val source = ts.filter { it.role == Role.SOURCE }.sumOf { it.rate }
+        val output = ts.filter { it.role == Role.OUTPUT }.sumOf { it.rate }
+        val (inAll, inDirect) = edgesOf(plan, net.item, false)
+        val (outAll, outDirect) = edgesOf(plan, net.item, true)
+        fun edgeDist(b: Int, edges: Set<Dir>) = edges.minOfOrNull { edgeDistance(g.boxes[b], it, g.w, g.h) }?.toDouble() ?: 1e6
+        fun directSide(b: Int, direct: Set<Dir>) = direct.firstOrNull { it in g.touches[b] }
+
+        if (net.fluid) {
+            val members = (0 until k).filter { abs(bal[net.id][it]) > PartitionModel.EPS }
+            if (members.isEmpty()) return@forEach
+            val b0 = members[0]
+            // One block and the edge, and the block touches it: straight out, as for a single block.
+            if (members.size == 1 && (source > 1e-9) != (output > 1e-9)) {
+                val ds = directSide(b0, if (source > 1e-9) inDirect else outDirect)
+                if (ds != null) {
+                    raw += if (source > 1e-9) Link(0, net.item, source, EDGE, b0, true, toSide = ds.name)
+                        else Link(0, net.item, output, b0, EDGE, true, fromSide = ds.name)
+                    return@forEach
+                }
+            }
+            members.forEach { b ->
+                val r = bal[net.id][b]
+                raw += if (r > 0) Link(0, net.item, r, b, HUB, true) else Link(0, net.item, -r, HUB, b, true)
+            }
+            if (source > 1e-9) raw += Link(0, net.item, source, EDGE, HUB, true, routed = true)
+            if (output > 1e-9) raw += Link(0, net.item, output, HUB, EDGE, true, routed = true)
+            return@forEach
+        }
+
+        val give = ArrayList<Pair<Int, Double>>(); val take = ArrayList<Pair<Int, Double>>()
+        (0 until k).forEach { b -> val r = bal[net.id][b]; if (r > 1e-9) give += b to r else if (r < -1e-9) take += b to -r }
+        if (source > 1e-9) give += EDGE to source
+        if (output > 1e-9) take += EDGE to output
+        fun dist(a: Int, b: Int): Double = when {
+            a == EDGE && b == EDGE -> 1e9
+            a == EDGE -> edgeDist(b, inAll) - (if (directSide(b, inDirect) != null) 0.5 else 0.0)
+            b == EDGE -> edgeDist(a, outAll) - (if (directSide(a, outDirect) != null) 0.5 else 0.0)
+            else -> centreDistance(g.boxes[a], g.boxes[b])
+        }
         val giveLeft = give.toMap().toMutableMap(); val takeLeft = take.toMap().toMutableMap()
+        val pairs = give.flatMap { gv -> take.map { t -> gv.first to t.first } }.filter { (a, b) -> a != b }.sortedBy { (a, b) -> dist(a, b) }
+        val flows = LinkedHashMap<Pair<Int, Int>, Double>()
         pairs.forEach { (a, b) ->
             val r = minOf(giveLeft.getValue(a), takeLeft.getValue(b))
             if (r < 1e-9) return@forEach
             giveLeft[a] = giveLeft.getValue(a) - r; takeLeft[b] = takeLeft.getValue(b) - r
-            left.merge(a to b, r, Double::plus)
+            flows.merge(a to b, r, Double::plus)
         }
-        left.forEach { (ab, r) ->
+        flows.forEach { (ab, r) ->
             val (a, b) = ab
-            if (net.fluid && a >= 0 && b >= 0) {
-                warnings += "${net.item} would have to be piped between blocks ${a + 1} and ${b + 1}; fluids are not stitched yet"
+            when {
+                a == EDGE -> {
+                    val ds = directSide(b, inDirect)
+                    if (ds != null) raw += Link(0, net.item, r, EDGE, b, false, toSide = ds.name)
+                    else { val n = pieces(r); repeat(n) { raw += Link(0, net.item, r / n, EDGE, b, false, routed = true) } }
+                }
+                b == EDGE -> {
+                    val ds = directSide(a, outDirect)
+                    if (ds != null) raw += Link(0, net.item, r, a, EDGE, false, fromSide = ds.name)
+                    else { val n = pieces(r); repeat(n) { raw += Link(0, net.item, r / n, a, EDGE, false, routed = true) } }
+                }
+                else -> { val n = pieces(r); repeat(n) { raw += Link(0, net.item, r / n, a, b, false) } }
             }
-            val viaCorridor = when { a < 0 -> routed(net.item, false, b); b < 0 -> routed(net.item, true, a); else -> false }
-            val pieces = if ((a >= 0 && b >= 0 || viaCorridor) && !net.fluid) maxOf(1, ceil(r / (cfg.linkBeltShare * beltThroughput) - 1e-9).toInt()) else 1
-            repeat(pieces) { links += Link(links.size, net.item, r / pieces, a, b, net.fluid, viaCorridor) }
         }
     }
-    return Split(blocks, slots, rows, cols, links, warnings)
-}
 
-/**
- * [split] with blocks [a] and [b] (side by side in one row) made one block in [a]'s place: the links between
- * them disappear (their items now flow inside the block), the blocks after them in the row move up one slot,
- * and link ids are renumbered to stay list indices.
- */
-fun mergeBlocks(split: Split, a: Int, b: Int): Split {
-    require(split.slots[a].row == split.slots[b].row && kotlin.math.abs(split.slots[a].col - split.slots[b].col) == 1) { "blocks $a and $b are not neighbours" }
-    val (keep, gone) = if (split.slots[a].col < split.slots[b].col) a to b else b to a
-    val row = split.slots[keep].row
-    val goneCol = split.slots[gone].col
-    // New block indices: everything but [gone], in order.
-    val index = IntArray(split.blocks.size) { -1 }
-    var n = 0
-    split.blocks.indices.forEach { i -> if (i != gone) index[i] = n++ }
-    index[gone] = index[keep]
-    val blocks = split.blocks.indices.filter { it != gone }.map { i -> if (i == keep) (split.blocks[keep] + split.blocks[gone]).sorted() else split.blocks[i] }
-    val slots = split.blocks.indices.filter { it != gone }.map { i ->
-        val s = split.slots[i]
-        if (s.row == row && s.col > goneCol) Slot(s.row, s.col - 1) else s
+    // Sides: a port faces what it connects to; sides whose ports leave the factory straight out take nothing else.
+    val directSides = Array(k) { HashSet<Dir>() }
+    raw.filter { !it.throughCorridor }.forEach { l ->
+        if (l.from >= 0) directSides[l.from] += Dir.fromName(l.fromSide!!)
+        if (l.to >= 0) directSides[l.to] += Dir.fromName(l.toSide!!)
     }
-    val links = split.links.filter { l -> !(l.from >= 0 && l.to >= 0 && index[l.from] == index[l.to]) }
-        .mapIndexed { i, l -> l.copy(id = i, from = if (l.from >= 0) index[l.from] else -1, to = if (l.to >= 0) index[l.to] else -1) }
-    val cols = slots.maxOf { it.col } + 1
-    return Split(blocks, slots, split.rows, cols, links, split.warnings)
-}
-
-/** The factory edge a block in [slot] touches: the top for the first row, the bottom for the second. */
-fun outerSide(rows: Int, slot: Slot): String = if (rows == 1 || slot.row == 0) "north" else "south"
-
-/** The side of a block in [slot] that faces the corridor along the rows (below a single row, between two rows). */
-fun corridorSide(rows: Int, slot: Slot): String = if (rows == 1 || slot.row == 0) "south" else "north"
-
-/**
- * The edge of block [b] that a link's port goes on: towards its partner block, the factory's outer edge, or the
- * corridor for links routed through it.
- */
-fun edgeFor(split: Split, link: Link, b: Int): String {
-    val me = split.slots[b]
-    val other = if (link.from == b) link.to else link.from
-    if (other < 0) return if (link.routed) corridorSide(split.rows, me) else outerSide(split.rows, me)
-    val o = split.slots[other]
-    if (o.row == me.row && abs(o.col - me.col) == 1) return if (o.col > me.col) "east" else "west"
-    // Not side by side: through the corridor along the rows.
-    return corridorSide(split.rows, me)
+    fun pick(b: Int, prefs: List<Dir>): String = (prefs.firstOrNull { it !in directSides[b] } ?: prefs.first()).name
+    fun towardEdges(b: Int, edges: Set<Dir>): List<Dir> {
+        val es = edges.ifEmpty { Dir.entries.toSet() }
+        return Dir.entries.sortedBy { d -> if (d in es) edgeDistance(g.boxes[b], d, g.w, g.h) else 1_000_000 + edgeDistance(g.boxes[b], d, g.w, g.h) }
+    }
+    val hubMembers = raw.filter { it.hub }.groupBy { it.item }
+    val out = raw.mapIndexed { id, l ->
+        fun sideFor(b: Int, other: Int): String {
+            if (l.side(b) != null) return l.side(b)!!
+            return when {
+                other >= 0 -> pick(b, sidesToward(g.boxes[b], g.boxes[other]))
+                other == EDGE -> pick(b, towardEdges(b, if (l.from == b) edgesOf(plan, l.item, true).first else edgesOf(plan, l.item, false).first))
+                else -> {   // the fluid's tree: towards the nearest other block in it, or the edge if that is nearer
+                    val others = hubMembers.getValue(l.item).flatMap { listOf(it.from, it.to) }.filter { it >= 0 && it != b }.distinct()
+                    val edgeLinks = hubMembers.getValue(l.item).filter { it.from == EDGE || it.to == EDGE }
+                    val edges = edgeLinks.flatMap { e -> edgesOf(plan, l.item, e.to == EDGE).first }.toSet()
+                    val nearest = others.minByOrNull { centreDistance(g.boxes[b], g.boxes[it]) }
+                    val edgeD = edges.minOfOrNull { edgeDistance(g.boxes[b], it, g.w, g.h) }?.toDouble()
+                    if (nearest != null && (edgeD == null || centreDistance(g.boxes[b], g.boxes[nearest]) / 2 <= edgeD)) pick(b, sidesToward(g.boxes[b], g.boxes[nearest]))
+                    else pick(b, towardEdges(b, edges))
+                }
+            }
+        }
+        l.copy(id = id,
+            fromSide = if (l.from >= 0) sideFor(l.from, l.to) else null,
+            toSide = if (l.to >= 0) sideFor(l.to, l.from) else null)
+    }
+    return out
 }
 
 /** One block as a plan of its own: local machine ids, a port per link, and which link each port serves. */
 class BlockPlan(val index: Int, val plan: ProductionPlan, val globalIds: List<Int>, val linkOfPort: Map<Int, Int>)
 
 /** The plan of block [b]: its machines, their terminals, and an input or output port per link it is part of. */
-fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning): BlockPlan {
-    val ids = split.blocks[b]
+fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning): BlockPlan = blockPlan(full, split.blocks[b], split.links, b, tuning)
+
+fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, tuning: Tuning): BlockPlan {
     val local = ids.withIndex().associate { (i, g) -> g to i }
     val machines = ids.map { full.machines[it].copy(id = local.getValue(it)) }
     val terminals = ArrayList<Terminal>()
@@ -222,9 +311,11 @@ fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning): Block
     }
     val ports = ArrayList<Port>()
     val linkOfPort = HashMap<Int, Int>()
-    split.links.filter { it.from == b || it.to == b }.forEach { l ->
+    links.filter { it.from == b || it.to == b }.forEach { l ->
         val out = l.from == b
-        val port = Port(ports.size, l.item, listOf(ConfigSource(l.item, edge = edgeFor(split, l, b))), fluid = l.fluid, output = out, single = l.throughCorridor)
+        val side = l.side(b) ?: error("link ${l.id} has no side on block $b")
+        val edge = when (side) { "N" -> "north"; "E" -> "east"; "S" -> "south"; else -> "west" }
+        val port = Port(ports.size, l.item, listOf(ConfigSource(l.item, edge = edge)), fluid = l.fluid, output = out, single = l.throughCorridor)
         ports += port
         linkOfPort[port.id] = l.id
         terminals += Terminal(terminals.size, if (out) Role.OUTPUT else Role.SOURCE, l.item, l.rate, 1, port = port.id, fluid = l.fluid)
@@ -239,9 +330,10 @@ fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning): Block
         val belts = if (fluid) 1 else maxOf(1, ceil(flow / (tuning.net.beltUtilisation * tier.throughput) - 1e-9).toInt())
         nets += Net(nets.size, item, flow, ts.map { it.id }, belts, fluid = fluid)
     }
-    val inputs = split.links.filter { it.to == b && it.from < 0 }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
-    val outputs = split.links.filter { it.from == b && it.to < 0 }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
-    val plan = ProductionPlan(machines, ports, terminals, nets, inputs, inputs.filterKeys { k -> split.links.any { it.item == k && it.fluid } },
+    val mine = links.filter { it.from == b || it.to == b }
+    val inputs = mine.filter { it.to == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
+    val outputs = mine.filter { it.from == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
+    val plan = ProductionPlan(machines, ports, terminals, nets, inputs, inputs.filterKeys { k -> mine.any { it.item == k && it.fluid } },
         emptyMap(), full.beltTier, emptyList(), outputs)
     return BlockPlan(b, plan, ids, linkOfPort)
 }

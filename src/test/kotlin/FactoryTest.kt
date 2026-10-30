@@ -1,9 +1,11 @@
+import blocks.EDGE
 import blocks.runFactory
 import blocks.splitPlan
 import config.BlocksConfig
 import config.ConfigSource
 import config.SearchConfig
 import config.Tuning
+import geom.Dir
 import plan.Role
 import plan.buildPlan
 import java.io.File
@@ -50,13 +52,15 @@ class FactoryTest {
     }
 
     @Test
-    fun `edge links are routed through the corridors unless the block touches an allowed edge`() {
+    fun `edge links leave straight out of blocks on an allowed edge, the rest run through the corridors`() {
         val west = buildPlan(TestData.data, TestData.job("t3"))
         val split = splitPlan(west, BlocksConfig(maxMachines = 5), 30.0)
-        val edge = split.links.filter { !it.inner }
-        assertTrue(edge.filter { it.from < 0 }.all { it.routed }, "inputs on the west edge: ${edge.filter { !it.routed }}")
-        assertTrue(edge.filter { it.routed && !it.fluid }.all { it.rate <= 0.9 * 30.0 + 1e-9 })
-        // Any edge (the default): every edge link leaves its block directly, as before.
+        val inputs = split.links.filter { it.from == EDGE }
+        assertTrue(inputs.isNotEmpty())
+        inputs.forEach { l -> assertEquals(Dir.W !in split.geometry.touches[l.to], l.routed, "$l on ${split.geometry.boxes}") }
+        assertTrue(inputs.filter { !it.routed }.all { it.toSide == "W" }, "$inputs")
+        assertTrue(split.links.filter { it.routed && !it.fluid }.all { it.rate <= 0.9 * 30.0 + 1e-9 })
+        // Any edge (the default): two blocks both touch some edge, so every edge link leaves its block directly.
         val any = TestData.job("t3").let { c -> c.copy(sources = c.sources.map { ConfigSource(it.name, edge = "any") }) }
         assertTrue(splitPlan(buildPlan(TestData.data, any), BlocksConfig(maxMachines = 5), 30.0).links.none { it.routed })
     }
@@ -106,5 +110,17 @@ class FactoryTest {
         out.deleteRecursively()
         val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), buildPlan(TestData.data, config), out))
         assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+    }
+
+    @Test
+    fun `machines joined by pipes may sit in different blocks, joined by a pipe tree through the corridors`() {
+        val config = plasticJob.copy(blocks = BlocksConfig(maxMachines = 3),
+            search = SearchConfig(timeBudgetS = 40.0, seedsPerSize = 2, threads = 4, seed = 7))
+        val plan = buildPlan(TestData.data, config)
+        val out = File("build/factory/plastic_split")
+        out.deleteRecursively()
+        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
+        assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+        assertTrue(File(out, "factory.txt").readText().contains("pipes:"), "no fluid crosses between blocks")
     }
 }
