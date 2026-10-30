@@ -58,8 +58,8 @@ import kotlin.math.sqrt
 class Factory(
     val layout: Layout, val errors: List<ValidationError>, val score: Double,
     val sources: List<SourceSpec>, val outputs: List<OutputSpec>, val notes: List<String>,
-    /** Where each block's box ended up. */
-    val blockRects: List<Rect> = emptyList(),
+    /** Where each block's box ended up, its layout as placed there (turned) and its turn. */
+    val blockRects: List<Rect> = emptyList(), val blockLayouts: List<TrialResult> = emptyList(), val blockRot: IntArray = IntArray(0),
 ) {
     val success: Boolean get() = errors.isEmpty()
 }
@@ -205,7 +205,12 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
             if (pairs.isEmpty()) { say("merge: no more pairs to try"); break }
             val (l, r) = pairs.minBy { (a, b) -> split.blocks[a].size + split.blocks[b].size }
             tried += (split.blocks[l] + split.blocks[r]).toSet()
-            val merged = mergeBlocks(split, l, r)
+            // Both blocks as they lie in the factory: turned layouts, and their ports' sides turned with them.
+            val turnedSplit = Split(split.blocks, split.links.map { lk ->
+                fun t(side: String?, b: Int) = if (side != null && (b == l || b == r)) Dir.fromName(side).turned(f.blockRot[b]).name else side
+                lk.copy(fromSide = t(lk.fromSide, lk.from), toSide = t(lk.toSide, lk.to))
+            }, split.warnings, split.geometry, split.plan, split.partition, split.ports)
+            val merged = mergeBlocks(turnedSplit, l, r)
             val m = min(l, r)
             val bp = blockPlan(plan, merged, m, tuning)
             // The two placements as they lie in the factory, in the box around both.
@@ -215,7 +220,7 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
             val local = bp.globalIds.withIndex().associate { (i, g) -> g to i }
             val warm = ArrayList<PlacedMachine>()
             for (b in listOf(l, r)) {
-                val res = variants[b].firstOrNull { it.w == boxes[b].w && it.h == boxes[b].h } ?: variants[b][0]
+                val res = f.blockLayouts[b]
                 res.placement!!.machines.forEach { pm -> warm += pm.copy(id = local.getValue(bps[b].globalIds[pm.id]), x = pm.x + boxes[b].x - ux, y = pm.y + boxes[b].y - uy) }
             }
             val budget = (left() / pairs.size).coerceIn(600.0, 3600.0).coerceAtMost(left() - 60)
@@ -319,8 +324,8 @@ fun mergeBlocks(split: Split, a: Int, b: Int): Split {
 
 /** For each block, the aspect a floorplan of the real block areas with free shapes would give it. */
 private fun reshapeTargets(plan: ProductionPlan, split: Split, variants: List<List<TrialResult>>, cfg: config.BlocksConfig, config: RunConfiguration): List<Double> {
-    val (blocks, nets) = floorplanInput(plan, split, variants, cfg, config, soft = true)
-    val fp = Floorplanner(blocks, nets, FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 17)).optimise()
+    val input = floorplanInput(plan, split, variants, cfg, config, soft = true)
+    val fp = Floorplanner(input.blocks, input.nets, FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 17)).optimise()
     return split.blocks.indices.map { b -> fp.boxes[b].w.toDouble() / fp.boxes[b].h }
 }
 
@@ -336,24 +341,35 @@ private fun initialPads(split: Split, b: Int, corridor: Int, testMode: Boolean):
     return pads
 }
 
+/** A block's layout as the floorplan may place it: turned [rot] clockwise quarter turns from the search's. */
+class BlockShape(val layout: TrialResult, val rot: Int)
+
+/** Floorplan blocks and nets for a split, and the layout behind each shape of each block. */
+private class FloorplanInput(val blocks: List<FpBlock>, val nets: List<FpNet>, val shapes: List<List<BlockShape>>)
+
 /**
- * Floorplan blocks and nets for [split]: one shape per finished layout of a block (pins at its ports), or with
- * [soft] free shapes of the first layout's area; a net per link, and one per fluid pipe tree.
+ * Floorplan blocks and nets for [split]: a shape per finished layout of a block and quarter turn of it (with
+ * [config.BlocksConfig.rotate]; pins at its ports), or with [soft] free shapes of the first layout's area; a net
+ * per link, and one per fluid pipe tree.
  */
 private fun floorplanInput(
     plan: ProductionPlan, split: Split, variants: List<List<TrialResult>>, cfg: config.BlocksConfig, config: RunConfiguration,
     soft: Boolean = false, bps: List<BlockPlan>? = null,
-): Pair<List<FpBlock>, List<FpNet>> {
+): FloorplanInput {
     val k = split.blocks.size
     val blocks = ArrayList<FpBlock>()
+    val layouts = ArrayList<List<BlockShape>>()
     for (b in 0 until k) {
-        val shapes = if (soft) softShapes(variants[b][0].area.toDouble()) else variants[b].map { r ->
+        val bs = if (soft) emptyList() else variants[b].flatMap { r -> (0 until if (cfg.rotate) 4 else 1).map { q -> BlockShape(turnLayout(r, q), q) } }
+        val shapes = if (soft) softShapes(variants[b][0].area.toDouble()) else bs.map { sh ->
+            val r = sh.layout
             val pins = HashMap<Int, Tile>()
             val lp = bps!![b].linkOfPort
             r.sources.forEach { s -> lp[s.port]?.let { pins[it] = s.tile } }
             r.outputs.forEach { o -> lp[o.port]?.let { pins[it] = o.tile } }
-            FpShape(r.w, r.h, pins)
+            FpShape(r.w, r.h, pins, sh.rot)
         }
+        layouts += bs
         blocks += FpBlock(shapes, initialPads(split, b, cfg.corridor, config.testMode), split.touch[b])
     }
     config.reserved.forEachIndexed { i, r -> blocks += reservedBlock(r, i, cfg.corridor) }
@@ -374,98 +390,128 @@ private fun floorplanInput(
         val es = ls.flatMap { l -> when { l.from == EDGE -> edges(item, false); l.to == EDGE -> edges(item, true); else -> emptySet() } }.toSet()
         nets += FpNet(pins, es, 2.0)
     }
-    return blocks to nets
+    return FloorplanInput(blocks, nets, layouts)
 }
 
 /**
- * Floorplans the finished blocks ([variants]: every layout each block has; the floorplan picks one) and stitches
- * them: the corridors start at half a corridor plus room for each side's ports; where routing fails the sides
- * near the trouble get more room, and once it routes, padding lines that stayed empty are given back and it
- * routes again. The smallest routed factory is finished (poles, validation); the floorplan state comes back too.
+ * Floorplans the finished blocks ([variants]: every layout each block has, each in four turns; the floorplan picks
+ * one) and stitches them, [config.BlocksConfig.floorplanTries] times from different floorplans (the first from
+ * [start]). Each try: the corridors start at half a corridor plus room for each side's ports; where routing fails
+ * the sides near the trouble get more room; once it routes, padding lines that stayed empty are given back, the
+ * blocks are floorplanned again with the measured padding, and then single padding lines are squeezed out while it
+ * still routes. The smallest routed factory of all tries is finished (poles, validation; the next smallest if that
+ * fails), and comes back with its floorplan state.
  */
 fun assembleFactory(
     data: RootData, config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, split: Split, bps: List<BlockPlan>,
     variants: List<List<TrialResult>>, start: FpState?, say: (String) -> Unit, what: String,
-    /** When squeezing the corridors stops (epoch ms). */
+    /** When the last try's squeezing stops (epoch ms). */
     deadline: Long = System.currentTimeMillis() + 30_000,
 ): Pair<Factory, FpState>? {
     val cfg = config.blocks!!
+    val input = floorplanInput(plan, split, variants, cfg, config, bps = bps)
+    val tries = cfg.floorplanTries.coerceAtLeast(1)
+    val ok = ArrayList<Pair<Stitched, FpState>>()
+    for (t in 0 until tries) {
+        val label = if (tries > 1) "$what (floorplan ${t + 1}/$tries)" else what
+        val now = System.currentTimeMillis()
+        val until = now + (deadline - now) / (tries - t)
+        val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 1009L * t)
+        val st = if (t == 0) start?.takeIf { it.plus.size == input.blocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(input.blocks.size)) } else null
+        ok += stitchFloorplan(config, tuning, plan, split, bps, input, params, st, say, label, until)
+    }
+    if (ok.isEmpty()) return null
+    val sorted = ok.sortedBy { it.first.w * it.first.h }
+    if (tries > 1) say("$what: smallest routed factory ${sorted[0].first.w} x ${sorted[0].first.h} of ${ok.size} routed")
+    // Finish the smallest; if validation finds anything, the next smallest.
+    var last: Pair<Factory, FpState>? = null
+    for ((s, st) in sorted.take(8)) {
+        val f = finishFactory(data, config, plan, s)
+        if (f.success) return f to st
+        say("$what: ${f.layout.w} x ${f.layout.h} has ${f.errors.size} validation errors: ${f.errors.take(5)}")
+        last = f to st
+    }
+    return last
+}
+
+/** One floorplan try of [assembleFactory]: every factory that routed on the way, with its floorplan state. */
+private fun stitchFloorplan(
+    config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, split: Split, bps: List<BlockPlan>, input: FloorplanInput,
+    params: FpParams, start: FpState?, say: (String) -> Unit, what: String, deadline: Long,
+): List<Pair<Stitched, FpState>> {
     val k = split.blocks.size
-    val (fpBlocks, fpNets) = floorplanInput(plan, split, variants, cfg, config, bps = bps)
-    val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed)
-    val start0 = start?.takeIf { it.plus.size == fpBlocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(fpBlocks.size) { 0 }) }
-    val planner = Floorplanner(fpBlocks, fpNets, params)
-    var fp = planner.optimise(start0)
+    val fpBlocks = input.blocks
+    val planner = Floorplanner(fpBlocks, input.nets, params)
+    var fp = planner.optimise(start)
     if (fp.violations > 0) say("$what: the floorplan leaves ${fp.violations} block side(s) off the factory edge they need")
     var pads = fpBlocks.map { it.pad.clone() }
-    fun layoutOf(p: FpPlan) = Arrangement(p.boxes.take(k), p.boxes.drop(k), p.w, p.h, IntArray(k) { p.state.shape[it] })
-    val ok = ArrayList<Stitched>()
+    fun layoutOf(p: FpPlan) = Arrangement(p.boxes.take(k), p.boxes.drop(k), p.w, p.h, IntArray(k) { p.state.shape[it] },
+        IntArray(k) { fpBlocks[it].shapes[p.state.shape[it]].rot })
+    fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p))
+    val ok = ArrayList<Pair<Stitched, FpState>>()
     var routedOnce = false
     for (attempt in 0 until 6) {
         val arr = layoutOf(fp)
-        val r = stitchRoute(config, tuning, plan, split, bps, variants, arr)
-        if (r.stitched != null) { ok += r.stitched; routedOnce = true; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 0) " (attempt ${attempt + 1})" else ""}"); break }
+        val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr)
+        if (r.stitched != null) { ok += r.stitched to fp.state; routedOnce = true; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 0) " (attempt ${attempt + 1})" else ""}"); break }
         say("$what: corridors at ${fp.w} x ${fp.h} did not route (${r.why}); widening near ${r.trouble.size} trouble tiles")
         pads = grow(pads, arr, r.trouble, r.edges, k)
         fp = planner.pack(fp.state, pads)
     }
-    if (!routedOnce) return null
+    if (!routedOnce) return ok
     // Tighten: give back padding lines nothing uses; re-floorplan with the measured padding; keep what routes.
     for (round in 0 until 3) {
-        val last = ok.last()
-        val tighter = tighten(pads, last, k)
+        val tighter = tighten(pads, ok.last().first, k)
         if (tighter.indices.all { tighter[it].contentEquals(pads[it]) }) break
         val p2 = planner.pack(fp.state, tighter)
         if (p2.area >= fp.area) break
-        val r = stitchRoute(config, tuning, plan, split, bps, variants, layoutOf(p2))
+        val r = route(p2)
         if (r.stitched == null) { say("$what: tighter corridors (${p2.w} x ${p2.h}) did not route"); break }
         say("$what: tighter corridors: ${p2.w} x ${p2.h}")
-        ok += r.stitched; pads = tighter; fp = p2
+        ok += r.stitched to p2.state; pads = tighter; fp = p2
     }
-    run {
-        val re = Floorplanner(fpBlocks.mapIndexed { i, b -> FpBlock(b.shapes, pads[i], b.touch) }, fpNets, params).optimise(fp.state)
-        if (re.area < fp.area && re.violations == 0) {
-            val r = stitchRoute(config, tuning, plan, split, bps, variants, layoutOf(re))
-            if (r.stitched != null) { say("$what: re-floorplanned with the measured corridors: ${re.w} x ${re.h}"); ok += r.stitched; fp = re }
-        }
-    }
-    // Squeeze: one block side at a time, one tile less, kept when the factory gets smaller and still routes. A side
-    // without ports may go to nothing; validation below catches anything that then touches across.
+    // Then, while it helps and time is left: floorplan again with the padding as it now is, and squeeze single
+    // padding lines out (one block side at a time, one tile less, kept when the factory shrinks and still routes; a
+    // side without ports may go to nothing, validation catches anything that then touches across).
     val portSides = (0 until k).map { b -> split.links.filter { it.from == b || it.to == b }.mapNotNull { it.side(b) }.map { Dir.fromName(it).ordinal }.toSet() }
     var squeezed = 0
-    var improved = true
-    while (improved && System.currentTimeMillis() < deadline) {
-        improved = false
-        val order = (0 until k).flatMap { b -> (0..3).map { b to it } }
-            .filter { (b, d) -> pads[b][d] > (if (d in portSides[b]) 1 else 0) }.sortedByDescending { (b, d) -> pads[b][d] }
-        for ((b, d) in order) {
-            if (System.currentTimeMillis() >= deadline) break
-            val trial = pads.map { it.clone() }.also { it[b][d]-- }
-            val p2 = planner.pack(fp.state, trial)
-            if (p2.area >= fp.area) continue
-            val r = stitchRoute(config, tuning, plan, split, bps, variants, layoutOf(p2))
-            if (r.stitched != null) { ok += r.stitched; pads = trial; fp = p2; improved = true; squeezed++ }
+    for (round in 0 until 4) {
+        val before = fp.area
+        val re = Floorplanner(fpBlocks.mapIndexed { i, b -> FpBlock(b.shapes, pads[i], b.touch) }, input.nets, params).optimise(fp.state)
+        if (re.area < fp.area && re.violations == 0) {
+            val p2 = planner.pack(re.state, pads)
+            val r = route(p2)
+            if (r.stitched != null) { say("$what: floorplanned again with the corridors as they are: ${p2.w} x ${p2.h}"); ok += r.stitched to p2.state; fp = p2 }
         }
+        var improved = true
+        while (improved && System.currentTimeMillis() < deadline) {
+            improved = false
+            val order = (0 until k).flatMap { b -> (0..3).map { b to it } }
+                .filter { (b, d) -> pads[b][d] > (if (d in portSides[b]) 1 else 0) }.sortedByDescending { (b, d) -> pads[b][d] }
+            for ((b, d) in order) {
+                if (System.currentTimeMillis() >= deadline) break
+                val trial = pads.map { it.clone() }.also { it[b][d]-- }
+                val p2 = planner.pack(fp.state, trial)
+                if (p2.area >= fp.area) continue
+                val r = route(p2)
+                if (r.stitched != null) { ok += r.stitched to p2.state; pads = trial; fp = p2; improved = true; squeezed++ }
+            }
+        }
+        if (fp.area >= before || System.currentTimeMillis() >= deadline) break
     }
     if (squeezed > 0) say("$what: squeezed $squeezed corridor lines out: ${fp.w} x ${fp.h}")
-    // Finish the smallest; if validation finds anything, the next smallest.
-    var last: Factory? = null
-    for (s in ok.sortedBy { it.w * it.h }.take(8)) {
-        val f = finishFactory(data, config, plan, s)
-        if (f.success) return f to fp.state
-        say("$what: ${f.layout.w} x ${f.layout.h} has ${f.errors.size} validation errors: ${f.errors.take(5)}")
-        last = f
-    }
-    return last!! to fp.state
+    return ok
 }
 
-/** Where everything goes: block boxes, reserved boxes, the factory size and which layout of each block. */
-class Arrangement(val boxes: List<Rect>, val reserved: List<Rect>, val w: Int, val h: Int, val shape: IntArray)
+/** Where everything goes: block boxes, reserved boxes, the factory size, which shape of each block and its turn. */
+class Arrangement(val boxes: List<Rect>, val reserved: List<Rect>, val w: Int, val h: Int, val shape: IntArray, val rot: IntArray)
 
 /** Everything placed and routed, before poles and validation. */
 class Stitched(
     val entities: List<PlacedEntity>, val machines: List<PlacedMachine>, val sources: List<SourceSpec>, val outputs: List<OutputSpec>,
     val w: Int, val h: Int, val blockRects: List<Rect>, val reservedRects: List<Rect>,
+    /** Each block's layout as placed (turned), and its turn. */
+    val layouts: List<TrialResult> = emptyList(), val rot: IntArray = IntArray(0),
 )
 
 /** A stitch that routed, or why not: tiles near the trouble, and factory edges a corridor link could not reach. */
@@ -478,23 +524,25 @@ class StitchAttempt(val stitched: Stitched?, val trouble: List<Tile>, val why: S
 private fun grow(pads: List<IntArray>, arr: Arrangement, trouble: List<Tile>, edges: Set<Dir>, k: Int): List<IntArray> {
     val out = pads.map { it.clone() }
     var any = false
+    // Padding is kept per side of the block as searched; factory side [d] of a turned block is its side d - turn.
+    fun i(b: Int, d: Dir) = (d.ordinal - arr.rot[b]).mod(4)
     for (b in 0 until k) for (e in edges) {
         val box = arr.boxes[b]
         val dist = when (e) { Dir.N -> box.y; Dir.S -> arr.h - 1 - box.y2; Dir.W -> box.x; Dir.E -> arr.w - 1 - box.x2 }
-        if (dist > pads[b][e.ordinal] + 1) continue
-        listOf(e.cw, e.ccw).forEach { d -> if (pads[b][d.ordinal] > 0) { out[b][d.ordinal] += 2; any = true } }
+        if (dist > pads[b][i(b, e)] + 1) continue
+        listOf(e.cw, e.ccw).forEach { d -> if (pads[b][i(b, d)] > 0) { out[b][i(b, d)] += 2; any = true } }
     }
     for (b in 0 until k) {
         val box = arr.boxes[b]
         for (d in Dir.entries) {
-            val p = pads[b][d.ordinal]
+            val p = pads[b][i(b, d)]
             if (p == 0) continue
             val near = trouble.any { t ->
                 val along = if (d.axis == 0) t.y in box.y - 2..box.y2 + 2 else t.x in box.x - 2..box.x2 + 2
                 val dist = when (d) { Dir.N -> box.y - t.y; Dir.S -> t.y - box.y2; Dir.W -> box.x - t.x; Dir.E -> t.x - box.x2 }
                 along && dist in 0..p + 3
             }
-            if (near) { out[b][d.ordinal] = max(out[b][d.ordinal], p + 2); any = true }
+            if (near) { out[b][i(b, d)] = max(out[b][i(b, d)], p + 2); any = true }
         }
     }
     if (!any) for (b in 0 until k) for (d in 0..3) if (out[b][d] > 0) out[b][d]++
@@ -509,7 +557,8 @@ private fun tighten(pads: List<IntArray>, s: Stitched, k: Int): List<IntArray> {
     for (b in 0 until k) {
         val box = s.blockRects[b]
         for (d in Dir.entries) {
-            val p = pads[b][d.ordinal]
+            val pi = (d.ordinal - s.rot[b]).mod(4)
+            val p = pads[b][pi]
             if (p <= 1) continue
             var empty = 0
             for (dist in p downTo 2) {   // line [dist] tiles out from the box; the ring (1) stays
@@ -522,7 +571,7 @@ private fun tighten(pads: List<IntArray>, s: Stitched, k: Int): List<IntArray> {
                 if (line.any { it in used }) break
                 empty++
             }
-            out[b][d.ordinal] = max(1, p - empty)
+            out[b][pi] = max(1, p - empty)
         }
     }
     return out
@@ -534,10 +583,12 @@ private fun tighten(pads: List<IntArray>, s: Stitched, k: Int): List<IntArray> {
  */
 fun stitchRoute(
     config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, split: Split,
-    bps: List<BlockPlan>, variants: List<List<TrialResult>>, arr: Arrangement,
+    bps: List<BlockPlan>, shapes: List<List<BlockShape>>, arr: Arrangement,
 ): StitchAttempt {
     val k = bps.size
-    val results = (0 until k).map { variants[it][arr.shape[it]] }
+    val results = (0 until k).map { shapes[it][arr.shape[it]].layout }
+    // A port's side in the factory: its side as searched, turned with the block.
+    fun side(name: String?, b: Int) = name?.let { Dir.fromName(it).turned(arr.rot[b]) }
     val W = arr.w; val H = arr.h
     val ox = IntArray(k) { arr.boxes[it].x }; val oy = IntArray(k) { arr.boxes[it].y }
     val entities = ArrayList<PlacedEntity>()
@@ -565,21 +616,21 @@ fun stitchRoute(
             val l = split.links[bps[b].linkOfPort[o.port] ?: return@forEach]
             val t = Tile(o.tile.x + ox[b], o.tile.y + oy[b])
             if (!l.throughCorridor) {
-                if (!outsideOnSide(t, l.fromSide)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} output is not on the factory's edge")
+                if (!outsideOnSide(t, side(l.fromSide, b)?.name)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} output is not on the factory's edge")
                 outputs += o.copy(tile = t, port = -1); return@forEach
             }
             // A pipe port joins on the side the block was searched with it (a corner tile alone does not say which).
-            val d = if (o.fluid) Dir.fromName(l.fromSide!!) else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
+            val d = if (o.fluid) side(l.fromSide, b)!! else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
             starts[l.id] = (t + d) to d
         }
         results[b].sources.forEach { s ->
             val l = split.links[bps[b].linkOfPort[s.port] ?: return@forEach]
             val t = Tile(s.tile.x + ox[b], s.tile.y + oy[b])
             if (!l.throughCorridor) {
-                if (!outsideOnSide(t, l.toSide)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} input is not on the factory's edge")
+                if (!outsideOnSide(t, side(l.toSide, b)?.name)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} input is not on the factory's edge")
                 sources += s.copy(tile = t, port = -1); return@forEach
             }
-            val out = l.toSide?.let(Dir::fromName) ?: sideOf(s.tile, results[b].w, results[b].h)
+            val out = side(l.toSide, b) ?: sideOf(s.tile, results[b].w, results[b].h)
             ends[l.id] = (t + out) to out.opposite
         }
     }
@@ -686,7 +737,7 @@ fun stitchRoute(
     sources += routed.sources.filter { it.port in edgePorts }.map { it.copy(port = -1) }
     outputs += routed.outputs.filter { it.port in edgePorts }.map { it.copy(port = -1) }
     val blockRects = (0 until k).map { b -> Rect(ox[b], oy[b], results[b].w, results[b].h) }
-    return StitchAttempt(Stitched(entities, machines, sources, outputs, W, H, blockRects, arr.reserved), emptyList(), "ok")
+    return StitchAttempt(Stitched(entities, machines, sources, outputs, W, H, blockRects, arr.reserved, results, arr.rot), emptyList(), "ok")
 }
 
 /** Test harness on the factory's ports, compaction, poles over everything, block borders, and validation. */
@@ -716,7 +767,7 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         val spec = validationSpec(data, plan, config, Placement(w, h, mach), if (config.testMode) emptyList() else srcs,
             requirePower = config.power.mode != "none", outsideAllowed = outside.toSet(), outputs = outs)
         val errors = validate(layout, spec)
-        return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects)
+        return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects, s.layouts, s.rot)
     }
 
     // Rows and columns that only straight belts and pipes cross go first; if that breaks anything (it should

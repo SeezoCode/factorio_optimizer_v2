@@ -12,13 +12,16 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-/** One way a block can be built: its box, and where its ports are (pin id -> tile relative to the box's corner). */
-class FpShape(val w: Int, val h: Int, val pins: Map<Int, Tile> = emptyMap())
+/**
+ * One way a block can be built: its box, where its ports are (pin id -> tile relative to the box's corner), and how
+ * many clockwise quarter turns [rot] it is from the block as searched (its padding and edges turn with it).
+ */
+class FpShape(val w: Int, val h: Int, val pins: Map<Int, Tile> = emptyMap(), val rot: Int = 0)
 
 /**
  * A rectangle to place: its shapes to choose from, the free tiles it keeps on each side for corridors ([pad],
  * indexed by [Dir.ordinal]), and the factory edges it must touch (ports that leave the factory straight out of the
- * block, a reserved area's corner).
+ * block, a reserved area's corner). Padding and edges are given for the block as searched; a turned shape turns them.
  */
 class FpBlock(val shapes: List<FpShape>, val pad: IntArray, val touch: Set<Dir> = emptySet()) {
     init { require(pad.size == 4 && shapes.isNotEmpty()) }
@@ -75,7 +78,9 @@ class Floorplanner(val blocks: List<FpBlock>, val nets: List<FpNet>, val params:
         val pp = IntArray(k); val pm = IntArray(k)
         s.plus.forEachIndexed { i, b -> pp[b] = i }
         s.minus.forEachIndexed { i, b -> pm[b] = i }
-        val pad = padOverride ?: blocks.map { it.pad }
+        val pad0 = padOverride ?: blocks.map { it.pad }
+        // Padding on each factory side: the side of the block as searched that a turned shape puts there.
+        val pad = (0 until k).map { b -> val r = blocks[b].shapes[s.shape[b]].rot; IntArray(4) { d -> pad0[b][(d - r).mod(4)] } }
         val bw = IntArray(k) { b -> blocks[b].shapes[s.shape[b]].w + pad[b][Dir.E.ordinal] + pad[b][Dir.W.ordinal] }
         val bh = IntArray(k) { b -> blocks[b].shapes[s.shape[b]].h + pad[b][Dir.N.ordinal] + pad[b][Dir.S.ordinal] }
         val x = IntArray(k); val y = IntArray(k)
@@ -105,7 +110,7 @@ class Floorplanner(val blocks: List<FpBlock>, val nets: List<FpNet>, val params:
             if (!above) t += Dir.N
             if (!right) t += Dir.E
             if (!below) t += Dir.S
-            val need = blocks[b].touch
+            val need = blocks[b].touch.map { it.turned(blocks[b].shapes[s.shape[b]].rot) }
             if (Dir.E in need && !right) x[b] = w - bw[b]
             if (Dir.S in need && !below) y[b] = h - bh[b]
             violations += need.count { it !in t }

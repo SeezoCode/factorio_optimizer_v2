@@ -272,6 +272,10 @@ data class BlocksConfig(
     @SerialName("wire_weight") val wireWeight: Double = 2.0,
     /** Share of the time budget spent generating blocks; the rest is left for stitching them together. */
     @SerialName("block_time_share") val blockTimeShare: Double = 0.9,
+    /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */
+    val rotate: Boolean = true,
+    /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */
+    @SerialName("floorplan_tries") val floorplanTries: Int = 3,
     /** Remove rows and columns that only straight belts and pipes cross from the stitched factory. */
     val compact: Boolean = true,
     /**
