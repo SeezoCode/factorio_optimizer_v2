@@ -275,9 +275,10 @@ data class BlocksConfig(
     /**
      * What one block (or the factory edge) sends to several blocks may pass through them in a chain: the nearest
      * keeps its share and passes the rest on, so blocks inside the factory get plates from a neighbour, not each its
-     * own belt from the edge.
+     * own belt from the edge. Off by default: on six science (from plates and from ore, 15 machines per block) the
+     * belts passing through made blocks bigger than the corridor belts they saved (4.5% and 3.6% larger factories).
      */
-    @SerialName("pass_through") val passThrough: Boolean = true,
+    @SerialName("pass_through") val passThrough: Boolean = false,
     /** Two items going between the same two blocks, each fitting a lane, share one belt (one item per lane). */
     @SerialName("lane_pairs") val lanePairs: Boolean = true,
     /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */

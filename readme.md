@@ -171,7 +171,8 @@ Unknown keys are an error. Everything except `targets` has a default.
   "blocks": { "max_machines": 120, "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
               "link_belt_share": 0.9, "split_at_weight": 0.1, "block_time_share": 0.9,
               "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
-              "pass_through": true, "rotate": true, "floorplan_tries": 3,
+              "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
+              "compact_s": null, "shape_variants": [], "shape_variant_s": null,
               "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3 },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
@@ -237,10 +238,12 @@ belts and pipes, in one blueprint:
    gives the item. A block that ends up on an allowed edge (`"any"`, or a whole side) takes that input or output
    straight through it; the others run through the corridors to the edge.
 3. **Blocks.** Every belt between two blocks is a link with an exact rate (at most `link_belt_share` of a belt).
-   What one supplier (a block, or the factory edge for raw inputs) sends to several blocks passes through them in
-   a chain (`pass_through`, on by default): the nearest block keeps its share and passes the rest on to the next,
-   as long as the chain fits one belt and each next block is nearer the chain's end than the supplier. Blocks
-   inside the factory get their plates from a neighbour instead of each on its own belt from the edge.
+   With `pass_through`, what one supplier (a block, or the factory edge for raw inputs) sends to several blocks
+   passes through them in a chain: the nearest block keeps its share and passes the rest on to the next, as long
+   as the chain fits one belt and each next block is nearer the chain's end than the supplier. It is off by
+   default: on six science the belts passing through made blocks bigger than the corridor belts they saved.
+   Two items going between the same two blocks that each fit a lane share one belt (`lane_pairs`): the consumer
+   takes them on one input belt, and next to the supplier their belts side-load onto it from either side.
    Every fluid traded between blocks gets one pipe tree through the corridors joining one port on each block
    that makes or uses it (and the factory edge, if it enters or leaves there), so any number of blocks can share
    a fluid. Each block is generated on its own, at its planned aspect, with its share of the time budget.
@@ -257,6 +260,12 @@ belts and pipes, in one blueprint:
    left through a pipe-to-ground pair.
 5. Rows and columns that only straight belts, straight pipes or underground spans cross are removed
    (`compact`, on by default; the factory is validated again, and kept as stitched if that ever fails).
+   Compaction then continues for `compact_s` seconds (default: the stitching share of the budget; `--compact=<s>`
+   on the command line): wherever every longest chain of blocks across the factory can lose a padding line, it
+   does, as long as the corridors still route; when that stalls, the blocks are floorplanned again from where they
+   are with a fresh seed and a lighter price on belt length. Every smaller valid factory is saved on the way.
+   With `shape_variants` (e.g. `[0.6, 1.7]`) each block is also searched at its aspect times those factors
+   (`shape_variant_s` seconds each), and the floorplan picks the shapes that pack best.
 6. With `repack`, a floorplan of the blocks' real areas with free shapes says which shape each block should have;
    blocks far from it are searched again at that aspect, and the floorplan then picks, per block, the layout that
    packs best. Kept if the factory gets smaller.

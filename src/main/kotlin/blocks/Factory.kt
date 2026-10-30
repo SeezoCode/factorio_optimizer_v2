@@ -515,15 +515,22 @@ private class Stitching(
 
     fun layoutOf(p: FpPlan) = Arrangement(p.boxes.take(k), p.boxes.drop(k), p.w, p.h, IntArray(k) { p.state.shape[it] },
         IntArray(k) { input.blocks[it].shapes[p.state.shape[it]].rot })
-    private fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p))
+    /** Lane pairs whose junction next to the supplier did not route: theirs goes in front of the consumer. */
+    val atConsumer = HashSet<Int>()
+    private fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p), atConsumer)
 
     fun start(from: FpState?) {
         fp = planner.optimise(from)
         if (fp.violations > 0) say("$what: the floorplan leaves ${fp.violations} block side(s) off the factory edge they need")
-        for (attempt in 0 until 6) {
+        for (attempt in 0 until 8) {
             val arr = layoutOf(fp)
-            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr)
+            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer)
             if (r.stitched != null) { ok += r.stitched to fp.state; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 0) " (attempt ${attempt + 1})" else ""}"); break }
+            if (!atConsumer.containsAll(r.badPairs)) {
+                atConsumer += r.badPairs
+                say("$what: ${r.badPairs.size} lane junction(s) did not route next to the supplier; moving them in front of the consumer")
+                continue
+            }
             say("$what: corridors at ${fp.w} x ${fp.h} did not route (${r.why}); widening near ${r.trouble.size} trouble tiles ${r.trouble.take(4)}")
             pads = grow(pads, arr, r.trouble, r.edges, k)
             fp = planner.pack(fp.state, pads)
@@ -611,7 +618,11 @@ class Stitched(
 )
 
 /** A stitch that routed, or why not: tiles near the trouble, and factory edges a corridor link could not reach. */
-class StitchAttempt(val stitched: Stitched?, val trouble: List<Tile>, val why: String, val edges: Set<Dir> = emptySet())
+class StitchAttempt(
+    val stitched: Stitched?, val trouble: List<Tile>, val why: String, val edges: Set<Dir> = emptySet(),
+    /** Lane pairs (lower link id) whose belts did not route at their junction. */
+    val badPairs: Set<Int> = emptySet(),
+)
 
 /**
  * More padding on the block sides near [trouble] (or everywhere, by one, if nothing is near), and between the
@@ -680,6 +691,8 @@ private fun tighten(pads: List<IntArray>, s: Stitched, k: Int): List<IntArray> {
 fun stitchRoute(
     config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, split: Split,
     bps: List<BlockPlan>, shapes: List<List<BlockShape>>, arr: Arrangement,
+    /** Lane pairs (by their lower link id) whose junction goes right in front of the consumer instead. */
+    atConsumer: Set<Int> = emptySet(),
 ): StitchAttempt {
     val k = bps.size
     val results = (0 until k).map { shapes[it][arr.shape[it]].layout }
@@ -804,26 +817,66 @@ fun stitchRoute(
         val (left, right) = if (laneOf[l.id] == 0) l to m else m to l
         val sl = starts.getValue(left.id).first; val sr = starts.getValue(right.id).first
         val end = ends.getValue(l.id).first
+        if (l.id in atConsumer) {
+            // The fallback: the junction belt is the tile in front of the consumer's port, fed from both sides.
+            val h = ends.getValue(l.id).second
+            if (listOf(end + h.ccw, end + h.cw).any { !free(it) || it in endTiles } || (end + h.opposite) in byTile)
+                return StitchAttempt(null, listOf(end), "no room for the junction of ${left.item} and ${right.item} at the consumer", badPairs = setOf(l.id))
+            val e = PlacedEntity(GameConstants.beltTier(config.beltTier).belt, Kind.BELT, end.x, end.y, h)
+            entities += e; byTile[end] = e
+            junctionKeepFree += listOf(end + h.opposite)
+            endTiles += listOf(end + h.ccw, end + h.cw)
+            for ((lk, pEnd) in listOf(left to fixedPort(left, end + h.ccw, h.cw, true), right to fixedPort(right, end + h.cw, h.ccw, true))) {
+                val p1 = starts.getValue(lk.id).let { (st, sd) -> fixedPort(lk, st, sd.opposite, false) }
+                val t1 = terminal(Role.SOURCE, lk, lk.rate, p1); val t2 = terminal(Role.OUTPUT, lk, lk.rate, pEnd)
+                linksOfNet[nets.size] = listOf(lk)
+                nets += Net(nets.size, lk.item, lk.rate, listOf(t1.id, t2.id), 1)
+            }
+            paired += left.id; paired += right.id
+            continue
+        }
         val mid = Tile((sl.x + sr.x) / 2, (sl.y + sr.y) / 2)
         // Junction tiles keep a tile's distance from every link end, so the belts into and out of it have room.
         fun ok(t: Tile) = free(t) && t !in endTiles && t !in junctionKeepFree && Dir.entries.none { t + it in endTiles }
-        var best: Pair<Tile, Dir>? = null; var bestScore = Double.MAX_VALUE
-        for (dy in -12..12) for (dx in -12..12) for (h in Dir.entries) {
+        val cands = ArrayList<Pair<Double, Pair<Tile, Dir>>>()
+        for (dy in -14..14) for (dx in -14..14) for (h in Dir.entries) {
             val j = Tile(mid.x + dx, mid.y + dy)
             if (j.manhattan(sl) < 3 || j.manhattan(sr) < 3) continue
             val behind = j + h.opposite
             if (!ok(j) || !ok(j + h.ccw) || !ok(j + h.cw) || !ok(j + h) || behind in byTile || behind in endTiles) continue
             // Room to turn: the corners around the junction are free too.
             if (listOf(-1, 1).any { a -> listOf(-1, 1).any { b -> !free(Tile(j.x + a, j.y + b)) } }) continue
-            // Each item best comes from its own side, so neither belt crosses the shared one.
+            // Each item best comes from its own side, so neither belt crosses the shared one; facing the consumer
+            // matters most (an item from the wrong side only has to cross the shared belt, which an underground does).
             val lv = h.ccw; val sideL = (sl.x - j.x) * lv.dx + (sl.y - j.y) * lv.dy; val sideR = (sr.x - j.x) * lv.dx + (sr.y - j.y) * lv.dy
-            // Facing the consumer matters most (a junction facing back towards the supplier starts in a pocket); an
-            // item coming from the wrong side only has to cross the shared belt, which an underground does.
             val toward = (end.x - j.x) * h.dx + (end.y - j.y) * h.dy
-            val score = j.manhattan(mid) + 0.2 * j.manhattan(end) + (if (sideL > 0) 0 else 3) + (if (sideR < 0) 0 else 3) + (if (toward > 0) 0 else 12)
-            if (score < bestScore) { bestScore = score; best = j to h }
+            cands += (j.manhattan(mid) + 0.2 * j.manhattan(end) + (if (sideL > 0) 0 else 3) + (if (sideR < 0) 0 else 3) + (if (toward > 0) 0 else 12)) to (j to h)
         }
-        val (j, h) = best ?: return StitchAttempt(null, listOf(sl, sr), "no room for the junction of ${left.item} and ${right.item}")
+        /** Can a belt get from [from] to [to] over free tiles, avoiding [avoid]? (Directions aside: a quick check.) */
+        fun reaches(from: Tile, to: Tile, avoid: Set<Tile>): Boolean {
+            if (from == to) return true
+            val seen = hashSetOf(from); val q = ArrayDeque(listOf(from))
+            while (q.isNotEmpty()) {
+                val c = q.removeFirst()
+                for (d in Dir.entries) {
+                    val n = c + d
+                    if (n == to) return true
+                    if (n in seen || n.manhattan(from) > 60 || !free(n) || n in avoid || n in endTiles || n in junctionKeepFree) continue
+                    seen += n; q += n
+                }
+            }
+            return false
+        }
+        var best: Pair<Tile, Dir>? = null
+        for ((_, c) in cands.sortedBy { it.first }.take(40)) {
+            val (j, h) = c
+            val mine = setOf(j, j + h.opposite, j + h.ccw, j + h.cw, j + h)
+            // Each item reaches the tile it arrives from (beyond its side of the junction), the shared belt the consumer.
+            // (A link's first belt runs straight on out of its port, so the search starts past it.)
+            val dl = starts.getValue(left.id).second; val dr = starts.getValue(right.id).second
+            if (reaches(sl + dl, j + h.ccw + h.ccw, mine + sl) && reaches(sr + dr, j + h.cw + h.cw, mine + sr) && reaches(j + h + h, end, mine)) { best = c; break }
+        }
+        val (j, h) = best ?: return StitchAttempt(null, listOf(sl, sr), "no room for the junction of ${left.item} and ${right.item}", badPairs = setOf(l.id))
         // No net: the junction belongs to both items (the validator's shape check is for belts of one item each).
         val e = PlacedEntity(GameConstants.beltTier(config.beltTier).belt, Kind.BELT, j.x, j.y, h)
         entities += e; byTile[j] = e
@@ -892,8 +945,9 @@ fun stitchRoute(
             .flatMap { l -> plan.ports.first { it.item == l.item && it.output == (l.to == EDGE) }.specs }
             .flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
         val unrouted = routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }
+        val badPairs = routed.failedNets.flatMap { n -> linksOfNet[n] ?: emptyList() }.filter { it.pair >= 0 }.map { minOf(it.id, it.pair) }.toSet()
         return StitchAttempt(null, trouble, "${routed.conflicts.size} conflicts, ${routed.failedNets.size} unrouted" +
-            (if (unrouted.isNotEmpty()) " $unrouted; ${routed.log.filter { l -> unrouted.any { it in l } }.takeLast(2)}" else ""), edges)
+            (if (unrouted.isNotEmpty()) " $unrouted; ${routed.log.filter { l -> unrouted.any { it in l } }.takeLast(2)}" else ""), edges, badPairs)
     }
     entities += routed.entities.map { it.copy(net = global(it, stitchPlan)) }
     sources += routed.sources.filter { it.port in edgePorts }.map { it.copy(port = -1) }
