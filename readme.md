@@ -220,6 +220,10 @@ belts and pipes, in one blueprint:
    same-recipe groups gives a first split; simulated annealing then moves single machines, swaps two, and moves
    whole recipe groups between blocks. `factory.txt` reports the ports of the split against the greedy one.
    Machines joined by pipes may end up in different blocks: oil processing no longer has to be one block.
+   Machine counts are rounded up, so most machines have room to spare; a linear program then lets machines of
+   one recipe in different blocks run at different rates (within their crafting speed and planned inserters) so
+   each block makes what it uses, instead of trading slivers like 0.06 cable/s on a belt of their own. The split
+   kept is the one (greedy or annealed) that is cheapest after this; `plan_rebalanced.json` has its rates.
 2. **Plan the floorplan.** The blocks, with shapes estimated from their machines' area, are arranged by
    simulated annealing over sequence pairs: any arrangement, not just rows. It minimises the factory's area,
    its distance from the job's `box.aspect` (`aspect_weight`), and the length of the belts between blocks
