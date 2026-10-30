@@ -130,6 +130,10 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 - `--calibrate=<job>,<job>,... --budget=<s>`: refits `tuning.json` from short searches.
 - `--verify-kit=<dir>`: in-game check blueprints (see [docs/VERIFY.md](docs/VERIFY.md)).
 - `--render=<dir>`: redraws `best.png` of an output folder from its blueprint and `ports.json`.
+- `--resume=<dir>`: continues a factory-of-blocks run in that output folder. The split and every finished block
+  were saved in `<dir>/resume/`, so only blocks without a layout are searched; then the factory is floorplanned,
+  stitched and validated again (seconds). Useful after stopping a run, or to re-stitch finished blocks with newer
+  code. It uses the job saved there unless `--config` is given.
 
 Renders show each machine's name and recipe, and mark every input (green) and output (red) with a number on its
 tile, listed underneath with item, rate and tile. Input belts also say which lane the item goes on: "both lanes"
