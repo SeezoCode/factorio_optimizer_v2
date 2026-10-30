@@ -124,4 +124,23 @@ class FactoryTest {
         assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
         assertTrue(File(out, "factory.txt").readText().contains("pipes:"), "no fluid crosses between blocks")
     }
+
+    @Test
+    fun `a resumed run keeps the saved split and blocks and only stitches again`() {
+        val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5),
+            search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
+        val plan = buildPlan(TestData.data, config)
+        val out = File("build/factory/t3_resume")
+        out.deleteRecursively()
+        val first = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
+        assertTrue(first.success)
+        assertTrue(File(out, "resume/split.json").exists() && File(out, "resume/block_1.json").exists() && File(out, "resume/block_2.json").exists())
+        val t0 = System.currentTimeMillis()
+        val again = assertNotNull(runFactory(TestData.data, blocks.savedJob(out)!!, Tuning.defaults(), plan, out, resume = true))
+        assertTrue(again.success, "${again.errors.take(5)}")
+        val log = File(out, "factory.txt").readText()
+        assertEquals(2, Regex("resumed \\(").findAll(log).count(), log)
+        assertTrue(System.currentTimeMillis() - t0 < 15_000, "resuming searched again")
+        assertEquals(first.layout.w * first.layout.h, again.layout.w * again.layout.h)
+    }
 }

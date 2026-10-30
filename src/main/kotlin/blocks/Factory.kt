@@ -74,16 +74,17 @@ class Factory(
  * then searched again at the shapes a floorplan of their real areas asks for, and with [config.BlocksConfig.merge]
  * neighbouring blocks are merged and searched again from their placements until the budget runs out; either is kept
  * only if the factory gets smaller. Every better factory is written to [out] (blueprint, render, ports.json;
- * factory.txt logs it all), each block to `block_<n>`.
+ * factory.txt logs it all), each block to `block_<n>`. With [resume], the split and block layouts an earlier run
+ * saved in [out] are used (see Resume.kt): only blocks without a layout are searched.
  */
-fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: ProductionPlan, out: File): Factory? {
+fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: ProductionPlan, out: File, resume: Boolean = false): Factory? {
     val cfg = config.blocks!!
     require(input.ports.none { p -> p.specs.any { it.edge == null } }) {
         "a factory of blocks takes its inputs and outputs by edge (with from and to), not by x and y"
     }
     out.mkdirs()
     val logFile = File(out, "factory.txt")
-    logFile.writeText("")
+    if (!resume || !logFile.exists()) logFile.writeText("")
     val t0 = System.currentTimeMillis()
     val deadline = t0 + (config.search.timeBudgetS * 1000).toLong()
     fun say(msg: String) {
@@ -92,7 +93,15 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
     }
     fun left() = (deadline - System.currentTimeMillis()) / 1000.0
     val tier = GameConstants.beltTier(config.beltTier)
-    var split = splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved)
+    fun recipes(p: ProductionPlan) = p.machines.groupingBy { it.recipe }.eachCount()
+    val saved = if (resume) loadSplit(out) else null
+    if (resume) say(when {
+        saved == null -> "resume: nothing saved in $out; starting afresh"
+        recipes(saved.plan) != recipes(input) -> "resume: the saved split is of another plan; starting afresh"
+        else -> "resume: split of ${saved.blocks.size} blocks from $out/resume"
+    })
+    var split = saved?.takeIf { recipes(it.plan) == recipes(input) }
+        ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved).also { saveSplit(out, config, it) }
     // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
     val plan = split.plan
     plan.write(File(out, "plan_rebalanced.json").path)
@@ -108,11 +117,18 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
 
     // 1. Blocks, one after another, each with all threads and its share of the budget (machines and ports).
     fun effort(b: Int) = split.blocks[b].size + 0.5 * split.links.count { it.from == b || it.to == b }
-    val totalEffort = split.blocks.indices.sumOf(::effort)
     val variants = ArrayList<MutableList<TrialResult>>()
+    val loaded = split.blocks.indices.map { if (resume) loadBlock(out, it) else emptyList() }
+    // The blocks still to search share the time for blocks.
+    val todoEffort = split.blocks.indices.filter { loaded[it].isEmpty() }.sumOf(::effort)
     for (bp in bps) {
         val b = bp.index
-        val budget = minOf(left(), config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) * effort(b) / totalEffort)
+        if (loaded[b].isNotEmpty()) {
+            variants += loaded[b].toMutableList()
+            say("block ${b + 1}: ${loaded[b][0].w} x ${loaded[b][0].h}, resumed (${loaded[b].size} layout(s))")
+            continue
+        }
+        val budget = minOf(left(), config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) * effort(b) / todoEffort)
         val box = split.geometry.boxes[b]
         val aspect = box.w.toDouble() / box.h
         val dir = File(out, "block_${b + 1}")
@@ -122,6 +138,7 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
         if (best == null) { say("block ${b + 1}: no layout found; giving up"); return null }
         say("block ${b + 1}: ${best.w} x ${best.h}")
         variants += mutableListOf(best)
+        saveBlock(out, b, variants[b])
     }
 
     // 2. Floorplan the finished blocks and stitch them. Keep the smallest valid factory.
@@ -169,7 +186,7 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
                 Search(data, blockConfig(minOf(left(), budget * effort(b) / effortTodo), wanted[b], ceil(sqrt(area0 * 1.15)).toInt()),
                     tuning, bps[b].plan, File(out, "reshape/block_${b + 1}")).run().best
             }.getOrElse { e -> say("reshape block ${b + 1}: failed with $e"); null }
-            if (r != null) { variants[b] += r; added = true; say("reshape block ${b + 1}: ${r.w} x ${r.h} (was ${variants[b][0].w} x ${variants[b][0].h})") }
+            if (r != null) { variants[b] += r; saveBlock(out, b, variants[b]); added = true; say("reshape block ${b + 1}: ${r.w} x ${r.h} (was ${variants[b][0].w} x ${variants[b][0].h})") }
             else say("reshape block ${b + 1}: nothing at aspect ${"%.2f".format(wanted[b])}")
         }
         if (added) consider(assemble(split, bps, variants, bestState, "reshaped factory"), "reshaped factory")
@@ -218,6 +235,7 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
             val start = st.without(gone)
             if (consider(assemble(merged, newBps, newVariants, start, "merged ${l + 1}+${r + 1}"), "merged factory")) {
                 split = merged; bps = newBps; variants.clear(); variants += newVariants
+                saveAll(out, config, split, variants)
             }
         }
     }

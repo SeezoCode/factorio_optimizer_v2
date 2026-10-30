@@ -17,13 +17,16 @@ import java.time.format.DateTimeFormatter
  *                                 write src/main/resources/tuning.json (with --budget=<s> per job, default 60)
  *   --verify-kit=<dir>            write the in-game verification blueprints (see docs/VERIFY.md)
  *   --render=<dir>                redraw <dir>/best.png from its best_output_string.txt and ports.json (with ports)
+ *   --resume=<dir>                continue a factory-of-blocks run in <dir>: its saved split and finished blocks are
+ *                                 kept, missing blocks are searched, then it floorplans and stitches again (the job
+ *                                 is the one saved there unless --config is given)
  */
 fun main(args: Array<String>) {
     val flags = args.filter { it.startsWith("--") }.associate {
         val eq = it.indexOf('=')
         if (eq < 0) it.removePrefix("--") to "true" else it.substring(2, eq) to it.substring(eq + 1)
     }
-    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render")
+    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume")
     (flags.keys - known).takeIf { it.isNotEmpty() }?.let { error("Unknown flags: $it (known: $known)") }
 
     flags["render"]?.let { dir -> renderOutput(java.io.File(dir)); return }
@@ -45,7 +48,10 @@ fun main(args: Array<String>) {
         return
     }
 
-    val loaded = RunConfiguration.load(flags["config"] ?: "config.json")
+    val resume = flags["resume"]
+    val loaded = flags["config"]?.let { RunConfiguration.load(it) }
+        ?: resume?.let { blocks.savedJob(java.io.File(it)) ?: error("--resume: no saved job in $it (give --config)") }
+        ?: RunConfiguration.load("config.json")
     val config = flags["engine"]?.let { loaded.copy(engine = it).also { c -> c.validate() } } ?: loaded
     // tuning.json on the classpath holds the measured defaults; the job's tuning section overrides them.
     val tuning = (flags["tuning"]?.let { Tuning.load(it) } ?: Tuning.defaults()).withOverrides(config.tuning)
@@ -56,14 +62,14 @@ fun main(args: Array<String>) {
     val data = loadRootData()
 
     val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
-    val out = flags["out"] ?: "src/main/resources/solves/$stamp - sa"
+    val out = resume ?: flags["out"] ?: "src/main/resources/solves/$stamp - sa"
     val plan = buildPlan(data, config, tuning)
     plan.write("$out/plan.json")
     java.io.File("$out/tuning.json").writeText(tuning.toJson())   // what this run used, for reproducing it
     println("Stage 1: ${plan.machines.size} machines, ${plan.nets.size} nets, ${plan.ports.size} ports -> $out/plan.json")
     val cfg = config.blocks
     if (cfg != null && plan.machines.size > cfg.maxMachines) {
-        val f = blocks.runFactory(data, config, tuning, plan, java.io.File(out))
+        val f = blocks.runFactory(data, config, tuning, plan, java.io.File(out), resume = resume != null)
         println(if (f == null) "factory: no result" else "factory: ${f.layout.w}x${f.layout.h} score ${"%.1f".format(f.score)}, " +
             if (f.success) "valid" else "${f.errors.size} validation errors")
     } else search.runSearch(data, config, tuning, plan, out)
