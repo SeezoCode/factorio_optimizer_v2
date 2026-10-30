@@ -58,6 +58,8 @@ data class Port(
     val output: Boolean = false,
     /** Exactly one belt (a link between blocks of a split factory, so its two ends pair up). */
     val single: Boolean = false,
+    /** Another input port whose item should arrive on the same belt, one item per lane (-1: none). */
+    val pairWith: Int = -1,
 )
 
 @Serializable

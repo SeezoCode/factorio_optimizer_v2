@@ -319,7 +319,10 @@ fun mergeBlocks(split: Split, a: Int, b: Int): Split {
         max(boxes[a].x2, boxes[b].x2) - min(boxes[a].x, boxes[b].x) + 1, max(boxes[a].y2, boxes[b].y2) - min(boxes[a].y, boxes[b].y) + 1)
     val g = BlockGeometry(split.geometry.boxes.indices.filter { it != gone }.map { if (it == keep) union else boxes[it] }, split.geometry.w, split.geometry.h,
         split.geometry.touches.indices.filter { it != gone }.map { if (it == keep) split.geometry.touches[a] + split.geometry.touches[b] else split.geometry.touches[it] })
-    return Split(blocks, links.mapIndexed { i, l -> l.copy(id = i) }, split.warnings, g, split.plan, split.partition, split.ports)
+    // Links are renumbered; lane pairs follow (a pair broken by the merge is dropped).
+    val newId = links.withIndex().associate { (i, l) -> l.id to i }
+    val renumbered = links.mapIndexed { i, l -> l.copy(id = i, pair = newId[l.pair] ?: -1) }
+    return Split(blocks, renumbered.map { l -> if (l.pair >= 0 && renumbered[l.pair].pair != l.id) l.copy(pair = -1) else l }, split.warnings, g, split.plan, split.partition, split.ports)
 }
 
 /** For each block, the aspect a floorplan of the real block areas with free shapes would give it. */
@@ -454,7 +457,7 @@ private fun stitchFloorplan(
         val arr = layoutOf(fp)
         val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr)
         if (r.stitched != null) { ok += r.stitched to fp.state; routedOnce = true; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 0) " (attempt ${attempt + 1})" else ""}"); break }
-        say("$what: corridors at ${fp.w} x ${fp.h} did not route (${r.why}); widening near ${r.trouble.size} trouble tiles")
+        say("$what: corridors at ${fp.w} x ${fp.h} did not route (${r.why}); widening near ${r.trouble.size} trouble tiles ${r.trouble.take(4)}")
         pads = grow(pads, arr, r.trouble, r.edges, k)
         fp = planner.pack(fp.state, pads)
     }
@@ -693,7 +696,60 @@ fun stitchRoute(
         Port(ports.size, l.item, listOf(ConfigSource(l.item, x = tile.x, y = tile.y, dir = dir.name)), fluid = l.fluid, output = output, single = true).also { ports += it }
     fun edgePort(l: Link, output: Boolean) = Port(ports.size, l.item, edgeSpecs(l.item, output), fluid = l.fluid, output = output, single = true).also { ports += it; edgePorts += it.id }
     fun terminal(role: Role, l: Link, rate: Double, p: Port) = Terminal(terminals.size, role, l.item, rate, 1, port = p.id, fluid = l.fluid).also { terminals += it }
-    corridorLinks.filter { !it.hub }.forEach { l ->
+    // Lane pairs the consuming block took on one belt: next to the supplier the two items' belts side-load onto a
+    // junction belt from either side (a belt fed from both sides and not from behind stays straight and takes one
+    // item per lane), and one belt runs on from there.
+    val paired = HashSet<Int>()
+    val junctionKeepFree = HashSet<Tile>()
+    val laneOf = HashMap<Int, Int>()
+    for (b in 0 until k) results[b].sources.forEach { s -> bps[b].linkOfPort[s.port]?.let { if (s.lane >= 0) laneOf[it] = s.lane } }
+    val endTiles = (starts.values + ends.values).map { it.first }.toMutableSet()
+    for (l in corridorLinks) {
+        if (l.pair <= l.id || !l.inner) continue
+        val m = split.links[l.pair]
+        if (ends[l.id]?.first == null || ends[l.id]?.first != ends[m.id]?.first || laneOf[l.id] == null || laneOf[m.id] == null) continue
+        val (left, right) = if (laneOf[l.id] == 0) l to m else m to l
+        val sl = starts.getValue(left.id).first; val sr = starts.getValue(right.id).first
+        val end = ends.getValue(l.id).first
+        val mid = Tile((sl.x + sr.x) / 2, (sl.y + sr.y) / 2)
+        // Junction tiles keep a tile's distance from every link end, so the belts into and out of it have room.
+        fun ok(t: Tile) = free(t) && t !in endTiles && t !in junctionKeepFree && Dir.entries.none { t + it in endTiles }
+        var best: Pair<Tile, Dir>? = null; var bestScore = Double.MAX_VALUE
+        for (dy in -12..12) for (dx in -12..12) for (h in Dir.entries) {
+            val j = Tile(mid.x + dx, mid.y + dy)
+            if (j.manhattan(sl) < 3 || j.manhattan(sr) < 3) continue
+            val behind = j + h.opposite
+            if (!ok(j) || !ok(j + h.ccw) || !ok(j + h.cw) || !ok(j + h) || behind in byTile || behind in endTiles) continue
+            // Room to turn: the corners around the junction are free too.
+            if (listOf(-1, 1).any { a -> listOf(-1, 1).any { b -> !free(Tile(j.x + a, j.y + b)) } }) continue
+            // Each item best comes from its own side, so neither belt crosses the shared one.
+            val lv = h.ccw; val sideL = (sl.x - j.x) * lv.dx + (sl.y - j.y) * lv.dy; val sideR = (sr.x - j.x) * lv.dx + (sr.y - j.y) * lv.dy
+            val score = j.manhattan(mid) + 0.2 * j.manhattan(end) + (if (sideL > 0) 0 else 6) + (if (sideR < 0) 0 else 6)
+            if (score < bestScore) { bestScore = score; best = j to h }
+        }
+        val (j, h) = best ?: return StitchAttempt(null, listOf(sl, sr), "no room for the junction of ${left.item} and ${right.item}")
+        // No net: the junction belongs to both items (the validator's shape check is for belts of one item each).
+        val e = PlacedEntity(GameConstants.beltTier(config.beltTier).belt, Kind.BELT, j.x, j.y, h)
+        entities += e; byTile[j] = e
+        junctionKeepFree += listOf(j, j + h.opposite)
+        endTiles += listOf(j + h.ccw, j + h.cw, j + h)
+        // The two items to the junction's sides, heading into it; the shared belt from the tile after it.
+        val pl = fixedPort(left, j + h.ccw, h.cw, true); val pr = fixedPort(right, j + h.cw, h.ccw, true)
+        for ((lk, pEnd) in listOf(left to pl, right to pr)) {
+            val p1 = starts.getValue(lk.id).let { (st, sd) -> fixedPort(lk, st, sd.opposite, false) }
+            val t1 = terminal(Role.SOURCE, lk, lk.rate, p1); val t2 = terminal(Role.OUTPUT, lk, lk.rate, pEnd)
+            linksOfNet[nets.size] = listOf(lk)
+            nets += Net(nets.size, lk.item, lk.rate, listOf(t1.id, t2.id), 1)
+        }
+        val rate = left.rate + right.rate
+        val ps = fixedPort(left, j + h, h.opposite, false)
+        val pe = ends.getValue(left.id).let { (en, ed) -> fixedPort(left, en, ed, true) }
+        val t1 = terminal(Role.SOURCE, left, rate, ps); val t2 = terminal(Role.OUTPUT, left, rate, pe)
+        linksOfNet[nets.size] = listOf(left, right)
+        nets += Net(nets.size, left.item, rate, listOf(t1.id, t2.id), 1)
+        paired += left.id; paired += right.id
+    }
+    corridorLinks.filter { !it.hub && it.id !in paired }.forEach { l ->
         val p1 = if (l.from < 0) edgePort(l, false) else starts.getValue(l.id).let { (s, sd) -> fixedPort(l, s, sd.opposite, false) }
         val p2 = if (l.to < 0) edgePort(l, true) else ends.getValue(l.id).let { (e, ed) -> fixedPort(l, e, ed, true) }
         val t1 = terminal(Role.SOURCE, l, l.rate, p1); val t2 = terminal(Role.OUTPUT, l, l.rate, p2)
@@ -718,7 +774,7 @@ fun stitchRoute(
     // Tiles a block belt points into from inside (chain ends at the block edge) must not get a corridor belt, nor
     // tiles a block's inserter reaches out to.
     val startTiles = starts.values.map { it.first }.toSet()
-    val pointedAt = entities.filter { it.kind.beltFamily }.mapNotNull { it.outputTile }.filter { t -> t !in blockTiles && t !in startTiles }
+    val pointedAt = entities.filter { it.kind.beltFamily }.mapNotNull { it.outputTile }.filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
     val reached = entities.filter { it.kind == Kind.INSERTER }.flatMap { listOf(it.pickupTile, it.dropTile) }.filter { it !in blockTiles }
     val stitchConfig = config.copy(blocks = null, laneSharing = false)
     // Everything the blocks put outside their boxes (ring ports) is in the way too.
@@ -730,7 +786,7 @@ fun stitchRoute(
             .flatMap { t -> Dir.entries.map { t + it } }.filter { it !in blockTiles && it !in linkTiles }
     }
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
-        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes, noTunnel = noTunnel))
+        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree, noTunnel = noTunnel))
     if (!routed.success) {
         // Trouble: conflict tiles, and the ports of every link that did not route.
         val trouble = routed.conflicts + routed.failedNets.flatMap { n ->

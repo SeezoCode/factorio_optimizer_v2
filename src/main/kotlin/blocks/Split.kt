@@ -28,6 +28,8 @@ const val HUB = -2
 data class Link(
     val id: Int, val item: String, val rate: Double, val from: Int, val to: Int, val fluid: Boolean,
     val routed: Boolean = false, val fromSide: String? = null, val toSide: String? = null,
+    /** The link sharing this one's belt, one item per lane (-1: none). */
+    val pair: Int = -1,
 ) {
     /** Between two blocks: one belt, routed through the corridors. */
     val inner: Boolean get() = from >= 0 && to >= 0
@@ -325,7 +327,26 @@ fun linksFor(
             fromSide = if (l.from >= 0) sideFor(l.from, l.to) else null,
             toSide = if (l.to >= 0) sideFor(l.to, l.from) else null)
     }
-    return out
+    return if (cfg.lanePairs) pairLanes(out, cfg.linkBeltShare * beltThroughput / 2) else out
+}
+
+/**
+ * Pairs of links between the same two blocks whose items each fit a lane ([laneCap]) share one belt, one item per
+ * lane: the consuming block takes both on one input belt, and next to the supplying block the two items' belts
+ * side-load onto it from either side. Only items the consumer takes from this one link and does not pass on.
+ */
+private fun pairLanes(links: List<Link>, laneCap: Double): List<Link> {
+    fun single(l: Link) = links.count { it.to == l.to && it.item == l.item } == 1 && links.none { it.from == l.to && it.item == l.item }
+    val pairs = HashMap<Int, Int>()
+    links.filter { it.inner && !it.fluid && it.rate <= laneCap && single(it) }.groupBy { it.from to it.to }.values.forEach { group ->
+        group.sortedBy { it.rate }.chunked(2).filter { it.size == 2 }.forEach { (a, b) -> pairs[a.id] = b.id; pairs[b.id] = a.id }
+    }
+    return links.map { l ->
+        val p = pairs[l.id] ?: return@map l
+        // Both arrive on one port: the side of the lower id.
+        val first = minOf(l.id, p)
+        l.copy(pair = p, toSide = links[first].toSide)
+    }
 }
 
 /** One block as a plan of its own: local machine ids, a port per link, and which link each port serves. */
@@ -343,6 +364,7 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     }
     val ports = ArrayList<Port>()
     val linkOfPort = HashMap<Int, Int>()
+    val portOfLink = HashMap<Int, Int>()
     links.filter { it.from == b || it.to == b }.forEach { l ->
         val out = l.from == b
         val side = l.side(b) ?: error("link ${l.id} has no side on block $b")
@@ -350,7 +372,13 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
         val port = Port(ports.size, l.item, listOf(ConfigSource(l.item, edge = edge)), fluid = l.fluid, output = out, single = l.throughCorridor)
         ports += port
         linkOfPort[port.id] = l.id
+        portOfLink[l.id] = port.id
         terminals += Terminal(terminals.size, if (out) Role.OUTPUT else Role.SOURCE, l.item, l.rate, 1, port = port.id, fluid = l.fluid)
+    }
+    // Input ports of a lane pair know each other.
+    ports.replaceAll { p ->
+        val l = links[linkOfPort.getValue(p.id)]
+        if (!p.output && l.pair >= 0) portOfLink[l.pair]?.let { p.copy(pairWith = it) } ?: p else p
     }
     val tier = data.GameConstants.beltTier(full.beltTier)
     val nets = ArrayList<Net>()

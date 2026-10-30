@@ -363,7 +363,7 @@ class PathFinder(internal val p: RouteProblem) {
                     srcPort = source?.base?.port ?: -1, outPort = output?.base?.port ?: -1)
             }
         }
-        if (config.laneSharing) pairChains()
+        if (config.laneSharing || plan.ports.any { it.pairWith >= 0 }) pairChains()
         routed = arrayOfNulls(nets.size)
         netOrder = arrayOfNulls(nets.size)
         termNet = IntArray(vts.size) { vts[it].net }
@@ -1497,7 +1497,9 @@ class PathFinder(internal val p: RouteProblem) {
      * Two items per belt: merges pairs of single chains whose consumer machines mostly coincide and whose flow
      * fits one lane each into one chain carrying one item per lane (slot 0 left, slot 1 right). A port-fed item
      * takes slot 0; two port-fed items need an edge tile both ports allow. Chains with fixed-tile ports, output
-     * ports or single-belt ports (links between the blocks of a factory) keep a belt of their own.
+     * ports or single-belt ports (links between the blocks of a factory) keep a belt of their own, except input ports
+     * the plan pairs ([plan.Port.pairWith]: two links of a factory sharing a belt), which are merged whatever their
+     * consumers, even with lane sharing off, when each is one chain that fits a lane.
      */
     private fun pairChains() {
         fun flow(n: RNet) = n.sourceRate + n.terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate }
@@ -1525,6 +1527,13 @@ class PathFinder(internal val p: RouteProblem) {
         }
         found.sortByDescending { it.score }
         val partner = HashMap<Int, RNet>()
+        // Pairs the plan asks for come first.
+        nets.filter { n -> n.srcPort >= 0 && plan.ports[n.srcPort].pairWith >= 0 }.forEach { n ->
+            val m = nets.firstOrNull { it.srcPort == plan.ports[n.srcPort].pairWith } ?: return@forEach
+            val ok = listOf(n, m).all { chainsOf[it.planId] == 1 && it.outTiles.isEmpty() && it.item2 == null && flow(it) <= laneCap }
+            if (ok && n.idx !in partner && m.idx !in partner) { partner[n.idx] = m; partner[m.idx] = n }
+        }
+        if (!config.laneSharing) found.clear()
         found.forEach { c -> if (c.a.idx !in partner && c.b.idx !in partner) { partner[c.a.idx] = c.b; partner[c.b.idx] = c.a } }
         if (partner.isEmpty()) return
         val old = nets.toList()

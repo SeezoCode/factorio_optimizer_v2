@@ -278,6 +278,8 @@ data class BlocksConfig(
      * own belt from the edge.
      */
     @SerialName("pass_through") val passThrough: Boolean = true,
+    /** Two items going between the same two blocks, each fitting a lane, share one belt (one item per lane). */
+    @SerialName("lane_pairs") val lanePairs: Boolean = true,
     /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */
     val rotate: Boolean = true,
     /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */

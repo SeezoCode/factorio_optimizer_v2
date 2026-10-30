@@ -49,6 +49,10 @@ class FactoryTest {
             assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
             assertTrue(File(out, "best_output_string.txt").exists() && File(out, "ports.json").exists())
             assertTrue(File(out, "block_1/best_output_string.txt").exists() && File(out, "block_2/best_output_string.txt").exists())
+            // Its two blocks trade circuits and gears, each under a lane: they share one belt.
+            val log = File(out, "factory.txt").readText()
+            assertTrue(Regex("block 1 -> block 2: .*electronic-circuit.*iron-gear-wheel").containsMatchIn(log), log)
+            assertTrue(File(out, "block_2/log.txt").readText().contains("shared belt") || File(out, "block_1/log.txt").readText().contains("shared belt"))
         }
     }
 

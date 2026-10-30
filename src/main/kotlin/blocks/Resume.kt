@@ -47,7 +47,7 @@ private data class SLayout(
 @Serializable
 private data class SLink(
     val id: Int, val item: String, val rate: Double, val from: Int, val to: Int, val fluid: Boolean,
-    val routed: Boolean, val fromSide: String? = null, val toSide: String? = null,
+    val routed: Boolean, val fromSide: String? = null, val toSide: String? = null, val pair: Int = -1,
 )
 
 @Serializable
@@ -69,7 +69,7 @@ fun saveSplit(out: File, config: RunConfiguration, split: Split) {
     val g = split.geometry
     val p = split.partition
     val s = SSplit(
-        split.plan.machines.size, split.blocks, split.links.map { SLink(it.id, it.item, it.rate, it.from, it.to, it.fluid, it.routed, it.fromSide, it.toSide) },
+        split.plan.machines.size, split.blocks, split.links.map { SLink(it.id, it.item, it.rate, it.from, it.to, it.fluid, it.routed, it.fromSide, it.toSide, it.pair) },
         split.warnings, g.boxes, g.w, g.h, g.touches.map { t -> t.map { it.name } },
         g.state?.plus?.toList(), g.state?.minus?.toList(), g.state?.shape?.toList(), split.plan, split.ports,
         p?.cost, p?.ports, p?.greedyCost, p?.greedyPorts,
@@ -105,7 +105,7 @@ fun loadSplit(out: File): Split? {
     val s = strictJson.decodeFromString(SSplit.serializer(), f.readText())
     val state = if (s.plus != null && s.minus != null && s.shape != null) FpState(s.plus.toIntArray(), s.minus.toIntArray(), s.shape.toIntArray()) else null
     val g = BlockGeometry(s.boxes, s.w, s.h, s.touches.map { t -> t.map(Dir::valueOf).toSet() }, state)
-    val links = s.links.map { Link(it.id, it.item, it.rate, it.from, it.to, it.fluid, it.routed, it.fromSide, it.toSide) }
+    val links = s.links.map { Link(it.id, it.item, it.rate, it.from, it.to, it.fluid, it.routed, it.fromSide, it.toSide, it.pair) }
     val part = if (s.partitionCost != null) Partition(s.blocks, s.partitionCost, s.partitionPorts ?: 0, s.greedyCost ?: 0.0, s.greedyPorts ?: 0) else null
     return Split(s.blocks, links, s.warnings, g, s.plan, part, s.ports)
 }
