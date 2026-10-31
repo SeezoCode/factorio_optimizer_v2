@@ -62,9 +62,9 @@ class LiveView(private val title: String) : FactoryView {
         restoreTerminal()
         runCatching { Runtime.getRuntime().removeShutdownHook(restore) }
         engine?.status()?.let { s ->
-            println("blocks done after ${clock(s.elapsed)}: " + s.blocks.joinToString(", ") { "${it.block}: ${it.w}x${it.h}" })
+            println("blocks after ${clock(s.elapsed)}: " + s.blocks.joinToString(", ") { "${it.block}: ${it.w}x${it.h}" })
+            if (s.factoryW > 0) println("factory: ${s.factoryW}x${s.factoryH} (${s.factoryW * s.factoryH} tiles); details in factory.txt")
         }
-        println("final factory: stitching and compacting (progress in factory.txt)")
     }
 
     private fun restoreTerminal() {
@@ -154,7 +154,8 @@ class LiveView(private val title: String) : FactoryView {
         if (s.blocks.size > top + listRows) line("  ... ${s.blocks.size - top - listRows} more (arrows to scroll)") else line("")
         line("* sets the factory's size", "\u001b[2m")
         s.events.takeLast(5).forEach { line(it, "\u001b[2m") }
-        line("q stop  Q stop now  s stitch  +/- limit 5 min  u no limit  p pause  arrows select  f focus  x skip  l/L lanes", "\u001b[1m")
+        line(if (e.finalStage) "building the final factory (progress in factory.txt)   q stop now, keeping the best factory so far"
+            else "q stop  Q stop now  s stitch  +/- limit 5 min  u no limit  p pause  arrows select  f focus  x skip  l/L lanes", "\u001b[1m")
         sb.append("\u001b[J")
         print(sb)
         System.out.flush()

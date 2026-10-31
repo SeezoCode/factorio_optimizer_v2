@@ -139,7 +139,8 @@ fun runFactory(
     var best: Factory? = null
     var bestState: FpState? = null
     fun area(f: Factory) = f.layout.w * f.layout.h
-    fun consider(r: Pair<Factory, FpState>?, what: String): Boolean {
+    var engineRef: BlockEngine? = null
+    fun considerLocked(r: Pair<Factory, FpState>?, what: String): Boolean {
         val f = r?.first
         if (f == null || !f.success) { say("$what: no valid factory"); return false }
         val b = best
@@ -147,8 +148,11 @@ fun runFactory(
         best = f; bestState = r.second
         writeFactory(f, out, config)
         say("$what: ${f.layout.w} x ${f.layout.h} (${area(f)} tiles), saved")
+        engineRef?.factorySaved(f.layout.w, f.layout.h)
         return true
     }
+    // Previews (stitched alongside the block search) and the final factory may both offer a factory.
+    fun consider(r: Pair<Factory, FpState>?, what: String): Boolean = synchronized(sayLock) { considerLocked(r, what) }
     fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String, squeezeCap: Double? = null, tries: Int? = null) =
         runCatching {
             // Compaction gets blocks.compact_s, or else the time left for stitching (at least half a minute).
@@ -170,7 +174,8 @@ fun runFactory(
     }
     // Time kept for the final factory: its compaction and stitching.
     val finalReserve = (cfg.compactS ?: config.search.timeBudgetS * (1 - cfg.blockTimeShare)) + minOf(60.0, 0.05 * config.search.timeBudgetS)
-    val blocksUntil = if (untilStopped) Long.MAX_VALUE else deadline - ((finalReserve + config.search.timeBudgetS * later) * 1000).toLong()
+    // Blocks get the budget's block_time_share (less repack and merge time); the final factory runs after it.
+    val blocksUntil = if (untilStopped) Long.MAX_VALUE else t0 + (config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) * 1000).toLong()
     var previewState: FpState? = split.geometry.state
     val engine = BlockEngine(
         bps = bps,
@@ -194,9 +199,12 @@ fun runFactory(
         corridor = cfg.corridor,
     )
     engine.onBetter = { b, r -> saveBlock(out, b, listOf(r) + loaded[b].drop(1)) }
+    engineRef = engine
     view?.attach(engine)
-    try { engine.run() } finally { view?.detach() }
+    try {
+    engine.run()
     if (engine.stopNow) { say("stopped; the best factory so far is saved"); return best }
+    engine.finalPhase("final factory: stitching and compacting")
     val variants = ArrayList<MutableList<TrialResult>>()
     for (b in split.blocks.indices) {
         val r = engine.best(b) ?: run { say("block ${b + 1}: no layout found; giving up"); return null }
@@ -338,6 +346,7 @@ fun runFactory(
     }
     say("done: ${best?.let { "${it.layout.w} x ${it.layout.h} (${area(it)} tiles)" } ?: "no valid factory"}")
     return best
+    } finally { view?.detach() }
 }
 
 /** The split, its links and the preliminary floorplan, in a few lines of the log. */

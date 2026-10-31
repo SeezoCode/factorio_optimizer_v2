@@ -162,6 +162,16 @@ class BlockEngine(
     @Volatile private var phase = "first layouts"
     private val events = ArrayDeque<String>()
     private val lock = Any()
+    private val statusFile = File(out, "status.json")
+    private val controlFile = File(out, "control")
+
+    /** Commands from the control file, one per line; the file is removed once read. */
+    private fun pollControl() {
+        if (!controlFile.exists()) return
+        val lines = runCatching { controlFile.readLines() }.getOrDefault(emptyList())
+        controlFile.delete()
+        lines.forEach { l -> Command.parse(l)?.let(::apply) ?: if (l.isNotBlank()) event("control: unknown command '${l.trim()}'") else Unit }
+    }
 
     fun best(b: Int): TrialResult? = searches[b]?.best ?: initial[b]
 
@@ -172,8 +182,11 @@ class BlockEngine(
 
     fun apply(c: Command) {
         when (c) {
-            Command.Stop -> { if (stopping) stopAll(now = true) else { stopping = true; event("stop: finishing the current turns, then the final factory") } }
-            Command.StopNow -> stopAll(now = true)
+            Command.Stop, Command.StopNow -> if (finalStage) {
+                event("stopped during the final factory; the best factory so far is saved")
+                kotlin.system.exitProcess(0)   // the live view's shutdown hook restores the terminal
+            } else if (c == Command.StopNow || stopping) stopAll(now = true)
+            else { stopping = true; event("stop: finishing the current turns, then the final factory") }
             Command.Stitch -> { stitchRequested = true; event("stitch requested") }
             Command.Pause -> { paused = true; event("paused: no new turns") }
             Command.Resume -> { paused = false; event("resumed") }
@@ -244,8 +257,7 @@ class BlockEngine(
         val stitcher = Executors.newSingleThreadExecutor()
         val active = HashMap<Int, Future<*>>()
         var stitchJob: Future<*>? = null
-        val statusFile = File(out, "status.json")
-        val controlFile = File(out, "control")
+
         var lastStatus = 0L
         try {
             while (true) {
@@ -292,12 +304,7 @@ class BlockEngine(
                 val now = System.currentTimeMillis()
                 if (now - lastStatus > 1000) {
                     lastStatus = now
-                    // Commands from the control file, one per line; the file is removed once read.
-                    if (controlFile.exists()) {
-                        val lines = runCatching { controlFile.readLines() }.getOrDefault(emptyList())
-                        controlFile.delete()
-                        lines.forEach { l -> Command.parse(l)?.let(::apply) ?: if (l.isNotBlank()) event("control: unknown command '${l.trim()}'") else Unit }
-                    }
+                    pollControl()
                     writeStatus(statusFile)
                 }
                 Thread.sleep(100)
@@ -336,6 +343,19 @@ class BlockEngine(
             event(if (before == null) "block ${b + 1}: first layout ${now.w} x ${now.h}" else "block ${b + 1}: ${now.w} x ${now.h} (was ${before.w} x ${before.h})")
         }
     }
+
+    /** The block search is over and the final factory is being built: the live view shows it, a stop exits at once. */
+    fun finalPhase(what: String) {
+        phase = what; finalStage = true; event(what)
+        // The control file and status.json keep working while the final factory is built.
+        Thread {
+            while (true) { runCatching { pollControl(); writeStatus(statusFile) }; Thread.sleep(1000) }
+        }.apply { isDaemon = true; start() }
+    }
+    @Volatile var finalStage = false; private set
+
+    /** A factory was saved (a preview or the final one, or while compacting). */
+    fun factorySaved(w: Int, h: Int) { factory = w to h; lastStitch = System.currentTimeMillis() }
 
     /** Called with every new best layout of a block (saved for --resume). */
     var onBetter: (Int, TrialResult) -> Unit = { _, _ -> }

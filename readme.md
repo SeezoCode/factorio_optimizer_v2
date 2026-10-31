@@ -218,7 +218,8 @@ q stop  Q stop now  s stitch  +/- limit 5 min  u no limit  p pause  arrows selec
 got smaller (or better at its size), `*` marks blocks that set the factory's width or height (shrinking any other
 cannot shrink the factory, so these get turns first). A block is parked after `park_after` turns without
 improving and runs again when nothing else is left. Keys: `q` stops after the current turns and builds the final
-factory (`q` twice or `Q`: stop at once, keeping the best factory so far), `s` stitches a preview now, `+`/`-` move
+factory, which the view keeps showing (`q` twice, `Q`, or `q` while the final factory is built: stop at once,
+keeping the best factory so far), `s` stitches a preview now, `+`/`-` move
 the limit by five minutes, `u` removes it, `p` pauses, the arrows (or `j`/`k`) select a block, `f` gives it every
 thread, `x` skips it, `l`/`L` add or remove a lane. Everything also goes to `factory.txt` and each block's
 `log.txt`.
@@ -371,7 +372,8 @@ belts and pipes, in one blueprint:
    a fluid. Each block is generated on its own, at its planned aspect. Blocks are searched in turns on `lanes`
    lanes side by side (default half of `search.threads`, sharing the threads): one layout each first, then a box
    size at a time from each block's best layout, blocks that set the factory's size first, until the time for
-   blocks is up (the budget minus what the final factory, repack and merge need) or the run is stopped. A
+   blocks is up (`block_time_share` of the budget, less repack and merge time; the final factory runs after it)
+   or the run is stopped. A
    preview factory is stitched as soon as every block has a layout and again whenever their total area has
    dropped by `restitch_share` (see [watching and steering a factory run](#watching-and-steering-a-factory-run)).
 4. **Floorplan and stitch.** The finished blocks are arranged again with their real sizes and port positions, each
