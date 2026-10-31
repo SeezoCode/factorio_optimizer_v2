@@ -160,7 +160,8 @@ Run a job (the job file is a classpath resource name or a path):
 ```
 
 `./optimize` (`optimize.bat` on Windows) builds whatever changed and runs the program in your terminal, which a
-factory of blocks needs for its [live view](#watching-and-steering-a-factory-run). `./gradlew run
+factory of blocks needs for its [live view](#watching-and-steering-a-factory-run). `--ram=12g` sets the Java heap
+(default 6g; on Windows `set OPTIMIZE_RAM=12g` first), e.g. `./optimize --ram=12g --config=job.json`. `./gradlew run
 --args="--config=..."` works too, but Gradle runs the program without a terminal, so you get plain output (the
 control file still works).
 

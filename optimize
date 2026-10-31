@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
 # Builds the optimizer if anything changed and runs it right here in your terminal, so a factory of blocks gets its
 # live view and keys (`./gradlew run` runs it inside Gradle, without a terminal, so it falls back to plain output).
-# Usage: ./optimize --config=<job.json> [--out=<dir>] [--until-stopped] [--resume=<dir>] [--plain] ...
-# Memory: JAVA_OPTS (default -Xmx6g).
+# Usage: ./optimize [--ram=<size>] --config=<job.json> [--out=<dir>] [--until-stopped] [--resume=<dir>] [--plain] ...
+#   --ram=<size>   Java heap, e.g. --ram=12g or --ram 12g (default 6g; same as -Pram for ./gradlew run).
+#                  Other JVM options go in JAVA_OPTS.
 set -e
 root="$(cd "$(dirname "$0")" && pwd)"
+ram="6g"
+args=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --ram=*) ram="${1#--ram=}" ;;
+        --ram) shift; ram="${1:?--ram needs a size, e.g. --ram 12g}" ;;
+        *) args+=("$1") ;;
+    esac
+    shift
+done
+case "$ram" in
+    *[0-9][gGmMkK]|*[0-9]) ;;
+    *) echo "--ram: '$ram' is not a size (e.g. 12g, 8192m)" >&2; exit 2 ;;
+esac
 (cd "$root" && ./gradlew -q installDist)
-export JAVA_OPTS="${JAVA_OPTS:--Xmx6g}"
-exec "$root/build/install/factorio_optimizer_v2/bin/factorio_optimizer_v2" "$@"
+export JAVA_OPTS="-Xmx$ram ${JAVA_OPTS:-}"
+exec "$root/build/install/factorio_optimizer_v2/bin/factorio_optimizer_v2" "${args[@]}"
