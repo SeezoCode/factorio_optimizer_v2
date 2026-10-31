@@ -520,46 +520,62 @@ fun assembleFactory(
     val input = floorplanInput(plan, split, variants, cfg, config, bps = bps)
     val tries = (triesOverride ?: cfg.floorplanTries).coerceAtLeast(1)
     val t0 = System.currentTimeMillis()
-    // 1. Every floorplan routed, tightened and squeezed for a share of a quarter of the time.
-    val stitchings = ArrayList<Stitching>()
-    for (t in 0 until tries) {
-        val label = if (tries > 1) "$what (floorplan ${t + 1}/$tries)" else what
-        val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 1009L * t)
-        val st = if (t == 0) start?.takeIf { it.plus.size == input.blocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(input.blocks.size)) } else null
-        val s = Stitching(config, tuning, plan, split, bps, input, params, say, label)
-        s.start(st)
-        if (!s.routed) continue
-        val n = s.squeeze(t0 + (deadline - t0) / 4 * (t + 1) / tries)
-        if (n > 0) say("$label: squeezed $n corridor lines out: ${s.fp.w} x ${s.fp.h}")
-        stitchings += s
-    }
+    // 1. Every floorplan routed, tightened and squeezed, side by side on the job's threads, for a quarter of the time.
+    val threads = config.search.threads.coerceAtLeast(1)
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(minOf(tries, threads))
+    val stitchings: List<Stitching> = try {
+        (0 until tries).map { t ->
+            pool.submit<Stitching?> {
+                val label = if (tries > 1) "$what (floorplan ${t + 1}/$tries)" else what
+                val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 1009L * t)
+                val st = if (t == 0) start?.takeIf { it.plus.size == input.blocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(input.blocks.size)) } else null
+                val s = Stitching(config, tuning, plan, split, bps, input, params, say, label)
+                s.start(st)
+                if (!s.routed) null
+                else {
+                    val n = s.squeeze(t0 + (deadline - t0) / 4)
+                    if (n > 0) say("$label: squeezed $n corridor lines out: ${s.fp.w} x ${s.fp.h}")
+                    s
+                }
+            }
+        }.mapNotNull { runCatching { it.get() }.getOrElse { e -> say("$what: a floorplan failed with $e"); null } }
+    } finally { pool.shutdown() }
     if (stitchings.isEmpty()) return null
-    // 2. Compaction: the smallest one, until the time is up: squeeze; when that stalls, floorplan again from the current
-    //    arrangement with a fresh seed and a lighter price on belt length (longer belts for a tighter packing).
-    val best = stitchings.minBy { it.area }
-    if (tries > 1) say("$what: compacting the smallest floorplan, ${best.fp.w} x ${best.fp.h}")
-    var lastSave = System.currentTimeMillis()
-    var savedArea = Int.MAX_VALUE
-    fun checkpoint(force: Boolean = false) {
-        if (!force && System.currentTimeMillis() - lastSave < 60_000) return
-        lastSave = System.currentTimeMillis()
-        val (s, st) = best.ok.minBy { it.first.w * it.first.h }
-        if (s.w * s.h >= savedArea) return
-        val f = finishFactory(data, config, plan, s)
-        if (f.success) { savedArea = s.w * s.h; onBetter(f to st) }
+    // 2. Compaction, until the time is up, of the smallest floorplans side by side (two when there are threads for
+    //    it): squeeze; when that stalls, floorplan again from the current arrangement with a fresh seed and a lighter
+    //    price on belt length (longer belts for a tighter packing). Every smaller valid factory is offered on the way.
+    val compacting = stitchings.sortedBy { it.area }.take(if (threads >= 2) 2 else 1)
+    if (tries > 1) say("$what: compacting the smallest floorplan${if (compacting.size > 1) "s" else ""}, " + compacting.joinToString(" and ") { "${it.fp.w} x ${it.fp.h}" })
+    val savedArea = java.util.concurrent.atomic.AtomicInteger(Int.MAX_VALUE)
+    fun compact(best: Stitching, index: Int) {
+        var lastSave = System.currentTimeMillis()
+        fun checkpoint() {
+            if (System.currentTimeMillis() - lastSave < 60_000) return
+            lastSave = System.currentTimeMillis()
+            val (s, st) = synchronized(best.ok) { best.ok.minBy { it.first.w * it.first.h } }
+            if (s.w * s.h >= savedArea.get()) return
+            val f = finishFactory(data, config, plan, s)
+            if (f.success && savedArea.getAndUpdate { a -> minOf(a, s.w * s.h) } > s.w * s.h) onBetter(f to st)
+        }
+        var wire = cfg.wireWeight
+        var seed = config.search.seed + 7919 + 104729L * index
+        var stalls = 0
+        while (System.currentTimeMillis() < deadline) {
+            val before = best.area
+            val n = best.squeeze(deadline) { checkpoint() }
+            if (n > 0) say("$what: squeezed $n corridor lines out: ${best.fp.w} x ${best.fp.h}")
+            if (System.currentTimeMillis() >= deadline) break
+            if (best.reshuffle(seed++, wire)) say("$what: floorplanned again (belt length at ${"%.2f".format(wire)}): ${best.fp.w} x ${best.fp.h}")
+            else wire = maxOf(cfg.wireWeight * 0.05, wire * 0.6)
+            if (best.area < before) stalls = 0 else if (++stalls >= 12) break
+            checkpoint()
+        }
     }
-    var wire = cfg.wireWeight
-    var seed = config.search.seed + 7919
-    var stalls = 0
-    while (System.currentTimeMillis() < deadline) {
-        val before = best.area
-        val n = best.squeeze(deadline) { checkpoint() }
-        if (n > 0) say("$what: squeezed $n corridor lines out: ${best.fp.w} x ${best.fp.h}")
-        if (System.currentTimeMillis() >= deadline) break
-        if (best.reshuffle(seed++, wire)) say("$what: floorplanned again (belt length at ${"%.2f".format(wire)}): ${best.fp.w} x ${best.fp.h}")
-        else wire = maxOf(cfg.wireWeight * 0.05, wire * 0.6)
-        if (best.area < before) stalls = 0 else if (++stalls >= 12) break
-        checkpoint()
+    if (compacting.size == 1) compact(compacting[0], 0)
+    else {
+        val cp = java.util.concurrent.Executors.newFixedThreadPool(compacting.size)
+        try { compacting.mapIndexed { i, s -> cp.submit { compact(s, i) } }.forEach { runCatching { it.get() }.onFailure { e -> say("$what: compaction failed with $e") } } }
+        finally { cp.shutdown() }
     }
     val all = stitchings.flatMap { it.ok }
     val sorted = all.sortedBy { it.first.w * it.first.h }

@@ -301,7 +301,8 @@ class Search(
      * at the smallest feasible size and the one below. False when there is nothing left to do.
      */
     fun step(threads: Int = config.search.threads): Boolean {
-        val k = config.search.seedsPerSize
+        // At least one seed per thread, so no thread waits while others work.
+        val k = maxOf(config.search.seedsPerSize, threads)
         val cap = config.box.maxSize
         if (phase == Phase.START) begin()
         if (!timeLeft()) return false
