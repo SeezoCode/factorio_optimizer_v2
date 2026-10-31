@@ -216,8 +216,9 @@ q stop  Q stop now  s stitch  +/- limit 5 min  u no limit  p pause  arrows selec
 
 `thr` is the number of threads on a block right now, `first` its first layout, `better ago` the time since it last
 got smaller (or better at its size), `*` marks blocks that set the factory's width or height (shrinking any other
-cannot shrink the factory, so these get turns first). A block is parked after `park_after` turns without
-improving and runs again when nothing else is left. Keys: `q` stops after the current turns and builds the final
+cannot shrink the factory). Search time is shared fairly: the row with the least time for its weight goes next,
+weight 2 for `*` rows (a block's shape variants count as the block), 1 for the others, a fifth of that for parked
+rows. A block is parked after `park_after` turns without improving. Keys: `q` stops after the current turns and builds the final
 factory, which the view keeps showing (`q` twice, `Q`, or `q` while the final factory is built: stop at once,
 keeping the best factory so far), `s` stitches a preview now, `+`/`-` move
 the limit by five minutes, `u` removes it, `p` pauses, the arrows (or `j`/`k`) select a row, `f` gives it every
@@ -374,7 +375,7 @@ belts and pipes, in one blueprint:
    that makes or uses it (and the factory edge, if it enters or leaves there), so any number of blocks can share
    a fluid. Each block is generated on its own, at its planned aspect. Blocks are searched in turns on `lanes`
    lanes side by side (default half of `search.threads`, sharing the threads): one layout each first, then a box
-   size at a time from each block's best layout, blocks that set the factory's size first, until the time for
+   size at a time from each block's best layout, blocks that set the factory's size getting twice the share, until the time for
    blocks is up (`block_time_share` of the budget, less repack and merge time; the final factory runs after it)
    or the run is stopped. A
    preview factory is stitched as soon as every block has a layout and again whenever their total area has
@@ -397,8 +398,10 @@ belts and pipes, in one blueprint:
    does, as long as the corridors still route; when that stalls, the blocks are floorplanned again from where they
    are with a fresh seed and a lighter price on belt length. Every smaller valid factory is saved on the way.
    With `shape_variants` (e.g. `[0.6, 1.7]`) each block is also searched at its aspect times those factors, as
-   rows of their own in the same rotation as the blocks (after every block has its first layout), and previews and
-   the final floorplan pick the shapes that pack best (`shape_variant_s` is no longer used).
+   rows of their own in the same rotation and at the same priority as their block (only first layouts go to the
+   blocks first, so the preview is not held up), and previews and the final floorplan pick the shapes that pack
+   best. `shape_variant_s` caps the search time a variant gets at that priority; after it, the variant is parked
+   (a fifth of the share; no cap when not set, so each shape of a block gets an equal share).
 6. With `repack`, a floorplan of the blocks' real areas with free shapes says which shape each block should have;
    blocks far from it are searched again at that aspect, and the floorplan then picks, per block, the layout that
    packs best. Kept if the factory gets smaller.

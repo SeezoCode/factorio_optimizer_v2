@@ -274,7 +274,7 @@ data class BlocksConfig(
      * set the factory's size first, blocks that stop improving parked.
      */
     val lanes: Int? = null,
-    /** A block is parked after this many turns without a smaller or better layout (it runs again when nothing else is left). */
+    /** A block is parked after this many turns without a smaller or better layout (it keeps a fifth of its share of the time). */
     @SerialName("park_after") val parkAfter: Int = 4,
     /** Stitch a new preview once the blocks' total area has dropped by this share since the last one (and at most every 2 minutes). */
     @SerialName("restitch_share") val restitchShare: Double = 0.03,
@@ -326,7 +326,7 @@ data class BlocksConfig(
      * all its shapes (and their turns): blocks whose shapes fit together leave fewer holes.
      */
     @SerialName("shape_variants") val shapeVariants: List<Double> = emptyList(),
-    /** Seconds per shape variant (default: half the block's own share). */
+    /** Search time a shape variant gets at the same share as its block; then it is parked (a fifth of the share). Null: no cap. */
     @SerialName("shape_variant_s") val shapeVariantS: Double? = null,
     /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */
     @SerialName("floorplan_tries") val floorplanTries: Int = 3,

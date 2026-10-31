@@ -14,8 +14,8 @@ import kotlin.math.max
 /*
  * Block search in turns. Every block gets one layout first and the factory is stitched from them (a preview, saved
  * like any result); then blocks take turns trying smaller boxes, each turn one box size from its best layout, on a
- * few lanes side by side that share the threads. Blocks that set the factory's width or height (on its critical
- * rows and columns) go first; a block that stops improving is parked and runs again only when nothing else is left.
+ * few lanes side by side that share the threads. Search time is shared fairly by weight: twice for blocks that set
+ * the factory's width or height (on its critical rows and columns) and their shape variants, a fifth for parked ones.
  * A new preview is stitched whenever the blocks' total area has dropped enough. It runs until the time limit or a
  * stop; the limit, pausing, focus on one block and skipping blocks can be changed while it runs (control file,
  * live view keys). status.json in the output folder always holds what the live view shows.
@@ -148,6 +148,8 @@ class BlockEngine(
     /** Seeds per turn wanted (search.seeds_per_size); a turn runs at least one per thread and at most two per thread. */
     private val seeds: Int,
     private val parkAfter: Int,
+    /** Search time a shape variant gets before it is parked like a block that stopped improving (null: no cap). */
+    private val variantCapS: Double?,
     private val restitchShare: Double,
     /** When the block search stops (epoch ms; Long.MAX_VALUE: until stopped). Changed by [Command.Limit]. */
     var limit: Long,
@@ -165,6 +167,10 @@ class BlockEngine(
     private val searches = arrayOfNulls<Search>(m)
     private val running = IntArray(m)            // threads per job right now
     private val spentMs = LongArray(m)
+    /** When the job's current turn started (0: not running). */
+    private val turnStart = LongArray(m)
+    /** Search time so far, the turn under way included. */
+    private fun spent(j: Int): Long = spentMs[j] + (turnStart[j].takeIf { it > 0 }?.let { System.currentTimeMillis() - it } ?: 0L)
     private val firstSize = arrayOfNulls<Pair<Int, Int>>(m)
     private val betterAt = LongArray(m) { -1 }
     private val skipped = BooleanArray(m)
@@ -255,9 +261,13 @@ class BlockEngine(
         focus == j -> "focus"
         jobBest(j) == null -> "first"
         searches[j]?.done == true -> "done"
-        (searches[j]?.stalls ?: 0) >= parkAfter -> "parked"
+        parked(j) -> "parked"
         else -> "refining"
     }
+
+    /** Stopped improving for park_after turns, or a shape variant past its shape_variant_s. */
+    private fun parked(j: Int): Boolean = (searches[j]?.stalls ?: 0) >= parkAfter ||
+        (jobs[j].variant > 0 && variantCapS != null && spent(j) >= variantCapS * 1000)
 
     fun status(): RunStatus = RunStatus(
         elapsed = (System.currentTimeMillis() - t0) / 1000.0,
@@ -271,15 +281,17 @@ class BlockEngine(
             val r = jobBest(j)
             BlockStatus(job.block + 1, bps[job.block].globalIds.size, weights[job.block], running[j], r?.w ?: 0, r?.h ?: 0,
                 firstSize[j]?.first ?: 0, firstSize[j]?.second ?: 0, searches[j]?.steps ?: 0, searches[j]?.stalls ?: 0,
-                if (betterAt[j] < 0) -1.0 else (System.currentTimeMillis() - betterAt[j]) / 1000.0, spentMs[j] / 1000.0,
-                job.variant == 0 && job.block in critical, stateOf(j), job.variant, job.factor)
+                if (betterAt[j] < 0) -1.0 else (System.currentTimeMillis() - betterAt[j]) / 1000.0, spent(j) / 1000.0,
+                job.block in critical, stateOf(j), job.variant, job.factor)
         },
         events = synchronized(events) { events.toList() },
     )
 
     /**
-     * Which job gets the next turn, or null: blocks without a layout in order, then shape variants without one, then
-     * blocks that set the factory's size, then the rest; unparked before parked, fewest turns first.
+     * Which job gets the next turn, or null: blocks without a layout in order (the preview needs one of each), then
+     * shape variants without one, then fair shares: the job with the least search time for its weight goes next,
+     * weight 2 for what sets the factory's size (a block and its shape variants alike), 1 for the rest, a fifth of
+     * that once parked. Nothing starves; what matters more just gets more.
      */
     private fun next(): Int? {
         val f = focus
@@ -287,10 +299,8 @@ class BlockEngine(
         val free = (0 until m).filter { running[it] == 0 && !skipped[it] && searches[it]?.done != true }
         free.firstOrNull { jobs[it].variant == 0 && jobBest(it) == null }?.let { return it }
         free.firstOrNull { jobBest(it) == null }?.let { return it }
-        return free.minWithOrNull(compareBy<Int>(
-            { if (jobs[it].variant == 0 && jobs[it].block in critical) 0 else 1 },
-            { if ((searches[it]?.stalls ?: 0) >= parkAfter) 1 else 0 },
-            { searches[it]?.steps ?: 0 }))
+        fun weight(j: Int) = (if (jobs[j].block in critical) 2.0 else 1.0) * (if (parked(j)) 0.2 else 1.0)
+        return free.minWithOrNull(compareBy<Int>({ spent(it) / weight(it) }, { searches[it]?.steps ?: 0 }))
     }
 
     /** Time is up but some blocks still have no layout: they run whatever focus, pause or skip say (the factory needs them). */
@@ -385,8 +395,11 @@ class BlockEngine(
         s.extendTo(if (s.best == null && job.variant == 0) max(limit, System.currentTimeMillis() + 120_000) else limit)
         val before = s.best
         val start = System.currentTimeMillis()
-        s.step(t, seeds.coerceIn(t, 2 * t))
-        spentMs[j] += System.currentTimeMillis() - start
+        turnStart[j] = start
+        try { s.step(t, seeds.coerceIn(t, 2 * t)) } finally {
+            spentMs[j] += System.currentTimeMillis() - start
+            turnStart[j] = 0
+        }
         val now = s.best
         if (now != null && now !== before) {
             betterAt[j] = System.currentTimeMillis()

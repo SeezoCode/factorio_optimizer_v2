@@ -195,7 +195,7 @@ fun runFactory(
         threads = config.search.threads.coerceAtLeast(1),
         lanes0 = cfg.lanes ?: maxOf(1, config.search.threads / 2),
         seeds = config.search.seedsPerSize,
-        parkAfter = cfg.parkAfter, restitchShare = cfg.restitchShare,
+        parkAfter = cfg.parkAfter, variantCapS = cfg.shapeVariantS, restitchShare = cfg.restitchShare,
         limit = blocksUntil, out = out, say = ::say,
         blockPrinter = { job, line ->
             if (view?.live != true) synchronized(sayLock) { println("  b${job.block + 1}${if (job.variant > 0) "x" + "%.2f".format(job.factor) else ""} $line") }
