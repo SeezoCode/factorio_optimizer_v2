@@ -42,6 +42,7 @@ as separate chains between scattered machines.
 | [Six science 1/s each from ore, as a factory of 10 blocks](docs/status/six_science_9_blocks) (at the bottom of the page) | 618 | 317 × 137 | 41 min | 30 min | [details](docs/status/six_science_9_blocks.json) |
 | [Six science 1/s each from plates, 13 blocks of at most 15 machines](docs/status/six_science_plates_13_blocks) | 177 | 92 × 107 | 30 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_plates_13_blocks.json) |
 | [Six science 1/s each from ore, 44 blocks of at most 15 machines](docs/status/six_science_ore_44_blocks) (at the bottom of the page) | 618 | 165 × 182 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_44_blocks.json) |
+| [Six science 1/s each from ore, 28 blocks sized by weight](docs/status/six_science_ore_28_blocks) (at the bottom of the page) | 618 | 163 × 176 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_28_blocks.json) |
 | [Red + green science 2/s each with modules and beacons](docs/examples/beacons_red_green) ([below](#modules-and-beacons)) | 10–42 | 20 × 20 to 39 × 39 | 4–10 min | | [details](docs/examples/beacons_red_green/beacons_4.json) |
 
 Each render next to the same blueprint built in game. Red + green was generated with belt sharing on
@@ -488,8 +489,9 @@ a roomy size and records every planner or trial exception, invalid layout or fai
 layouts in seconds. Chemical science at 0.5/s from ore and crude oil (43 machines, oil processing included)
 validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 1/s from ore (110 machines) at
 64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built as a factory of 10 blocks
-at 317 × 137 in 30 minutes, and as a factory of 44 blocks of at most 15 machines at 165 × 182 (31 % fewer
-tiles) with the 2D floorplanner, rotation, lane pairs and compaction. Six science from plates went from 182 × 79
+at 317 × 137 in 30 minutes, as a factory of 44 blocks of at most 15 machines at 165 × 182 (31 % fewer
+tiles) with the 2D floorplanner, rotation, lane pairs and compaction, and as 28 blocks sized by weight at
+163 × 176 (34 % fewer). Six science from plates went from 182 × 79
 (3 blocks) to 92 × 107 (13 blocks, 32 % fewer tiles). See [More layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
@@ -587,6 +589,16 @@ the 10-block factory above. Block rotation, lane pairs and the multi-block fluid
 chains were tried and left off (31,152 tiles with them).
 
 ![Six science from ore, 44 blocks](docs/status/six_science_ore_44_blocks/best.png)
+
+The same job with blocks sized by weight (`max_machines` 15 as a target, see [the split](#big-jobs-a-factory-of-blocks)):
+smelting blocks grow to about 29 furnaces while mixed blocks keep about 15 machines, so 28 blocks instead of 44 and
+133 ports between blocks instead of 159. 163 × 176 = 28,688 tiles, against 30,438 for the 44-block split run with
+the same code and budget (5.7 % smaller). The blocks themselves take 6 % more room (19,402 tiles against 18,258);
+the corridors 24 % less (9,286 against 12,180). Merging neighbouring blocks on top of it (`merge`, 70 minutes)
+found nothing smaller: merged blocks are about 25 % smaller than the box around their two halves, but each merge
+changes the factory by less than floorplanning varies from one try to the next.
+
+![Six science from ore, 28 blocks](docs/status/six_science_ore_28_blocks/best.png)
 
 Six science from plates with blocks of at most 15 machines: 13 blocks, 92 × 107 = 9,844 tiles after 10 minutes of
 compaction, against 14,378 for the 3-block factory at the top of the page.

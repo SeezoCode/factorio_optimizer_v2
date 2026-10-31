@@ -1,0 +1,178 @@
+[    8.7s] 618 machines in 28 blocks: block 1: 29, block 2: 29, block 3: 29, block 4: 29, block 5: 29, block 6: 29, block 7: 29, block 8: 29, block 9: 29, block 10: 29, block 11: 29, block 12: 29, block 13: 29, block 14: 12, block 15: 23, block 16: 13, block 17: 22, block 18: 15, block 19: 17, block 20: 17, block 21: 15, block 22: 17, block 23: 16, block 24: 15, block 25: 15, block 26: 18, block 27: 10, block 28: 16; 137 ports between blocks and edges (greedy split: 111; 133 with machine rates rebalanced), cost 273.0 (greedy 275.8)
+[    8.7s]   block 1: 15x iron-plate, 14x copper-plate; planned at (100,144) 39 x 26
+[    8.7s]   block 2: 19x iron-plate, 10x copper-plate; planned at (57,144) 39 x 26
+[    8.7s]   block 3: 18x iron-plate, 11x copper-plate; planned at (29,52) 32 x 32
+[    8.7s]   block 4: 29x copper-plate; planned at (2,101) 23 x 45
+[    8.7s]   block 5: 15x copper-plate, 14x iron-plate; planned at (128,62) 39 x 26
+[    8.7s]   block 6: 23x copper-plate, 6x steel-plate; planned at (29,88) 20 x 52
+[    8.7s]   block 7: 12x copper-plate, 10x iron-plate, 7x steel-plate; planned at (53,108) 32 x 32
+[    8.7s]   block 8: 14x copper-plate, 8x iron-plate, 7x steel-plate; planned at (2,150) 51 x 20
+[    8.7s]   block 9: 19x iron-plate, 10x steel-plate; planned at (2,52) 23 x 45
+[    8.7s]   block 10: 18x iron-plate, 11x steel-plate; planned at (51,28) 51 x 20
+[    8.7s]   block 11: 17x iron-plate, 12x steel-plate; planned at (128,2) 39 x 26
+[    8.7s]   block 12: 15x iron-plate, 14x steel-plate; planned at (2,25) 45 x 23
+[    8.7s]   block 13: 15x iron-plate, 14x steel-plate; planned at (128,32) 39 x 26
+[    8.7s]   block 14: 6x advanced-oil-processing, 5x light-oil-cracking, 1x heavy-oil-cracking; planned at (143,135) 21 x 30
+[    8.7s]   block 15: 11x stone-brick, 4x grenade, 4x military-science-pack, 2x piercing-rounds-magazine, 1x firearm-magazine, 1x stone-wall; planned at (71,2) 34 x 22
+[    8.7s]   block 16: 5x advanced-oil-processing, 4x light-oil-cracking, 2x heavy-oil-cracking, 2x sulfur; planned at (128,115) 39 x 16
+[    8.7s]   block 17: 10x iron-plate, 9x plastic-bar, 3x steel-plate; planned at (128,92) 38 x 19
+[    8.7s]   block 18: 9x copper-cable, 6x electronic-circuit; planned at (109,2) 15 x 29
+[    8.7s]   block 19: 11x engine-unit, 3x steel-plate, 2x pipe, 1x iron-gear-wheel; planned at (53,88) 32 x 16
+[    8.7s]   block 20: 5x logistic-science-pack, 4x automation-science-pack, 3x copper-cable, 2x electronic-circuit, 1x inserter, 1x iron-gear-wheel, 1x transport-belt; planned at (2,2) 32 x 16
+[    8.7s]   block 21: 8x advanced-circuit, 5x copper-cable, 2x electronic-circuit; planned at (109,71) 15 x 29
+[    8.7s]   block 22: 12x low-density-structure, 5x steel-plate; planned at (108,35) 16 x 32
+[    8.7s]   block 23: 6x flying-robot-frame, 6x steel-plate, 3x electric-engine-unit, 1x lubricant; planned at (89,106) 14 x 34
+[    8.7s]   block 24: 11x advanced-circuit, 3x copper-cable, 1x electronic-circuit; planned at (89,52) 15 x 29
+[    8.7s]   block 25: 11x advanced-circuit, 3x copper-cable, 1x electronic-circuit; planned at (65,52) 17 x 26
+[    8.7s]   block 26: 6x production-science-pack, 4x productivity-module, 3x stone-brick, 2x electric-furnace, 2x rail, 1x iron-stick; planned at (38,2) 29 x 19
+[    8.7s]   block 27: 10x chemical-science-pack; planned at (89,85) 16 x 17
+[    8.7s]   block 28: 6x processing-unit, 6x utility-science-pack, 3x battery, 1x sulfuric-acid; planned at (108,107) 15 x 32
+[    8.7s]   block 21 -> block 27: advanced-circuit 1.50/s (1 belt(s))
+[    8.7s]   block 21 -> block 28: advanced-circuit 0.17/s (1 belt(s)), electronic-circuit 1.67/s (1 belt(s))
+[    8.7s]   block 25 -> block 26: advanced-circuit 2.29/s (1 belt(s))
+[    8.7s]   block 24 -> block 28: advanced-circuit 1.17/s (1 belt(s))
+[    8.7s]   block 24 -> block 26: advanced-circuit 1.04/s (1 belt(s))
+[    8.7s]   block 28 -> block 23: battery 0.67/s (1 belt(s))
+[    8.7s]   block 21 -> block 24: copper-cable 1.33/s (1 belt(s))
+[    8.7s]   block 21 -> block 25: copper-cable 1.67/s (1 belt(s))
+[    8.7s]   block 3 -> block 25: copper-plate 6.88/s (1 belt(s))
+[    8.7s]   block 1 -> block 28: copper-plate 0.67/s (1 belt(s)), iron-plate 1.00/s (1 belt(s))
+[    8.7s]   block 1 -> block 21: copper-plate 2.96/s (1 belt(s))
+[    8.7s]   block 1 -> block 22: copper-plate 5.12/s (1 belt(s))
+[    8.7s]   block 5 -> block 21: copper-plate 9.38/s (1 belt(s)), iron-plate 5.00/s (1 belt(s))
+[    8.7s]   block 7 -> block 25: copper-plate 0.63/s (1 belt(s))
+[    8.7s]   block 7 -> block 24: copper-plate 6.88/s (1 belt(s))
+[    8.7s]   block 6 -> block 24: copper-plate 0.63/s (1 belt(s))
+[    8.7s]   block 6 -> block 22: copper-plate 13.72/s (1 belt(s))
+[    8.7s]   block 4 -> block 20: copper-plate 8.50/s (1 belt(s))
+[    8.7s]   block 4 -> block 18: copper-plate 9.16/s (1 belt(s))
+[    8.7s]   block 2 -> block 22: copper-plate 1.16/s (1 belt(s))
+[    8.7s]   block 2 -> block 15: copper-plate 0.50/s (1 belt(s)), iron-plate 2.79/s (1 belt(s))
+[    8.7s]   block 2 -> block 18: copper-plate 4.59/s (1 belt(s))
+[    8.7s]   block 8 -> block 18: copper-plate 8.75/s (1 belt(s))
+[    8.7s]   block 20 -> block 26: electronic-circuit 1.67/s (1 belt(s))
+[    8.7s]   block 20 -> block 23: electronic-circuit 1.67/s (1 belt(s))
+[    8.7s]   block 20 -> block 28: electronic-circuit 0.67/s (1 belt(s))
+[    8.7s]   block 18 -> block 24: electronic-circuit 1.92/s (1 belt(s))
+[    8.7s]   block 18 -> block 25: electronic-circuit 2.08/s (1 belt(s))
+[    8.7s]   block 18 -> block 28: electronic-circuit 11.00/s (1 belt(s))
+[    8.7s]   block 19 -> block 27: engine-unit 1.00/s (1 belt(s))
+[    8.7s]   block 19 -> block 23: engine-unit 0.33/s (1 belt(s))
+[    8.7s]   block 23 -> block 28: flying-robot-frame 0.33/s (1 belt(s))
+[    8.7s]   block 7 -> block 19: iron-plate 1.87/s (1 belt(s)), steel-plate 0.88/s (1 belt(s))
+[    8.7s]   block 10 -> block 25: iron-plate 2.50/s (1 belt(s))
+[    8.7s]   block 10 -> block 15: iron-plate 1.71/s (1 belt(s)), steel-plate 0.25/s (1 belt(s))
+[    8.7s]   block 11 -> block 18: iron-plate 3.12/s (1 belt(s))
+[    8.7s]   block 12 -> block 20: iron-plate 0.62/s (1 belt(s))
+[    8.7s]   block 13 -> block 22: iron-plate 0.62/s (1 belt(s)), steel-plate 1.38/s (1 belt(s))
+[    8.7s]   block 1 -> block 18: iron-plate 6.58/s (1 belt(s))
+[    8.7s]   block 1 -> block 20: iron-plate 1.79/s (1 belt(s))
+[    8.7s]   block 5 -> block 22: iron-plate 2.50/s (1 belt(s))
+[    8.7s]   block 5 -> block 24: iron-plate 0.33/s (1 belt(s))
+[    8.7s]   block 5 -> block 18: iron-plate 0.92/s (1 belt(s))
+[    8.7s]   block 3 -> block 6: iron-plate 3.75/s (1 belt(s))
+[    8.7s]   block 3 -> block 19: iron-plate 5.33/s (1 belt(s))
+[    8.7s]   block 3 -> block 24: iron-plate 2.17/s (1 belt(s))
+[    8.7s]   block 2 -> block 23: iron-plate 3.75/s (1 belt(s))
+[    8.7s]   block 2 -> block 26: iron-plate 2.50/s (1 belt(s))
+[    8.7s]   block 2 -> block 20: iron-plate 2.83/s (1 belt(s))
+[    8.7s]   block 9 -> block 20: iron-plate 5.62/s (1 belt(s))
+[    8.7s]   block 17 -> block 18: iron-plate 4.37/s (1 belt(s))
+[    8.7s]   block 8 -> block 20: iron-plate 0.62/s (1 belt(s))
+[    8.7s]   block 22 -> block 28: low-density-structure 1.00/s (1 belt(s))
+[    8.7s]   block 17 -> block 21: plastic-bar 3.33/s (1 belt(s))
+[    8.7s]   block 17 -> block 22: plastic-bar 5.00/s (1 belt(s))
+[    8.7s]   block 17 -> block 24: plastic-bar 4.42/s (1 belt(s))
+[    8.7s]   block 17 -> block 25: plastic-bar 4.58/s (1 belt(s))
+[    8.7s]   block 10 -> block 26: steel-plate 1.13/s (1 belt(s))
+[    8.7s]   block 13 -> block 26: steel-plate 0.38/s (1 belt(s))
+[    8.7s]   block 6 -> block 19: steel-plate 0.08/s (1 belt(s))
+[    8.7s]   block 6 -> block 26: steel-plate 0.67/s (1 belt(s))
+[    8.7s]   block 12 -> block 26: steel-plate 1.75/s (1 belt(s))
+[    8.7s]   block 11 -> block 26: steel-plate 1.50/s (1 belt(s))
+[    8.7s]   block 9 -> block 26: steel-plate 1.25/s (1 belt(s))
+[    8.7s]   block 23 -> block 26: steel-plate 0.42/s (1 belt(s))
+[    8.7s]   block 8 -> block 26: steel-plate 0.88/s (1 belt(s))
+[    8.7s]   block 17 -> block 26: steel-plate 0.37/s (1 belt(s))
+[    8.7s]   block 15 -> block 26: stone-brick 1.46/s (1 belt(s))
+[    8.7s]   block 16 -> block 28: sulfur 1.67/s (1 belt(s))
+[    8.7s]   block 16 -> block 27: sulfur 0.50/s (1 belt(s))
+[    8.7s]   heavy-oil pipes: block 14 gives 8.4/s, block 16 takes 3.4/s, block 23 takes 5.0/s
+[    8.7s]   light-oil pipes: block 14 takes 6.3/s, block 16 gives 6.3/s
+[    8.7s]   petroleum-gas pipes: block 14 gives 110.8/s, block 16 gives 62.5/s, block 17 takes 173.3/s
+[    8.7s]   water pipes: block 14 takes 144.3/s, block 16 takes 163.8/s, block 28 takes 33.3/s, edge gives 341.5/s
+[    8.7s]   crude-oil pipes: block 14 takes 113.7/s, block 16 takes 100.0/s, edge gives 213.7/s
+[    8.7s]   22 inputs and outputs leave their block straight out of the factory, 8 run through the corridors to its edge
+[    8.8s] block 1: 29 machines (weight 29.0 of 27.5), 8 ports, aspect 1.50, 55 s
+[   65.6s] block 1: 34 x 23
+[   65.6s] block 2: 29 machines (weight 29.0 of 27.5), 9 ports, aspect 1.50, 56 s
+[  124.0s] block 2: 34 x 23
+[  124.0s] block 3: 29 machines (weight 29.0 of 27.5), 6 ports, aspect 1.00, 54 s
+[  179.2s] block 3: 28 x 28
+[  179.2s] block 4: 29 machines (weight 29.0 of 27.5), 3 ports, aspect 0.51, 51 s
+[  233.1s] block 4: 20 x 39
+[  233.1s] block 5: 29 machines (weight 29.0 of 27.5), 7 ports, aspect 1.50, 55 s
+[  288.7s] block 5: 34 x 23
+[  288.7s] block 6: 29 machines (weight 29.0 of 27.5), 6 ports, aspect 0.38, 54 s
+[  348.6s] block 6: 17 x 44
+[  348.6s] block 7: 29 machines (weight 29.0 of 27.5), 6 ports, aspect 1.00, 54 s
+[  405.8s] block 7: 26 x 26
+[  405.8s] block 8: 29 machines (weight 29.0 of 27.5), 5 ports, aspect 2.55, 53 s
+[  460.8s] block 8: 43 x 17
+[  460.8s] block 9: 29 machines (weight 29.0 of 27.5), 3 ports, aspect 0.51, 51 s
+[  512.4s] block 9: 19 x 38
+[  512.4s] block 10: 29 machines (weight 29.0 of 27.5), 5 ports, aspect 2.55, 53 s
+[  572.4s] block 10: 43 x 17
+[  572.4s] block 11: 29 machines (weight 29.0 of 27.5), 3 ports, aspect 1.50, 51 s
+[  623.8s] block 11: 33 x 22
+[  623.8s] block 12: 29 machines (weight 29.0 of 27.5), 3 ports, aspect 1.96, 51 s
+[  679.4s] block 12: 36 x 19
+[  679.4s] block 13: 29 machines (weight 29.0 of 27.5), 4 ports, aspect 1.50, 52 s
+[  731.5s] block 13: 33 x 22
+[  731.5s] block 14: 12 machines (weight 36.0 of 27.5), 5 ports, aspect 0.70, 65 s
+[  797.7s] block 14: 21 x 30
+[  797.7s] block 15: 23 machines (weight 31.5 of 27.5), 8 ports, aspect 1.55, 60 s
+[  858.2s] block 15: 31 x 20
+[  858.2s] block 16: 13 machines (weight 36.3 of 27.5), 7 ports, aspect 2.44, 67 s
+[  927.5s] block 16: 39 x 16
+[  927.5s] block 17: 22 machines (weight 28.8 of 27.5), 9 ports, aspect 2.00, 56 s
+[  985.5s] block 17: 37 x 18
+[  985.5s] block 18: 15 machines (weight 28.5 of 27.5), 10 ports, aspect 0.52, 56 s
+[ 1043.8s] block 18: 19 x 38
+[ 1043.8s] block 19: 17 machines (weight 28.5 of 27.5), 6 ports, aspect 2.00, 53 s
+[ 1098.0s] block 19: 35 x 18
+[ 1098.0s] block 20: 17 machines (weight 28.0 of 27.5), 11 ports, aspect 2.00, 56 s
+[ 1160.8s] block 20: 35 x 18
+[ 1160.8s] block 21: 15 machines (weight 28.5 of 27.5), 9 ports, aspect 0.52, 55 s
+[ 1217.3s] block 21: 18 x 35
+[ 1217.3s] block 22: 17 machines (weight 29.0 of 27.5), 8 ports, aspect 0.50, 55 s
+[ 1274.6s] block 22: 18 x 37
+[ 1274.6s] block 23: 16 machines (weight 29.3 of 27.5), 7 ports, aspect 0.41, 55 s
+[ 1331.2s] block 23: 17 x 41
+[ 1331.2s] block 24: 15 machines (weight 29.0 of 27.5), 9 ports, aspect 0.52, 56 s
+[ 1394.7s] block 24: 18 x 35
+[ 1394.7s] block 25: 15 machines (weight 29.0 of 27.5), 7 ports, aspect 0.65, 55 s
+[ 1449.5s] block 25: 20 x 31
+[ 1449.6s] block 26: 18 machines (weight 31.5 of 27.5), 16 ports, aspect 1.53, 66 s
+[ 1517.7s] block 26: 35 x 23
+[ 1517.7s] block 27: 10 machines (weight 20.0 of 27.5), 4 ports, aspect 0.94, 37 s
+[ 1555.2s] block 27: 19 x 21
+[ 1555.2s] block 28: 16 machines (weight 34.8 of 27.5), 13 ports, aspect 0.47, 45 s
+[ 1608.6s] block 28: 19 x 41
+[ 1624.4s] factory (floorplan 1/3): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[ 1626.2s] factory (floorplan 1/3): routed at 186 x 172 (attempt 2)
+[ 1627.9s] factory (floorplan 1/3): tighter corridors: 185 x 172
+[ 1630.1s] factory (floorplan 1/3): tighter corridors: 184 x 171
+[ 1663.3s] factory (floorplan 1/3): squeezed 6 corridor lines out: 179 x 169
+[ 1679.7s] factory (floorplan 2/3): routed at 172 x 182
+[ 1692.7s] factory (floorplan 2/3): tighter corridors: 171 x 181
+[ 1724.6s] factory (floorplan 2/3): squeezed 2 corridor lines out: 166 x 181
+[ 1741.0s] factory (floorplan 3/3): routed at 172 x 180
+[ 1760.6s] factory (floorplan 3/3): squeezed 2 corridor lines out: 170 x 180
+[ 1760.6s] factory: compacting the smallest floorplan, 166 x 181
+[ 1899.3s] factory (compacting): 164 x 181 (29684 tiles), saved
+[ 2036.9s] factory (compacting): 163 x 177 (28851 tiles), saved
+[ 2208.9s] factory: squeezed 5 corridor lines out: 163 x 176
+[ 2208.9s] factory: smallest routed factory 163 x 176 of 21 routed
+[ 2213.7s] factory: 163 x 176 (28688 tiles), saved
+[ 2213.7s] done: 163 x 176 (28688 tiles)
