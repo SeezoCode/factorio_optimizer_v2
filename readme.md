@@ -96,6 +96,13 @@ tank wired to them, see `fluids.surplus_only`).*
 
 ### Modules and beacons
 
+![Red + green science 2/s each, without modules and with productivity modules and 4 beacons per machine, same scale](docs/examples/beacons_red_green/side_by_side.png)
+
+*Red + green science at 2/s each, drawn at the same scale. Left: no modules, 25 assemblers in 29 × 29. Right:
+four productivity modules in every assembler and up to 4 beacons per machine, 10 assemblers in 20 × 20 with half
+the plates in. Dark green squares are beacons; machines in reach of one are green, with the number of beacons in
+range in their bottom-right corner (each has as many as its own rate needs).*
+
 The same job, red + green science at 2/s each, with four productivity-module-3 in every assembler (speed-module-3
 where a recipe takes no productivity) and beacons of two speed-module-3. The beacon runs searched for 4 minutes,
 the two without beacons for 10 (they have far more machines); every box is the smallest that routed, the next size
@@ -119,8 +126,6 @@ of time its rate needs, peak with every machine running flat out.
 - Fewer beacons are placed than machines × `per_machine`: machine counts are rounded up, so each machine gets only
   what its own rate needs (some none), and one beacon usually serves several machines. In renders, machines in
   reach of a beacon are green and show the number of beacons in range in their bottom-right corner.
-
-![Red + green science with 4 beacons per machine](docs/examples/beacons_red_green/beacons_4/best.png)
 
 ## How to run
 
