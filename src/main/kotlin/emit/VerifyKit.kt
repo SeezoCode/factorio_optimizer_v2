@@ -227,6 +227,16 @@ object VerifyKit {
             ),
         ),
         Case(
+            "v19-cracking-on-surplus", "A storage tank on heavy oil, wired to a cracking plant that works on a condition",
+            "A heavy oil cracking plant (water from an infinity pipe, light oil drained) gets heavy oil through a storage " +
+                "tank filled by an infinity pipe, and has a red wire from the tank with the condition heavy oil > 12500. " +
+                "Check: the tank fills (its corner connection meets the pipe), the wire is there and red, the plant shows " +
+                "the condition and runs. Set the heavy oil infinity pipe to 40 %: the tank drops below half and the plant " +
+                "stops; back to 100 % and it runs. A missing wire or condition means the wire ids or control_behavior " +
+                "format in GameConstants / Blueprint.kt are wrong; a tank that stays empty, its connection table.",
+            surplusControl(),
+        ),
+        Case(
             "v18-filtered-output-inserters", "Filtered inserters split a machine's products",
             "A recycler (2 x 4) takes electronic circuits and returns iron plates and copper cable. The top output " +
                 "inserter is filtered to iron plates, the bottom one to copper cable: each chest should get only its " +
@@ -304,6 +314,39 @@ object VerifyKit {
             list += pole(far + 4, y + 2)
         }
         return Layout(18, 14, list)
+    }
+
+    /** A heavy oil cracking plant fed through a storage tank, wired to it with "heavy oil > 12500". */
+    private fun surplusControl(): Layout {
+        val conns = fluidTable("chemical-plant")
+        val px = 6; val py = 6
+        val list = ArrayList<PlacedEntity>()
+        val plant = e("chemical-plant", px, py, Dir.N, recipe = "heavy-oil-cracking")
+            .copy(circuit = geom.CircuitCondition("heavy-oil", ">", (data.GameConstants.STORAGE_TANK_CAPACITY / 2).toInt()))
+        list += plant
+        fun at(flow: data.GameConstants.Flow, idx: Int): geom.Tile {
+            val (dx, dy) = data.GameConstants.placeConnection(conns.first { it.flow == flow && it.index == idx }, 3, 3, Dir.N.ordinal, false)
+            return geom.Tile(px + dx, py + dy)
+        }
+        val water = at(data.GameConstants.Flow.INPUT, 1); val heavy = at(data.GameConstants.Flow.INPUT, 2); val light = at(data.GameConstants.Flow.OUTPUT, 1)
+        list += e("infinity-pipe", water.x, water.y, fluid = "water")
+        list += e("infinity-pipe", light.x, light.y, fluid = "light-oil").copy(drain = true)
+        list += e("pipe", heavy.x, heavy.y)
+        // The tank: a corner connection onto the heavy oil pipe, clear of the plant and the other pipes; an infinity
+        // pipe of heavy oil on one of its other connections.
+        val taken = (list.flatMap { it.rect.tiles() } + geom.Rect(px - 1, py - 1, 5, 5).tiles()).toSet()
+        for (d in listOf(Dir.N, Dir.E)) for ((off, side) in data.GameConstants.storageTankConnections(d)) {
+            val x0 = heavy.x - side.dx - off.x; val y0 = heavy.y - side.dy - off.y
+            val rect = geom.Rect(x0, y0, 3, 3)
+            if (x0 < 0 || y0 < 0 || rect.tiles().any { it in taken }) continue
+            val feed = data.GameConstants.storageTankConnections(d).map { (o, s2) -> geom.Tile(x0 + o.x, y0 + o.y) + s2 }
+                .firstOrNull { it != heavy && it !in taken && it.x >= 0 && it.y >= 0 } ?: continue
+            list += PlacedEntity(data.GameConstants.STORAGE_TANK, geom.Kind.TANK, x0, y0, d)
+            list += e("infinity-pipe", feed.x, feed.y, fluid = "heavy-oil")
+            list += pole(px + 3, py + 3)
+            return Layout(14, 14, list, circuitWires = listOf(Triple(list.indexOfFirst { it.kind == geom.Kind.TANK }, 0, data.GameConstants.WIRE_RED)))
+        }
+        error("no room for the tank in the v19 verify case")
     }
 
     private fun fluidTable(machine: String): List<data.GameConstants.FluidConnection> =

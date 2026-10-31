@@ -189,6 +189,12 @@ Unknown keys are an error. Everything except `targets` has a default.
 - Products and surplus by-products leave through output ports (`outputs` pins their edge; otherwise the
   generator picks one and reports it in `ports.json`). `"sinks": {"mode": "chest"}` puts products into chests
   instead, as in v1.
+- Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
+  (lubricant, or oil leaving the block), a storage tank goes on that oil's pipes with a red wire to the cracking
+  plants, which work only while the tank is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns
+  it off; `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan
+  needs, starve lubricant and fill the petroleum pipes until the refineries stop. The tank reads its own contents,
+  which follow the fill level of the whole pipe network, so the threshold does not depend on pipe length.
 - Fluids are routed in pipes and pipe-to-ground (`"fluids": {"mode": "infinity-pipe"}` puts an infinity pipe on
   every fluid connection instead, `"manual"` leaves the connection tiles free).
 - `box.max_size` caps the box (the side of a square of the box's area): the search starts there and, if it

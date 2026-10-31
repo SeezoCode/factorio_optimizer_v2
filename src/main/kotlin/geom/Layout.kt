@@ -2,7 +2,7 @@ package geom
 
 import data.GameConstants
 
-enum class Kind { MACHINE, BELT, UG_IN, UG_OUT, SPLITTER, INSERTER, CHEST, POLE, INFINITY_PIPE, INFINITY_CHEST, PIPE, PIPE_UG;
+enum class Kind { MACHINE, BELT, UG_IN, UG_OUT, SPLITTER, INSERTER, CHEST, POLE, INFINITY_PIPE, INFINITY_CHEST, PIPE, PIPE_UG, TANK;
 
     val beltFamily: Boolean get() = this == BELT || this == UG_IN || this == UG_OUT || this == SPLITTER
 }
@@ -31,6 +31,8 @@ data class PlacedEntity(
     val drain: Boolean = false,
     val w: Int = defaultSize(name, kind, dir).first,
     val h: Int = defaultSize(name, kind, dir).second,
+    /** Machines: works only while this condition holds on its circuit network (null: always). */
+    val circuit: CircuitCondition? = null,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)
@@ -43,6 +45,7 @@ data class PlacedEntity(
             Kind.MACHINE -> GameConstants.MACHINE_SIZES[name] ?: (3 to 3)
             Kind.SPLITTER -> if (dir.axis == 1) 2 to 1 else 1 to 2
             Kind.POLE -> GameConstants.footprint(name)
+            Kind.TANK -> 3 to 3
             else -> 1 to 1
         }
 
@@ -60,11 +63,15 @@ data class PlacedEntity(
                 name in GameConstants.MACHINE_SIZES -> Kind.MACHINE
                 name == GameConstants.PIPE -> Kind.PIPE
                 name == GameConstants.PIPE_TO_GROUND -> Kind.PIPE_UG
+                name == GameConstants.STORAGE_TANK -> Kind.TANK
                 else -> error("Unknown entity '$name'")
             }
         }
     }
 }
+
+/** "Work while [signal] [comparator] [constant]" ([signal] a fluid when [fluid], else an item). */
+data class CircuitCondition(val signal: String, val comparator: String, val constant: Int, val fluid: Boolean = true)
 
 /** A floor tile of the blueprint ([name] is a tile prototype, e.g. hazard-concrete-left). */
 data class GroundTile(val name: String, val x: Int, val y: Int)
@@ -97,6 +104,8 @@ data class Layout(
     val label: String = "factorio-optimizer layout",
     /** Floor tiles (markers: block borders, reserved areas); entities stand on top of them. */
     val tiles: List<GroundTile> = emptyList(),
+    /** Red or green circuit wires: entity indices and the colour ([GameConstants.WIRE_RED] or GREEN). */
+    val circuitWires: List<Triple<Int, Int, Int>> = emptyList(),
 ) {
     fun count(kind: Kind) = entities.count { it.kind == kind }
 

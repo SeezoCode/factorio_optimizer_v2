@@ -111,6 +111,8 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
     val later = (if (cfg.repack) cfg.repackShare else 0.0) + (if (cfg.merge) cfg.mergeShare else 0.0)
     fun blockConfig(budget: Double, aspect: Double, startSize: Int? = null) = config.copy(
         blocks = null, testMode = false, reserved = emptyList(), forbiddenTiles = emptyList(),
+        // Cracking control is added once for the whole factory (its wires would not survive stitching).
+        fluids = config.fluids.copy(surplusOnly = emptyMap()),
         box = config.box.copy(aspect = aspect, startSize = startSize, maxSize = null, fixedHeight = null, fixedWidth = null),
         search = config.search.copy(timeBudgetS = budget),
     )
@@ -962,8 +964,11 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         ents: List<PlacedEntity>, mach: List<PlacedMachine>, srcs: List<SourceSpec>, outs: List<OutputSpec>,
         w: Int, h: Int, rects: List<Rect>, reserved: List<Rect>, notes: MutableList<String>,
     ): Factory {
-        val harness = if (config.testMode) buildHarness(srcs, ents, w, h, config, outs) else null
-        val all = ArrayList(ents).also { it += harness?.entities ?: emptyList() }
+        // Crackers work only on what other machines leave of their oil: a tank per block and red wires.
+        val ctl = route.addSurplusControl(ents, plan, config, w, h, rects)
+        notes += ctl.notes
+        val harness = if (config.testMode) buildHarness(srcs, ctl.entities, w, h, config, outs) else null
+        val all = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }
         harness?.warnings?.let { notes += it }
         var poles = emptyList<PlacedEntity>()
         var wires = emptyList<Pair<Int, Int>>()
@@ -977,7 +982,7 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         val offset = all.size
         // Block borders as floor tiles, so each block shows in the game.
         val marks = if (config.markerTile == "none") emptyList() else (rects + reserved).flatMap { geom.borderTiles(it, config.markerTile) }
-        val layout = Layout(w, h, all + poles, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer factory ${w}x$h", marks)
+        val layout = Layout(w, h, all + poles, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer factory ${w}x$h", marks, ctl.circuitWires)
         val outside = (harness?.tiles ?: emptySet()) + poles.flatMap { it.rect.tiles() }.filter { it.x !in 0 until w || it.y !in 0 until h } +
             srcs.map { it.tile }   // ring ports (in test mode the harness feeds them instead of listing them)
         val spec = validationSpec(data, plan, config, Placement(w, h, mach), if (config.testMode) emptyList() else srcs,

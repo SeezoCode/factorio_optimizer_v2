@@ -248,9 +248,12 @@ fun runTrial(
     for (attempt in 0..2) {
         val ringed = if (config.portsOnRing) ringPorts(result.entities, result.sources, result.outputs, w, h, GameConstants.beltTier(config.beltTier).belt)
             else RingedPorts(result.entities, result.sources, result.outputs)
-        val harness = if (config.testMode) buildHarness(ringed.sources, ringed.entities, w, h, config, ringed.outputs) else null
+        // Crackers work only on what other machines leave of their oil (a tank and red wires, see addSurplusControl).
+        val ctl = route.addSurplusControl(ringed.entities, plan, config, w, h, listOf(geom.Rect(0, 0, w, h)))
+        if (attempt == 0) notes += ctl.notes
+        val harness = if (config.testMode) buildHarness(ringed.sources, ctl.entities, w, h, config, ringed.outputs) else null
         harness?.warnings?.let { notes += it }
-        val entities = ringed.entities + (harness?.entities ?: emptyList())
+        val entities = ctl.entities + (harness?.entities ?: emptyList())
         val outside = harness?.tiles ?: emptySet()
         val sources = if (config.testMode) emptyList() else ringed.sources
         val (poles, wires, ok, uncovered) = when (config.power.mode) {
@@ -279,7 +282,7 @@ fun runTrial(
         val offset = entities.size
         val all = entities + poles
         val marks = if (config.markerTile == "none") emptyList() else config.reservedRects(w, h).flatMap { borderTiles(it, config.markerTile) }
-        val layout = Layout(w, h, all, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer ${w}x$h seed $seed", marks)
+        val layout = Layout(w, h, all, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer ${w}x$h seed $seed", marks, ctl.circuitWires)
         // Outside the box: harness, poles in the ring, and ring ports (in test mode the inputs are fed, not listed).
         val outsideAllowed = outside + poles.flatMap { it.rect.tiles() }.filter { it.x !in 0 until w || it.y !in 0 until h } +
             ringed.sources.map { it.tile }

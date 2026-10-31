@@ -31,6 +31,7 @@ Regenerate the strings with:
 | `v16-underground-weaving.txt` | Undergrounds of different tiers do not pair, so they can cross the same row (weaving) | Iron leaves at x 6, copper east of x 7 | ☐ |
 | `v17-space-age-fluid-connections.txt` | Foundry, electromagnetic plant, cryogenic plant and biochamber connections, rotation, and which box each recipe fluid takes | Every pipe connects; each fluid shows in its box | ☐ |
 | `v18-filtered-output-inserters.txt` | Inserter filters in blueprints split a machine's products (recycler, crusher, uranium) | Each chest holds only its item | ☐ |
+| `v19-cracking-on-surplus.txt` | Storage tank connections, red wire ids, a crafting machine's circuit condition (`control_behavior`), wire reach | The tank fills and the plant runs; with the heavy oil pipe at 40 % the plant stops | ☐ |
 
 Also from the plan's list:
 

@@ -166,6 +166,12 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
                 g.font = font
                 g.clip = oldClip
             }
+            Kind.TANK -> {
+                g.color = Color(170, 190, 215)
+                g.fillOval(sx(e.x + 0.15), sy(e.y + 0.15), ((e.w - 0.3) * px).toInt(), ((e.h - 0.3) * px).toInt())
+                g.color = Color(40, 60, 110)
+                g.drawOval(sx(e.x + 0.15), sy(e.y + 0.15), ((e.w - 0.3) * px).toInt(), ((e.h - 0.3) * px).toInt())
+            }
             Kind.BELT -> arrow(cx, cy, e.dir, 0.8, netColor(e), (px / 6f).coerceAtLeast(2f))
             Kind.UG_IN, Kind.UG_OUT -> {
                 g.color = netColor(e)
@@ -248,6 +254,13 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
     g.stroke = BasicStroke(1f)
     g.color = Color(184, 115, 51)
     layout.wires.forEach { (a, c) ->
+        val pa = layout.entities[a]; val pc = layout.entities[c]
+        g.drawLine(sx(pa.x + pa.w / 2.0), sy(pa.y + pa.h / 2.0), sx(pc.x + pc.w / 2.0), sy(pc.y + pc.h / 2.0))
+    }
+
+    g.stroke = BasicStroke(2f)
+    layout.circuitWires.forEach { (a, c, color) ->
+        g.color = if (color == GameConstants.WIRE_RED) Color(220, 30, 30) else Color(30, 170, 30)
         val pa = layout.entities[a]; val pc = layout.entities[c]
         g.drawLine(sx(pa.x + pa.w / 2.0), sy(pa.y + pa.h / 2.0), sx(pc.x + pc.w / 2.0), sy(pc.y + pc.h / 2.0))
     }

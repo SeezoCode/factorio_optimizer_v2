@@ -16,7 +16,7 @@ import kotlin.math.min
 
 enum class ErrorType {
     OVERLAP, OUT_OF_BOUNDS, UNKNOWN_RECIPE,
-    CONTAMINATION, SHAPE_CHANGED, UNSUPPORTED,
+    CONTAMINATION, SHAPE_CHANGED, UNSUPPORTED, CIRCUIT,
     UG_UNPAIRED,
     UNREACHABLE, STARVED, MISSING_INPUT, MISSING_SINK,
     INSERTER_BAD_PICKUP, INSERTER_BAD_DROP, INSERTER_WRONG_ITEM, INSERTER_RATE,
@@ -805,10 +805,22 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 }
             }
         }
+        // Storage tanks join through their corner connections: to a pipe that opens back, a machine connection that
+        // points at it, or another tank's connection facing it.
+        val tanks = ents.indices.filter { ents[it].kind == Kind.TANK }
+        fun tankOpens(i: Int): List<Pair<Tile, Dir>> = ents[i].let { t -> GameConstants.storageTankConnections(t.dir).map { (o, d) -> Tile(t.x + o.x, t.y + o.y) to d } }
+        tanks.forEach { i ->
+            tankOpens(i).forEach { (t, d) ->
+                val j = indexAt(t + d) ?: return@forEach
+                if (ents[j].kind in pipeKinds && opensTo(j, d.opposite)) join(i, j)
+                if (ents[j].kind == Kind.TANK && tankOpens(j).any { (u, e) -> u == t + d && e == d.opposite }) join(i, j)
+            }
+        }
         val attached = BooleanArray(connList.size)
         connList.forEachIndexed { k, (_, c) ->
             val j = indexAt(c.tile) ?: return@forEachIndexed
             if (ents[j].kind in pipeKinds && opensTo(j, c.side.opposite)) { join(ents.size + k, j); attached[k] = true }
+            if (ents[j].kind == Kind.TANK && tankOpens(j).any { (u, e) -> u == c.tile && e == c.side.opposite }) { join(ents.size + k, j); attached[k] = true }
         }
         // What each network holds.
         val supplies = HashMap<Int, MutableSet<String>>()
@@ -841,6 +853,18 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 err(ErrorType.FLUID_MIX, at, "fluids ${all.sorted()} share one pipe network")
             }
         }
+        checkCircuitWires()
+        // A machine working on a fluid condition is wired to a tank on the pipes that bring it that fluid.
+        val inputRoot = HashMap<Pair<Int, String>, Int>()
+        connList.forEachIndexed { k, (m, c) -> if (c.fluid != null && c.flow == GameConstants.Flow.INPUT && attached[k]) inputRoot[m to c.fluid] = find(ents.size + k) }
+        val tankRoots = tanks.associateWith { find(it) }
+        ents.indices.filter { ents[it].circuit?.fluid == true }.forEach { m ->
+            val f = ents[m].circuit!!.signal
+            val want = inputRoot[m to f]
+            val wired = circuitNetworkOf(m).filter { it in tankRoots }
+            if (want == null) err(ErrorType.CIRCUIT, ents[m].tile, "${ents[m].recipe} works on a $f condition but takes no $f from pipes")
+            else if (wired.none { tankRoots[it] == want }) err(ErrorType.CIRCUIT, ents[m].tile, "${ents[m].recipe} works on a $f condition but no tank on its $f pipes is wired to it")
+        }
         connList.forEachIndexed { k, (m, c) ->
             val f = c.fluid ?: return@forEachIndexed
             val r = find(ents.size + k)
@@ -851,6 +875,27 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             if (c.flow == GameConstants.Flow.OUTPUT && (!linked || drains[r]?.contains(f) != true)) {
                 err(ErrorType.FLUID_STUCK, c.tile, "${ents[m].recipe} outputs $f with nowhere to go")
             }
+        }
+    }
+
+    /** Entities on the same red or green circuit network as entity [i] (itself included). */
+    private fun circuitNetworkOf(i: Int): Set<Int> {
+        val out = HashSet<Int>()
+        for (color in listOf(GameConstants.WIRE_RED, GameConstants.WIRE_GREEN)) {
+            val adj = layout.circuitWires.filter { it.third == color }.flatMap { (a, b, _) -> listOf(a to b, b to a) }.groupBy({ it.first }, { it.second })
+            val seen = hashSetOf(i); val q = ArrayDeque(listOf(i))
+            while (q.isNotEmpty()) { val c = q.removeFirst(); adj[c]?.forEach { if (seen.add(it)) q += it } }
+            out += seen
+        }
+        return out
+    }
+
+    /** Circuit wires no longer than wire reach. */
+    private fun checkCircuitWires() {
+        layout.circuitWires.forEach { (a, b, _) ->
+            val ea = ents[a]; val eb = ents[b]
+            val d = kotlin.math.hypot(ea.x + ea.w / 2.0 - eb.x - eb.w / 2.0, ea.y + ea.h / 2.0 - eb.y - eb.h / 2.0)
+            if (d > GameConstants.CIRCUIT_WIRE_REACH + 1e-9) err(ErrorType.CIRCUIT, ea.tile, "a circuit wire to ${eb.name} at ${eb.tile} is ${"%.1f".format(d)} tiles long")
         }
     }
 

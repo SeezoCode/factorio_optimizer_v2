@@ -330,6 +330,13 @@ data class FluidConfig(
     /** "pipes": route pipes from fluid ports and producers; "infinity-pipe": an infinity pipe on every used
      *  connection (quick tests); "manual": leave the connection tiles free. */
     val mode: String = "pipes",
+    /**
+     * Recipes that should only use what is left over of a fluid (recipe -> fluid): a storage tank on that fluid's
+     * pipes and a red wire make them work only while the tank is more than [surplusLevel] full, when other machines
+     * also use the fluid. By default the two cracking recipes. `{}` turns it off.
+     */
+    @SerialName("surplus_only") val surplusOnly: Map<String, String> = mapOf("heavy-oil-cracking" to "heavy-oil", "light-oil-cracking" to "light-oil"),
+    @SerialName("surplus_level") val surplusLevel: Double = 0.5,
 )
 
 @Serializable
