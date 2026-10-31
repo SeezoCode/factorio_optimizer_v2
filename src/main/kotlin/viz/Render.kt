@@ -149,9 +149,10 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
     // Machines inside some beacon's supply area are drawn green.
     val beaconsDrawn = layout.entities.filter { it.kind == Kind.BEACON }
     val d = GameConstants.BEACON_SUPPLY
-    fun beaconed(e: PlacedEntity) = beaconsDrawn.any { b ->
+    fun beaconsInRange(e: PlacedEntity) = beaconsDrawn.count { b ->
         e.x < b.x + b.w + d && e.x + e.w > b.x - d && e.y < b.y + b.h + d && e.y + e.h > b.y - d
     }
+    fun beaconed(e: PlacedEntity) = beaconsInRange(e) > 0
     layout.entities.forEach { e ->
         val cx = e.x + e.w / 2.0
         val cy = e.y + e.h / 2.0
@@ -169,6 +170,13 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
                 g.font = Font(Font.SANS_SERIF, Font.PLAIN, (px * 0.42).toInt().coerceAtLeast(7))
                 val lh = g.fontMetrics.height
                 lines.forEachIndexed { i, line -> g.drawString(line, sx(e.x + 0.15), sy(e.y + 0.1) + lh * (i + 1) - 2) }
+                // Beacons in range, bottom right (only when the layout has beacons).
+                if (beaconsDrawn.isNotEmpty()) {
+                    g.font = Font(Font.SANS_SERIF, Font.BOLD, (px * 0.6).toInt().coerceAtLeast(8))
+                    val n = beaconsInRange(e).toString()
+                    g.color = if (n == "0") Color(120, 120, 140) else Color(30, 90, 30)
+                    g.drawString(n, sx(e.x + e.w - 0.15) - g.fontMetrics.stringWidth(n), sy(e.y + e.h - 0.15))
+                }
                 g.font = font
                 g.clip = oldClip
             }
