@@ -227,6 +227,17 @@ object VerifyKit {
             ),
         ),
         Case(
+            "v20-beacons", "Beacon supply area, profile and module item requests",
+            "Three gear assemblers (assembling-machine-3, four productivity-module-3 each) fed iron plates from infinity " +
+                "chests. Beacons hold two speed-module-3. Row 1: one beacon two tiles from the machine; its tooltip should " +
+                "read speed 2.375 (1.25 x (1 - 0.6 + 1.5 x 1.0)) and productivity +40 %. Row 2: two beacons; speed 3.15 " +
+                "(1.25 x (0.4 + 1.5 x sqrt 2)). Row 3: one beacon three tiles away, out of range; speed 0.5. Wrong numbers " +
+                "mean the profile (1/sqrt n) or distribution effectivity in Modules.kt are wrong; a beacon in row 3 that " +
+                "reaches, or the one in row 1 that does not, the supply area; empty slots, the item request format " +
+                "or inventory ids in GameConstants / Blueprint.kt.",
+            beacons(),
+        ),
+        Case(
             "v19-cracking-on-surplus", "A storage tank on heavy oil, wired to a cracking plant that works on a condition",
             "A heavy oil cracking plant (water from an infinity pipe, light oil drained) gets heavy oil through a storage " +
                 "tank filled by an infinity pipe, and has a red wire from the tank with the condition heavy oil > 12500. " +
@@ -347,6 +358,31 @@ object VerifyKit {
             return Layout(14, 14, list, circuitWires = listOf(Triple(list.indexOfFirst { it.kind == geom.Kind.TANK }, 0, data.GameConstants.WIRE_RED)))
         }
         error("no room for the tank in the v19 verify case")
+    }
+
+    /** Gear assemblers with productivity modules next to 1, 2 and 0 beacons in range (the last one 3 tiles off). */
+    private fun beacons(): Layout {
+        val list = ArrayList<PlacedEntity>()
+        val prod = List(4) { "productivity-module-3" }
+        val speed = List(2) { "speed-module-3" }
+        fun beacon(x: Int, y: Int) = PlacedEntity("beacon", geom.Kind.BEACON, x, y, w = 3, h = 3, modules = speed)
+        // Row: chest -> inserter -> machine (x 2..4) -> inserter -> chest; beacons east of the machine.
+        listOf(0, 10, 20).forEachIndexed { row, y ->
+            list += e("infinity-chest", 0, y + 1, item = "iron-plate")
+            list += e("fast-inserter", 1, y + 1, Dir.W)
+            list += e("assembling-machine-3", 2, y, recipe = "iron-gear-wheel").copy(modules = prod)
+            list += e("fast-inserter", 5, y + 1, Dir.W)
+            list += e("steel-chest", 6, y + 1)
+            list += pole(5, y + 2)
+            when (row) {
+                0 -> list += beacon(7, y)            // gap 2 (x 5, 6): in range
+                1 -> { list += beacon(7, y); list += beacon(7, y + 3) }
+                else -> list += beacon(8, y)         // gap 3 (x 5..7): out of range
+            }
+            list += pole(10, y + 1)
+            if (row < 2) list += pole(10, y + 6)
+        }
+        return Layout(12, 24, list)
     }
 
     private fun fluidTable(machine: String): List<data.GameConstants.FluidConnection> =

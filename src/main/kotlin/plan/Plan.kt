@@ -41,6 +41,10 @@ data class MachineInstance(
      * can move. Machines of a recipe in different blocks of a factory may run at different rates up to this.
      */
     val maxCrafts: Double = 0.0,
+    /** Beacons this machine was planned with (0 without beacons). */
+    val beacons: Int = 0,
+    /** Crafts/s its crafting speed allows with 0, 1, ... [beacons] beacons in range (empty without beacons). */
+    val beaconCrafts: List<Double> = emptyList(),
 ) {
     val label: String get() = "$recipe#$id"
     /** Items (not fluids) this machine makes. */
@@ -110,7 +114,8 @@ data class ProductionPlan(
     fun terminal(id: Int): Terminal = terminals[id]
     fun netTerminals(net: Net): List<Terminal> = net.terminals.map { terminals[it] }
     fun machineTerminals(machine: Int): List<Terminal> = terminals.filter { it.machine == machine }
-    fun totalMachineArea(): Int = machines.sumOf { it.w * it.h }
+    /** Machine footprints, plus a share of the beacons their rates need (each beacon serving about four machines). */
+    fun totalMachineArea(): Int = machines.sumOf { it.w * it.h + beaconNeed(it.crafts, it.beaconCrafts) * 2 }
 
     fun toJson(): String = strictJson.encodeToString(serializer(), this)
     fun write(path: String) = File(path).also { it.parentFile?.mkdirs() }.writeText(toJson())
@@ -171,6 +176,8 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val maxCrafts = maxOf(crafts, minOf(1.0 / c.machineTime, insCap.minOrNull() ?: Double.MAX_VALUE))
         val products = productsPer.mapValues { crafts * it.value }
         val demand = demandPer.mapValues { crafts * it.value }
+        val beacons = plannedBeacons(data, config, r, c.machine)
+        val beaconCrafts = if (beacons == 0) emptyList() else (0..beacons).map { k -> moduleSpeed(data, config, r, c.machine, k) / r.energy }
         repeat(n) {
             machines += MachineInstance(
                 id = machines.size,
@@ -188,6 +195,8 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 fluidOut = fluidProducts.mapIndexed { i, p -> p.name to (p.fluidboxIndex ?: (i + 1)) }.toMap(),
                 crafts = crafts,
                 maxCrafts = maxCrafts,
+                beacons = beacons,
+                beaconCrafts = beaconCrafts,
             )
         }
     }

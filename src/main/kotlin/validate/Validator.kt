@@ -24,6 +24,7 @@ enum class ErrorType {
     UNPOWERED, POLES_DISCONNECTED, WIRE_TOO_LONG,
     FLUID_MISSING, FLUID_BLOCKED, FLUID_MIX, FLUID_STUCK, FLUID_LEAK,
     OUTPUT_MISSING,
+    BEACON_SHORT,
 }
 
 data class ValidationError(val type: ErrorType, val tile: Tile, val message: String) {
@@ -45,6 +46,8 @@ data class MachineSpec(
     val products: Map<String, Double> = emptyMap(),
     /** Of [products], what goes into sink chests. */
     val sinks: Map<String, Double> = emptyMap(),
+    /** Beacons that must reach this machine for its planned rate (0: none). */
+    val beaconNeed: Int = 0,
 ) {
     /** Item products leaving the machine, with their rates. */
     val outputs: Map<String, Double> get() = products.ifEmpty { if (outputRate > 0) mapOf(product to outputRate) else emptyMap() }
@@ -82,6 +85,8 @@ data class ValidationSpec(
     val inserterRate: (String, Boolean) -> Double = { name, fromBelt -> GameConstants.inserter(name).baseRate * (if (fromBelt) 0.7 else 1.0) },
     /** recipe -> (product, solid ingredients, fluid ingredient) for machines without a [MachineSpec]. */
     val recipeInfo: (String) -> MachineSpec? = { null },
+    /** The job's beacon when machines need some ([MachineSpec.beaconNeed]). */
+    val beacon: plan.BeaconSpec? = null,
 )
 
 /**
@@ -105,6 +110,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         checkOutputs(belts)
         if (spec.checkRates) checkRates(belts) else checkReachabilityOnly(belts)
         checkPower()
+        checkBeacons()
         checkFluids()
         return errors.distinct()
     }
@@ -729,7 +735,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     private fun checkPower() {
         val poles = ents.indices.filter { ents[it].kind == Kind.POLE }
         if (!spec.requirePower) return
-        val needs = ents.filter { it.kind == Kind.MACHINE || it.kind == Kind.INSERTER }
+        val needs = ents.filter { it.kind == Kind.MACHINE || it.kind == Kind.INSERTER || it.kind == Kind.BEACON }
         needs.forEach { e ->
             val covered = poles.any { covers(ents[it], e.rect) }
             if (!covered) err(ErrorType.UNPOWERED, e.tile, "${e.name} is outside every pole's supply area")
@@ -748,6 +754,18 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val stack = ArrayDeque(listOf(poles[0]))
             while (stack.isNotEmpty()) { val p = stack.removeLast(); if (seen.add(p)) stack += adj.getValue(p) }
             poles.filter { it !in seen }.forEach { err(ErrorType.POLES_DISCONNECTED, ents[it].tile, "pole is not wired to the rest") }
+        }
+    }
+
+    /** Every machine has the beacons in range its planned rate needs (a beacon reaches a machine its supply area overlaps). */
+    private fun checkBeacons() {
+        val b = spec.beacon ?: return
+        val beacons = ents.filter { it.kind == Kind.BEACON }
+        ents.filter { it.kind == Kind.MACHINE }.forEach { m ->
+            val need = spec.machines[m.tile]?.beaconNeed ?: 0
+            if (need == 0) return@forEach
+            val have = beacons.count { plan.inBeaconRange(b, it.x, it.y, m.x, m.y, m.w, m.h) }
+            if (have < need) err(ErrorType.BEACON_SHORT, m.tile, "${m.recipe ?: m.name} has $have beacon(s) in range, its rate needs $need")
         }
     }
 

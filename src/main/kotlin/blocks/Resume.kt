@@ -29,6 +29,7 @@ import java.io.File
 private data class SEntity(
     val name: String, val kind: String, val x: Int, val y: Int, val dir: String, val recipe: String? = null, val item: String? = null,
     val fluid: String? = null, val net: Int? = null, val mirror: Boolean = false, val drain: Boolean = false, val w: Int, val h: Int,
+    val modules: List<String>? = null,
 )
 
 @Serializable
@@ -81,7 +82,7 @@ fun saveSplit(out: File, config: RunConfiguration, split: Split) {
 fun saveBlock(out: File, b: Int, layouts: List<TrialResult>) {
     val ls = layouts.map { r ->
         SLayout(r.w, r.h, r.score, r.seed,
-            r.layout!!.entities.map { e -> SEntity(e.name, e.kind.name, e.x, e.y, e.dir.name, e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h) },
+            r.layout!!.entities.map { e -> SEntity(e.name, e.kind.name, e.x, e.y, e.dir.name, e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, e.modules) },
             r.placement!!.machines.map { SMachine(it.id, it.x, it.y, it.rot.name, it.mirror) },
             r.sources.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, it.lane, it.port) },
             r.outputs.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, -1, it.port) })
@@ -116,7 +117,7 @@ fun loadBlock(out: File, b: Int): List<TrialResult> {
     val ls = strictJson.decodeFromString(kotlinx.serialization.builtins.ListSerializer(SLayout.serializer()), f.readText())
     return ls.map { l ->
         val ents = l.entities.map { e ->
-            PlacedEntity(e.name, Kind.valueOf(e.kind), e.x, e.y, Dir.valueOf(e.dir), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h)
+            PlacedEntity(e.name, Kind.valueOf(e.kind), e.x, e.y, Dir.valueOf(e.dir), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, modules = e.modules)
         }
         val placement = Placement(l.w, l.h, l.machines.map { PlacedMachine(it.id, it.x, it.y, Dir.valueOf(it.rot), it.mirror) })
         TrialResult(true, l.w, l.h, l.seed, Layout(l.w, l.h, ents), placement, emptyList(), null, l.score, "ok", 0.0, 0, listOf("resumed"),

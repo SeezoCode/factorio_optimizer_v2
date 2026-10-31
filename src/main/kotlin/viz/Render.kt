@@ -146,12 +146,18 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
     }
 
     val byTile = layout.tileIndex()
+    // Machines inside some beacon's supply area are drawn green.
+    val beaconsDrawn = layout.entities.filter { it.kind == Kind.BEACON }
+    val d = GameConstants.BEACON_SUPPLY
+    fun beaconed(e: PlacedEntity) = beaconsDrawn.any { b ->
+        e.x < b.x + b.w + d && e.x + e.w > b.x - d && e.y < b.y + b.h + d && e.y + e.h > b.y - d
+    }
     layout.entities.forEach { e ->
         val cx = e.x + e.w / 2.0
         val cy = e.y + e.h / 2.0
         when (e.kind) {
             Kind.MACHINE -> {
-                g.color = Color(200, 210, 230)
+                g.color = if (beaconed(e)) Color(170, 225, 165) else Color(200, 210, 230)
                 g.fillRect(sx(e.x + 0.08), sy(e.y + 0.08), ((e.w - 0.16) * px).toInt(), ((e.h - 0.16) * px).toInt())
                 g.color = Color(60, 70, 100)
                 g.drawRect(sx(e.x + 0.08), sy(e.y + 0.08), ((e.w - 0.16) * px).toInt(), ((e.h - 0.16) * px).toInt())
@@ -165,6 +171,14 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
                 lines.forEachIndexed { i, line -> g.drawString(line, sx(e.x + 0.15), sy(e.y + 0.1) + lh * (i + 1) - 2) }
                 g.font = font
                 g.clip = oldClip
+            }
+            Kind.BEACON -> {
+                g.color = Color(120, 160, 120)
+                g.fillRect(sx(e.x + 0.1), sy(e.y + 0.1), ((e.w - 0.2) * px).toInt(), ((e.h - 0.2) * px).toInt())
+                g.color = Color(40, 80, 40)
+                g.drawRect(sx(e.x + 0.1), sy(e.y + 0.1), ((e.w - 0.2) * px).toInt(), ((e.h - 0.2) * px).toInt())
+                g.color = Color(200, 230, 120)
+                g.fillOval(sx(e.x + e.w / 2.0 - 0.45), sy(e.y + e.h / 2.0 - 0.45), (0.9 * px).toInt(), (0.9 * px).toInt())
             }
             Kind.TANK -> {
                 g.color = Color(170, 190, 215)

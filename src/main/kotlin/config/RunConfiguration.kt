@@ -80,6 +80,8 @@ data class RunConfiguration(
     val sinks: SinkConfig = SinkConfig(),
     val fluids: FluidConfig = FluidConfig(),
     val power: PowerConfig = PowerConfig(),
+    /** Modules in the machines and beacons around them (see [BeaconConfig]); null for none. */
+    val beacons: BeaconConfig? = null,
 
     val search: SearchConfig = SearchConfig(),
     val score: ScoreConfig = ScoreConfig(),
@@ -133,6 +135,11 @@ data class RunConfiguration(
         require(sinks.chest in GameConstants.CHESTS) { "Unknown chest '${sinks.chest}'" }
         require(fluids.mode in setOf("pipes", "infinity-pipe", "manual")) { "fluids.mode must be 'pipes', 'infinity-pipe' or 'manual'" }
         require(power.mode in setOf("set-cover", "lattice", "none")) { "power.mode must be 'set-cover', 'lattice' or 'none'" }
+        beacons?.let { b ->
+            require(b.mode in setOf("lattice", "set-cover")) { "beacons.mode must be 'lattice' or 'set-cover'" }
+            require(b.perMachine in 0..16) { "beacons.per_machine must be 0..16" }
+            require(b.pitch == null || b.pitch >= 6) { "beacons.pitch must be at least 6" }
+        }
         sources.forEach { it.validate() }
         outputs.forEach { it.validate() }
         Tuning().withOverrides(tuning)   // unknown or mistyped tuning keys fail here, not mid-run
@@ -344,6 +351,28 @@ data class PowerConfig(
     val mode: String = "set-cover",
     val pole: String = "medium-electric-pole",
     @SerialName("allow_outside_ring") val allowOutsideRing: Boolean = true,
+)
+
+/**
+ * Modules and beacons, placed like electricity poles. Every machine that takes modules gets [machineModules] in
+ * its own slots (one the recipe does not allow, such as productivity in a recipe that allows none, is replaced by
+ * [fallbackModule] or left out), and machines of [recipes] (all that take beacon effects when null) are planned
+ * with [perMachine] beacons of [modules] each, so fewer machines make the same rate. In "lattice" mode rows of
+ * beacon spots are kept free before placement, every [pitch] tiles (from the machine size and [perMachine] when
+ * null), and the placer pulls the machines next to them; after routing, beacons that serve nobody go, and any
+ * machine still short gets beacons on free tiles, like set-cover poles. "set-cover" places them after routing
+ * only, rerouting around machines left short, and falls back to the lattice.
+ */
+@Serializable
+data class BeaconConfig(
+    val mode: String = "lattice",
+    val beacon: String = "beacon",
+    val modules: List<String> = listOf("speed-module-3", "speed-module-3"),
+    @SerialName("per_machine") val perMachine: Int = 2,
+    @SerialName("machine_modules") val machineModules: List<String> = emptyList(),
+    @SerialName("fallback_module") val fallbackModule: String? = null,
+    val recipes: List<String>? = null,
+    val pitch: Int? = null,
 )
 
 @Serializable

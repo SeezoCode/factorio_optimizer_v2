@@ -80,6 +80,11 @@ data class BpEntity(
     val mirror: Boolean? = null,
     /** Circuit settings; for a crafting machine its enable condition. VERIFY (v19) */
     @SerialName("control_behavior") val controlBehavior: JsonObject? = null,
+    /**
+     * Item requests: modules into slots, [{id: {name}, items: {in_inventory: [{inventory, stack}]}}], stacks
+     * 0-based; inventory 1 for a beacon, 4 for a crafting machine. VERIFY (v20)
+     */
+    val items: kotlinx.serialization.json.JsonArray? = null,
 )
 
 /** Layout -> 2.0 blueprint. Entity numbers are layout index + 1. */
@@ -118,6 +123,21 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
             // Filters leave out the quality, so they match an item of any quality.
             useFilters = if (e.kind == Kind.INSERTER && e.item != null) true else null,
             filters = if ((e.kind == Kind.CHEST || e.kind == Kind.INSERTER) && e.item != null) listOf(BpItemFilter(1, e.item)) else null,
+            items = e.modules?.takeIf { it.isNotEmpty() }?.let { ms ->
+                val inv = if (e.kind == Kind.BEACON) GameConstants.BEACON_MODULE_INVENTORY else GameConstants.MACHINE_MODULE_INVENTORY
+                buildJsonArray {
+                    ms.withIndex().groupBy({ it.value }, { it.index }).forEach { (module, stacks) ->
+                        add(buildJsonObject {
+                            put("id", buildJsonObject { put("name", module) })
+                            put("items", buildJsonObject {
+                                put("in_inventory", buildJsonArray {
+                                    stacks.forEach { st -> add(buildJsonObject { put("inventory", inv); put("stack", st) }) }
+                                })
+                            })
+                        })
+                    }
+                }
+            },
             controlBehavior = e.circuit?.let { c ->
                 buildJsonObject {
                     put("circuit_enable_disable", true)
@@ -142,7 +162,7 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
 }
 
 private val Kind.hasDirection: Boolean
-    get() = this != Kind.CHEST && this != Kind.POLE && this != Kind.INFINITY_CHEST && this != Kind.INFINITY_PIPE && this != Kind.PIPE
+    get() = this != Kind.CHEST && this != Kind.POLE && this != Kind.BEACON && this != Kind.INFINITY_CHEST && this != Kind.INFINITY_PIPE && this != Kind.PIPE
 
 /** 2.0 blueprint -> layout. Inverse of [toBlueprint] for the entity types this tool emits. */
 fun Blueprint.toLayout(w: Int, h: Int): Layout {
@@ -174,6 +194,17 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
                 val sig = c["first_signal"]?.jsonObject ?: return@let null
                 CircuitCondition(sig["name"]?.jsonPrimitive?.content ?: return@let null, c["comparator"]?.jsonPrimitive?.content ?: "<",
                     c["constant"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0, sig["type"]?.jsonPrimitive?.content == "fluid")
+            },
+            modules = b.items?.let { reqs ->
+                val slots = sortedMapOf<Int, String>()
+                reqs.forEach { r ->
+                    val o = r.jsonObject
+                    val name = o["id"]?.jsonObject?.get("name")?.jsonPrimitive?.content ?: return@forEach
+                    o["items"]?.jsonObject?.get("in_inventory")?.jsonArray?.forEach { st ->
+                        st.jsonObject["stack"]?.jsonPrimitive?.content?.toIntOrNull()?.let { slots[it] = name }
+                    }
+                }
+                slots.values.toList().takeIf { it.isNotEmpty() }
             },
         )
     }

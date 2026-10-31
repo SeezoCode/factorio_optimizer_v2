@@ -153,6 +153,16 @@ object GameConstants {
     const val PIPE_TO_GROUND_GAP = 9
 
     // ---------------- storage tank ----------------
+    /** The beacon entity name (its size, supply area and effectivity come from recipes.json). */
+    const val BEACON = "beacon"
+    /** Tiles a beacon's supply area reaches beyond its edge (for renders; planning reads recipes.json). */
+    const val BEACON_SUPPLY = 3
+    /**
+     * 2.0 inventory index of module slots in blueprint item requests: beacon 1, assembling machine and furnace 4
+     * (defines.inventory.beacon_modules, assembling_machine_modules, furnace_modules). [P] VERIFY (v20)
+     */
+    const val BEACON_MODULE_INVENTORY = 1
+    const val MACHINE_MODULE_INVENTORY = 4
     const val STORAGE_TANK = "storage-tank"
     /** Fluid a storage tank holds; it reads out its contents on a circuit wire. [P] VERIFY (v19) */
     const val STORAGE_TANK_CAPACITY = 25000.0

@@ -2,7 +2,7 @@ package geom
 
 import data.GameConstants
 
-enum class Kind { MACHINE, BELT, UG_IN, UG_OUT, SPLITTER, INSERTER, CHEST, POLE, INFINITY_PIPE, INFINITY_CHEST, PIPE, PIPE_UG, TANK;
+enum class Kind { MACHINE, BELT, UG_IN, UG_OUT, SPLITTER, INSERTER, CHEST, POLE, INFINITY_PIPE, INFINITY_CHEST, PIPE, PIPE_UG, TANK, BEACON;
 
     val beltFamily: Boolean get() = this == BELT || this == UG_IN || this == UG_OUT || this == SPLITTER
 }
@@ -33,6 +33,8 @@ data class PlacedEntity(
     val h: Int = defaultSize(name, kind, dir).second,
     /** Machines: works only while this condition holds on its circuit network (null: always). */
     val circuit: CircuitCondition? = null,
+    /** Machines and beacons: modules in their slots, in slot order (blueprint item requests). */
+    val modules: List<String>? = null,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)
@@ -46,6 +48,7 @@ data class PlacedEntity(
             Kind.SPLITTER -> if (dir.axis == 1) 2 to 1 else 1 to 2
             Kind.POLE -> GameConstants.footprint(name)
             Kind.TANK -> 3 to 3
+            Kind.BEACON -> 3 to 3
             else -> 1 to 1
         }
 
@@ -64,6 +67,7 @@ data class PlacedEntity(
                 name == GameConstants.PIPE -> Kind.PIPE
                 name == GameConstants.PIPE_TO_GROUND -> Kind.PIPE_UG
                 name == GameConstants.STORAGE_TANK -> Kind.TANK
+                name == GameConstants.BEACON -> Kind.BEACON
                 else -> error("Unknown entity '$name'")
             }
         }

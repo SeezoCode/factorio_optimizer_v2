@@ -18,6 +18,13 @@ import place.Placement
 import place.staticObstacles
 import plan.ProductionPlan
 import plan.Role
+import plan.beaconNeed
+import plan.beaconSpec
+import plan.machineModules
+import power.beaconLattice
+import power.beaconNeeds
+import power.pickBeaconSpots
+import power.placeBeacons
 import plan.inserterRate
 import power.buildHarness
 import power.placePoles
@@ -68,6 +75,7 @@ fun validationSpec(
             fluidOut = inst.fluidOut,
             products = items.takeIf { it.size > 1 } ?: emptyMap(),
             sinks = plan.terminals.filter { it.machine == pm.id && it.role == Role.SINK }.groupBy { it.item }.mapValues { (_, ts) -> ts.sumOf { it.rate } },
+            beaconNeed = beaconNeed(inst.crafts, inst.beaconCrafts),
         )
     }
     val sourceOutside = (sources.map { it.tile } + outputs.map { it.tile }).filter { it.x !in 0 until placement.w || it.y !in 0 until placement.h }
@@ -82,6 +90,7 @@ fun validationSpec(
         checkRates = true,
         inserterRate = { name, fromBelt -> inserterRate(name, config, fromBelt) },
         recipeInfo = recipeInfo,
+        beacon = beaconSpec(data, config),
     )
 }
 
@@ -105,7 +114,7 @@ class TrialResult(
     val errors: List<ValidationError>,
     val route: RouteResult?,
     val score: Double,
-    /** Where it stopped: "placement", "route", "power", "validate" or "ok". */
+    /** Where it stopped: "placement", "route", "beacons", "power", "validate" or "ok". */
     val stage: String,
     val annealT0: Double,
     val millis: Long,
@@ -150,14 +159,27 @@ fun runTrial(
     lattice: Boolean = config.power.mode == "lattice",
     /** Per-iteration router renders go here when set. */
     debugDir: java.io.File? = null,
+    /** Keep beacon spots free before placement (beacons.mode lattice, or set-cover falling back). */
+    beaconLatticeOn: Boolean = config.beacons?.mode == "lattice",
 ): TrialResult {
     val t0 = System.currentTimeMillis()
     val notes = ArrayList<String>()
     val latticeTiles = if (lattice) poleLattice(w, h, config.power.pole) else emptyList()
     val poleSize = GameConstants.pole(config.power.pole).size
     val latticeCover = latticeTiles.flatMap { t -> (0 until poleSize).flatMap { dy -> (0 until poleSize).map { dx -> Tile(t.x + dx, t.y + dy) } } }
-    val obstacles = staticObstacles(config, plan, w, h) + latticeCover
-    val model = PlaceModel(plan, config, tuning.place, w, h, obstacles)
+    val static = staticObstacles(config, plan, w, h) + latticeCover
+    // Beacons: spots kept free like the pole lattice, machines pulled next to them (see Beacons.kt).
+    val bspec = beaconSpec(data, config)?.takeIf { plan.machines.any { it.beacons > 0 } }
+    val beaconSpots = if (bspec != null && beaconLatticeOn) beaconLattice(w, h, bspec, plan, config.beacons!!.perMachine, config.beacons.pitch, static) else emptyList()
+    fun spotTiles(spots: List<Tile>) = spots.flatMap { t -> geom.Rect(t.x, t.y, bspec!!.size, bspec.size).tiles() }
+    val model = PlaceModel(plan, config, tuning.place, w, h, static + spotTiles(beaconSpots), beaconSpots, bspec)
+    // The router keeps only the spots that serve the placed machines; the others are free for belts and pipes.
+    fun usedSpots(p: Placement) = if (beaconSpots.isEmpty()) beaconSpots
+        else pickBeaconSpots(bspec!!, beaconNeeds(plan, p.machines.associate { it.id to Tile(it.x, it.y) }), p.machines.map { pm ->
+            val m = plan.machines[pm.id]; val r = pm.rot.ordinal % 2 == 1
+            geom.Rect(pm.x, pm.y, if (r) m.h else m.w, if (r) m.w else m.h)
+        }, beaconSpots)
+    fun obstaclesFor(p: Placement): Set<Tile> = static + spotTiles(usedSpots(p))
     val rnd = SplittableRandom(seed)
     val annealer = Annealer(model, rnd, tuning.place)
 
@@ -199,7 +221,7 @@ fun runTrial(
     var bestConflicts: List<Tile> = emptyList()
     for (round in 0..tuning.place.feedbackRounds) {
         if (System.currentTimeMillis() > deadline) return fail("route", routed)
-        routed = route(RouteProblem(plan, config, tuning.route, model.placement(), obstacles,
+        routed = route(RouteProblem(plan, config, tuning.route, model.placement(), obstaclesFor(model.placement()),
             debugDir = debugDir?.let { java.io.File(it, "round$round") }))
         consider(routed)
         if (routed.success) break
@@ -218,7 +240,7 @@ fun runTrial(
             if (System.currentTimeMillis() > deadline || !annealer.initialFrom(bestPlacement!!)) break
             val moved = spreadAround(model, bestConflicts, tuning.place.spreadRadius)
             if (moved == 0) break
-            val again = route(RouteProblem(plan, config, tuning.route, model.placement(), obstacles, endgameSeed = 100L + attempt))
+            val again = route(RouteProblem(plan, config, tuning.route, model.placement(), obstaclesFor(model.placement()), endgameSeed = 100L + attempt))
             consider(again)
             notes += "spread retry $attempt ($bestScore): moved $moved machines, overuse ${again.overuse}, failed nets ${again.failedNets}"
             result = again
@@ -233,7 +255,7 @@ fun runTrial(
         for (attempt in 1..tuning.place.nearMissAttempts) {
             if (System.currentTimeMillis() > deadline || !annealer.initialFrom(bestPlacement)) break
             val moved = nudgeNear(model, bestConflicts, rnd)
-            val again = route(RouteProblem(plan, config, rt, model.placement(), obstacles, endgameSeed = attempt.toLong()))
+            val again = route(RouteProblem(plan, config, rt, model.placement(), obstaclesFor(model.placement()), endgameSeed = attempt.toLong()))
             consider(again)
             notes += "near miss ($bestScore) retry $attempt${moved?.let { " moving machine $it" } ?: ""}: overuse ${again.overuse}, failed nets ${again.failedNets}"
             result = again
@@ -242,6 +264,8 @@ fun runTrial(
     }
     if (!result.success) return fail("route", result)
     val placement = model.placement()
+    val spots = usedSpots(placement)
+    val obstacles = static + spotTiles(spots)
 
     // Harness (test mode) and power, with up to two warm reroutes that keep tiles free near unpowered entities.
     var bias = HashMap<Tile, Double>()
@@ -249,12 +273,36 @@ fun runTrial(
         val ringed = if (config.portsOnRing) ringPorts(result.entities, result.sources, result.outputs, w, h, GameConstants.beltTier(config.beltTier).belt)
             else RingedPorts(result.entities, result.sources, result.outputs)
         // Crackers work only on what other machines leave of their oil (a tank and red wires, see addSurplusControl).
-        val ctl = route.addSurplusControl(ringed.entities, plan, config, w, h, listOf(geom.Rect(0, 0, w, h)))
+        val ctl0 = route.addSurplusControl(ringed.entities, plan, config, w, h, listOf(geom.Rect(0, 0, w, h)))
+        // Modules in the machines' own slots (same order, so circuit wire indices stay valid).
+        val ctl = if (config.beacons == null) ctl0 else route.SurplusControl(ctl0.entities.map { e ->
+            val r = e.recipe?.let { data.recipes[it] }
+            if (e.kind == Kind.MACHINE && r != null) e.copy(modules = machineModules(data, config, r, e.name).takeIf { it.isNotEmpty() }) else e
+        }, ctl0.circuitWires, ctl0.notes)
         if (attempt == 0) notes += ctl.notes
         val harness = if (config.testMode) buildHarness(ringed.sources, ctl.entities, w, h, config, ringed.outputs) else null
         harness?.warnings?.let { notes += it }
-        val entities = ctl.entities + (harness?.entities ?: emptyList())
         val outside = harness?.tiles ?: emptySet()
+        // Beacons before poles (they need power too): free lattice spots, more where machines are short, unused ones out.
+        val reservedTiles = config.reservedRects(w, h).flatMap { it.tiles() }.toSet()
+        val beacons = if (bspec == null) null else placeBeacons(ctl.entities + (harness?.entities ?: emptyList()), bspec,
+            beaconNeeds(plan, placement.machines.associate { it.id to Tile(it.x, it.y) }), spots, w, h, reservedTiles)
+        if (beacons != null && !beacons.ok) {
+            notes += "beacons attempt $attempt: ${beacons.short.size} machine(s) short"
+            if (attempt < 2) {
+                // Keep tiles near the short machines free and reroute, as for unpowered entities.
+                val r = bspec!!.size + bspec.supply
+                beacons.short.forEach { u -> for (dy in -r..r + 2) for (dx in -r..r + 2) bias.merge(Tile(u.x + dx, u.y + dy), 0.5, Double::plus) }
+                val again = route(RouteProblem(plan, config, tuning.route, placement, obstacles, tileBias = bias, warmHistory = result.rawHistory))
+                if (again.success) result = again
+                continue
+            }
+            if (!beaconLatticeOn) {
+                notes += "beacons by set cover failed; falling back to the beacon lattice"
+                return runTrial(data, plan, config, tuning, w, h, seed, placement, annealer.lastT0, deadline, lattice, debugDir, beaconLatticeOn = true)
+            }
+        }
+        val entities = ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList())
         val sources = if (config.testMode) emptyList() else ringed.sources
         val (poles, wires, ok, uncovered) = when (config.power.mode) {
             "none" -> Quad(emptyList(), emptyList(), true, emptyList())
@@ -263,8 +311,7 @@ fun runTrial(
                 Quad(ps.poles, ps.wires, ps.ok, ps.uncovered.map { it.tile })
             } else {
                 val extra = outside.flatMap { t -> (-2..2).flatMap { dy -> (-2..2).map { dx -> Tile(t.x + dx, t.y + dy) } } }
-                val keepFree = config.reservedRects(w, h).flatMap { it.tiles() }.toSet()
-                val ps = placePoles(entities, poleCandidates(w, h, config.power.allowOutsideRing, extra).filter { it !in keepFree }, config.power.pole)
+                val ps = placePoles(entities, poleCandidates(w, h, config.power.allowOutsideRing, extra).filter { it !in reservedTiles }, config.power.pole)
                 Quad(ps.poles, ps.wires, ps.ok, ps.uncovered.map { it.tile })
             }
         }
@@ -277,7 +324,7 @@ fun runTrial(
         }
         if (!ok && config.power.mode == "set-cover" && !lattice) {
             notes += "set cover failed twice; falling back to the pole lattice"
-            return runTrial(data, plan, config, tuning, w, h, seed, placement, annealer.lastT0, deadline, lattice = true, debugDir = debugDir)
+            return runTrial(data, plan, config, tuning, w, h, seed, placement, annealer.lastT0, deadline, lattice = true, debugDir = debugDir, beaconLatticeOn = beaconLatticeOn)
         }
         val offset = entities.size
         val all = entities + poles
@@ -294,6 +341,7 @@ fun runTrial(
             .filter { (_, ts) -> ts.distinct().size > 1 }
             .map { (p, ts) -> ValidationError(validate.ErrorType.UNSUPPORTED, ts.first(), "${plan.ports[p].item} must be one belt at its port, uses ${ts.distinct().size}") }
         val errors = validate(layout, spec) + split
+        if (beacons != null && !beacons.ok) return fail("beacons", result, errors, layout)
         if (!ok) return fail("power", result, errors, layout)
         if (errors.isNotEmpty()) return fail("validate", result, errors, layout)
         return TrialResult(true, w, h, seed, layout, placement, errors, result, score(layout, config), "ok", annealer.lastT0,

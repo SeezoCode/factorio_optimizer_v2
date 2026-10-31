@@ -36,7 +36,7 @@ fun turnLayout(t: TrialResult, r: Int): TrialResult {
     }
     val ents = t.layout!!.entities.map { e ->
         val (p, s) = rect(e.x, e.y, e.w, e.h)
-        PlacedEntity(e.name, e.kind, p.x, p.y, e.dir.turned(q), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, s.first, s.second, e.circuit)
+        PlacedEntity(e.name, e.kind, p.x, p.y, e.dir.turned(q), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, s.first, s.second, e.circuit, e.modules)
     }
     val machines = t.placement!!.machines.map { pm ->
         val size = t.layout.entities.firstOrNull { it.kind == geom.Kind.MACHINE && it.x == pm.x && it.y == pm.y }?.let { it.w to it.h } ?: (3 to 3)

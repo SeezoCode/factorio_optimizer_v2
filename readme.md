@@ -165,6 +165,9 @@ Unknown keys are an error. Everything except `targets` has a default.
   "sinks": { "mode": "port" },
   "fluids": { "mode": "pipes" },
   "power": { "mode": "set-cover", "pole": "medium-electric-pole", "allow_outside_ring": true },
+  "beacons": { "mode": "lattice", "beacon": "beacon", "modules": ["speed-module-3", "speed-module-3"], "per_machine": 2,
+               "machine_modules": ["productivity-module-3", "productivity-module-3", "productivity-module-3", "productivity-module-3"],
+               "fallback_module": "speed-module-3", "recipes": null, "pitch": null },
   "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true },
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
@@ -195,6 +198,18 @@ Unknown keys are an error. Everything except `targets` has a default.
   it off; `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan
   needs, starve lubricant and fill the petroleum pipes until the refineries stop. The tank reads its own contents,
   which follow the fill level of the whole pipe network, so the threshold does not depend on pipe length.
+- `beacons` (optional) adds modules and beacons, placed much like electricity poles. `machine_modules` go in every
+  electric machine's own slots; one the recipe refuses (productivity on belts, inserters…) becomes `fallback_module`,
+  or the slot stays empty. Machines of `recipes` (default: every one that takes beacon effects) are planned with
+  `per_machine` beacons of `modules`, using the 2.0 rules: speed × max(0.2, 1 + Σ machine modules + 1.5 · √n · Σ one
+  beacon's modules), productivity from the machine's own modules, so the plan needs fewer machines and less input.
+  Because machine counts are rounded up, many machines need fewer beacons than planned; each needs only enough
+  for its own rate. In `"lattice"` mode (default) rows of beacon spots are kept free before placement, like the
+  pole lattice (every `pitch` tiles, by default room for a row of machines on each side, or one row between two
+  beacon rows when `per_machine` is above 4), and the placer pulls machines next to them; after routing, beacons
+  that serve nobody go and machines still short get beacons on free tiles. `"set-cover"` places them only after
+  routing (rerouting around machines left short, falling back to the lattice). Beacons are powered, the validator
+  counts the beacons in range of every machine, and the blueprint requests the modules into their slots.
 - Fluids are routed in pipes and pipe-to-ground (`"fluids": {"mode": "infinity-pipe"}` puts an infinity pipe on
   every fluid connection instead, `"manual"` leaves the connection tiles free).
 - `box.max_size` caps the box (the side of a square of the box's area): the search starts there and, if it
@@ -382,7 +397,7 @@ narrow, fluids pinned side by side) rather than the box.
 | 1 | `plan` | LP over recipe rates (by-products, recipe choice) → machine instances, terminals, nets and ports |
 | 2 | `place` | Simulated annealing (VPR schedule) on HPWL × q(k), RUDY congestion, pin access, direct-insertion bonus, rotation and mirroring, fluid connection legality |
 | 3 | `route` | Negotiated-congestion routing: belt chains leg by leg with A* over (tile, heading, belt/underground), splitter branches, pipe trees with pipe-to-ground, and a rip-up-and-reroute endgame around the last conflicts |
-| 4 | `power` | Pole set cover and MST wiring (lattice fallback), test-mode harness |
+| 4 | `power` | Beacon lattice and set cover, pole set cover and MST wiring (lattice fallback), test-mode harness |
 | 5 | `search` | Box size search (gentle growth to a first success, then bisection), K seeds per size in parallel, warm starts, anytime outputs, calibration |
 | — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone |
 | — | `emit`, `viz` | Blueprint 2.0 encode/decode, PNG renders |
@@ -441,7 +456,7 @@ and practically useless:
 ## Not verified in game yet
 
 Some 2.0 facts are marked `VERIFY` in `data/GameConstants.kt` (inserter rates, underground pairing details,
-fluid input side, wire format, Space Age fluid connections, inserter filters). [docs/VERIFY.md](docs/VERIFY.md)
+fluid input side, wire format, Space Age fluid connections, inserter filters, beacon profile and module requests). [docs/VERIFY.md](docs/VERIFY.md)
 has a blueprint for each.
 
 ## More layouts
