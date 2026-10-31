@@ -40,6 +40,9 @@ as separate chains between scattered machines.
 | [Metallurgic science 4/s (Space Age, Vulcanus)](docs/examples/metallurgic_science) (at the bottom of the page) | 38 | 46 × 46 | 15 min | 14 min 41 s (46 × 46 first at 5 min 34 s) | [details](docs/examples/metallurgic_science.json) |
 | [Agricultural science 5/s + carbon fiber 5/s (Space Age, Gleba)](docs/examples/gleba_agricultural_carbon_fiber) (at the bottom of the page) | 43 | 50 × 50 | 15 min | 15 min | [details](docs/examples/gleba_agricultural_carbon_fiber.json) |
 | [Six science 1/s each from ore, as a factory of 10 blocks](docs/status/six_science_9_blocks) (at the bottom of the page) | 618 | 317 × 137 | 41 min | 30 min | [details](docs/status/six_science_9_blocks.json) |
+| [Six science 1/s each from plates, 13 blocks of at most 15 machines](docs/status/six_science_plates_13_blocks) | 177 | 92 × 107 | 30 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_plates_13_blocks.json) |
+| [Six science 1/s each from ore, 44 blocks of at most 15 machines](docs/status/six_science_ore_44_blocks) (at the bottom of the page) | 618 | 165 × 182 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_44_blocks.json) |
+| [Red + green science 2/s each with modules and beacons](docs/examples/beacons_red_green) ([below](#modules-and-beacons)) | 10–42 | 20 × 20 to 39 × 39 | 4–10 min | | [details](docs/examples/beacons_red_green/beacons_4.json) |
 
 Each render next to the same blueprint built in game. Red + green was generated with belt sharing on
 (`lane_sharing`, two items per belt, one per lane), chemical science with it off (one item per belt).
@@ -78,6 +81,46 @@ dropping onto a belt curve put their items on the wrong lane. On a curve an inse
 the bend, the inside lane when it stands outside the curve, and the router and validator did not model that.
 It is fixed now; this blueprint was generated before the fix (9 of its 206 belt drops land on a curve's other
 lane).
+
+### In game: 2 science/s for 9 hours
+
+<!-- PLACEHOLDER: put the screenshot at docs/examples/two_science_per_second/in_game.jpg, the job file at
+     docs/examples/two_science_per_second.json and the blueprint next to it, then fill in the numbers below. -->
+
+![2 science/s factory, in game](docs/examples/two_science_per_second/in_game.jpg)
+
+*TODO: which science packs, machines, blocks, factory size, search time. A factory of blocks at 2 science/s that
+ran for 9 hours in game with everything working. The only fix needed by hand was heavy oil: the cracking plants
+took the oil lubricant needed and the refineries backed up. Crackers now work only on surplus oil (a storage
+tank wired to them, see `fluids.surplus_only`).*
+
+### Modules and beacons
+
+The same job, red + green science at 2/s each, with four productivity-module-3 in every assembler (speed-module-3
+where a recipe takes no productivity) and beacons of two speed-module-3. The beacon runs searched for 4 minutes,
+the two without beacons for 10 (they have far more machines); every box is the smallest that routed, the next size
+down failed on every try. Power counts assemblers and beacons only: average with each machine working the share
+of time its rate needs, peak with every machine running flat out.
+
+| Setup | Machines | Beacons placed | Box | Iron / copper in (per s) | Belts | Inserters | Power (avg / peak) |
+|-------|---------:|---------------:|----:|-------------------------:|------:|----------:|-------------------:|
+| [No modules](docs/examples/beacons_red_green/no_modules) | 25 | 0 | 29 × 29 | 15.0 / 5.0 | 298 | 86 | 8.9 / 9.7 MW |
+| [Modules, no beacons](docs/examples/beacons_red_green/modules_only) | 42 | 0 | 39 × 39 | 8.27 / 2.52 | 542 | 129 | 57.8 / 66.4 MW |
+| [Modules, 1 beacon per machine](docs/examples/beacons_red_green/beacons_1) | 13 | 4 | 23 × 23 | 8.27 / 2.52 | 128 | 42 | 20.5 / 32.0 MW |
+| [Modules, 2 beacons per machine](docs/examples/beacons_red_green/beacons_2) | 11 | 7 | 22 × 22 | 8.27 / 2.52 | 143 | 38 | 19.3 / 30.9 MW |
+| [Modules, 4 beacons per machine](docs/examples/beacons_red_green/beacons_4) | 10 | 9 | 20 × 20 | 8.27 / 2.52 | 112 | 34 | 19.6 / 30.3 MW |
+
+- Productivity cuts the plates needed by about half, whatever the beacons.
+- Productivity modules alone are the worst choice: they slow each machine to 40 %, so the block needs 42 machines,
+  6.5 times the power and almost twice the area of the one without modules.
+- Beacons win back the speed. Area shrinks by 37 %, 42 % and 52 % with 1, 2 and 4 beacons per machine, but each
+  step adds less: 2.0 weakens every beacon to $1/\sqrt{n}$ when $n$ reach a machine, so $n$ beacons give $\sqrt{n}$
+  times one. Power stays about the same from 1 to 4 beacons, since fewer machines offset the extra beacons.
+- Fewer beacons are placed than machines × `per_machine`: machine counts are rounded up, so each machine gets only
+  what its own rate needs (some none), and one beacon usually serves several machines. In renders, machines in
+  reach of a beacon are green and show the number of beacons in range in their bottom-right corner.
+
+![Red + green science with 4 beacons per machine](docs/examples/beacons_red_green/beacons_4/best.png)
 
 ## How to run
 
@@ -429,7 +472,9 @@ a roomy size and records every planner or trial exception, invalid layout or fai
 layouts in seconds. Chemical science at 0.5/s from ore and crude oil (43 machines, oil processing included)
 validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 1/s from ore (110 machines) at
 64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built as a factory of 10 blocks
-at 317 × 137 in 30 minutes (see [More layouts](#more-layouts)).
+at 317 × 137 in 30 minutes, and as a factory of 44 blocks of at most 15 machines at 165 × 182 (31 % fewer
+tiles) with the 2D floorplanner, rotation, lane pairs and compaction. Six science from plates went from 182 × 79
+(3 blocks) to 92 × 107 (13 blocks, 32 % fewer tiles). See [More layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
 not shown: Aquilo needs heat pipes to keep machines warm, and the generator does not place them.
@@ -518,6 +563,19 @@ little room for the links between blocks.
 Built in game:
 
 ![Six science, 10 blocks, in game](docs/status/six_science_9_blocks/in_game.jpg)
+
+The same job with the floorplanner that arranges blocks in any 2D layout: 44 blocks of at most 15 machines, about
+30 s of search each, belts packed to the limit (two items per corridor belt where they fit a lane each), then 10
+minutes of compaction squeezing corridor lines out and refloorplanning. 165 × 182 = 30,030 tiles, 31 % fewer than
+the 10-block factory above. Block rotation, lane pairs and the multi-block fluid pipes are all in use; pass-through
+chains were tried and left off (31,152 tiles with them).
+
+![Six science from ore, 44 blocks](docs/status/six_science_ore_44_blocks/best.png)
+
+Six science from plates with blocks of at most 15 machines: 13 blocks, 92 × 107 = 9,844 tiles after 10 minutes of
+compaction, against 14,378 for the 3-block factory at the top of the page.
+
+![Six science from plates, 13 blocks](docs/status/six_science_plates_13_blocks/best.png)
 
 ## License
 
