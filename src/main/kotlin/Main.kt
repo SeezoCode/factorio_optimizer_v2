@@ -78,6 +78,10 @@ fun main(args: Array<String>) {
     if (cfg != null && plan.machines.size > cfg.maxMachines) {
         // The live view in a terminal (unless --plain); --until-stopped searches blocks until a stop (key or control file).
         val view = if (!flags.containsKey("plain") && viz.LiveView.available()) viz.LiveView(java.io.File(out).name) else null
+        if (view == null && !flags.containsKey("plain")) println(
+            "(live view off: no terminal here. `./gradlew run` runs the program inside Gradle without one; start it with " +
+                "`./optimize --config=...` for the live view and keys. Steer it meanwhile with `echo stop > $out/control` " +
+                "(see the readme); --plain hides this note.)")
         val f = blocks.runFactory(data, config, tuning, plan, java.io.File(out), resume = resume != null, view = view,
             untilStopped = flags.containsKey("until-stopped"))
         println(if (f == null) "factory: no result" else "factory: ${f.layout.w}x${f.layout.h} score ${"%.1f".format(f.score)}, " +

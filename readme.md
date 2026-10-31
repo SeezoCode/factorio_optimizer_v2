@@ -156,8 +156,13 @@ creation.
 Run a job (the job file is a classpath resource name or a path):
 
 ```sh
-./gradlew run --args="--config=src/test/resources/jobs/t3.json"
+./optimize --config=src/test/resources/jobs/t3.json
 ```
+
+`./optimize` (`optimize.bat` on Windows) builds whatever changed and runs the program in your terminal, which a
+factory of blocks needs for its [live view](#watching-and-steering-a-factory-run). `./gradlew run
+--args="--config=..."` works too, but Gradle runs the program without a terminal, so you get plain output (the
+control file still works).
 
 Results go to `src/main/resources/solves/<time> - sa/` (or `--out=<dir>`):
 
@@ -189,6 +194,8 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 - `--plain`: line-by-line output instead of the live view.
 
 ### Watching and steering a factory run
+
+(The live view needs the program in a terminal: start it with `./optimize`, not `./gradlew run`.)
 
 A factory of blocks first gives every block one layout and stitches a preview factory from them (within a few
 minutes even for hundreds of machines; it is saved like any result, so `best.png` shows it), then keeps shrinking
