@@ -95,8 +95,8 @@ class LiveView(private val title: String) : FactoryView {
                 'p' -> e.apply(if (e.paused) Command.Resume else Command.Pause)
                 'j' -> selected = (selected + 1).coerceAtMost(n - 1)
                 'k' -> selected = (selected - 1).coerceAtLeast(0)
-                'f' -> e.apply(Command.Focus(if (e.status().blocks.getOrNull(selected)?.state == "focus") null else selected))
-                'x' -> e.apply(Command.Skip(selected, e.status().blocks.getOrNull(selected)?.state != "skipped"))
+                'f' -> e.status().blocks.getOrNull(selected)?.let { r -> e.apply(if (r.state == "focus") Command.Focus(null) else Command.Focus(r.block - 1, r.variant)) }
+                'x' -> e.status().blocks.getOrNull(selected)?.let { r -> e.apply(Command.Skip(r.block - 1, r.state != "skipped", r.variant)) }
                 'l' -> e.apply(Command.Lanes(e.status().lanes + 1))
                 'L' -> e.apply(Command.Lanes(e.status().lanes - 1))
                 '\u001b' -> {   // arrows: ESC [ A / B
@@ -133,7 +133,7 @@ class LiveView(private val title: String) : FactoryView {
         line("factory " + (if (s.factoryW > 0) "${s.factoryW}x${s.factoryH} (${s.factoryW * s.factoryH} tiles), stitched ${clock(s.sinceStitch)} ago" else "not stitched yet") +
             (if (s.stitching) "   stitching a preview..." else "") + "   ${s.phase}")
         line("")
-        line(" thr  block  mach  weight   size     first    turns  better ago   spent   state", "\u001b[4m")
+        line(" thr    block  mach  weight   size     first    turns  better ago   spent   state", "\u001b[4m")
         val listRows = (rows - 6 - minOf(5, s.events.size) - 2).coerceAtLeast(3)
         if (selected < top) top = selected
         if (selected >= top + listRows) top = selected - listRows + 1
@@ -142,7 +142,8 @@ class LiveView(private val title: String) : FactoryView {
             val thr = if (b.threads > 0) "[${b.threads}]" else "[ ]"
             val sz = if (b.w > 0) "${b.w}x${b.h}" else "-"
             val first = if (b.firstW > 0) "${b.firstW}x${b.firstH}" else "-"
-            val text = " %-4s %5d  %4d  %6.1f   %-8s %-8s %5d  %10s  %6s   %s%s".format(thr, b.block, b.machines, b.weight, sz, first, b.turns,
+            val name = if (b.variant == 0) "${b.block}" else "${b.block} x${"%.1f".format(b.factor)}"
+            val text = " %-4s %7s  %4d  %6.1f   %-8s %-8s %5d  %10s  %6s   %s%s".format(thr, name, b.machines, b.weight, sz, first, b.turns,
                 clock(b.sinceBetter), clock(b.spent), b.state, if (b.critical) " *" else "")
             line(text, when {
                 idx == selected -> "\u001b[7m"

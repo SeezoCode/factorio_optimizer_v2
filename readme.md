@@ -220,13 +220,16 @@ cannot shrink the factory, so these get turns first). A block is parked after `p
 improving and runs again when nothing else is left. Keys: `q` stops after the current turns and builds the final
 factory, which the view keeps showing (`q` twice, `Q`, or `q` while the final factory is built: stop at once,
 keeping the best factory so far), `s` stitches a preview now, `+`/`-` move
-the limit by five minutes, `u` removes it, `p` pauses, the arrows (or `j`/`k`) select a block, `f` gives it every
-thread, `x` skips it, `l`/`L` add or remove a lane. Everything also goes to `factory.txt` and each block's
+the limit by five minutes, `u` removes it, `p` pauses, the arrows (or `j`/`k`) select a row, `f` gives it every
+thread and runs nothing else until you press `f` again (a turn it is in on fewer threads is cut short and started
+again on all of them), `x` skips it, `l`/`L` add or remove a lane. Shape variants have rows of their own
+(`3 x0.6`). When the time is up, focus, pause and skip end for blocks that still have no layout, so the run always
+finishes. Everything also goes to `factory.txt` and each block's
 `log.txt`.
 
 The same controls work without a terminal: write a command into `<out>/control` (`stop`, `stop now`, `stitch`,
 `pause`, `resume`, `limit +600`, `limit -300`, `limit 3600` (seconds from the start), `limit none`, `focus 3`,
-`focus off`, `skip 3`, `unskip 3`, `lanes 2`), e.g. `echo "limit +600" > out/control`. `<out>/status.json`
+`focus off`, `skip 3`, `unskip 3`, `lanes 2`; `3:1` is block 3's first shape variant), e.g. `echo "limit +600" > out/control`. `<out>/status.json`
 holds what the live view shows, refreshed every second.
 
 Renders show each machine's name and recipe, and mark every input (green) and output (red) with a number on its
@@ -393,8 +396,9 @@ belts and pipes, in one blueprint:
    on the command line): wherever every longest chain of blocks across the factory can lose a padding line, it
    does, as long as the corridors still route; when that stalls, the blocks are floorplanned again from where they
    are with a fresh seed and a lighter price on belt length. Every smaller valid factory is saved on the way.
-   With `shape_variants` (e.g. `[0.6, 1.7]`) each block is also searched at its aspect times those factors
-   (`shape_variant_s` seconds each), and the floorplan picks the shapes that pack best.
+   With `shape_variants` (e.g. `[0.6, 1.7]`) each block is also searched at its aspect times those factors, as
+   rows of their own in the same rotation as the blocks (after every block has its first layout), and previews and
+   the final floorplan pick the shapes that pack best (`shape_variant_s` is no longer used).
 6. With `repack`, a floorplan of the blocks' real areas with free shapes says which shape each block should have;
    blocks far from it are searched again at that aspect, and the floorplan then picks, per block, the layout that
    packs best. Kept if the factory gets smaller.

@@ -215,6 +215,9 @@ class Search(
 
     private fun timeLeft() = clock() < deadline
 
+    /** Set by [trySize]: the last size was cut short (deadline) before all its seeds ran and none succeeded. */
+    private var inconclusive = false
+
     /** Runs K fresh seeds at size s on [threads] threads; true if any succeeded. */
     private fun trySize(s: Int, seeds: Int, threads: Int = config.search.threads): Boolean {
         val (w, h) = box(s)
@@ -234,6 +237,7 @@ class Search(
                 }
             }
             val results = pool.invokeAll(jobs).mapNotNull { it.get() }
+            inconclusive = results.size < seeds && results.none { it.success }
             trials += results.size
             results.forEach { offer(it); onTrial(it) }
             val ok = results.count { it.success }
@@ -300,9 +304,9 @@ class Search(
      * doubling the box gives sparse layouts). 2. Binary search between s_lo and the smallest success. 3. Extra seeds
      * at the smallest feasible size and the one below. False when there is nothing left to do.
      */
-    fun step(threads: Int = config.search.threads): Boolean {
+    fun step(threads: Int = config.search.threads, seeds: Int = maxOf(config.search.seedsPerSize, threads)): Boolean {
         // At least one seed per thread, so no thread waits while others work.
-        val k = maxOf(config.search.seedsPerSize, threads)
+        val k = maxOf(seeds, threads)
         val cap = config.box.maxSize
         if (phase == Phase.START) begin()
         if (!timeLeft()) return false
@@ -310,6 +314,7 @@ class Search(
         when (phase) {
             Phase.GROW -> {
                 if (trySize(hi, k, threads)) { lo = sLo; phase = Phase.BINARY; if (lo >= hi) closeInterval() }
+                else if (inconclusive) {}   // cut short: says nothing about this size
                 else if (++growRound >= tuning.search.growRounds.coerceAtLeast(1)) {
                     growRound = 0
                     when {
@@ -321,14 +326,14 @@ class Search(
             }
             Phase.BINARY -> {
                 val mid = (lo + hi) / 2
-                if (trySize(mid, k, threads)) hi = mid else lo = mid + 1
+                if (trySize(mid, k, threads)) hi = mid else if (!inconclusive) lo = mid + 1
                 if (lo >= hi) closeInterval()
             }
             Phase.EXTRA -> {
                 val before = best
                 if (hi - 1 >= sLo && trySize(hi - 1, k, threads)) hi -= 1
                 else if (timeLeft()) trySize(hi, k, threads)
-                stalls = if (best !== before) 0 else stalls + 1
+                stalls = if (best !== before) 0 else if (inconclusive) stalls else stalls + 1
                 if (++extraRound > tuning.search.extraRounds) end("extra seed rounds done")
             }
             else -> {}

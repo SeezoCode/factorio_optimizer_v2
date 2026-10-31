@@ -36,6 +36,9 @@ data class BlockStatus(
     val critical: Boolean,
     /** "first", "refining", "parked", "skipped", "focus", "done". */
     val state: String,
+    /** 0 for the block itself, else its shape variant (aspect times [factor]). */
+    val variant: Int = 0,
+    val factor: Double = 1.0,
 )
 
 @Serializable
@@ -65,12 +68,20 @@ sealed class Command {
     object Pause : Command()
     object Resume : Command()
     data class Limit(val delta: Double?, val absolute: Double?, val none: Boolean = false) : Command()
-    data class Focus(val block: Int?) : Command()
-    data class Skip(val block: Int, val on: Boolean) : Command()
+    data class Focus(val block: Int?, val variant: Int = 0) : Command()
+    data class Skip(val block: Int, val on: Boolean, val variant: Int = 0) : Command()
     data class Lanes(val n: Int) : Command()
 
     companion object {
-        /** "stop", "stop now", "stitch", "pause", "resume", "limit +600|-300|3600|none", "focus 3|off", "skip 3", "unskip 3", "lanes 2". */
+        /** "3" is block 3, "3:1" its first shape variant: (block index, variant). */
+        private fun row(s: String): Pair<Int, Int>? {
+            val parts = s.split(":")
+            val b = parts[0].toIntOrNull() ?: return null
+            val v = parts.getOrNull(1)?.toIntOrNull() ?: 0
+            return (b - 1) to v
+        }
+
+        /** "stop", "stop now", "stitch", "pause", "resume", "limit +600|-300|3600|none", "focus 3|3:1|off", "skip 3", "unskip 3", "lanes 2". */
         fun parse(line: String): Command? {
             val w = line.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
             if (w.isEmpty()) return null
@@ -87,9 +98,9 @@ sealed class Command {
                         else -> a.toDoubleOrNull()?.let { Limit(null, it) }
                     }
                 }
-                "focus" -> w.getOrNull(1)?.let { if (it == "off" || it == "none") Focus(null) else it.toIntOrNull()?.let { b -> Focus(b - 1) } }
-                "skip" -> w.getOrNull(1)?.toIntOrNull()?.let { Skip(it - 1, true) }
-                "unskip" -> w.getOrNull(1)?.toIntOrNull()?.let { Skip(it - 1, false) }
+                "focus" -> w.getOrNull(1)?.let { if (it == "off" || it == "none") Focus(null) else row(it)?.let { (b, v) -> Focus(b, v) } }
+                "skip" -> w.getOrNull(1)?.let(::row)?.let { (b, v) -> Skip(b, true, v) }
+                "unskip" -> w.getOrNull(1)?.let(::row)?.let { (b, v) -> Skip(b, false, v) }
                 "lanes" -> w.getOrNull(1)?.toIntOrNull()?.takeIf { it >= 1 }?.let { Lanes(it) }
                 else -> null
             }
@@ -120,34 +131,43 @@ fun criticalBlocks(rects: List<Rect>, w: Int, h: Int, gap: Int, slack: Int = 2):
     return axis({ it.x }, { it.w }, { it.y }, { it.h }, w) + axis({ it.y }, { it.h }, { it.x }, { it.w }, h)
 }
 
+/** One row of the rotation: a block (variant 0) or one of its shape variants (its aspect times [factor]). */
+data class Job(val block: Int, val variant: Int, val factor: Double)
+
 class BlockEngine(
     private val bps: List<BlockPlan>,
-    /** A block's search, refining [initial] when given. */
-    private val searchOf: (b: Int, initial: TrialResult?, printer: (String) -> Unit) -> Search,
+    /** The rotation: every block, then its shape variants. */
+    private val jobs: List<Job>,
+    /** A job's search, refining [initial] when given. */
+    private val searchOf: (job: Job, initial: TrialResult?, printer: (String) -> Unit) -> Search,
+    /** Per job: a layout to start from (resumed), or null. */
     private val initial: List<TrialResult?>,
     private val weights: List<Double>,
     private val threads: Int,
     lanes0: Int,
+    /** Seeds per turn wanted (search.seeds_per_size); a turn runs at least one per thread and at most two per thread. */
+    private val seeds: Int,
     private val parkAfter: Int,
     private val restitchShare: Double,
     /** When the block search stops (epoch ms; Long.MAX_VALUE: until stopped). Changed by [Command.Limit]. */
     var limit: Long,
     private val out: File,
     private val say: (String) -> Unit,
-    /** Block search output (one line per trial and box); the live view keeps it off the screen. */
-    private val blockPrinter: (Int, String) -> Unit,
-    /** Stitches the factory from one layout per block; its size, block boxes and size, or null if it failed. */
-    private val stitch: (List<TrialResult>) -> Triple<List<Rect>, Int, Int>?,
+    /** Search output (one line per trial and box), by job; the live view keeps it off the screen. */
+    private val blockPrinter: (Job, String) -> Unit,
+    /** Stitches the factory from the layouts each block has (its own, then its shape variants'); block boxes and size, or null. */
+    private val stitch: (List<List<TrialResult>>) -> Triple<List<Rect>, Int, Int>?,
     private val corridor: Int,
 ) {
     private val n = bps.size
+    private val m = jobs.size
     private val t0 = System.currentTimeMillis()
-    private val searches = arrayOfNulls<Search>(n)
-    private val running = IntArray(n)            // threads per block right now
-    private val spentMs = LongArray(n)
-    private val firstSize = arrayOfNulls<Pair<Int, Int>>(n)
-    private val betterAt = LongArray(n) { -1 }
-    private val skipped = BooleanArray(n)
+    private val searches = arrayOfNulls<Search>(m)
+    private val running = IntArray(m)            // threads per job right now
+    private val spentMs = LongArray(m)
+    private val firstSize = arrayOfNulls<Pair<Int, Int>>(m)
+    private val betterAt = LongArray(m) { -1 }
+    private val skipped = BooleanArray(m)
     @Volatile private var focus: Int? = null
     @Volatile var paused = false; private set
     @Volatile var stopping = false; private set
@@ -173,7 +193,16 @@ class BlockEngine(
         lines.forEach { l -> Command.parse(l)?.let(::apply) ?: if (l.isNotBlank()) event("control: unknown command '${l.trim()}'") else Unit }
     }
 
-    fun best(b: Int): TrialResult? = searches[b]?.best ?: initial[b]
+    private fun jobBest(j: Int): TrialResult? = searches[j]?.best ?: initial[j]
+    /** Block [b]'s own best layout. */
+    fun best(b: Int): TrialResult? = jobBest(b)
+    /** Every layout block [b] has: its own, then each shape variant's (the block's own standing in for a variant without one). */
+    fun layouts(b: Int): List<TrialResult> {
+        val own = best(b) ?: return emptyList()
+        return listOf(own) + jobs.indices.filter { jobs[it].block == b && jobs[it].variant > 0 }.map { jobBest(it) ?: own }
+    }
+    private fun jobOf(block: Int, variant: Int) = jobs.indexOfFirst { it.block == block && it.variant == variant }.takeIf { it >= 0 }
+    private fun label(j: Int) = jobs[j].let { if (it.variant == 0) "block ${it.block + 1}" else "block ${it.block + 1} x${"%.2f".format(it.factor)}" }
 
     private fun event(msg: String) {
         say(msg)
@@ -199,8 +228,16 @@ class BlockEngine(
                 }
                 event(if (limit == Long.MAX_VALUE) "limit: until stopped" else "limit: %.0f s left".format((limit - System.currentTimeMillis()) / 1000.0))
             }
-            is Command.Focus -> { focus = c.block?.takeIf { it in 0 until n }; event(focus?.let { "focus on block ${it + 1}" } ?: "focus off") }
-            is Command.Skip -> if (c.block in 0 until n) { skipped[c.block] = c.on; event("block ${c.block + 1} ${if (c.on) "skipped" else "back in turn"}") }
+            is Command.Focus -> {
+                val j = c.block?.let { jobOf(it, c.variant) }
+                focus = j
+                if (j == null) { event("focus off"); return }
+                // A turn it is in now runs on fewer threads: cut it short (after the trials under way) and start
+                // again on every thread.
+                if (running[j] in 1 until threads) searches[j]?.extendTo(System.currentTimeMillis())
+                event("focus on ${label(j)}: every thread from its next turn" + if (running[j] in 1 until threads) " (its current turn is cut short)" else "")
+            }
+            is Command.Skip -> jobOf(c.block, c.variant)?.let { j -> skipped[j] = c.on; event("${label(j)} ${if (c.on) "skipped" else "back in turn"}") }
             is Command.Lanes -> { lanes = c.n.coerceIn(1, max(1, threads)); event("lanes: $lanes") }
         }
     }
@@ -213,12 +250,12 @@ class BlockEngine(
 
     private fun timeUp() = stopping || System.currentTimeMillis() >= limit
 
-    private fun stateOf(b: Int): String = when {
-        skipped[b] -> "skipped"
-        focus == b -> "focus"
-        best(b) == null -> "first"
-        searches[b]?.done == true -> "done"
-        (searches[b]?.stalls ?: 0) >= parkAfter -> "parked"
+    private fun stateOf(j: Int): String = when {
+        skipped[j] -> "skipped"
+        focus == j -> "focus"
+        jobBest(j) == null -> "first"
+        searches[j]?.done == true -> "done"
+        (searches[j]?.stalls ?: 0) >= parkAfter -> "parked"
         else -> "refining"
     }
 
@@ -229,45 +266,55 @@ class BlockEngine(
         factoryW = factory.first, factoryH = factory.second,
         sinceStitch = if (lastStitch < 0) -1.0 else (System.currentTimeMillis() - lastStitch) / 1000.0,
         stitching = stitchingNow, lanes = lanes, threads = threads,
-        blocks = (0 until n).map { b ->
-            val r = best(b)
-            BlockStatus(b + 1, bps[b].globalIds.size, weights[b], running[b], r?.w ?: 0, r?.h ?: 0,
-                firstSize[b]?.first ?: 0, firstSize[b]?.second ?: 0, searches[b]?.steps ?: 0, searches[b]?.stalls ?: 0,
-                if (betterAt[b] < 0) -1.0 else (System.currentTimeMillis() - betterAt[b]) / 1000.0, spentMs[b] / 1000.0,
-                b in critical, stateOf(b))
+        blocks = jobs.indices.map { j ->
+            val job = jobs[j]
+            val r = jobBest(j)
+            BlockStatus(job.block + 1, bps[job.block].globalIds.size, weights[job.block], running[j], r?.w ?: 0, r?.h ?: 0,
+                firstSize[j]?.first ?: 0, firstSize[j]?.second ?: 0, searches[j]?.steps ?: 0, searches[j]?.stalls ?: 0,
+                if (betterAt[j] < 0) -1.0 else (System.currentTimeMillis() - betterAt[j]) / 1000.0, spentMs[j] / 1000.0,
+                job.variant == 0 && job.block in critical, stateOf(j), job.variant, job.factor)
         },
         events = synchronized(events) { events.toList() },
     )
 
-    /** Which block gets the next turn, or null: first layouts in order, then critical before others, unparked before parked, fewest turns first. */
+    /**
+     * Which job gets the next turn, or null: blocks without a layout in order, then shape variants without one, then
+     * blocks that set the factory's size, then the rest; unparked before parked, fewest turns first.
+     */
     private fun next(): Int? {
         val f = focus
-        if (f != null) return f.takeIf { running[it] == 0 && !skipped[it] && searches[it]?.done != true }
-        val free = (0 until n).filter { running[it] == 0 && !skipped[it] && searches[it]?.done != true }
-        free.firstOrNull { best(it) == null }?.let { return it }
-        return free.minWithOrNull(compareBy<Int>({ if (it in critical) 0 else 1 }, { if ((searches[it]?.stalls ?: 0) >= parkAfter) 1 else 0 }, { searches[it]?.steps ?: 0 }))
+        if (f != null && !firstLayoutsOverdue()) return f.takeIf { running[it] == 0 && !skipped[it] && searches[it]?.done != true }
+        val free = (0 until m).filter { running[it] == 0 && !skipped[it] && searches[it]?.done != true }
+        free.firstOrNull { jobs[it].variant == 0 && jobBest(it) == null }?.let { return it }
+        free.firstOrNull { jobBest(it) == null }?.let { return it }
+        return free.minWithOrNull(compareBy<Int>(
+            { if (jobs[it].variant == 0 && jobs[it].block in critical) 0 else 1 },
+            { if ((searches[it]?.stalls ?: 0) >= parkAfter) 1 else 0 },
+            { searches[it]?.steps ?: 0 }))
     }
+
+    /** Time is up but some blocks still have no layout: they run whatever focus, pause or skip say (the factory needs them). */
+    private fun firstLayoutsOverdue(): Boolean = timeUp() && !stopping && (0 until n).any { best(it) == null }
 
     private fun totalArea(): Long = (0 until n).sumOf { b -> best(b)?.let { it.w.toLong() * it.h } ?: 0L }
 
-    /** Runs until the limit or a stop; afterwards [best] holds each block's best layout (null if it never found one). */
+    /** Runs until the limit or a stop; afterwards [best] and [layouts] hold each block's layouts. */
     fun run() {
-        for (b in 0 until n) initial[b]?.let { firstSize[b] = it.w to it.h }
-        val pool = Executors.newFixedThreadPool(max(1, threads))
+        for (j in 0 until m) initial[j]?.let { firstSize[j] = it.w to it.h }
+        val pool = Executors.newFixedThreadPool(max(1, threads) + 1)
         val stitcher = Executors.newSingleThreadExecutor()
         val active = HashMap<Int, Future<*>>()
         var stitchJob: Future<*>? = null
-
         var lastStatus = 0L
         try {
             while (true) {
                 // Finished turns.
                 synchronized(lock) {
-                    active.entries.removeIf { (b, f) -> if (f.isDone) { running[b] = 0; runCatching { f.get() }.onFailure { e -> event("block ${b + 1}: turn failed with $e") }; true } else false }
+                    active.entries.removeIf { (j, f) -> if (f.isDone) { running[j] = 0; runCatching { f.get() }.onFailure { e -> event("${label(j)}: turn failed with $e") }; true } else false }
                 }
                 if (stopNow) break
                 // Every block gets its first layout, even past the limit (the factory needs one of each).
-                val allFirst = (0 until n).all { best(it) != null || skipped[it] }
+                val allFirst = (0 until n).all { best(it) != null }
                 if ((stopping || (timeUp() && allFirst)) && active.isEmpty()) break
                 if (allFirst && phase == "first layouts") { phase = "refining"; stitchRequested = true; event("every block has a layout; stitching a preview") }
                 // A preview when asked, or when the blocks shrank enough (at most every 2 minutes).
@@ -275,13 +322,13 @@ class BlockEngine(
                 val due = allFirst && lastStitch >= 0 && area <= stitchedArea * (1 - restitchShare) && System.currentTimeMillis() - lastStitch > 120_000
                 if ((stitchRequested || due) && allFirst && stitchJob?.isDone != false && !timeUp()) {
                     stitchRequested = false
-                    val layouts = (0 until n).map { best(it)!! }
+                    val layouts = (0 until n).map { layouts(it) }
                     stitchingNow = true
                     stitchJob = stitcher.submit {
                         try {
                             val r = stitch(layouts)
                             lastStitch = System.currentTimeMillis()
-                            stitchedArea = layouts.sumOf { it.w.toLong() * it.h }
+                            stitchedArea = layouts.sumOf { it[0].w.toLong() * it[0].h }
                             if (r != null) {
                                 val (rects, fw, fh) = r
                                 factory = fw to fh
@@ -291,14 +338,18 @@ class BlockEngine(
                         } finally { stitchingNow = false }
                     }
                 }
-                // New turns on free lanes.
+                // New turns on free lanes; a focused job gets every thread.
+                val overdue = firstLayoutsOverdue()
+                if (overdue && (focus != null || paused)) { focus = null; paused = false; event("time is up: focus and pause end so every block gets its first layout") }
+                if (overdue) (0 until n).filter { skipped[it] && best(it) == null }.forEach { skipped[it] = false; event("${label(it)} has no layout yet; it runs after all") }
                 if (!paused && !stopping && (!timeUp() || !allFirst)) {
                     val laneCount = if (focus != null) 1 else lanes
-                    while (active.size < laneCount) {
-                        val b = synchronized(lock) { next() }?.takeIf { !timeUp() || best(it) == null } ?: break
-                        val t = if (focus != null) threads else max(1, threads / laneCount + if (active.size < threads % laneCount) 1 else 0)
-                        running[b] = t
-                        active[b] = pool.submit { turn(b, t) }
+                    while (active.size < laneCount || (focus != null && focus !in active.keys && running[focus!!] == 0)) {
+                        val j = synchronized(lock) { next() }?.takeIf { !timeUp() || (jobs[it].variant == 0 && jobBest(it) == null) } ?: break
+                        val t = if (focus == j) threads else max(1, threads / laneCount + if (active.size < threads % laneCount) 1 else 0)
+                        running[j] = t
+                        active[j] = pool.submit { turn(j, t) }
+                        if (focus == j) break
                     }
                 }
                 val now = System.currentTimeMillis()
@@ -326,21 +377,22 @@ class BlockEngine(
         java.nio.file.Files.move(tmp.toPath(), f.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
     }
 
-    /** One turn of block [b] on [t] threads: one box size. */
-    private fun turn(b: Int, t: Int) {
-        val s = searches[b] ?: searchOf(b, initial[b]) { line -> blockPrinter(b, line) }.also { searches[b] = it }
+    /** One turn of job [j] on [t] threads: one box size, with one or two seeds per thread. */
+    private fun turn(j: Int, t: Int) {
+        val job = jobs[j]
+        val s = searches[j] ?: searchOf(job, initial[j]) { line -> blockPrinter(job, line) }.also { searches[j] = it }
         // A block without a layout yet may run past the limit until it has one.
-        s.extendTo(if (s.best == null) max(limit, System.currentTimeMillis() + 120_000) else limit)
+        s.extendTo(if (s.best == null && job.variant == 0) max(limit, System.currentTimeMillis() + 120_000) else limit)
         val before = s.best
         val start = System.currentTimeMillis()
-        s.step(t)
-        spentMs[b] += System.currentTimeMillis() - start
+        s.step(t, seeds.coerceIn(t, 2 * t))
+        spentMs[j] += System.currentTimeMillis() - start
         val now = s.best
         if (now != null && now !== before) {
-            betterAt[b] = System.currentTimeMillis()
-            if (firstSize[b] == null) firstSize[b] = now.w to now.h
-            onBetter(b, now)
-            event(if (before == null) "block ${b + 1}: first layout ${now.w} x ${now.h}" else "block ${b + 1}: ${now.w} x ${now.h} (was ${before.w} x ${before.h})")
+            betterAt[j] = System.currentTimeMillis()
+            if (firstSize[j] == null) firstSize[j] = now.w to now.h
+            onBetter(job.block, layouts(job.block))
+            event(if (before == null) "${label(j)}: first layout ${now.w} x ${now.h}" else "${label(j)}: ${now.w} x ${now.h} (was ${before.w} x ${before.h})")
         }
     }
 
@@ -357,6 +409,6 @@ class BlockEngine(
     /** A factory was saved (a preview or the final one, or while compacting). */
     fun factorySaved(w: Int, h: Int) { factory = w to h; lastStitch = System.currentTimeMillis() }
 
-    /** Called with every new best layout of a block (saved for --resume). */
-    var onBetter: (Int, TrialResult) -> Unit = { _, _ -> }
+    /** Called with a block's layouts (its own, then its shape variants') whenever one of them improves (saved for --resume). */
+    var onBetter: (Int, List<TrialResult>) -> Unit = { _, _ -> }
 }

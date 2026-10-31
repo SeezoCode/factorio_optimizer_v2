@@ -177,28 +177,38 @@ fun runFactory(
     // Blocks get the budget's block_time_share (less repack and merge time); the final factory runs after it.
     val blocksUntil = if (untilStopped) Long.MAX_VALUE else t0 + (config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) * 1000).toLong()
     var previewState: FpState? = split.geometry.state
+    // The rotation: every block, then each block at its aspect times each of blocks.shape_variants (so the floorplan
+    // can pick shapes that pack together; a hole between mismatched blocks is space no squeezing gets back).
+    val jobs = bps.map { Job(it.index, 0, 1.0) } +
+        bps.flatMap { bp -> cfg.shapeVariants.mapIndexed { i, f -> Job(bp.index, i + 1, f) } }
+    fun baseAspect(b: Int) = loaded[b].firstOrNull()?.let { it.w.toDouble() / it.h } ?: split.geometry.boxes[b].let { it.w.toDouble() / it.h }
     val engine = BlockEngine(
         bps = bps,
-        searchOf = { b, init, printer ->
-            val aspect = init?.let { it.w.toDouble() / it.h } ?: split.geometry.boxes[b].let { it.w.toDouble() / it.h }
-            Search(data, blockConfig(1e7, aspect), tuning, bps[b].plan, File(out, "block_${b + 1}"), initial = init, printer = printer)
+        jobs = jobs,
+        searchOf = { job, init, printer ->
+            val aspect = init?.let { it.w.toDouble() / it.h } ?: (baseAspect(job.block) * job.factor)
+            val dir = File(out, "block_${job.block + 1}" + if (job.variant > 0) "/shape_${job.variant}" else "")
+            Search(data, blockConfig(1e7, aspect), tuning, bps[job.block].plan, dir, initial = init, printer = printer)
         },
-        initial = loaded.map { it.firstOrNull() },
+        initial = jobs.map { loaded[it.block].getOrNull(it.variant) },
         weights = split.blocks.map { weightOf(it) },
         threads = config.search.threads.coerceAtLeast(1),
         lanes0 = cfg.lanes ?: maxOf(1, config.search.threads / 2),
+        seeds = config.search.seedsPerSize,
         parkAfter = cfg.parkAfter, restitchShare = cfg.restitchShare,
         limit = blocksUntil, out = out, say = ::say,
-        blockPrinter = { b, line -> if (view?.live != true) synchronized(sayLock) { println("  b${b + 1} $line") } },
+        blockPrinter = { job, line ->
+            if (view?.live != true) synchronized(sayLock) { println("  b${job.block + 1}${if (job.variant > 0) "x" + "%.2f".format(job.factor) else ""} $line") }
+        },
         stitch = { layouts ->
             // A preview is quick: one floorplan (from the last preview's) and a short squeeze; the final factory gets the rest.
-            val r = assemble(split, bps, layouts.map { listOf(it) }, previewState, "preview", squeezeCap = 20.0, tries = 1)
+            val r = assemble(split, bps, layouts, previewState, "preview", squeezeCap = 20.0, tries = 1)
             if (r != null && r.first.success) { previewState = r.second; consider(r, "preview") }
             r?.first?.takeIf { it.success }?.let { f -> Triple(f.blockRects, f.layout.w, f.layout.h) }
         },
         corridor = cfg.corridor,
     )
-    engine.onBetter = { b, r -> saveBlock(out, b, listOf(r) + loaded[b].drop(1)) }
+    engine.onBetter = { b, ls -> saveBlock(out, b, ls) }
     engineRef = engine
     view?.attach(engine)
     try {
@@ -208,31 +218,11 @@ fun runFactory(
     val variants = ArrayList<MutableList<TrialResult>>()
     for (b in split.blocks.indices) {
         val r = engine.best(b) ?: run { say("block ${b + 1}: no layout found; giving up"); return null }
-        variants += (listOf(r) + loaded[b].drop(1)).toMutableList()
-        say("block ${b + 1}: ${r.w} x ${r.h}")
+        variants += engine.layouts(b).toMutableList()
+        say("block ${b + 1}: ${r.w} x ${r.h}" + if (variants[b].size > 1) "; shapes " + variants[b].drop(1).joinToString(", ") { "${it.w} x ${it.h}" } else "")
     }
     // The final factory gets its time even if the blocks ran over (a stop, or a limit moved while running).
     deadline = maxOf(deadline, System.currentTimeMillis() + ((finalReserve + config.search.timeBudgetS * later) * 1000).toLong())
-
-    // 1b. Shape variants: each block also searched at its aspect times each of blocks.shape_variants, so the floorplan
-    //     can pick shapes that pack together (a hole between mismatched blocks is space no squeezing gets back).
-    if (cfg.shapeVariants.isNotEmpty()) {
-        val allEffort = split.blocks.indices.sumOf(::effort)
-        for (b in split.blocks.indices) {
-            val base = variants[b][0]
-            for ((i, m) in cfg.shapeVariants.withIndex()) {
-                if (variants[b].size > i + 1 || left() < 10) continue   // searched already (resume), or no time
-                val budget = minOf(left(), cfg.shapeVariantS ?: (config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) * effort(b) / allEffort * 0.5))
-                val aspect = base.w.toDouble() / base.h * m
-                val r = runCatching {
-                    Search(data, blockConfig(budget, aspect, ceil(sqrt(base.area * 1.1)).toInt()), tuning, bps[b].plan, File(out, "block_${b + 1}/shape_${i + 1}")).run().best
-                }.getOrElse { e -> say("block ${b + 1} shape x${"%.2f".format(m)}: failed with $e"); null } ?: base
-                variants[b] += r   // the base layout stands in when nothing is found, so indices stay aligned
-                saveBlock(out, b, variants[b])
-                say("block ${b + 1} shape x${"%.2f".format(m)}: ${r.w} x ${r.h} (base ${base.w} x ${base.h})")
-            }
-        }
-    }
 
     // 2. Floorplan the finished blocks and stitch them. Keep the smallest valid factory.
     val first = assemble(split, bps, variants, previewState ?: split.geometry.state, "factory")
