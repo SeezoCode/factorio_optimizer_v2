@@ -151,6 +151,8 @@ data class RunConfiguration(
         require(markerTile == "none" || markerTile in GameConstants.MARKER_TILES) { "marker_tile must be \"none\" or one of ${GameConstants.MARKER_TILES}" }
         blocks?.let { b ->
             require(b.maxMachines >= 2) { "blocks.max_machines must be at least 2" }
+            require(b.sizeBy in setOf("weight", "machines")) { "blocks.size_by must be 'weight' or 'machines'" }
+            require(b.overflowCost >= 0 && b.hardMax >= 1.0) { "blocks.overflow_cost must not be negative, hard_max at least 1" }
             require(b.corridor >= 2) { "blocks.corridor must be at least 2" }
             require(b.linkCost > 0 && b.fluidLinkCost > 0 && b.blockCost >= 0) { "blocks.link_cost and fluid_link_cost must be positive, block_cost not negative" }
             require(b.aspectWeight >= 0 && b.wireWeight >= 0) { "blocks.aspect_weight and wire_weight must not be negative" }
@@ -256,7 +258,18 @@ data class BoxConfig(
  */
 @Serializable
 data class BlocksConfig(
+    /**
+     * Target block size. With [sizeBy] "weight" (default) a target, not a cap: machines count by how hard they are
+     * to connect (inserters and pipe connections; a furnace with one in and one out counts least), a block aims at
+     * max_machines average machines of the plan, may grow past that at a price ([overflowCost]) and never past
+     * [hardMax] times it. With "machines", at most max_machines machines, whatever they are.
+     */
     @SerialName("max_machines") val maxMachines: Int,
+    @SerialName("size_by") val sizeBy: String = "weight",
+    /** Price of a block over its target: this many ports for 20 % over, growing with the square. */
+    @SerialName("overflow_cost") val overflowCost: Double = 1.0,
+    /** No block weighs more than this times the target (size_by weight). */
+    @SerialName("hard_max") val hardMax: Double = 1.5,
     /** Items to prefer cutting at (e.g. plates), on top of the split that minimises traffic between blocks. */
     @SerialName("split_at") val splitAt: List<String> = emptyList(),
     /** Corridor width between blocks in tiles (it widens by itself if the belts between blocks do not fit). */
@@ -317,8 +330,9 @@ data class BlocksConfig(
     /**
      * Then, until the time budget runs out: merge two neighbouring blocks into one, search it starting
      * from their current placements side by side, and keep it if the factory gets smaller ([mergeShare] of the
-     * budget is set aside for it; a merged block has at most [mergeMaxMachines] machines, default twice
-     * [maxMachines]).
+     * budget is set aside for it). Pairs that share recipes or trade with each other go first, lightest first; a
+     * merged block weighs at most twice the target ([mergeMaxMachines] machines with size_by machines, default
+     * twice [maxMachines]).
      */
     val merge: Boolean = false,
     @SerialName("merge_share") val mergeShare: Double = 0.3,

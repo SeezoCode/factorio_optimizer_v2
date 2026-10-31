@@ -117,8 +117,11 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
         search = config.search.copy(timeBudgetS = budget),
     )
 
-    // 1. Blocks, one after another, each with all threads and its share of the budget (machines and ports).
-    fun effort(b: Int) = split.blocks[b].size + 0.5 * split.links.count { it.from == b || it.to == b }
+    // 1. Blocks, one after another, each with all threads and its share of the budget (weight and ports).
+    val weights = machineWeights(plan, cfg)
+    val blockSize = BlockSize.of(plan, weights, cfg)
+    fun weightOf(ms: List<Int>) = ms.sumOf { weights[it] }
+    fun effort(b: Int) = weightOf(split.blocks[b]) + 0.5 * split.links.count { it.from == b || it.to == b }
     val variants = ArrayList<MutableList<TrialResult>>()
     val loaded = split.blocks.indices.map { if (resume) loadBlock(out, it) else emptyList() }
     // The blocks still to search share the time for blocks.
@@ -135,7 +138,8 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
         val aspect = box.w.toDouble() / box.h
         val dir = File(out, "block_${b + 1}")
         bp.plan.write(File(dir, "plan.json").path)
-        say("block ${b + 1}: ${bp.globalIds.size} machines, ${bp.plan.ports.size} ports, aspect ${"%.2f".format(aspect)}, ${"%.0f".format(budget)} s")
+        say("block ${b + 1}: ${bp.globalIds.size} machines (weight ${"%.1f".format(weightOf(split.blocks[b]))} of ${"%.1f".format(blockSize.target)}), " +
+            "${bp.plan.ports.size} ports, aspect ${"%.2f".format(aspect)}, ${"%.0f".format(budget)} s")
         val best = Search(data, blockConfig(budget, aspect), tuning, bp.plan, dir).run().best
         if (best == null) { say("block ${b + 1}: no layout found; giving up"); return null }
         say("block ${b + 1}: ${best.w} x ${best.h}")
@@ -177,10 +181,11 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
         say("$what: ${f.layout.w} x ${f.layout.h} (${area(f)} tiles), saved")
         return true
     }
-    fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String) =
+    fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String, squeezeCap: Double? = null) =
         runCatching {
             // Compaction gets blocks.compact_s, or else the time left for stitching (at least half a minute).
-            val squeeze = cfg.compactS ?: maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
+            val squeeze0 = cfg.compactS ?: maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
+            val squeeze = squeezeCap?.let { minOf(it, squeeze0) } ?: squeeze0
             assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong()) { consider(it, "$what (compacting)") }
         }
             .getOrElse { e -> say("$what: failed with $e"); e.printStackTrace(); null }
@@ -216,16 +221,28 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
 
     // 4. Merge neighbours: two blocks next to each other become one, searched from their placements side by side.
     if (cfg.merge) {
-        val maxM = cfg.mergeMaxMachines ?: (2 * cfg.maxMachines)
+        // A merged block weighs at most twice the target (merge_max_machines machines with size_by machines).
+        val maxW = if (cfg.sizeBy == "machines") (cfg.mergeMaxMachines ?: (2 * cfg.maxMachines)).toDouble() else 2 * blockSize.target
+        // Seconds per unit of effort the blocks got, so a merged block gets about what its two halves had, and more.
+        val perEffort = config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) / split.blocks.indices.sumOf(::effort).coerceAtLeast(1.0)
         val tried = HashSet<Set<Int>>()
+        var merges = 0
         while (left() > 120) {
             val f = best ?: break
             val st = bestState ?: break
             val boxes = f.blockRects
             val pairs = neighbourPairs(boxes, cfg.corridor * 3)
-                .filter { (a, b) -> split.blocks[a].size + split.blocks[b].size <= maxM && (split.blocks[a] + split.blocks[b]).toSet() !in tried }
+                .filter { (a, b) -> weightOf(split.blocks[a] + split.blocks[b]) <= maxW + 1e-9 && (split.blocks[a] + split.blocks[b]).toSet() !in tried }
             if (pairs.isEmpty()) { say("merge: no more pairs to try"); break }
-            val (l, r) = pairs.minBy { (a, b) -> split.blocks[a].size + split.blocks[b].size }
+            // Most promising first: belts between the two disappear, shared recipes make one simple block (two
+            // smelting columns), and lighter merges are faster to search and more likely to route.
+            fun recipesOf(b: Int) = split.blocks[b].map { plan.machines[it].recipe }.toSet()
+            fun promise(a: Int, b: Int): Double {
+                val between = split.links.count { it.inner && ((it.from == a && it.to == b) || (it.from == b && it.to == a)) }
+                val shared = (recipesOf(a) intersect recipesOf(b)).size
+                return 2.0 * between + 3.0 * shared - weightOf(split.blocks[a] + split.blocks[b]) / blockSize.target
+            }
+            val (l, r) = pairs.maxBy { (a, b) -> promise(a, b) }
             tried += (split.blocks[l] + split.blocks[r]).toSet()
             // Both blocks as they lie in the factory: turned layouts, and their ports' sides turned with them.
             val turnedSplit = Split(split.blocks, split.links.map { lk ->
@@ -245,7 +262,7 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
                 val res = f.blockLayouts[b]
                 res.placement!!.machines.forEach { pm -> warm += pm.copy(id = local.getValue(bps[b].globalIds[pm.id]), x = pm.x + boxes[b].x - ux, y = pm.y + boxes[b].y - uy) }
             }
-            val budget = (left() / pairs.size).coerceIn(600.0, 3600.0).coerceAtMost(left() - 60)
+            val budget = (1.5 * perEffort * (effort(l) + effort(r))).coerceIn(60.0, 3600.0).coerceAtMost(left() - 60)
             say("merge blocks ${l + 1} and ${r + 1} (${bp.globalIds.size} machines) from $uw x $uh, ${"%.0f".format(budget)} s")
             val dir = File(out, "merge/${tried.size}_blocks_${l + 1}_${r + 1}")
             bp.plan.write(File(dir, "plan.json").path)
@@ -260,11 +277,14 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
             newVariants[m] = mutableListOf(res)
             val newBps = merged.blocks.indices.map { i -> if (i == m) bp else blockPlan(plan, merged, i, tuning) }
             val start = st.without(gone)
-            if (consider(assemble(merged, newBps, newVariants, start, "merged ${l + 1}+${r + 1}"), "merged factory")) {
+            // Stitched with a short compaction; the best factory gets a full one after the merges.
+            if (consider(assemble(merged, newBps, newVariants, start, "merged ${l + 1}+${r + 1}", squeezeCap = 120.0), "merged factory")) {
                 split = merged; bps = newBps; variants.clear(); variants += newVariants
                 saveAll(out, config, split, variants)
+                merges++
             }
         }
+        if (merges > 0 && left() > 60) consider(assemble(split, bps, variants, bestState, "merged factory, compacted"), "merged factory, compacted")
     }
     say("done: ${best?.let { "${it.layout.w} x ${it.layout.h} (${area(it)} tiles)" } ?: "no valid factory"}")
     return best

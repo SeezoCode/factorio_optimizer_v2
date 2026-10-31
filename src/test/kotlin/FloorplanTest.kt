@@ -6,7 +6,9 @@ import blocks.FpShape
 import blocks.FpState
 import blocks.Floorplanner
 import blocks.HUB
+import blocks.BlockSize
 import blocks.PartitionModel
+import blocks.machineWeights
 import blocks.partitionPlan
 import blocks.rebalance
 import blocks.splitPlan
@@ -61,7 +63,7 @@ class FloorplanTest {
     @Test
     fun `the partition cuts fewer links than the greedy split it starts from and respects the size limit`() {
         val plan = buildPlan(TestData.data, TestData.job("t4"))
-        val cfg = BlocksConfig(maxMachines = 6)
+        val cfg = BlocksConfig(maxMachines = 6, sizeBy = "machines")
         val p = partitionPlan(plan, cfg, 30.0, seed = 3)
         assertTrue(p.blocks.all { it.size <= 6 }, "${p.blocks}")
         assertEquals(plan.machines.size, p.blocks.sumOf { it.size })
@@ -70,10 +72,37 @@ class FloorplanTest {
     }
 
     @Test
+    fun `blocks are sized by weight - simple machines weigh least, no block passes the hard limit`() {
+        // Red + green + chemical science from ore: many furnaces (one in, one out) and many-input assemblers.
+        val job = config.RunConfiguration(
+            targets = listOf(config.ConfigTarget("automation-science-pack", 1.0), config.ConfigTarget("logistic-science-pack", 1.0)),
+            sources = listOf(config.ConfigSource("iron-ore", edge = "west"), config.ConfigSource("copper-ore", edge = "west")),
+        )
+        val plan = buildPlan(TestData.data, job)
+        val cfg = BlocksConfig(maxMachines = 8)
+        val w = machineWeights(plan, cfg)
+        val furnace = plan.machines.indices.filter { plan.machines[it].recipe == "iron-plate" }
+        val science = plan.machines.indices.filter { plan.machines[it].recipe == "logistic-science-pack" }
+        assertTrue(furnace.all { w[it] == 1.0 }, "${furnace.map { w[it] }}")
+        assertTrue(science.all { w[it] > 1.0 }, "${science.map { w[it] }}")
+        val size = BlockSize.of(plan, w, cfg)
+        val p = partitionPlan(plan, cfg, 30.0, seed = 3)
+        assertTrue(p.blocks.all { b -> b.sumOf { w[it] } <= size.hard + 1e-9 }, "${p.blocks.map { b -> b.sumOf { w[it] } }} > ${size.hard}")
+        assertEquals(plan.machines.indices.toSet(), p.blocks.flatten().toSet())
+        // A block of nothing but furnaces holds more machines than the target count; overflow is priced.
+        assertTrue(p.blocks.any { b -> b.all { it in furnace } && b.size > 8 } || furnace.size <= 8, "${p.blocks}")
+        assertEquals(0.0, size.overflow(size.target))
+        assertEquals(cfg.overflowCost, size.overflow(size.target * 1.2), 1e-9)
+        // size_by machines is the old cap.
+        val old = partitionPlan(plan, cfg.copy(sizeBy = "machines"), 30.0, seed = 3)
+        assertTrue(old.blocks.all { it.size <= 8 })
+    }
+
+    @Test
     fun `machines joined by pipes may go to different blocks, joined by one pipe tree per fluid`() {
         // Plastic from crude oil: refineries pipe petroleum gas to chemical plants. Three machines per block forces cuts.
         val plan = buildPlan(TestData.data, plasticJob)
-        val split = splitPlan(plan, BlocksConfig(maxMachines = 3), 30.0)
+        val split = splitPlan(plan, BlocksConfig(maxMachines = 3, sizeBy = "machines"), 30.0)
         assertTrue(split.blocks.all { it.size <= 3 })
         val hub = split.links.filter { it.hub }
         assertTrue(hub.isNotEmpty(), "${split.links}")
@@ -110,7 +139,7 @@ class FloorplanTest {
     fun `rebalancing machine rates keeps every recipe's total and machine limits and never adds ports`() {
         val job = TestData.job("t4")
         val plan = buildPlan(TestData.data, job)
-        val cfg = BlocksConfig(maxMachines = 4)
+        val cfg = BlocksConfig(maxMachines = 4, sizeBy = "machines")
         val blocks = partitionPlan(plan, cfg, 30.0, seed = 3).blocks
         val r = rebalance(plan, blocks)
         plan.machines.groupBy { it.recipe }.forEach { (recipe, ms) ->

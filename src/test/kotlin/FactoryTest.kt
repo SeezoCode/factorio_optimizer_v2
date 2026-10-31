@@ -18,7 +18,7 @@ class FactoryTest {
     @Test
     fun `the split keeps blocks within the limit and balances every item`() {
         val plan = buildPlan(TestData.data, TestData.job("t3"))
-        val split = splitPlan(plan, BlocksConfig(maxMachines = 5), 30.0)
+        val split = splitPlan(plan, BlocksConfig(maxMachines = 5, sizeBy = "machines"), 30.0)
         assertTrue(split.blocks.size >= 2)
         assertTrue(split.blocks.all { it.size <= 5 }, "${split.blocks}")
         assertEquals(plan.machines.size, split.blocks.sumOf { it.size })
@@ -40,7 +40,7 @@ class FactoryTest {
     @Test
     fun `T3 as two blocks stitches into one valid factory`() {
         listOf(false, true).forEach { test ->
-            val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5), testMode = test,
+            val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"), testMode = test,
                 search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
             val plan = buildPlan(TestData.data, config)
             val out = File("build/factory/t3${if (test) "_test" else ""}")
@@ -61,7 +61,7 @@ class FactoryTest {
     @Test
     fun `edge links leave straight out of blocks on an allowed edge, the rest run through the corridors`() {
         val west = buildPlan(TestData.data, TestData.job("t3"))
-        val split = splitPlan(west, BlocksConfig(maxMachines = 5), 30.0)
+        val split = splitPlan(west, BlocksConfig(maxMachines = 5, sizeBy = "machines"), 30.0)
         val inputs = split.links.filter { it.from == EDGE }
         assertTrue(inputs.isNotEmpty())
         inputs.forEach { l -> assertEquals(Dir.W !in split.geometry.touches[l.to], l.routed, "$l on ${split.geometry.boxes}") }
@@ -69,14 +69,14 @@ class FactoryTest {
         assertTrue(split.links.filter { it.routed && !it.fluid }.all { it.rate <= 0.9 * 30.0 + 1e-9 })
         // Any edge (the default): two blocks both touch some edge, so every edge link leaves its block directly.
         val any = TestData.job("t3").let { c -> c.copy(sources = c.sources.map { ConfigSource(it.name, edge = "any") }) }
-        assertTrue(splitPlan(buildPlan(TestData.data, any), BlocksConfig(maxMachines = 5), 30.0).links.none { it.routed })
+        assertTrue(splitPlan(buildPlan(TestData.data, any), BlocksConfig(maxMachines = 5, sizeBy = "machines"), 30.0).links.none { it.routed })
     }
 
     @Test
     fun `a factory takes its inputs and outputs on the edges the job names, fluids included`() {
         val base = TestData.job("t4")
         val config = base.copy(
-            outputs = listOf(ConfigSource("processing-unit", edge = "east")), blocks = BlocksConfig(maxMachines = 6),
+            outputs = listOf(ConfigSource("processing-unit", edge = "east")), blocks = BlocksConfig(maxMachines = 6, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 40.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
         val plan = buildPlan(TestData.data, config)
@@ -97,7 +97,7 @@ class FactoryTest {
     @Test
     fun `a fluid product leaves the factory by pipe on the edge the job names`() {
         val config = TestData.job("acid").copy(
-            outputs = listOf(ConfigSource("sulfuric-acid", edge = "east")), blocks = BlocksConfig(maxMachines = 2),
+            outputs = listOf(ConfigSource("sulfuric-acid", edge = "east")), blocks = BlocksConfig(maxMachines = 2, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
         val plan = buildPlan(TestData.data, config)
@@ -111,7 +111,7 @@ class FactoryTest {
 
     @Test
     fun `blocks share belts inside while links between blocks keep one item each`() {
-        val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5), laneSharing = true,
+        val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"), laneSharing = true,
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
         val out = File("build/factory/t3_shared")
         out.deleteRecursively()
@@ -121,7 +121,7 @@ class FactoryTest {
 
     @Test
     fun `machines joined by pipes may sit in different blocks, joined by a pipe tree through the corridors`() {
-        val config = plasticJob.copy(blocks = BlocksConfig(maxMachines = 3),
+        val config = plasticJob.copy(blocks = BlocksConfig(maxMachines = 3, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 40.0, seedsPerSize = 2, threads = 4, seed = 7))
         val plan = buildPlan(TestData.data, config)
         val out = File("build/factory/plastic_split")
@@ -133,7 +133,7 @@ class FactoryTest {
 
     @Test
     fun `a resumed run keeps the saved split and blocks and only stitches again`() {
-        val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5),
+        val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
         val plan = buildPlan(TestData.data, config)
         val out = File("build/factory/t3_resume")

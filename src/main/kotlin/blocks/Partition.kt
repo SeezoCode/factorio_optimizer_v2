@@ -16,18 +16,64 @@ import kotlin.math.ln
  * cost = sum over blocks b and items i with balance B(b, i) != 0 of w(i) * (L(i) + |B(b, i)| / C(i))
  *      + D * (distinct items each block touches) + O * (blocks used)
  *
+ *      + sum over blocks of overflow(W(b))
+ *
  * where L is [BlocksConfig.linkCost] for a belt and [BlocksConfig.fluidLinkCost] for a pipe, C a belt's share
  * ([BlocksConfig.linkBeltShare] of the tier) or a pipe's, w is [BlocksConfig.splitAtWeight] for items in
  * [BlocksConfig.splitAt] (cheap places to cut) and 1 otherwise, D a small price on blocks that touch many items
  * (they are harder to route inside), and O [BlocksConfig.blockCost]. Raw inputs and products count too: a block
  * that uses iron plate needs a belt of it whoever makes it.
  *
+ * W(b) is the block's weight ([machineWeights]): how hard its machines are to connect. overflow is 0 up to the
+ * target [BlockSize.target] (max_machines machines of a typical recipe) and k ((W - target) / target)^2 beyond it ([BlocksConfig.overflowCost] ports for 20 %
+ * over), and no block may weigh more than [BlockSize.hard]. With size_by machines every machine weighs 1, the
+ * target is max_machines and also the hard limit (the old cap).
+ *
  * Unlike a split by item flow, this sees that cutting a busy belt costs one link like cutting a quiet one, and that
  * consolidating every consumer of an item into the block that makes it removes the link altogether. Fluids may be
  * cut like items (at a higher price), so oil processing no longer has to stay one block.
  */
+/**
+ * How hard each machine is to connect: half its belt inserters plus 0.75 per pipe connection, at least 1. A furnace
+ * (ore in, plate out) weighs 1, an assembler with three inputs about 2, more with fast machines that need several
+ * inserters per item. With size_by machines, 1 each.
+ */
+fun machineWeights(plan: ProductionPlan, cfg: BlocksConfig): DoubleArray {
+    val w = DoubleArray(plan.machines.size)
+    if (cfg.sizeBy == "machines") return w.also { it.fill(1.0) }
+    plan.terminals.forEach { t ->
+        val m = t.machine ?: return@forEach
+        if (t.role == Role.SOURCE || t.role == Role.OUTPUT) return@forEach
+        w[m] += if (t.fluid) 0.75 else 0.5 * t.k
+    }
+    for (m in w.indices) w[m] = maxOf(1.0, w[m])
+    return w
+}
+
+/** A block's target and largest weight, and the price of going over the target. */
+class BlockSize(val target: Double, val hard: Double, private val k: Double) {
+    fun overflow(w: Double): Double = if (w <= target) 0.0 else k * ((w - target) / target).let { it * it }
+
+    companion object {
+        /**
+         * The target is max_machines machines of a typical recipe: the mean weight over recipes, each counted once,
+         * so that a job with hundreds of furnaces does not make the typical machine a furnace (which would shrink
+         * every mixed block).
+         */
+        fun of(plan: ProductionPlan, weights: DoubleArray, cfg: BlocksConfig): BlockSize =
+            if (cfg.sizeBy == "machines") BlockSize(cfg.maxMachines.toDouble(), cfg.maxMachines.toDouble(), 0.0)
+            else {
+                val perRecipe = weights.indices.groupBy { plan.machines[it].recipe }.values.map { ms -> ms.sumOf { weights[it] } / ms.size }
+                val target = cfg.maxMachines * (if (perRecipe.isEmpty()) 1.0 else perRecipe.average())
+                BlockSize(target, target * cfg.hardMax, cfg.overflowCost / (0.2 * 0.2))
+            }
+    }
+}
+
 class PartitionModel(val plan: ProductionPlan, val cfg: BlocksConfig, beltThroughput: Double) {
     val n = plan.machines.size
+    val weight = machineWeights(plan, cfg)
+    val size = BlockSize.of(plan, weight, cfg)
     val items: List<String>
     /** Per item: price of a port, and price per unit of rate through it. */
     val linkCost: DoubleArray
@@ -80,14 +126,15 @@ class PartitionModel(val plan: ProductionPlan, val cfg: BlocksConfig, beltThroug
     fun cost(assign: IntArray, blocks: Int): Double {
         val bal = Array(blocks) { DoubleArray(items.size) }
         val cnt = Array(blocks) { IntArray(items.size) }
-        val size = IntArray(blocks)
+        val count = IntArray(blocks)
+        val wsum = DoubleArray(blocks)
         for (m in 0 until n) {
-            val b = assign[m]; size[b]++
+            val b = assign[m]; count[b]++; wsum[b] += weight[m]
             mItems[m].forEachIndexed { k, i -> bal[b][i] += mRates[m][k]; cnt[b][i]++ }
         }
         var c = 0.0
         for (b in 0 until blocks) {
-            if (size[b] > 0) c += cfg.blockCost
+            if (count[b] > 0) c += cfg.blockCost + size.overflow(wsum[b])
             for (i in items.indices) c += term(i, bal[b][i], cnt[b][i])
         }
         return c
@@ -115,7 +162,7 @@ class Partition(
 )
 
 /**
- * Splits [plan] into blocks of at most [BlocksConfig.maxMachines] machines, minimising [PartitionModel]'s cost:
+ * Splits [plan] into blocks no heavier than [BlockSize.hard], minimising [PartitionModel]'s cost:
  * first greedily, merging groups of same-recipe machines along the largest saving, then by simulated annealing
  * over single machines (move one to another block, swap two) and whole recipe groups (move every machine of a
  * recipe in a block to another block). Several annealing runs; the cheapest split wins.
@@ -123,37 +170,38 @@ class Partition(
 fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L): Partition {
     val model = PartitionModel(plan, cfg, beltThroughput)
     val n = model.n
-    val max = cfg.maxMachines
+    val sz = model.size
     val nItems = model.items.size
 
-    // 1. Greedy: same-recipe groups (cut into pieces of at most half a block), merged along the largest saving.
-    class Cluster(val ms: MutableList<Int>, val bal: DoubleArray, val cnt: IntArray) {
-        fun cost() = cfg.blockCost + (0 until nItems).sumOf { model.term(it, bal[it], cnt[it]) }
+    // 1. Greedy: same-recipe groups (cut into pieces of at most half a target), merged along the largest saving.
+    class Cluster(val ms: MutableList<Int>, val bal: DoubleArray, val cnt: IntArray, var w: Double) {
+        fun cost() = cfg.blockCost + sz.overflow(w) + (0 until nItems).sumOf { model.term(it, bal[it], cnt[it]) }
     }
     fun clusterOf(ms: List<Int>): Cluster {
-        val c = Cluster(ms.toMutableList(), DoubleArray(nItems), IntArray(nItems))
+        val c = Cluster(ms.toMutableList(), DoubleArray(nItems), IntArray(nItems), ms.sumOf { model.weight[it] })
         ms.forEach { m -> model.mItems[m].forEachIndexed { k, i -> c.bal[i] += model.mRates[m][k]; c.cnt[i]++ } }
         return c
     }
     val clusters = ArrayList<Cluster>()
     (0 until n).groupBy { model.recipeOf[it] }.values.forEach { ms ->
-        val pieces = (ms.size + maxOf(1, max / 2) - 1) / maxOf(1, max / 2)
+        val half = if (cfg.sizeBy == "machines") maxOf(1, cfg.maxMachines / 2).toDouble() else maxOf(model.weight[ms[0]], sz.target / 2)
+        val pieces = maxOf(1, kotlin.math.ceil(ms.sumOf { model.weight[it] } / half - 1e-9).toInt())
         val per = (ms.size + pieces - 1) / pieces
         ms.chunked(per).forEach { clusters += clusterOf(it) }
     }
     fun mergedCost(a: Cluster, b: Cluster): Double =
-        cfg.blockCost + (0 until nItems).sumOf { model.term(it, a.bal[it] + b.bal[it], a.cnt[it] + b.cnt[it]) }
+        cfg.blockCost + sz.overflow(a.w + b.w) + (0 until nItems).sumOf { model.term(it, a.bal[it] + b.bal[it], a.cnt[it] + b.cnt[it]) }
     while (true) {
         var best = -1.0; var bi = -1; var bj = -1
         val costs = clusters.map { it.cost() }
         for (i in clusters.indices) for (j in i + 1 until clusters.size) {
-            if (clusters[i].ms.size + clusters[j].ms.size > max) continue
+            if (clusters[i].w + clusters[j].w > sz.hard + 1e-9) continue
             val saving = costs[i] + costs[j] - mergedCost(clusters[i], clusters[j])
             if (saving > best) { best = saving; bi = i; bj = j }
         }
         if (bi < 0) break
         val a = clusters[bi]; val b = clusters.removeAt(bj)
-        a.ms += b.ms
+        a.ms += b.ms; a.w += b.w
         for (i in 0 until nItems) { a.bal[i] += b.bal[i]; a.cnt[i] += b.cnt[i] }
     }
     val k = clusters.size + 1   // one spare block the annealer may open
@@ -163,7 +211,7 @@ fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Doubl
 
     // 2. Annealing from the greedy split.
     val found = arrayListOf(start.clone() to greedyCost)
-    repeat(3) { run -> found += anneal(model, start, k, max, SplittableRandom(seed * 7919 + run)) }
+    repeat(3) { run -> found += anneal(model, start, k, SplittableRandom(seed * 7919 + run)) }
     fun blocksOf(a: IntArray) = (0 until k).map { b -> (0 until n).filter { a[it] == b } }.filter { it.isNotEmpty() }
     val sorted = found.sortedBy { it.second }
     val (bestAssign, bestCost) = sorted.first()
@@ -171,7 +219,9 @@ fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Doubl
 }
 
 /** Simulated annealing over the assignment; returns the best assignment seen and its cost. */
-private fun anneal(model: PartitionModel, start: IntArray, k: Int, max: Int, rnd: SplittableRandom): Pair<IntArray, Double> {
+private fun anneal(model: PartitionModel, start: IntArray, k: Int, rnd: SplittableRandom): Pair<IntArray, Double> {
+    val sz = model.size
+    val wt = model.weight
     val n = model.n
     val nItems = model.items.size
     val cfg = model.cfg
@@ -179,8 +229,9 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, max: Int, rnd
     val bal = Array(k) { DoubleArray(nItems) }
     val cnt = Array(k) { IntArray(nItems) }
     val size = IntArray(k)
+    val wsum = DoubleArray(k)
     for (m in 0 until n) {
-        val b = assign[m]; size[b]++
+        val b = assign[m]; size[b]++; wsum[b] += wt[m]
         model.mItems[m].forEachIndexed { j, i -> bal[b][i] += model.mRates[m][j]; cnt[b][i]++ }
     }
     var cost = model.cost(assign, k)
@@ -191,6 +242,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, max: Int, rnd
         var d = 0.0
         if (size[from] == 1) d -= cfg.blockCost
         if (size[to] == 0) d += cfg.blockCost
+        d += sz.overflow(wsum[from] - wt[m]) - sz.overflow(wsum[from]) + sz.overflow(wsum[to] + wt[m]) - sz.overflow(wsum[to])
         val its = model.mItems[m]; val rs = model.mRates[m]
         for (j in its.indices) {
             val i = its[j]; val r = rs[j]
@@ -208,6 +260,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, max: Int, rnd
             bal[to][i] += rs[j]; cnt[to][i]++
         }
         size[from]--; size[to]++
+        wsum[from] -= wt[m]; wsum[to] += wt[m]
         assign[m] = to
     }
     fun target(m: Int): Int {
@@ -223,7 +276,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, max: Int, rnd
         when (rnd.nextInt(10)) {
             in 0..4 -> {   // move one machine
                 val m = rnd.nextInt(n); val to = target(m); val from = assign[m]
-                if (to == from || size[to] >= max) return null
+                if (to == from || wsum[to] + wt[m] > sz.hard + 1e-9) return null
                 val d = delta(m, to); apply(m, to)
                 return d to { apply(m, from) }
             }
@@ -232,6 +285,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, max: Int, rnd
                 if (ta == assign[a] || size[ta] == 0) return null
                 val inB = (0 until 8).map { rnd.nextInt(n) }.firstOrNull { assign[it] == ta && model.recipeOf[it] != model.recipeOf[a] } ?: return null
                 val fa = assign[a]
+                if (wsum[ta] + wt[a] - wt[inB] > sz.hard + 1e-9 || wsum[fa] - wt[a] + wt[inB] > sz.hard + 1e-9) return null
                 val d1 = delta(a, ta); apply(a, ta)
                 val d2 = delta(inB, fa); apply(inB, fa)
                 return (d1 + d2) to { apply(inB, ta); apply(a, fa) }
@@ -242,7 +296,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, max: Int, rnd
                 val from = assign[m0]; val to = target(m0)
                 if (to == from) return null
                 val ms = grp.filter { assign[it] == from }
-                if (size[to] + ms.size > max) return null
+                if (wsum[to] + ms.sumOf { wt[it] } > sz.hard + 1e-9) return null
                 var d = 0.0
                 ms.forEach { d += delta(it, to); apply(it, to) }
                 return d to { ms.forEach { apply(it, from) } }
