@@ -132,7 +132,7 @@ class FactoryTest {
     }
 
     @Test
-    fun `a resumed run keeps the saved split and blocks and only stitches again`() {
+    fun `a resumed run keeps the saved split and refines the saved blocks`() {
         val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
         val plan = buildPlan(TestData.data, config)
@@ -141,12 +141,13 @@ class FactoryTest {
         val first = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
         assertTrue(first.success)
         assertTrue(File(out, "resume/split.json").exists() && File(out, "resume/block_1.json").exists() && File(out, "resume/block_2.json").exists())
-        val t0 = System.currentTimeMillis()
+        val saved = (0..1).map { blocks.loadBlock(out, it)[0].let { r -> r.w * r.h } }
         val again = assertNotNull(runFactory(TestData.data, blocks.savedJob(out)!!, Tuning.defaults(), plan, out, resume = true))
         assertTrue(again.success, "${again.errors.take(5)}")
         val log = File(out, "factory.txt").readText()
         assertEquals(2, Regex("resumed \\(").findAll(log).count(), log)
-        assertTrue(System.currentTimeMillis() - t0 < 15_000, "resuming searched again")
-        assertEquals(first.layout.w * first.layout.h, again.layout.w * again.layout.h)
+        assertTrue(File(out, "block_1/log.txt").readText().contains("refining a "), "blocks did not start from their saved layouts")
+        // Refining starts from the saved layouts, so no block gets bigger.
+        (0..1).forEach { b -> assertTrue(blocks.loadBlock(out, b)[0].let { r -> r.w * r.h } <= saved[b], "block ${b + 1} grew") }
     }
 }

@@ -152,6 +152,8 @@ data class RunConfiguration(
         blocks?.let { b ->
             require(b.maxMachines >= 2) { "blocks.max_machines must be at least 2" }
             require(b.sizeBy in setOf("weight", "machines")) { "blocks.size_by must be 'weight' or 'machines'" }
+            require(b.lanes == null || b.lanes >= 1) { "blocks.lanes must be at least 1" }
+            require(b.parkAfter >= 1 && b.restitchShare >= 0) { "blocks.park_after must be at least 1, restitch_share not negative" }
             require(b.overflowCost >= 0 && b.hardMax >= 1.0) { "blocks.overflow_cost must not be negative, hard_max at least 1" }
             require(b.corridor >= 2) { "blocks.corridor must be at least 2" }
             require(b.linkCost > 0 && b.fluidLinkCost > 0 && b.blockCost >= 0) { "blocks.link_cost and fluid_link_cost must be positive, block_cost not negative" }
@@ -266,6 +268,16 @@ data class BlocksConfig(
      */
     @SerialName("max_machines") val maxMachines: Int,
     @SerialName("size_by") val sizeBy: String = "weight",
+    /**
+     * Blocks searched side by side, each on its share of search.threads (default half the threads, at least 1).
+     * Blocks are searched in turns: first one layout each and a preview factory, then smaller boxes, blocks that
+     * set the factory's size first, blocks that stop improving parked.
+     */
+    val lanes: Int? = null,
+    /** A block is parked after this many turns without a smaller or better layout (it runs again when nothing else is left). */
+    @SerialName("park_after") val parkAfter: Int = 4,
+    /** Stitch a new preview once the blocks' total area has dropped by this share since the last one (and at most every 2 minutes). */
+    @SerialName("restitch_share") val restitchShare: Double = 0.03,
     /** Price of a block over its target: this many ports for 20 % over, growing with the square. */
     @SerialName("overflow_cost") val overflowCost: Double = 1.0,
     /** No block weighs more than this times the target (size_by weight). */

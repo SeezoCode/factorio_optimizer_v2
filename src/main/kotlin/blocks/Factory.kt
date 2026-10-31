@@ -77,7 +77,19 @@ class Factory(
  * factory.txt logs it all), each block to `block_<n>`. With [resume], the split and block layouts an earlier run
  * saved in [out] are used (see Resume.kt): only blocks without a layout are searched.
  */
-fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: ProductionPlan, out: File, resume: Boolean = false): Factory? {
+/** A live view of a factory run (the terminal UI): while [live], progress lines go to the log files only. */
+interface FactoryView {
+    val live: Boolean
+    fun attach(engine: BlockEngine)
+    fun detach()
+}
+
+fun runFactory(
+    data: RootData, config: RunConfiguration, tuning: Tuning, input: ProductionPlan, out: File, resume: Boolean = false,
+    view: FactoryView? = null,
+    /** Search blocks until stopped (key, control file) instead of until the time budget. */
+    untilStopped: Boolean = false,
+): Factory? {
     val cfg = config.blocks!!
     require(input.ports.none { p -> p.specs.any { it.edge == null } }) {
         "a factory of blocks takes its inputs and outputs by edge (with from and to), not by x and y"
@@ -86,10 +98,11 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
     val logFile = File(out, "factory.txt")
     if (!resume || !logFile.exists()) logFile.writeText("")
     val t0 = System.currentTimeMillis()
-    val deadline = t0 + (config.search.timeBudgetS * 1000).toLong()
+    var deadline = t0 + (config.search.timeBudgetS * 1000).toLong()
+    val sayLock = Any()
     fun say(msg: String) {
         val line = "[%7.1fs] %s".format((System.currentTimeMillis() - t0) / 1000.0, msg)
-        println(line); logFile.appendText(line + "\n")
+        synchronized(sayLock) { if (view?.live != true) println(line); logFile.appendText(line + "\n") }
     }
     fun left() = (deadline - System.currentTimeMillis()) / 1000.0
     val tier = GameConstants.beltTier(config.beltTier)
@@ -117,35 +130,81 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
         search = config.search.copy(timeBudgetS = budget),
     )
 
-    // 1. Blocks, one after another, each with all threads and its share of the budget (weight and ports).
     val weights = machineWeights(plan, cfg)
     val blockSize = BlockSize.of(plan, weights, cfg)
     fun weightOf(ms: List<Int>) = ms.sumOf { weights[it] }
     fun effort(b: Int) = weightOf(split.blocks[b]) + 0.5 * split.links.count { it.from == b || it.to == b }
-    val variants = ArrayList<MutableList<TrialResult>>()
-    val loaded = split.blocks.indices.map { if (resume) loadBlock(out, it) else emptyList() }
-    // The blocks still to search share the time for blocks.
-    val todoEffort = split.blocks.indices.filter { loaded[it].isEmpty() }.sumOf(::effort)
-    for (bp in bps) {
-        val b = bp.index
-        if (loaded[b].isNotEmpty()) {
-            variants += loaded[b].toMutableList()
-            say("block ${b + 1}: ${loaded[b][0].w} x ${loaded[b][0].h}, resumed (${loaded[b].size} layout(s))")
-            continue
-        }
-        val budget = minOf(left(), config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) * effort(b) / todoEffort)
-        val box = split.geometry.boxes[b]
-        val aspect = box.w.toDouble() / box.h
-        val dir = File(out, "block_${b + 1}")
-        bp.plan.write(File(dir, "plan.json").path)
-        say("block ${b + 1}: ${bp.globalIds.size} machines (weight ${"%.1f".format(weightOf(split.blocks[b]))} of ${"%.1f".format(blockSize.target)}), " +
-            "${bp.plan.ports.size} ports, aspect ${"%.2f".format(aspect)}, ${"%.0f".format(budget)} s")
-        val best = Search(data, blockConfig(budget, aspect), tuning, bp.plan, dir).run().best
-        if (best == null) { say("block ${b + 1}: no layout found; giving up"); return null }
-        say("block ${b + 1}: ${best.w} x ${best.h}")
-        variants += mutableListOf(best)
-        saveBlock(out, b, variants[b])
+
+    // The smallest valid factory so far, and how factories are stitched (previews while blocks are searched, then the final one).
+    var best: Factory? = null
+    var bestState: FpState? = null
+    fun area(f: Factory) = f.layout.w * f.layout.h
+    fun consider(r: Pair<Factory, FpState>?, what: String): Boolean {
+        val f = r?.first
+        if (f == null || !f.success) { say("$what: no valid factory"); return false }
+        val b = best
+        if (b != null && area(f) >= area(b)) { say("$what: ${f.layout.w} x ${f.layout.h} is not smaller than ${b.layout.w} x ${b.layout.h}"); return false }
+        best = f; bestState = r.second
+        writeFactory(f, out, config)
+        say("$what: ${f.layout.w} x ${f.layout.h} (${area(f)} tiles), saved")
+        return true
     }
+    fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String, squeezeCap: Double? = null, tries: Int? = null) =
+        runCatching {
+            // Compaction gets blocks.compact_s, or else the time left for stitching (at least half a minute).
+            val squeeze0 = cfg.compactS ?: maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
+            val squeeze = squeezeCap?.let { minOf(it, squeeze0) } ?: squeeze0
+            assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong(),
+                { consider(it, "$what (compacting)") }, tries)
+        }
+            .getOrElse { e -> say("$what: failed with $e"); e.printStackTrace(); null }
+
+    // 1. Blocks in turns (see Engine.kt): a first layout each and a preview factory, then smaller boxes, the blocks
+    //    that set the factory's size first, until the time for blocks is up or the run is stopped.
+    val loaded = split.blocks.indices.map { if (resume) loadBlock(out, it) else emptyList() }
+    loaded.forEachIndexed { b, l -> if (l.isNotEmpty()) say("block ${b + 1}: ${l[0].w} x ${l[0].h}, resumed (${l.size} layout(s)); refining it") }
+    bps.forEach { bp ->
+        val b = bp.index
+        bp.plan.write(File(out, "block_${b + 1}/plan.json").path)
+        say("block ${b + 1}: ${bp.globalIds.size} machines (weight ${"%.1f".format(weightOf(split.blocks[b]))} of ${"%.1f".format(blockSize.target)}), ${bp.plan.ports.size} ports")
+    }
+    // Time kept for the final factory: its compaction and stitching.
+    val finalReserve = (cfg.compactS ?: config.search.timeBudgetS * (1 - cfg.blockTimeShare)) + minOf(60.0, 0.05 * config.search.timeBudgetS)
+    val blocksUntil = if (untilStopped) Long.MAX_VALUE else deadline - ((finalReserve + config.search.timeBudgetS * later) * 1000).toLong()
+    var previewState: FpState? = split.geometry.state
+    val engine = BlockEngine(
+        bps = bps,
+        searchOf = { b, init, printer ->
+            val aspect = init?.let { it.w.toDouble() / it.h } ?: split.geometry.boxes[b].let { it.w.toDouble() / it.h }
+            Search(data, blockConfig(1e7, aspect), tuning, bps[b].plan, File(out, "block_${b + 1}"), initial = init, printer = printer)
+        },
+        initial = loaded.map { it.firstOrNull() },
+        weights = split.blocks.map { weightOf(it) },
+        threads = config.search.threads.coerceAtLeast(1),
+        lanes0 = cfg.lanes ?: maxOf(1, config.search.threads / 2),
+        parkAfter = cfg.parkAfter, restitchShare = cfg.restitchShare,
+        limit = blocksUntil, out = out, say = ::say,
+        blockPrinter = { b, line -> if (view?.live != true) synchronized(sayLock) { println("  b${b + 1} $line") } },
+        stitch = { layouts ->
+            // A preview is quick: one floorplan (from the last preview's) and a short squeeze; the final factory gets the rest.
+            val r = assemble(split, bps, layouts.map { listOf(it) }, previewState, "preview", squeezeCap = 20.0, tries = 1)
+            if (r != null && r.first.success) { previewState = r.second; consider(r, "preview") }
+            r?.first?.takeIf { it.success }?.let { f -> Triple(f.blockRects, f.layout.w, f.layout.h) }
+        },
+        corridor = cfg.corridor,
+    )
+    engine.onBetter = { b, r -> saveBlock(out, b, listOf(r) + loaded[b].drop(1)) }
+    view?.attach(engine)
+    try { engine.run() } finally { view?.detach() }
+    if (engine.stopNow) { say("stopped; the best factory so far is saved"); return best }
+    val variants = ArrayList<MutableList<TrialResult>>()
+    for (b in split.blocks.indices) {
+        val r = engine.best(b) ?: run { say("block ${b + 1}: no layout found; giving up"); return null }
+        variants += (listOf(r) + loaded[b].drop(1)).toMutableList()
+        say("block ${b + 1}: ${r.w} x ${r.h}")
+    }
+    // The final factory gets its time even if the blocks ran over (a stop, or a limit moved while running).
+    deadline = maxOf(deadline, System.currentTimeMillis() + ((finalReserve + config.search.timeBudgetS * later) * 1000).toLong())
 
     // 1b. Shape variants: each block also searched at its aspect times each of blocks.shape_variants, so the floorplan
     //     can pick shapes that pack together (a hole between mismatched blocks is space no squeezing gets back).
@@ -168,29 +227,8 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
     }
 
     // 2. Floorplan the finished blocks and stitch them. Keep the smallest valid factory.
-    var best: Factory? = null
-    var bestState: FpState? = null
-    fun area(f: Factory) = f.layout.w * f.layout.h
-    fun consider(r: Pair<Factory, FpState>?, what: String): Boolean {
-        val f = r?.first
-        if (f == null || !f.success) { say("$what: no valid factory"); return false }
-        val b = best
-        if (b != null && area(f) >= area(b)) { say("$what: ${f.layout.w} x ${f.layout.h} is not smaller than ${b.layout.w} x ${b.layout.h}"); return false }
-        best = f; bestState = r.second
-        writeFactory(f, out, config)
-        say("$what: ${f.layout.w} x ${f.layout.h} (${area(f)} tiles), saved")
-        return true
-    }
-    fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String, squeezeCap: Double? = null) =
-        runCatching {
-            // Compaction gets blocks.compact_s, or else the time left for stitching (at least half a minute).
-            val squeeze0 = cfg.compactS ?: maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
-            val squeeze = squeezeCap?.let { minOf(it, squeeze0) } ?: squeeze0
-            assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong()) { consider(it, "$what (compacting)") }
-        }
-            .getOrElse { e -> say("$what: failed with $e"); e.printStackTrace(); null }
-    val first = assemble(split, bps, variants, split.geometry.state, "factory")
-    if (first == null || !first.first.success) {
+    val first = assemble(split, bps, variants, previewState ?: split.geometry.state, "factory")
+    if ((first == null || !first.first.success) && best == null) {
         first?.let { writeFactory(it.first, out, config) }
         say("done: no valid factory")
         return first?.first
@@ -466,10 +504,12 @@ fun assembleFactory(
     deadline: Long = System.currentTimeMillis() + 30_000,
     /** Called with a finished, valid factory whenever compaction has made one smaller (at most once a minute). */
     onBetter: (Pair<Factory, FpState>) -> Unit = {},
+    /** Floorplans to try (default blocks.floorplan_tries). */
+    triesOverride: Int? = null,
 ): Pair<Factory, FpState>? {
     val cfg = config.blocks!!
     val input = floorplanInput(plan, split, variants, cfg, config, bps = bps)
-    val tries = cfg.floorplanTries.coerceAtLeast(1)
+    val tries = (triesOverride ?: cfg.floorplanTries).coerceAtLeast(1)
     val t0 = System.currentTimeMillis()
     // 1. Every floorplan routed, tightened and squeezed for a share of a quarter of the time.
     val stitchings = ArrayList<Stitching>()

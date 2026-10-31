@@ -22,7 +22,7 @@ fun calibrate(data: RootData, jobs: List<Pair<String, RunConfiguration>>, base: 
     jobs.forEach { (name, cfg0) ->
         val cfg = cfg0.copy(search = cfg0.search.copy(timeBudgetS = budgetS))
         val plan = buildPlan(data, cfg, base)
-        val search = Search(data, cfg, base, plan, File(out, name)) { t -> if (t.success) synchronized(stats) { stats += t.route!!.chainStats } }
+        val search = Search(data, cfg, base, plan, File(out, name), onTrial = { t -> if (t.success) synchronized(stats) { stats += t.route!!.chainStats } })
         val res = search.run()
         res.best?.let { ratios[name] = it.area.toDouble() / plan.totalMachineArea() }
         report += "$name: best ${res.best?.let { "${it.w}x${it.h}" } ?: "none"}, area ratio ${ratios[name]?.let { "%.2f".format(it) } ?: "-"}, ${res.trials} trials"

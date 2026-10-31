@@ -21,13 +21,17 @@ import java.time.format.DateTimeFormatter
  *                                 kept, missing blocks are searched, then it floorplans and stitches again (the job
  *                                 is the one saved there unless --config is given)
  *   --compact=<s>                 seconds to compact a factory of blocks (blocks.compact_s), e.g. with --resume
+ *   --until-stopped               factory of blocks: search blocks until stopped (q in the live view, or
+ *                                 `echo stop > <out>/control`) instead of until the time budget
+ *   --plain                       factory of blocks: line-by-line output instead of the live view (the default
+ *                                 when not in a terminal); <out>/status.json and <out>/control work either way
  */
 fun main(args: Array<String>) {
     val flags = args.filter { it.startsWith("--") }.associate {
         val eq = it.indexOf('=')
         if (eq < 0) it.removePrefix("--") to "true" else it.substring(2, eq) to it.substring(eq + 1)
     }
-    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact")
+    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact", "plain", "until-stopped")
     (flags.keys - known).takeIf { it.isNotEmpty() }?.let { error("Unknown flags: $it (known: $known)") }
 
     flags["render"]?.let { dir -> renderOutput(java.io.File(dir)); return }
@@ -72,7 +76,10 @@ fun main(args: Array<String>) {
     println("Stage 1: ${plan.machines.size} machines, ${plan.nets.size} nets, ${plan.ports.size} ports -> $out/plan.json")
     val cfg = config.blocks
     if (cfg != null && plan.machines.size > cfg.maxMachines) {
-        val f = blocks.runFactory(data, config, tuning, plan, java.io.File(out), resume = resume != null)
+        // The live view in a terminal (unless --plain); --until-stopped searches blocks until a stop (key or control file).
+        val view = if (!flags.containsKey("plain") && viz.LiveView.available()) viz.LiveView(java.io.File(out).name) else null
+        val f = blocks.runFactory(data, config, tuning, plan, java.io.File(out), resume = resume != null, view = view,
+            untilStopped = flags.containsKey("until-stopped"))
         println(if (f == null) "factory: no result" else "factory: ${f.layout.w}x${f.layout.h} score ${"%.1f".format(f.score)}, " +
             if (f.success) "valid" else "${f.errors.size} validation errors")
     } else search.runSearch(data, config, tuning, plan, out)

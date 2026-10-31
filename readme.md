@@ -179,10 +179,47 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 - `--calibrate=<job>,<job>,... --budget=<s>`: refits `tuning.json` from short searches.
 - `--verify-kit=<dir>`: in-game check blueprints (see [docs/VERIFY.md](docs/VERIFY.md)).
 - `--render=<dir>`: redraws `best.png` of an output folder from its blueprint and `ports.json`.
-- `--resume=<dir>`: continues a factory-of-blocks run in that output folder. The split and every finished block
-  were saved in `<dir>/resume/`, so only blocks without a layout are searched; then the factory is floorplanned,
-  stitched and validated again (seconds). Useful after stopping a run, or to re-stitch finished blocks with newer
-  code. It uses the job saved there unless `--config` is given.
+- `--resume=<dir>`: continues a factory-of-blocks run in that output folder. The split and every block's best
+  layout were saved in `<dir>/resume/`; blocks without one are searched, and the others keep shrinking from where
+  they were for the time given, then the factory is stitched and validated again. Useful after stopping a run, to
+  give a run more time, or to re-stitch finished blocks with newer code. It uses the job saved there unless
+  `--config` is given.
+- `--until-stopped`: a factory of blocks searches its blocks until stopped (see below) instead of until the
+  time budget; the final factory is stitched after the stop.
+- `--plain`: line-by-line output instead of the live view.
+
+### Watching and steering a factory run
+
+A factory of blocks first gives every block one layout and stitches a preview factory from them (within a few
+minutes even for hundreds of machines; it is saved like any result, so `best.png` shows it), then keeps shrinking
+blocks in turns until the time budget is spent or you stop it, stitching a new preview whenever the blocks have
+shrunk enough. In a terminal it shows a live view:
+
+```
+out   12:41 elapsed, 27:19 left   2 lane(s) on 4 thread(s)
+factory 163x176 (28688 tiles), stitched 1:02 ago   refining
+
+ thr  block  mach  weight   size     first    turns  better ago   spent   state
+ [2]      1    29    29.0   34x23    46x31        4        0:14    4:10   refining *
+ [ ]      2    29    29.0   34x23    46x31        3        2:31    3:05   refining
+ [ ]      3    17    27.4   28x28    38x38        6        6:02    5:40   parked
+ ...
+q stop  Q stop now  s stitch  +/- limit 5 min  u no limit  p pause  arrows select  f focus  x skip  l/L lanes
+```
+
+`thr` is the number of threads on a block right now, `first` its first layout, `better ago` the time since it last
+got smaller (or better at its size), `*` marks blocks that set the factory's width or height (shrinking any other
+cannot shrink the factory, so these get turns first). A block is parked after `park_after` turns without
+improving and runs again when nothing else is left. Keys: `q` stops after the current turns and builds the final
+factory (`q` twice or `Q`: stop at once, keeping the best factory so far), `s` stitches a preview now, `+`/`-` move
+the limit by five minutes, `u` removes it, `p` pauses, the arrows (or `j`/`k`) select a block, `f` gives it every
+thread, `x` skips it, `l`/`L` add or remove a lane. Everything also goes to `factory.txt` and each block's
+`log.txt`.
+
+The same controls work without a terminal: write a command into `<out>/control` (`stop`, `stop now`, `stitch`,
+`pause`, `resume`, `limit +600`, `limit -300`, `limit 3600` (seconds from the start), `limit none`, `focus 3`,
+`focus off`, `skip 3`, `unskip 3`, `lanes 2`), e.g. `echo "limit +600" > out/control`. `<out>/status.json`
+holds what the live view shows, refreshed every second.
 
 Renders show each machine's name and recipe, and mark every input (green) and output (red) with a number on its
 tile, listed underneath with item, rate and tile. Input belts also say which lane the item goes on: "both lanes"
@@ -221,6 +258,7 @@ Unknown keys are an error. Everything except `targets` has a default.
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
   "blocks": { "max_machines": 120, "size_by": "weight", "overflow_cost": 1.0, "hard_max": 1.5,
+              "lanes": null, "park_after": 4, "restitch_share": 0.03,
               "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
               "link_belt_share": 0.9, "split_at_weight": 0.1, "block_time_share": 0.9,
               "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
@@ -323,7 +361,12 @@ belts and pipes, in one blueprint:
    takes them on one input belt, and next to the supplier their belts side-load onto it from either side.
    Every fluid traded between blocks gets one pipe tree through the corridors joining one port on each block
    that makes or uses it (and the factory edge, if it enters or leaves there), so any number of blocks can share
-   a fluid. Each block is generated on its own, at its planned aspect, with its share of the time budget.
+   a fluid. Each block is generated on its own, at its planned aspect. Blocks are searched in turns on `lanes`
+   lanes side by side (default half of `search.threads`, sharing the threads): one layout each first, then a box
+   size at a time from each block's best layout, blocks that set the factory's size first, until the time for
+   blocks is up (the budget minus what the final factory, repack and merge need) or the run is stopped. A
+   preview factory is stitched as soon as every block has a layout and again whenever their total area has
+   dropped by `restitch_share` (see [watching and steering a factory run](#watching-and-steering-a-factory-run)).
 4. **Floorplan and stitch.** The finished blocks are arranged again with their real sizes and port positions, each
    block turned in whichever quarter turn packs best (`rotate`; its ports turn with it),
    keeping free space around each block for the corridors (half a `corridor` plus room for that side's ports;
