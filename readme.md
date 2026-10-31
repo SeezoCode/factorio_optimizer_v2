@@ -219,7 +219,8 @@ Unknown keys are an error. Everything except `targets` has a default.
   "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true },
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
-  "blocks": { "max_machines": 120, "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
+  "blocks": { "max_machines": 120, "size_by": "weight", "overflow_cost": 1.0, "hard_max": 1.5,
+              "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
               "link_belt_share": 0.9, "split_at_weight": 0.1, "block_time_share": 0.9,
               "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
               "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
@@ -287,8 +288,14 @@ Unknown keys are an error. Everything except `targets` has a default.
 With a `blocks` section, a job with more than `max_machines` machines is built as several blocks connected by
 belts and pipes, in one blueprint:
 
-1. **Split.** The whole job is planned once, so every rate is exact, then its machines are divided into blocks of
-   at most `max_machines`. The split pays for what it cuts: every item a block makes more or less of than it uses
+1. **Split.** The whole job is planned once, so every rate is exact, then its machines are divided into blocks.
+   `max_machines` is a target, not a cap: machines count by how hard they are to connect (half their belt
+   inserters plus 0.75 per pipe connection, at least 1, so a furnace with one input and one output counts 1 and a
+   many-input assembler 2–3), and a block aims at `max_machines` machines of a typical recipe. It may grow past
+   that at a price (`overflow_cost` ports for 20 % over, growing with the square) but never past `hard_max` times
+   it. Simple blocks such as smelting columns grow, mixed ones stay about as they were, and each block's share of
+   the search time follows its weight. `"size_by": "machines"` keeps the old hard cap of `max_machines`
+   machines. The split pays for what it cuts: every item a block makes more or less of than it uses
    is a port on that block and a belt (or pipe) through the corridors, so it costs `link_cost` per belt
    (`fluid_link_cost` per pipe port), plus a little per belt's worth of rate, plus `block_cost` per block.
    Items in `split_at` cost `split_at_weight` times as much (plates are natural cut points). A greedy merge of
@@ -339,8 +346,12 @@ belts and pipes, in one blueprint:
    blocks far from it are searched again at that aspect, and the floorplan then picks, per block, the layout that
    packs best. Kept if the factory gets smaller.
 7. With `merge`, until the time budget runs out, two neighbouring blocks become one block, searched starting from
-   their placements as they lie in the factory, kept if the factory gets smaller (merged blocks have at most
-   `merge_max_machines`, default twice `max_machines`).
+   their placements as they lie in the factory. Pairs that trade with each other or share recipes go first,
+   lightest first, each searched for about one and a half times what its two blocks had. A full compaction takes
+   minutes, so each merge is judged after a short one against the factory after the same short one; merges that
+   win are kept and built on, and the result is compacted fully at the end and kept if it beats the best factory
+   (a merged block weighs at most 2.5 times the target, or has at most `merge_max_machines` machines with
+   `size_by` machines, default twice `max_machines`).
 
 Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block, with
 `from` and `to` counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.

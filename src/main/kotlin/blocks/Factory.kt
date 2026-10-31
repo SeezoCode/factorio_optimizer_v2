@@ -220,16 +220,23 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
     }
 
     // 4. Merge neighbours: two blocks next to each other become one, searched from their placements side by side.
+    //    A full compaction takes minutes, so each merge is judged after a short one, against the factory as it stands
+    //    after the same short one; merges that win are kept and built on, and the result is compacted fully at the
+    //    end and kept if it beats the best factory.
     if (cfg.merge) {
-        // A merged block weighs at most twice the target (merge_max_machines machines with size_by machines).
-        val maxW = if (cfg.sizeBy == "machines") (cfg.mergeMaxMachines ?: (2 * cfg.maxMachines)).toDouble() else 2 * blockSize.target
+        // A merged block weighs at most 2.5 times the target (merge_max_machines machines with size_by machines).
+        val maxW = if (cfg.sizeBy == "machines") (cfg.mergeMaxMachines ?: (2 * cfg.maxMachines)).toDouble() else 2.5 * blockSize.target
         // Seconds per unit of effort the blocks got, so a merged block gets about what its two halves had, and more.
         val perEffort = config.search.timeBudgetS * cfg.blockTimeShare * (1 - later) / split.blocks.indices.sumOf(::effort).coerceAtLeast(1.0)
+        val quick = 120.0
         val tried = HashSet<Set<Int>>()
         var merges = 0
-        while (left() > 120) {
-            val f = best ?: break
-            val st = bestState ?: break
+        var cur = bestState?.let { assemble(split, bps, variants, it, "merge reference", squeezeCap = quick) }?.takeIf { it.first.success }
+        if (cur != null) say("merge: the factory is ${cur.first.layout.w} x ${cur.first.layout.h} after a short compaction; a merge must beat that at the same stage")
+        // Time kept for the final full compaction.
+        val reserve = (cfg.compactS ?: 300.0) + 60.0
+        while (cur != null && left() > reserve + 180) {
+            val (f, st) = cur
             val boxes = f.blockRects
             val pairs = neighbourPairs(boxes, cfg.corridor * 3)
                 .filter { (a, b) -> weightOf(split.blocks[a] + split.blocks[b]) <= maxW + 1e-9 && (split.blocks[a] + split.blocks[b]).toSet() !in tried }
@@ -262,7 +269,7 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
                 val res = f.blockLayouts[b]
                 res.placement!!.machines.forEach { pm -> warm += pm.copy(id = local.getValue(bps[b].globalIds[pm.id]), x = pm.x + boxes[b].x - ux, y = pm.y + boxes[b].y - uy) }
             }
-            val budget = (1.5 * perEffort * (effort(l) + effort(r))).coerceIn(60.0, 3600.0).coerceAtMost(left() - 60)
+            val budget = (1.5 * perEffort * (effort(l) + effort(r))).coerceIn(60.0, 3600.0).coerceAtMost(left() - reserve - 150)
             say("merge blocks ${l + 1} and ${r + 1} (${bp.globalIds.size} machines) from $uw x $uh, ${"%.0f".format(budget)} s")
             val dir = File(out, "merge/${tried.size}_blocks_${l + 1}_${r + 1}")
             bp.plan.write(File(dir, "plan.json").path)
@@ -276,15 +283,20 @@ fun runFactory(data: RootData, config: RunConfiguration, tuning: Tuning, input: 
             val newVariants = variants.filterIndexed { i, _ -> i != gone }.map { it.toMutableList() }.toMutableList()
             newVariants[m] = mutableListOf(res)
             val newBps = merged.blocks.indices.map { i -> if (i == m) bp else blockPlan(plan, merged, i, tuning) }
-            val start = st.without(gone)
-            // Stitched with a short compaction; the best factory gets a full one after the merges.
-            if (consider(assemble(merged, newBps, newVariants, start, "merged ${l + 1}+${r + 1}", squeezeCap = 120.0), "merged factory")) {
+            val cand = assemble(merged, newBps, newVariants, st.without(gone), "merged ${l + 1}+${r + 1}", squeezeCap = quick)?.takeIf { it.first.success }
+            if (cand != null && area(cand.first) < area(f)) {
+                say("merge blocks ${l + 1} and ${r + 1}: kept, ${cand.first.layout.w} x ${cand.first.layout.h} against ${f.layout.w} x ${f.layout.h} at the same stage")
                 split = merged; bps = newBps; variants.clear(); variants += newVariants
-                saveAll(out, config, split, variants)
+                cur = cand
                 merges++
-            }
+            } else say("merge blocks ${l + 1} and ${r + 1}: dropped" + (cand?.let { ", ${it.first.layout.w} x ${it.first.layout.h} against ${f.layout.w} x ${f.layout.h}" } ?: ", no valid factory"))
         }
-        if (merges > 0 && left() > 60) consider(assemble(split, bps, variants, bestState, "merged factory, compacted"), "merged factory, compacted")
+        if (merges > 0 && cur != null) {
+            // The merged factory compacted fully; kept (and saved for --resume) if it beats the best.
+            val before = best
+            consider(assemble(split, bps, variants, cur.second, "merged factory ($merges merge(s)), compacted"), "merged factory")
+            if (best !== before) saveAll(out, config, split, variants)
+        }
     }
     say("done: ${best?.let { "${it.layout.w} x ${it.layout.h} (${area(it)} tiles)" } ?: "no valid factory"}")
     return best
