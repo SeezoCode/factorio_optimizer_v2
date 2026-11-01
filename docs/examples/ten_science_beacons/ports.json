@@ -1,0 +1,434 @@
+{
+    "box": {
+        "w": 279,
+        "h": 291
+    },
+    "inputs": [
+        {
+            "item": "copper-ore",
+            "rate": 15.869926865467814,
+            "fluid": false,
+            "x": 11,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 20.762077814738053,
+            "fluid": false,
+            "x": 16,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 19.396577280016217,
+            "fluid": false,
+            "x": 47,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 19.396577280016217,
+            "fluid": false,
+            "x": 60,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 21.159902487290424,
+            "fluid": false,
+            "x": 279,
+            "y": 59,
+            "edge": "east"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 28.213203316387236,
+            "fluid": false,
+            "x": 279,
+            "y": 71,
+            "edge": "east"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 15.869926865467814,
+            "fluid": false,
+            "x": -1,
+            "y": 44,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 15.869926865467814,
+            "fluid": false,
+            "x": -1,
+            "y": 69,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 26.449878109113016,
+            "fluid": false,
+            "x": -1,
+            "y": 76,
+            "edge": "west"
+        },
+        {
+            "item": "crude-oil",
+            "rate": 511.1254709113461,
+            "fluid": true,
+            "x": -1,
+            "y": 206,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 19.404,
+            "fluid": false,
+            "x": 106,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "stone",
+            "rate": 16.31028556223266,
+            "fluid": false,
+            "x": 136,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 24.83240022642333,
+            "fluid": false,
+            "x": 0,
+            "y": 40,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 24.83240022642333,
+            "fluid": false,
+            "x": 0,
+            "y": 42,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 24.83240022642333,
+            "fluid": false,
+            "x": 0,
+            "y": 136,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 18.51491467637912,
+            "fluid": false,
+            "x": 0,
+            "y": 263,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 18.51491467637912,
+            "fluid": false,
+            "x": 0,
+            "y": 260,
+            "edge": "west"
+        },
+        {
+            "item": "coal",
+            "rate": 17.857142781116323,
+            "fluid": false,
+            "x": 0,
+            "y": 135,
+            "edge": "west"
+        },
+        {
+            "item": "coal",
+            "rate": 17.857142781116323,
+            "fluid": false,
+            "x": 0,
+            "y": 134,
+            "edge": "west"
+        },
+        {
+            "item": "coal",
+            "rate": 16.259250750813404,
+            "fluid": false,
+            "x": 0,
+            "y": 246,
+            "edge": "west"
+        },
+        {
+            "item": "coal",
+            "rate": 16.259250750813404,
+            "fluid": false,
+            "x": 0,
+            "y": 250,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 23.804890298201705,
+            "fluid": false,
+            "x": 0,
+            "y": 288,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 23.804890298201705,
+            "fluid": false,
+            "x": 0,
+            "y": 287,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.221027141833403,
+            "fluid": false,
+            "x": 0,
+            "y": 194,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.221027141833403,
+            "fluid": false,
+            "x": 0,
+            "y": 193,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.221027141833403,
+            "fluid": false,
+            "x": 0,
+            "y": 192,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 19.396577280016206,
+            "fluid": false,
+            "x": 0,
+            "y": 261,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 19.396577280016206,
+            "fluid": false,
+            "x": 0,
+            "y": 262,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 17.633252072742007,
+            "fluid": false,
+            "x": 0,
+            "y": 36,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 17.633252072742007,
+            "fluid": false,
+            "x": 0,
+            "y": 41,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.538554763291454,
+            "fluid": false,
+            "x": 0,
+            "y": 125,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.538554763291454,
+            "fluid": false,
+            "x": 0,
+            "y": 126,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.538554763291454,
+            "fluid": false,
+            "x": 0,
+            "y": 128,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 25.568215505475905,
+            "fluid": false,
+            "x": 0,
+            "y": 37,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 25.568215505475905,
+            "fluid": false,
+            "x": 0,
+            "y": 38,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 25.568215505475905,
+            "fluid": false,
+            "x": 0,
+            "y": 43,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 25.568215505475905,
+            "fluid": false,
+            "x": 0,
+            "y": 289,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.221027141833403,
+            "fluid": false,
+            "x": 0,
+            "y": 124,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.221027141833403,
+            "fluid": false,
+            "x": 0,
+            "y": 127,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.221027141833403,
+            "fluid": false,
+            "x": 0,
+            "y": 132,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 19.39657728001622,
+            "fluid": false,
+            "x": 0,
+            "y": 138,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 19.39657728001622,
+            "fluid": false,
+            "x": 0,
+            "y": 137,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 20.13773132585495,
+            "fluid": false,
+            "x": 0,
+            "y": 121,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 20.13773132585495,
+            "fluid": false,
+            "x": 0,
+            "y": 131,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 20.13773132585495,
+            "fluid": false,
+            "x": 0,
+            "y": 133,
+            "edge": "west"
+        },
+        {
+            "item": "water",
+            "rate": 1026.3612229708501,
+            "fluid": true,
+            "x": 0,
+            "y": 255,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "automation-science-pack",
+            "rate": 10.0,
+            "fluid": false,
+            "x": 274,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "chemical-science-pack",
+            "rate": 4.999999999999997,
+            "fluid": false,
+            "x": 183,
+            "y": 291,
+            "edge": "south"
+        },
+        {
+            "item": "chemical-science-pack",
+            "rate": 4.999999999999997,
+            "fluid": false,
+            "x": 203,
+            "y": 291,
+            "edge": "south"
+        },
+        {
+            "item": "logistic-science-pack",
+            "rate": 9.999999999999996,
+            "fluid": false,
+            "x": 278,
+            "y": 161,
+            "edge": "east"
+        },
+        {
+            "item": "military-science-pack",
+            "rate": 10.0,
+            "fluid": false,
+            "x": 278,
+            "y": 117,
+            "edge": "east"
+        },
+        {
+            "item": "production-science-pack",
+            "rate": 10.0,
+            "fluid": false,
+            "x": 278,
+            "y": 162,
+            "edge": "east"
+        },
+        {
+            "item": "utility-science-pack",
+            "rate": 10.0,
+            "fluid": false,
+            "x": 278,
+            "y": 120,
+            "edge": "east"
+        }
+    ]
+}

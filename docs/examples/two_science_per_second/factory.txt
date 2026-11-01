@@ -1,0 +1,530 @@
+[   11,0s] 1220 machines in 64 blocks: block 1: 20, block 2: 20, block 3: 20, block 4: 20, block 5: 20, block 6: 20, block 7: 20, block 8: 20, block 9: 20, block 10: 20, block 11: 20, block 12: 20, block 13: 15, block 14: 20, block 15: 20, block 16: 20, block 17: 20, block 18: 20, block 19: 20, block 20: 20, block 21: 20, block 22: 20, block 23: 20, block 24: 20, block 25: 20, block 26: 20, block 27: 20, block 28: 20, block 29: 20, block 30: 20, block 31: 16, block 32: 18, block 33: 19, block 34: 16, block 35: 20, block 36: 20, block 37: 20, block 38: 20, block 39: 20, block 40: 20, block 41: 20, block 42: 20, block 43: 20, block 44: 16, block 45: 20, block 46: 18, block 47: 18, block 48: 18, block 49: 17, block 50: 20, block 51: 16, block 52: 9, block 53: 20, block 54: 18, block 55: 16, block 56: 20, block 57: 20, block 58: 20, block 59: 16, block 60: 18, block 61: 18, block 62: 18, block 63: 20, block 64: 20; 190 ports between blocks and edges (greedy split: 190; 190 with machine rates rebalanced), cost 478,3 (greedy 478,3)
+[   11,0s]   block 1: 20x copper-plate; planned at (51,115) 21 x 30
+[   11,0s]   block 2: 20x copper-plate; planned at (80,70) 25 x 25
+[   11,0s]   block 3: 20x copper-plate; planned at (41,93) 35 x 18
+[   11,0s]   block 4: 20x copper-plate; planned at (90,31) 21 x 30
+[   11,0s]   block 5: 20x copper-plate; planned at (76,148) 35 x 18
+[   11,0s]   block 6: 20x copper-plate; planned at (140,174) 21 x 30
+[   11,0s]   block 7: 20x copper-plate; planned at (60,2) 25 x 25
+[   11,0s]   block 8: 20x copper-plate; planned at (90,2) 25 x 25
+[   11,0s]   block 9: 20x copper-plate; planned at (41,71) 35 x 18
+[   11,0s]   block 10: 20x copper-plate; planned at (134,31) 25 x 25
+[   11,0s]   block 11: 20x copper-plate; planned at (165,174) 21 x 30
+[   11,0s]   block 12: 20x copper-plate; planned at (148,2) 25 x 25
+[   11,0s]   block 13: 15x copper-plate; planned at (41,174) 17 x 26
+[   11,0s]   block 14: 20x iron-plate; planned at (119,2) 25 x 25
+[   11,0s]   block 15: 20x iron-plate; planned at (37,204) 21 x 30
+[   11,0s]   block 16: 20x iron-plate; planned at (62,171) 31 x 20
+[   11,0s]   block 17: 20x iron-plate; planned at (2,93) 35 x 18
+[   11,0s]   block 18: 20x iron-plate; planned at (101,217) 35 x 18
+[   11,0s]   block 19: 20x iron-plate; planned at (62,195) 35 x 18
+[   11,0s]   block 20: 20x iron-plate; planned at (2,31) 18 x 35
+[   11,0s]   block 21: 20x iron-plate; planned at (24,51) 40 x 16
+[   11,0s]   block 22: 20x iron-plate; planned at (31,2) 25 x 25
+[   11,0s]   block 23: 20x iron-plate; planned at (62,217) 35 x 18
+[   11,0s]   block 24: 20x iron-plate; planned at (24,31) 40 x 16
+[   11,0s]   block 25: 20x iron-plate; planned at (109,125) 40 x 16
+[   11,0s]   block 26: 20x iron-plate; planned at (2,174) 35 x 18
+[   11,0s]   block 27: 20x iron-plate; planned at (2,196) 31 x 20
+[   11,0s]   block 28: 20x iron-plate; planned at (2,2) 25 x 25
+[   11,0s]   block 29: 20x iron-plate; planned at (2,71) 35 x 18
+[   11,0s]   block 30: 20x iron-plate; planned at (97,171) 35 x 18
+[   11,0s]   block 31: 16x iron-plate; planned at (2,220) 31 x 15
+[   11,0s]   block 32: 18x stone-brick; planned at (109,72) 23 x 24
+[   11,0s]   block 33: 14x advanced-oil-processing, 5x heavy-oil-cracking; planned at (2,115) 45 x 30
+[   11,0s]   block 34: 16x copper-cable; planned at (214,2) 14 x 34
+[   11,0s]   block 35: 20x steel-plate; planned at (101,195) 35 x 18
+[   11,0s]   block 36: 20x steel-plate; planned at (68,31) 18 x 35
+[   11,0s]   block 37: 20x steel-plate; planned at (191,196) 16 x 39
+[   11,0s]   block 38: 20x steel-plate; planned at (140,208) 25 x 25
+[   11,0s]   block 39: 20x steel-plate; planned at (214,40) 16 x 39
+[   11,0s]   block 40: 20x steel-plate; planned at (190,156) 40 x 16
+[   11,0s]   block 41: 20x steel-plate; planned at (209,122) 21 x 30
+[   11,0s]   block 42: 20x steel-plate; planned at (190,176) 40 x 16
+[   11,0s]   block 43: 20x steel-plate; planned at (211,196) 18 x 35
+[   11,0s]   block 44: 16x steel-plate; planned at (169,208) 18 x 26
+[   11,0s]   block 45: 9x light-oil-cracking, 8x advanced-oil-processing, 3x sulfur; planned at (2,149) 52 x 21
+[   11,0s]   block 46: 10x copper-cable, 8x electronic-circuit; planned at (188,120) 17 x 32
+[   11,0s]   block 47: 10x copper-cable, 8x electronic-circuit; planned at (115,31) 15 x 37
+[   11,0s]   block 48: 10x copper-cable, 8x electronic-circuit; planned at (177,2) 33 x 17
+[   11,0s]   block 49: 14x engine-unit, 3x pipe; planned at (153,114) 28 x 18
+[   11,0s]   block 50: 8x military-science-pack, 7x grenade, 3x piercing-rounds-magazine, 1x firearm-magazine, 1x stone-wall; planned at (155,90) 31 x 20
+[   11,0s]   block 51: 8x automation-science-pack, 8x engine-unit; planned at (153,136) 31 x 15
+[   11,0s]   block 52: 9x light-oil-cracking; planned at (58,149) 13 x 18
+[   11,0s]   block 53: 9x stone-brick, 8x productivity-module, 3x electric-furnace; planned at (113,102) 35 x 18
+[   11,0s]   block 54: 18x plastic-bar; planned at (80,102) 29 x 19
+[   11,0s]   block 55: 10x logistic-science-pack, 4x iron-gear-wheel, 1x inserter, 1x transport-belt; planned at (153,155) 31 x 15
+[   11,0s]   block 56: 20x advanced-circuit; planned at (185,23) 25 x 25
+[   11,0s]   block 57: 20x advanced-circuit; planned at (185,52) 25 x 25
+[   11,0s]   block 58: 20x advanced-circuit; planned at (155,61) 25 x 25
+[   11,0s]   block 59: 16x low-density-structure; planned at (163,31) 18 x 26
+[   11,0s]   block 60: 12x production-science-pack, 4x rail, 2x iron-stick; planned at (136,61) 15 x 37
+[   11,0s]   block 61: 11x flying-robot-frame, 6x electric-engine-unit, 1x lubricant; planned at (76,125) 29 x 19
+[   11,0s]   block 62: 11x processing-unit, 6x battery, 1x sulfuric-acid; planned at (116,146) 29 x 19
+[   11,0s]   block 63: 20x chemical-science-pack; planned at (212,83) 18 x 35
+[   11,0s]   block 64: 12x utility-science-pack, 8x low-density-structure; planned at (190,81) 18 x 35
+[   11,0s]   block 57 -> block 63: advanced-circuit 4,17/s (1 belt(s))
+[   11,0s]   block 63 -> block 53: advanced-circuit 1,17/s (1 belt(s))
+[   11,0s]   block 58 -> block 53: advanced-circuit 4,16/s (1 belt(s))
+[   11,0s]   block 56 -> block 53: advanced-circuit 4,01/s (1 belt(s))
+[   11,0s]   block 53 -> block 62: advanced-circuit 2,67/s (1 belt(s)), electronic-circuit 8,35/s (1 belt(s))
+[   11,0s]   block 62 -> block 61: battery 1,33/s (1 belt(s)), electronic-circuit 3,33/s (1 belt(s))
+[   11,0s]   block 34 -> block 48: copper-cable 26,04/s (1 belt(s))
+[   11,0s]   block 48 -> block 56: copper-cable 16,04/s (1 belt(s)), electronic-circuit 20,00/s (1 belt(s))
+[   11,0s]   block 34 -> block 57: copper-cable 26,67/s (1 belt(s))
+[   11,0s]   block 57 -> block 46: copper-cable 10,00/s (1 belt(s))
+[   11,0s]   block 34 -> block 58: copper-cable 26,63/s (1 belt(s))
+[   11,0s]   block 58 -> block 47: copper-cable 10,00/s (1 belt(s))
+[   11,0s]   block 4 -> block 47: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 10 -> block 59: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 12 -> block 48: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 5 -> block 62: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 62 -> block 46: copper-plate 11,17/s (1 belt(s))
+[   11,0s]   block 46 -> block 34: copper-plate 9,17/s (1 belt(s))
+[   11,0s]   block 11 -> block 51: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 51 -> block 46: copper-plate 10,50/s (1 belt(s))
+[   11,0s]   block 8 -> block 47: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 2 -> block 50: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 50 -> block 59: copper-plate 11,50/s (1 belt(s))
+[   11,0s]   block 6 -> block 46: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 7 -> block 48: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 3 -> block 64: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 9 -> block 59: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 59 -> block 34: copper-plate 9,83/s (1 belt(s))
+[   11,0s]   block 34 -> block 64: copper-plate 0,83/s (1 belt(s))
+[   11,0s]   block 1 -> block 34: copper-plate 12,50/s (1 belt(s))
+[   11,0s]   block 13 -> block 34: copper-plate 9,00/s (1 belt(s))
+[   11,0s]   block 53 -> block 60: electric-furnace 0,67/s (1 belt(s)), productivity-module 0,67/s (1 belt(s)), steel-plate 0,67/s (1 belt(s)), stone 10,00/s (1 belt(s))
+[   11,0s]   block 56 -> block 57: electronic-circuit 11,98/s (1 belt(s))
+[   11,0s]   block 57 -> block 62: electronic-circuit 3,65/s (1 belt(s))
+[   11,0s]   block 46 -> block 55: electronic-circuit 20,00/s (1 belt(s))
+[   11,0s]   block 55 -> block 62: electronic-circuit 18,00/s (1 belt(s))
+[   11,0s]   block 47 -> block 58: electronic-circuit 8,31/s (1 belt(s))
+[   11,0s]   block 47 -> block 53: electronic-circuit 11,69/s (1 belt(s))
+[   11,0s]   block 49 -> block 63: engine-unit 1,75/s (1 belt(s))
+[   11,0s]   block 51 -> block 61: engine-unit 0,67/s (1 belt(s))
+[   11,0s]   block 51 -> block 63: engine-unit 0,25/s (1 belt(s))
+[   11,0s]   block 61 -> block 64: flying-robot-frame 0,67/s (1 belt(s))
+[   11,0s]   block 55 -> block 51: iron-gear-wheel 4,67/s (1 belt(s))
+[   11,0s]   block 51 -> block 49: iron-gear-wheel 1,75/s (1 belt(s)), steel-plate 1,58/s (1 belt(s))
+[   11,0s]   block 18 -> block 35: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 25 -> block 62: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 62 -> block 55: iron-plate 10,50/s (1 belt(s))
+[   11,0s]   block 55 -> block 49: iron-plate 10,33/s (1 belt(s))
+[   11,0s]   block 49 -> block 60: iron-plate 5,00/s (1 belt(s))
+[   11,0s]   block 24 -> block 36: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 14 -> block 47: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 30 -> block 55: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 23 -> block 38: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 21 -> block 47: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 47 -> block 39: iron-plate 5,00/s (1 belt(s))
+[   11,0s]   block 16 -> block 55: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 55 -> block 42: iron-plate 6,83/s (1 belt(s))
+[   11,0s]   block 19 -> block 44: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 44 -> block 37: iron-plate 2,50/s (1 belt(s))
+[   11,0s]   block 17 -> block 50: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 50 -> block 46: iron-plate 3,50/s (1 belt(s))
+[   11,0s]   block 22 -> block 48: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 15 -> block 37: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 37 -> block 43: iron-plate 2,50/s (1 belt(s))
+[   11,0s]   block 28 -> block 48: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 48 -> block 41: iron-plate 5,00/s (1 belt(s))
+[   11,0s]   block 26 -> block 42: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 42 -> block 40: iron-plate 6,83/s (1 belt(s))
+[   11,0s]   block 27 -> block 43: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 43 -> block 40: iron-plate 2,50/s (1 belt(s))
+[   11,0s]   block 20 -> block 39: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 39 -> block 41: iron-plate 5,00/s (1 belt(s))
+[   11,0s]   block 29 -> block 46: iron-plate 12,50/s (1 belt(s))
+[   11,0s]   block 31 -> block 40: iron-plate 9,67/s (1 belt(s))
+[   11,0s]   block 40 -> block 41: iron-plate 6,50/s (1 belt(s))
+[   11,0s]   block 41 -> block 46: iron-plate 4,00/s (1 belt(s))
+[   11,0s]   block 59 -> block 64: low-density-structure 1,33/s (1 belt(s))
+[   11,0s]   block 49 -> block 51: pipe 1,83/s (1 belt(s))
+[   11,0s]   block 54 -> block 58: plastic-bar 26,33/s (1 belt(s))
+[   11,0s]   block 58 -> block 59: plastic-bar 18,02/s (1 belt(s))
+[   11,0s]   block 59 -> block 56: plastic-bar 11,35/s (1 belt(s))
+[   11,0s]   block 56 -> block 64: plastic-bar 3,33/s (1 belt(s))
+[   11,0s]   block 54 -> block 57: plastic-bar 8,33/s (1 belt(s))
+[   11,0s]   block 62 -> block 64: processing-unit 1,33/s (1 belt(s))
+[   11,0s]   block 41 -> block 51: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 49 -> block 64: steel-plate 1,33/s (1 belt(s))
+[   11,0s]   block 39 -> block 59: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 40 -> block 49: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 49 -> block 50: steel-plate 1,00/s (1 belt(s))
+[   11,0s]   block 50 -> block 53: steel-plate 0,50/s (1 belt(s))
+[   11,0s]   block 35 -> block 61: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 61 -> block 53: steel-plate 1,83/s (1 belt(s))
+[   11,0s]   block 36 -> block 60: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 38 -> block 53: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 42 -> block 53: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 44 -> block 60: steel-plate 2,00/s (1 belt(s))
+[   11,0s]   block 37 -> block 60: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 43 -> block 60: steel-plate 2,50/s (1 belt(s))
+[   11,0s]   block 60 -> block 59: steel-plate 0,17/s (1 belt(s))
+[   11,0s]   block 32 -> block 53: stone-brick 11,04/s (1 belt(s))
+[   11,0s]   block 53 -> block 50: stone-brick 10,00/s (1 belt(s))
+[   11,0s]   block 45 -> block 62: sulfur 4,33/s (1 belt(s))
+[   11,0s]   block 62 -> block 63: sulfur 1,00/s (1 belt(s))
+[   11,0s]   block 3 -> block 9: copper-ore 12,50/s (1 belt(s))
+[   11,0s]   block 13 -> block 5: copper-ore 12,50/s (1 belt(s))
+[   11,0s]   block 1 -> block 2: copper-ore 12,50/s (1 belt(s))
+[   11,0s]   block 7 -> block 8: copper-ore 12,50/s (1 belt(s))
+[   11,0s]   block 4 -> block 10: copper-ore 12,50/s (1 belt(s))
+[   11,0s]   block 6 -> block 11: copper-ore 12,50/s (1 belt(s))
+[   11,0s]   block 26 -> block 16: iron-ore 12,50/s (1 belt(s))
+[   11,0s]   block 28 -> block 22: iron-ore 12,50/s (1 belt(s))
+[   11,0s]   block 21 -> block 24: iron-ore 12,50/s (1 belt(s))
+[   11,0s]   block 15 -> block 23: iron-ore 12,50/s (1 belt(s))
+[   11,0s]   block 19 -> block 30: iron-ore 12,50/s (1 belt(s))
+[   11,0s]   block 18 -> block 25: iron-ore 12,50/s (1 belt(s))
+[   11,0s]   heavy-oil pipes: block 33 takes 26,8/s, block 45 gives 36,8/s, block 61 takes 10,0/s
+[   11,0s]   light-oil pipes: block 33 gives 198,6/s, block 45 takes 63,6/s, block 52 takes 135,0/s
+[   11,0s]   petroleum-gas pipes: block 33 gives 154,0/s, block 45 gives 102,7/s, block 52 gives 90,0/s, block 54 takes 346,7/s
+[   11,0s]   water pipes: block 33 takes 212,6/s, block 45 takes 268,6/s, block 52 takes 135,0/s, block 62 takes 66,7/s, edge gives 682,9/s
+[   11,0s]   crude-oil pipes: block 33 takes 280,0/s, block 45 takes 147,4/s, edge gives 427,4/s
+[   11,0s]   8 inputs and outputs leave their block straight out of the factory, 21 run through the corridors to its edge
+[   11,0s] block 1: 20 machines, 3 ports, aspect 0,70, 242 s
+[  254,2s] block 1: 18 x 26
+[  254,2s] block 2: 20 machines, 2 ports, aspect 1,00, 236 s
+[  490,3s] block 2: 21 x 21
+[  490,3s] block 3: 20 machines, 3 ports, aspect 1,94, 242 s
+[  732,2s] block 3: 31 x 16
+[  732,2s] block 4: 20 machines, 3 ports, aspect 0,70, 242 s
+[  974,0s] block 4: 18 x 26
+[  974,0s] block 5: 20 machines, 2 ports, aspect 1,94, 236 s
+[ 1044,3s] block 5: 29 x 15
+[ 1044,3s] block 6: 20 machines, 3 ports, aspect 0,70, 242 s
+[ 1286,0s] block 6: 18 x 26
+[ 1286,0s] block 7: 20 machines, 3 ports, aspect 1,00, 242 s
+[ 1528,6s] block 7: 22 x 22
+[ 1528,6s] block 8: 20 machines, 2 ports, aspect 1,00, 236 s
+[ 1765,9s] block 8: 22 x 22
+[ 1765,9s] block 9: 20 machines, 2 ports, aspect 1,94, 236 s
+[ 2003,5s] block 9: 29 x 15
+[ 2003,5s] block 10: 20 machines, 2 ports, aspect 1,00, 236 s
+[ 2241,6s] block 10: 21 x 21
+[ 2241,6s] block 11: 20 machines, 2 ports, aspect 0,70, 236 s
+[ 2482,5s] block 11: 18 x 26
+[ 2482,5s] block 12: 20 machines, 2 ports, aspect 1,00, 236 s
+[ 2719,2s] block 12: 21 x 21
+[ 2719,2s] block 13: 15 machines, 3 ports, aspect 0,65, 185 s
+[ 2905,8s] block 13: 15 x 22
+[ 2905,8s] block 14: 20 machines, 2 ports, aspect 1,00, 236 s
+[ 3142,7s] block 14: 22 x 22
+[ 3142,7s] block 15: 20 machines, 3 ports, aspect 0,70, 242 s
+[ 3385,3s] block 15: 18 x 26
+[ 3385,3s] block 16: 20 machines, 2 ports, aspect 1,55, 236 s
+[ 3621,7s] block 16: 26 x 17
+[ 3621,7s] block 17: 20 machines, 2 ports, aspect 1,94, 236 s
+[ 3859,5s] block 17: 31 x 16
+[ 3859,5s] block 18: 20 machines, 3 ports, aspect 1,94, 242 s
+[ 4101,7s] block 18: 31 x 16
+[ 4101,7s] block 19: 20 machines, 3 ports, aspect 1,94, 242 s
+[ 4344,2s] block 19: 31 x 16
+[ 4344,2s] block 20: 20 machines, 2 ports, aspect 0,51, 236 s
+[ 4580,6s] block 20: 15 x 29
+[ 4580,6s] block 21: 20 machines, 3 ports, aspect 2,50, 242 s
+[ 4823,7s] block 21: 33 x 13
+[ 4823,7s] block 22: 20 machines, 2 ports, aspect 1,00, 236 s
+[ 5061,3s] block 22: 21 x 21
+[ 5061,3s] block 23: 20 machines, 2 ports, aspect 1,94, 236 s
+[ 5300,0s] block 23: 31 x 16
+[ 5300,0s] block 24: 20 machines, 2 ports, aspect 2,50, 236 s
+[ 5538,3s] block 24: 35 x 14
+[ 5538,3s] block 25: 20 machines, 2 ports, aspect 2,50, 236 s
+[ 5776,9s] block 25: 35 x 14
+[ 5776,9s] block 26: 20 machines, 3 ports, aspect 1,94, 242 s
+[ 6018,9s] block 26: 31 x 16
+[ 6018,9s] block 27: 20 machines, 2 ports, aspect 1,55, 236 s
+[ 6255,3s] block 27: 26 x 17
+[ 6255,3s] block 28: 20 machines, 3 ports, aspect 1,00, 242 s
+[ 6497,3s] block 28: 21 x 21
+[ 6497,3s] block 29: 20 machines, 2 ports, aspect 1,94, 236 s
+[ 6734,3s] block 29: 29 x 15
+[ 6734,3s] block 30: 20 machines, 2 ports, aspect 1,94, 236 s
+[ 6971,1s] block 30: 29 x 15
+[ 6971,1s] block 31: 16 machines, 2 ports, aspect 2,07, 191 s
+[ 7162,7s] block 31: 27 x 13
+[ 7162,7s] block 32: 18 machines, 2 ports, aspect 0,96, 214 s
+[ 7376,4s] block 32: 20 x 20
+[ 7376,4s] block 33: 19 machines, 5 ports, aspect 1,50, 242 s
+[ 7626,8s] block 33: 43 x 29
+[ 7626,8s] block 34: 16 machines, 8 ports, aspect 0,41, 225 s
+[ 7857,0s] block 34: 15 x 36
+[ 7857,0s] block 35: 20 machines, 2 ports, aspect 1,94, 236 s
+[ 8093,3s] block 35: 29 x 15
+[ 8093,3s] block 36: 20 machines, 2 ports, aspect 0,51, 236 s
+[ 8329,6s] block 36: 15 x 29
+[ 8329,6s] block 37: 20 machines, 4 ports, aspect 0,41, 247 s
+[ 8577,7s] block 37: 14 x 34
+[ 8577,7s] block 38: 20 machines, 2 ports, aspect 1,00, 236 s
+[ 8814,3s] block 38: 21 x 21
+[ 8814,3s] block 39: 20 machines, 4 ports, aspect 0,41, 247 s
+[ 9062,9s] block 39: 15 x 36
+[ 9062,9s] block 40: 20 machines, 5 ports, aspect 2,50, 253 s
+[ 9317,1s] block 40: 35 x 14
+[ 9317,1s] block 41: 20 machines, 5 ports, aspect 0,70, 253 s
+[ 9571,4s] block 41: 18 x 26
+[ 9571,4s] block 42: 20 machines, 4 ports, aspect 2,50, 247 s
+[ 9820,5s] block 42: 35 x 14
+[ 9820,5s] block 43: 20 machines, 4 ports, aspect 0,51, 247 s
+[10069,1s] block 43: 16 x 31
+[10069,1s] block 44: 16 machines, 3 ports, aspect 0,69, 197 s
+[10266,0s] block 44: 16 x 23
+[10266,0s] block 45: 20 machines, 6 ports, aspect 2,48, 259 s
+[10526,8s] block 45: 47 x 19
+[10526,8s] block 46: 18 machines, 9 ports, aspect 0,53, 253 s
+[10780,2s] block 46: 20 x 37
+[10780,2s] block 47: 18 machines, 8 ports, aspect 0,41, 247 s
+[11028,5s] block 47: 17 x 41
+[11028,5s] block 48: 18 machines, 8 ports, aspect 1,94, 247 s
+[11278,5s] block 48: 36 x 19
+[11278,5s] block 49: 17 machines, 9 ports, aspect 1,56, 242 s
+[11521,6s] block 49: 34 x 22
+[11521,6s] block 50: 20 machines, 9 ports, aspect 1,55, 275 s
+[11798,0s] block 50: 36 x 23
+[11798,0s] block 51: 16 machines, 10 ports, aspect 2,07, 236 s
+[12035,1s] block 51: 37 x 18
+[12035,1s] block 52: 9 machines, 3 ports, aspect 0,72, 118 s
+[12153,3s] block 52: 13 x 18
+[12153,3s] block 53: 20 machines, 17 ports, aspect 1,94, 320 s
+[12475,2s] block 53: 36 x 19
+[12475,2s] block 54: 18 machines, 4 ports, aspect 1,53, 225 s
+[12703,4s] block 54: 30 x 19
+[12703,4s] block 55: 16 machines, 9 ports, aspect 2,07, 230 s
+[12934,0s] block 55: 33 x 16
+[12934,0s] block 56: 20 machines, 6 ports, aspect 1,00, 259 s
+[13193,5s] block 56: 31 x 31
+[13193,5s] block 57: 20 machines, 6 ports, aspect 1,00, 259 s
+[13452,9s] block 57: 32 x 32
+[13452,9s] block 58: 20 machines, 6 ports, aspect 1,00, 259 s
+[13712,6s] block 58: 32 x 32
+[13712,6s] block 59: 16 machines, 9 ports, aspect 0,69, 230 s
+[13944,4s] block 59: 23 x 34
+[13944,4s] block 60: 18 machines, 11 ports, aspect 0,41, 264 s
+[14210,6s] block 60: 17 x 41
+[14210,6s] block 61: 18 machines, 7 ports, aspect 1,53, 242 s
+[14454,5s] block 61: 36 x 23
+[14454,5s] block 62: 18 machines, 14 ports, aspect 1,53, 281 s
+[14736,2s] block 62: 37 x 24
+[14736,2s] block 63: 20 machines, 6 ports, aspect 0,51, 259 s
+[14997,2s] block 63: 22 x 43
+[14997,2s] block 64: 20 machines, 8 ports, aspect 0,51, 270 s
+[15267,1s] block 64: 22 x 42
+[15328,3s] block 1 shape x0,60: 15 x 36 (base 18 x 26)
+[15388,3s] block 1 shape x1,70: 24 x 20 (base 18 x 26)
+[15448,9s] block 2 shape x0,60: 16 x 27 (base 21 x 21)
+[15509,2s] block 2 shape x1,70: 29 x 17 (base 21 x 21)
+[15569,6s] block 3 shape x0,60: 24 x 20 (base 31 x 16)
+[15630,0s] block 3 shape x1,70: 38 x 12 (base 31 x 16)
+[15690,6s] block 4 shape x0,60: 14 x 33 (base 18 x 26)
+[15751,5s] block 4 shape x1,70: 24 x 20 (base 18 x 26)
+[15813,2s] block 5 shape x0,60: 24 x 20 (base 29 x 15)
+[15873,3s] block 5 shape x1,70: 38 x 12 (base 29 x 15)
+[15934,5s] block 6 shape x0,60: 14 x 33 (base 18 x 26)
+[15995,2s] block 6 shape x1,70: 24 x 20 (base 18 x 26)
+[16060,1s] block 7 shape x0,60: 17 x 28 (base 22 x 22)
+[16120,3s] block 7 shape x1,70: 29 x 17 (base 22 x 22)
+[16180,5s] block 8 shape x0,60: 17 x 28 (base 22 x 22)
+[16241,4s] block 8 shape x1,70: 27 x 16 (base 22 x 22)
+[16302,4s] block 9 shape x0,60: 24 x 20 (base 29 x 15)
+[16363,0s] block 9 shape x1,70: 38 x 12 (base 29 x 15)
+[16424,1s] block 10 shape x0,60: 17 x 28 (base 21 x 21)
+[16484,7s] block 10 shape x1,70: 29 x 17 (base 21 x 21)
+[16545,1s] block 11 shape x0,60: 14 x 33 (base 18 x 26)
+[16605,7s] block 11 shape x1,70: 24 x 20 (base 18 x 26)
+[16667,0s] block 12 shape x0,60: 17 x 28 (base 21 x 21)
+[16727,1s] block 12 shape x1,70: 29 x 17 (base 21 x 21)
+[16787,8s] block 13 shape x0,60: 12 x 30 (base 15 x 22)
+[16848,4s] block 13 shape x1,70: 20 x 18 (base 15 x 22)
+[16908,5s] block 14 shape x0,60: 17 x 28 (base 22 x 22)
+[16969,4s] block 14 shape x1,70: 27 x 16 (base 22 x 22)
+[17031,6s] block 15 shape x0,60: 14 x 34 (base 18 x 26)
+[17092,5s] block 15 shape x1,70: 24 x 20 (base 18 x 26)
+[17153,2s] block 16 shape x0,60: 21 x 23 (base 26 x 17)
+[17214,3s] block 16 shape x1,70: 35 x 14 (base 26 x 17)
+[17275,4s] block 17 shape x0,60: 23 x 19 (base 31 x 16)
+[17336,2s] block 17 shape x1,70: 38 x 12 (base 31 x 16)
+[17396,9s] block 18 shape x0,60: 24 x 20 (base 31 x 16)
+[17457,2s] block 18 shape x1,70: 38 x 12 (base 31 x 16)
+[17518,2s] block 19 shape x0,60: 24 x 20 (base 31 x 16)
+[17578,8s] block 19 shape x1,70: 38 x 12 (base 31 x 16)
+[17643,6s] block 20 shape x0,60: 12 x 38 (base 15 x 29)
+[17703,7s] block 20 shape x1,70: 21 x 23 (base 15 x 29)
+[17763,9s] block 21 shape x0,60: 27 x 18 (base 33 x 13)
+[17824,2s] block 21 shape x1,70: 46 x 11 (base 33 x 13)
+[17885,5s] block 22 shape x0,60: 17 x 28 (base 21 x 21)
+[17946,5s] block 22 shape x1,70: 29 x 17 (base 21 x 21)
+[18007,5s] block 23 shape x0,60: 24 x 20 (base 31 x 16)
+[18068,6s] block 23 shape x1,70: 38 x 12 (base 31 x 16)
+[18130,4s] block 24 shape x0,60: 27 x 18 (base 35 x 14)
+[18191,5s] block 24 shape x1,70: 45 x 11 (base 35 x 14)
+[18252,6s] block 25 shape x0,60: 26 x 17 (base 35 x 14)
+[18313,1s] block 25 shape x1,70: 45 x 11 (base 35 x 14)
+[18374,1s] block 26 shape x0,60: 24 x 20 (base 31 x 16)
+[18435,5s] block 26 shape x1,70: 38 x 12 (base 31 x 16)
+[18496,8s] block 27 shape x0,60: 21 x 23 (base 26 x 17)
+[18557,3s] block 27 shape x1,70: 35 x 14 (base 26 x 17)
+[18618,1s] block 28 shape x0,60: 17 x 28 (base 21 x 21)
+[18678,6s] block 28 shape x1,70: 29 x 17 (base 21 x 21)
+[18740,3s] block 29 shape x0,60: 24 x 20 (base 29 x 15)
+[18800,6s] block 29 shape x1,70: 38 x 12 (base 29 x 15)
+[18862,0s] block 30 shape x0,60: 24 x 20 (base 29 x 15)
+[18923,0s] block 30 shape x1,70: 38 x 12 (base 29 x 15)
+[18985,0s] block 31 shape x0,60: 21 x 17 (base 27 x 13)
+[19046,3s] block 31 shape x1,70: 36 x 10 (base 27 x 13)
+[19108,0s] block 32 shape x0,60: 16 x 27 (base 20 x 20)
+[19169,2s] block 32 shape x1,70: 27 x 16 (base 20 x 20)
+[19239,7s] block 33 shape x0,60: 36 x 40 (base 43 x 29)
+[19303,5s] block 33 shape x1,70: 54 x 21 (base 43 x 29)
+[19368,9s] block 34 shape x0,60: 13 x 50 (base 15 x 36)
+[19442,5s] block 34 shape x1,70: 21 x 30 (base 15 x 36)
+[19503,9s] block 35 shape x0,60: 24 x 20 (base 29 x 15)
+[19567,3s] block 35 shape x1,70: 38 x 12 (base 29 x 15)
+[19627,5s] block 36 shape x0,60: 12 x 38 (base 15 x 29)
+[19689,0s] block 36 shape x1,70: 21 x 23 (base 15 x 29)
+[19749,5s] block 37 shape x0,60: 11 x 46 (base 14 x 34)
+[19810,8s] block 37 shape x1,70: 19 x 27 (base 14 x 34)
+[19873,0s] block 38 shape x0,60: 17 x 28 (base 21 x 21)
+[19933,1s] block 38 shape x1,70: 29 x 17 (base 21 x 21)
+[19994,5s] block 39 shape x0,60: 12 x 46 (base 15 x 36)
+[20056,4s] block 39 shape x1,70: 19 x 26 (base 15 x 36)
+[20116,8s] block 40 shape x0,60: 26 x 17 (base 35 x 14)
+[20178,2s] block 40 shape x1,70: 45 x 11 (base 35 x 14)
+[20239,6s] block 41 shape x0,60: 15 x 36 (base 18 x 26)
+[20301,0s] block 41 shape x1,70: 24 x 20 (base 18 x 26)
+[20363,5s] block 42 shape x0,60: 27 x 18 (base 35 x 14)
+[20426,5s] block 42 shape x1,70: 45 x 11 (base 35 x 14)
+[20487,3s] block 43 shape x0,60: 13 x 41 (base 16 x 31)
+[20548,4s] block 43 shape x1,70: 21 x 23 (base 16 x 31)
+[20608,6s] block 44 shape x0,60: 13 x 31 (base 16 x 23)
+[20669,1s] block 44 shape x1,70: 21 x 17 (base 16 x 23)
+[20732,5s] block 45 shape x0,60: 38 x 25 (base 47 x 19)
+[20796,3s] block 45 shape x1,70: 64 x 15 (base 47 x 19)
+[20865,5s] block 46 shape x0,60: 17 x 51 (base 20 x 37)
+[20929,8s] block 46 shape x1,70: 28 x 30 (base 20 x 37)
+[20994,7s] block 47 shape x0,60: 14 x 56 (base 17 x 41)
+[21056,9s] block 47 shape x1,70: 23 x 32 (base 17 x 41)
+[21123,0s] block 48 shape x0,60: 28 x 24 (base 36 x 19)
+[21187,8s] block 48 shape x1,70: 50 x 16 (base 36 x 19)
+[21248,9s] block 49 shape x0,60: 27 x 29 (base 34 x 22)
+[21310,8s] block 49 shape x1,70: 47 x 18 (base 34 x 22)
+[21374,3s] block 50 shape x0,60: 26 x 28 (base 36 x 23)
+[21435,1s] block 50 shape x1,70: 46 x 17 (base 36 x 23)
+[21495,9s] block 51 shape x0,60: 28 x 23 (base 37 x 18)
+[21558,7s] block 51 shape x1,70: 49 x 14 (base 37 x 18)
+[21618,8s] block 52 shape x0,60: 10 x 23 (base 13 x 18)
+[21678,8s] block 52 shape x1,70: 16 x 13 (base 13 x 18)
+[21740,4s] block 53 shape x0,60: 29 x 25 (base 36 x 19)
+[21801,7s] block 53 shape x1,70: 50 x 16 (base 36 x 19)
+[21872,5s] block 54 shape x0,60: 25 x 27 (base 30 x 19)
+[21932,7s] block 54 shape x1,70: 39 x 15 (base 30 x 19)
+[21995,7s] block 55 shape x0,60: 24 x 20 (base 33 x 16)
+[22057,5s] block 55 shape x1,70: 45 x 13 (base 33 x 16)
+[22119,6s] block 56 shape x0,60: 24 x 40 (base 31 x 31)
+[22183,0s] block 56 shape x1,70: 42 x 25 (base 31 x 31)
+[22245,8s] block 57 shape x0,60: 24 x 40 (base 32 x 32)
+[22306,0s] block 57 shape x1,70: 43 x 25 (base 32 x 32)
+[22368,0s] block 58 shape x0,60: 24 x 40 (base 32 x 32)
+[22433,4s] block 58 shape x1,70: 40 x 24 (base 32 x 32)
+[22497,5s] block 59 shape x0,60: 18 x 46 (base 23 x 34)
+[22558,8s] block 59 shape x1,70: 30 x 26 (base 23 x 34)
+[22622,1s] block 60 shape x0,60: 14 x 56 (base 17 x 41)
+[22683,7s] block 60 shape x1,70: 24 x 33 (base 17 x 41)
+[22745,4s] block 61 shape x0,60: 27 x 29 (base 36 x 23)
+[22808,1s] block 61 shape x1,70: 51 x 19 (base 36 x 23)
+[22870,2s] block 62 shape x0,60: 28 x 30 (base 37 x 24)
+[22931,8s] block 62 shape x1,70: 50 x 19 (base 37 x 24)
+[22994,1s] block 63 shape x0,60: 18 x 58 (base 22 x 43)
+[23058,6s] block 63 shape x1,70: 30 x 34 (base 22 x 43)
+[23123,3s] block 64 shape x0,60: 17 x 54 (base 22 x 42)
+[23185,1s] block 64 shape x1,70: 29 x 33 (base 22 x 42)
+[23219,3s] factory (floorplan 1/14): routed at 234 x 255
+[23231,9s] factory (floorplan 1/14): tighter corridors: 233 x 255
+[23236,0s] factory (floorplan 1/14): tighter corridors: 233 x 254
+[23368,6s] factory (floorplan 1/14): squeezed 11 corridor lines out: 221 x 252
+[23396,3s] factory (floorplan 2/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[23396,3s] factory (floorplan 2/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[23396,3s] factory (floorplan 2/14): corridors at 232 x 250 did not route (no room for the junction of electric-furnace and productivity-module at the consumer); widening near 1 trouble tiles [(156,179)]
+[23396,3s] factory (floorplan 2/14): corridors at 232 x 252 did not route (no room for the junction of electric-furnace and productivity-module at the consumer); widening near 1 trouble tiles [(156,181)]
+[23396,3s] factory (floorplan 2/14): corridors at 232 x 254 did not route (no room for the junction of electric-furnace and productivity-module at the consumer); widening near 1 trouble tiles [(156,183)]
+[23396,3s] factory (floorplan 2/14): corridors at 232 x 256 did not route (no room for the junction of electric-furnace and productivity-module at the consumer); widening near 1 trouble tiles [(156,185)]
+[23396,3s] factory (floorplan 2/14): corridors at 232 x 258 did not route (no room for the junction of electric-furnace and productivity-module at the consumer); widening near 1 trouble tiles [(156,187)]
+[23396,4s] factory (floorplan 2/14): corridors at 232 x 260 did not route (no room for the junction of electric-furnace and productivity-module at the consumer); widening near 1 trouble tiles [(156,189)]
+[23424,1s] factory (floorplan 3/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[23424,1s] factory (floorplan 3/14): corridors at 243 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,97)]
+[23424,1s] factory (floorplan 3/14): corridors at 245 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,97)]
+[23424,1s] factory (floorplan 3/14): corridors at 247 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,97)]
+[23424,1s] factory (floorplan 3/14): corridors at 249 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,97)]
+[23424,1s] factory (floorplan 3/14): corridors at 251 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,97)]
+[23424,1s] factory (floorplan 3/14): corridors at 253 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,97)]
+[23424,1s] factory (floorplan 3/14): corridors at 255 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,97)]
+[23456,5s] factory (floorplan 4/14): routed at 237 x 247
+[23664,1s] factory (floorplan 4/14): squeezed 5 corridor lines out: 233 x 243
+[23695,1s] factory (floorplan 5/14): corridors at 244 x 239 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 19619 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 19619 goals reachable 0]); widening near 2 trouble tiles [(120,66), (119,57)]
+[23699,0s] factory (floorplan 5/14): corridors at 245 x 241 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 20348 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 20348 goals reachable 0]); widening near 2 trouble tiles [(120,68), (121,57)]
+[23702,2s] factory (floorplan 5/14): corridors at 247 x 243 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 21324 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 21324 goals reachable 0]); widening near 2 trouble tiles [(120,70), (123,57)]
+[23704,9s] factory (floorplan 5/14): corridors at 249 x 245 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 22308 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 22308 goals reachable 0]); widening near 2 trouble tiles [(120,72), (125,57)]
+[23707,9s] factory (floorplan 5/14): corridors at 251 x 247 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 23300 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 23300 goals reachable 0]); widening near 2 trouble tiles [(120,74), (127,57)]
+[23710,2s] factory (floorplan 5/14): corridors at 253 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 24300 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 24300 goals reachable 0]); widening near 2 trouble tiles [(120,76), (129,57)]
+[23712,4s] factory (floorplan 5/14): corridors at 255 x 251 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 25308 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 25308 goals reachable 0]); widening near 2 trouble tiles [(120,78), (131,57)]
+[23715,5s] factory (floorplan 5/14): corridors at 257 x 253 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 26324 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 26324 goals reachable 0]); widening near 2 trouble tiles [(120,80), (133,57)]
+[23743,1s] factory (floorplan 6/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[23745,6s] factory (floorplan 6/14): routed at 243 x 241 (attempt 2)
+[23750,0s] factory (floorplan 6/14): tighter corridors: 242 x 240
+[24221,0s] factory (floorplan 6/14): squeezed 10 corridor lines out: 230 x 237
+[24255,3s] factory (floorplan 7/14): routed at 232 x 252
+[24256,9s] factory (floorplan 7/14): tighter corridors: 232 x 251
+[24258,3s] factory (floorplan 7/14): tighter corridors: 231 x 251
+[24367,0s] factory (floorplan 7/14): squeezed 7 corridor lines out: 221 x 250
+[24394,6s] factory (floorplan 8/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[24394,6s] factory (floorplan 8/14): corridors at 235 x 251 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(142,193)]
+[24394,6s] factory (floorplan 8/14): corridors at 235 x 252 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(142,195)]
+[24394,6s] factory (floorplan 8/14): corridors at 235 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(142,197)]
+[24394,6s] factory (floorplan 8/14): corridors at 235 x 256 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(142,199)]
+[24394,6s] factory (floorplan 8/14): corridors at 235 x 258 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(142,201)]
+[24394,6s] factory (floorplan 8/14): corridors at 235 x 260 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(142,203)]
+[24394,6s] factory (floorplan 8/14): corridors at 235 x 262 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(142,205)]
+[24425,5s] factory (floorplan 9/14): routed at 236 x 248
+[24439,7s] factory (floorplan 9/14): tighter corridors: 236 x 247
+[24440,9s] factory (floorplan 9/14): tighter corridors: 236 x 246
+[24442,3s] factory (floorplan 9/14): tighter corridors: 236 x 245
+[24645,9s] factory (floorplan 9/14): squeezed 8 corridor lines out: 231 x 240
+[24681,2s] factory (floorplan 10/14): routed at 236 x 248
+[24682,1s] factory (floorplan 10/14): tighter corridors: 236 x 247
+[24684,6s] factory (floorplan 10/14): tighter corridors: 236 x 246
+[24866,7s] factory (floorplan 10/14): squeezed 9 corridor lines out: 228 x 245
+[24895,1s] factory (floorplan 11/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[24895,2s] factory (floorplan 11/14): corridors at 233 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,114)]
+[24895,2s] factory (floorplan 11/14): corridors at 235 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,114)]
+[24895,2s] factory (floorplan 11/14): corridors at 237 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,114)]
+[24895,2s] factory (floorplan 11/14): corridors at 239 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,114)]
+[24895,2s] factory (floorplan 11/14): corridors at 241 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,114)]
+[24895,2s] factory (floorplan 11/14): corridors at 243 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,114)]
+[24895,2s] factory (floorplan 11/14): corridors at 245 x 254 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(83,114)]
+[24924,0s] factory (floorplan 12/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[24924,0s] factory (floorplan 12/14): corridors at 250 x 238 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(209,45)]
+[24924,0s] factory (floorplan 12/14): corridors at 250 x 238 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(209,47)]
+[24924,0s] factory (floorplan 12/14): corridors at 250 x 238 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(209,49)]
+[24924,0s] factory (floorplan 12/14): corridors at 250 x 240 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(209,51)]
+[24924,0s] factory (floorplan 12/14): corridors at 250 x 242 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(209,53)]
+[24924,1s] factory (floorplan 12/14): corridors at 250 x 244 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(209,55)]
+[24924,1s] factory (floorplan 12/14): corridors at 250 x 246 did not route (no room for the junction of battery and electronic-circuit at the consumer); widening near 1 trouble tiles [(209,57)]
+[24958,5s] factory (floorplan 13/14): corridors at 237 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 20516 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 20516 goals reachable 0]); widening near 2 trouble tiles [(113,142), (141,142)]
+[24965,4s] factory (floorplan 13/14): corridors at 241 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 21512 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 21512 goals reachable 0]); widening near 2 trouble tiles [(113,142), (145,142)]
+[24970,4s] factory (floorplan 13/14): corridors at 245 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 22508 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 22508 goals reachable 0]); widening near 2 trouble tiles [(113,142), (149,142)]
+[24977,6s] factory (floorplan 13/14): corridors at 249 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 23504 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 23504 goals reachable 0]); widening near 2 trouble tiles [(113,142), (153,142)]
+[24984,0s] factory (floorplan 13/14): corridors at 253 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 24500 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 24500 goals reachable 0]); widening near 2 trouble tiles [(113,142), (157,142)]
+[24992,6s] factory (floorplan 13/14): corridors at 257 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 25496 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 25496 goals reachable 0]); widening near 2 trouble tiles [(113,142), (161,142)]
+[24998,7s] factory (floorplan 13/14): corridors at 261 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 26492 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 26492 goals reachable 0]); widening near 2 trouble tiles [(113,142), (165,142)]
+[25008,3s] factory (floorplan 13/14): corridors at 265 x 249 did not route (0 conflicts, 1 unrouted [stone]; [net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 27488 goals reachable 0, net 144 (stone): leg 1 found no path after 0 backtracks (surplus 10,00, final true):  starts 1 reach 27488 goals reachable 0]); widening near 2 trouble tiles [(113,142), (169,142)]
+[25036,9s] factory (floorplan 14/14): 1 lane junction(s) did not route next to the supplier; moving them in front of the consumer
+[25040,7s] factory (floorplan 14/14): routed at 242 x 246 (attempt 2)
+[25045,9s] factory (floorplan 14/14): tighter corridors: 241 x 245
+[25552,5s] factory (floorplan 14/14): squeezed 6 corridor lines out: 236 x 244
+[25552,5s] factory: compacting the smallest floorplan, 230 x 237
+[25804,3s] factory (compacting): 230 x 237 (54510 tiles), saved
+[28484,5s] factory: smallest routed factory 230 x 237 of 74 routed
+[28491,5s] factory: 230 x 237 is not smaller than 230 x 237
+[28491,5s] done: 230 x 237 (54510 tiles)

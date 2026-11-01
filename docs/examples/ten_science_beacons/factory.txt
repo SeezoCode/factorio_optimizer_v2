@@ -1,0 +1,3376 @@
+[    2,8s] 959 machines in 34 blocks: block 1: 43, block 2: 43, block 3: 43, block 4: 20, block 5: 32, block 6: 43, block 7: 43, block 8: 43, block 9: 43, block 10: 43, block 11: 43, block 12: 43, block 13: 32, block 14: 17, block 15: 27, block 16: 21, block 17: 20, block 18: 34, block 19: 17, block 20: 21, block 21: 20, block 22: 23, block 23: 27, block 24: 18, block 25: 18, block 26: 18, block 27: 19, block 28: 20, block 29: 21, block 30: 18, block 31: 26, block 32: 16, block 33: 28, block 34: 16; 169 ports between blocks and edges (greedy split: 134; 156 with machine rates rebalanced), cost 370,7 (greedy 383,6)
+[    2,8s]   block 1: 43x copper-plate; planned at (42,53) 35 x 51
+[    2,9s]   block 2: 22x iron-plate, 21x copper-plate; planned at (81,58) 27 x 67
+[    2,9s]   block 3: 22x iron-plate, 21x copper-plate; planned at (2,101) 30 x 60
+[    2,9s]   block 4: 18x stone-brick, 2x stone-wall; planned at (81,34) 31 x 20
+[    2,9s]   block 5: 28x copper-plate, 2x copper-cable, 2x electronic-circuit; planned at (2,2) 54 x 22
+[    2,9s]   block 6: 18x copper-plate, 15x iron-plate, 10x steel-plate; planned at (2,28) 35 x 51
+[    2,9s]   block 7: 32x iron-plate, 11x steel-plate; planned at (117,157) 52 x 35
+[    2,9s]   block 8: 31x iron-plate, 12x steel-plate; planned at (174,172) 35 x 51
+[    2,9s]   block 9: 31x iron-plate, 12x steel-plate; planned at (36,108) 35 x 51
+[    2,9s]   block 10: 29x iron-plate, 14x steel-plate; planned at (139,36) 67 x 27
+[    2,9s]   block 11: 29x iron-plate, 14x steel-plate; planned at (147,2) 60 x 30
+[    2,9s]   block 12: 27x iron-plate, 16x steel-plate; planned at (32,196) 67 x 27
+[    2,9s]   block 13: 20x iron-plate, 8x steel-plate, 2x copper-cable, 2x electronic-circuit; planned at (101,2) 42 x 28
+[    2,9s]   block 14: 10x advanced-oil-processing, 3x heavy-oil-cracking, 2x light-oil-cracking, 2x sulfur; planned at (2,165) 40 x 26
+[    2,9s]   block 15: 13x steel-plate, 11x stone-brick, 3x electric-furnace; planned at (60,2) 37 x 25
+[    2,9s]   block 16: 13x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (2,195) 26 x 26
+[    2,9s]   block 17: 12x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (97,150) 16 x 39
+[    2,9s]   block 18: 21x steel-plate, 12x automation-science-pack, 1x iron-gear-wheel; planned at (171,67) 36 x 36
+[    2,9s]   block 19: 8x steel-plate, 6x rail, 3x iron-stick; planned at (2,83) 36 x 14
+[    2,9s]   block 20: 19x engine-unit, 1x iron-gear-wheel, 1x pipe; planned at (103,196) 26 x 26
+[    2,9s]   block 21: 12x military-science-pack, 5x grenade, 2x piercing-rounds-magazine, 1x firearm-magazine; planned at (42,31) 35 x 18
+[    2,9s]   block 22: 13x plastic-bar, 10x light-oil-cracking; planned at (46,163) 27 x 28
+[    2,9s]   block 23: 14x logistic-science-pack, 9x steel-plate, 2x inserter, 1x iron-gear-wheel, 1x transport-belt; planned at (133,196) 37 x 25
+[    2,9s]   block 24: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (116,36) 19 x 29
+[    2,9s]   block 25: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (152,67) 15 x 37
+[    2,9s]   block 26: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (117,129) 23 x 24
+[    2,9s]   block 27: 9x advanced-circuit, 7x low-density-structure, 2x copper-cable, 1x electronic-circuit; planned at (112,108) 34 x 17
+[    2,9s]   block 28: 9x advanced-circuit, 6x productivity-module, 3x copper-cable, 2x electronic-circuit; planned at (130,69) 18 x 35
+[    2,9s]   block 29: 11x flying-robot-frame, 5x steel-plate, 4x electric-engine-unit, 1x lubricant; planned at (77,150) 16 x 42
+[    2,9s]   block 30: 18x low-density-structure; planned at (175,108) 23 x 24
+[    2,9s]   block 31: 16x utility-science-pack, 10x steel-plate; planned at (150,108) 21 x 42
+[    2,9s]   block 32: 11x processing-unit, 4x battery, 1x sulfuric-acid; planned at (76,130) 31 x 15
+[    2,9s]   block 33: 28x chemical-science-pack; planned at (175,136) 31 x 32
+[    2,9s]   block 34: 16x production-science-pack; planned at (112,69) 14 x 34
+[    2,9s]   block 25 -> block 28: advanced-circuit 7,63/s (1 belt(s))
+[    2,9s]   block 28 -> block 15: advanced-circuit 2,34/s (1 belt(s))
+[    2,9s]   block 25 -> block 33: advanced-circuit 1,57/s (1 belt(s))
+[    2,9s]   block 26 -> block 32: advanced-circuit 6,80/s (1 belt(s))
+[    2,9s]   block 26 -> block 33: advanced-circuit 2,76/s (1 belt(s))
+[    2,9s]   block 24 -> block 15: advanced-circuit 9,56/s (1 belt(s))
+[    2,9s]   block 27 -> block 33: advanced-circuit 6,39/s (1 belt(s))
+[    2,9s]   block 32 -> block 29: battery 3,40/s (1 belt(s)), iron-plate 17,00/s (1 belt(s))
+[    2,9s]   block 17 -> block 26: copper-cable 5,79/s (1 belt(s))
+[    2,9s]   block 26 -> block 25: copper-cable 2,16/s (1 belt(s))
+[    2,9s]   block 25 -> block 24: copper-cable 0,67/s (1 belt(s)), plastic-bar 13,66/s (1 belt(s))
+[    2,9s]   block 5 -> block 24: copper-cable 2,96/s (1 belt(s))
+[    2,9s]   block 1 -> block 21: copper-plate 24,94/s (1 belt(s))
+[    2,9s]   block 21 -> block 24: copper-plate 21,37/s (1 belt(s))
+[    2,9s]   block 24 -> block 30: copper-plate 2,46/s (1 belt(s))
+[    2,9s]   block 1 -> block 25: copper-plate 26,05/s (1 belt(s))
+[    2,9s]   block 25 -> block 18: copper-plate 7,14/s (1 belt(s))
+[    2,9s]   block 1 -> block 27: copper-plate 15,18/s (1 belt(s))
+[    2,9s]   block 1 -> block 17: copper-plate 23,22/s (1 belt(s))
+[    2,9s]   block 2 -> block 32: copper-plate 26,13/s (1 belt(s))
+[    2,9s]   block 32 -> block 27: copper-plate 23,52/s (1 belt(s))
+[    2,9s]   block 2 -> block 28: copper-plate 18,30/s (1 belt(s)), iron-plate 16,17/s (1 belt(s))
+[    2,9s]   block 3 -> block 16: copper-plate 23,10/s (1 belt(s)), iron-plate 33,80/s (2 belt(s))
+[    2,9s]   block 3 -> block 26: copper-plate 20,86/s (1 belt(s))
+[    2,9s]   block 26 -> block 17: copper-plate 1,95/s (1 belt(s))
+[    2,9s]   block 5 -> block 30: copper-plate 35,09/s (2 belt(s))
+[    2,9s]   block 5 -> block 13: copper-plate 11,55/s (1 belt(s))
+[    2,9s]   block 6 -> block 30: copper-plate 38,09/s (2 belt(s))
+[    2,9s]   block 15 -> block 34: electric-furnace 2,38/s (1 belt(s))
+[    2,9s]   block 17 -> block 29: electronic-circuit 7,53/s (1 belt(s))
+[    2,9s]   block 17 -> block 32: electronic-circuit 22,65/s (1 belt(s))
+[    2,9s]   block 13 -> block 28: electronic-circuit 15,09/s (1 belt(s))
+[    2,9s]   block 28 -> block 27: electronic-circuit 8,82/s (1 belt(s)), iron-plate 5,39/s (1 belt(s))
+[    2,9s]   block 27 -> block 32: electronic-circuit 7,24/s (1 belt(s))
+[    2,9s]   block 16 -> block 23: electronic-circuit 7,14/s (1 belt(s))
+[    2,9s]   block 16 -> block 32: electronic-circuit 23,04/s (1 belt(s))
+[    2,9s]   block 5 -> block 32: electronic-circuit 15,09/s (1 belt(s))
+[    2,9s]   block 20 -> block 29: engine-unit 8,36/s (1 belt(s))
+[    2,9s]   block 29 -> block 33: engine-unit 7,14/s (1 belt(s))
+[    2,9s]   block 29 -> block 31: flying-robot-frame 2,38/s (1 belt(s))
+[    2,9s]   block 20 -> block 23: iron-gear-wheel 1,89/s (1 belt(s))
+[    2,9s]   block 6 -> block 19: iron-plate 14,11/s (1 belt(s)), steel-plate 4,23/s (1 belt(s))
+[    2,9s]   block 13 -> block 24: iron-plate 9,76/s (1 belt(s))
+[    2,9s]   block 13 -> block 15: iron-plate 7,68/s (1 belt(s)), steel-plate 3,39/s (1 belt(s))
+[    2,9s]   block 9 -> block 32: iron-plate 20,68/s (1 belt(s))
+[    2,9s]   block 29 -> block 26: iron-plate 9,76/s (1 belt(s))
+[    2,9s]   block 9 -> block 17: iron-plate 23,75/s (1 belt(s))
+[    2,9s]   block 7 -> block 23: iron-plate 39,19/s (2 belt(s))
+[    2,9s]   block 7 -> block 17: iron-plate 8,15/s (1 belt(s))
+[    2,9s]   block 3 -> block 19: iron-plate 12,76/s (1 belt(s))
+[    2,9s]   block 10 -> block 18: iron-plate 27,29/s (2 belt(s))
+[    2,9s]   block 10 -> block 25: iron-plate 9,39/s (1 belt(s))
+[    2,9s]   block 2 -> block 21: iron-plate 30,38/s (2 belt(s))
+[    2,9s]   block 12 -> block 20: iron-plate 23,17/s (1 belt(s))
+[    2,9s]   block 12 -> block 16: iron-plate 5,75/s (1 belt(s))
+[    2,9s]   block 11 -> block 18: iron-plate 19,94/s (1 belt(s))
+[    2,9s]   block 11 -> block 15: iron-plate 16,73/s (1 belt(s)), steel-plate 5,92/s (1 belt(s))
+[    2,9s]   block 15 -> block 21: iron-plate 1,49/s (1 belt(s))
+[    2,9s]   block 8 -> block 31: iron-plate 17,90/s (1 belt(s))
+[    2,9s]   block 31 -> block 21: iron-plate 0,27/s (1 belt(s))
+[    2,9s]   block 8 -> block 17: iron-plate 26,53/s (1 belt(s))
+[    2,9s]   block 17 -> block 16: iron-plate 15,72/s (1 belt(s))
+[    2,9s]   block 16 -> block 5: iron-plate 10,78/s (1 belt(s))
+[    2,9s]   block 30 -> block 31: low-density-structure 5,29/s (1 belt(s))
+[    2,9s]   block 27 -> block 31: low-density-structure 1,85/s (1 belt(s))
+[    2,9s]   block 22 -> block 26: plastic-bar 23,11/s (1 belt(s))
+[    2,9s]   block 26 -> block 28: plastic-bar 9,45/s (1 belt(s))
+[    2,9s]   block 22 -> block 27: plastic-bar 15,73/s (1 belt(s))
+[    2,9s]   block 22 -> block 30: plastic-bar 18,91/s (1 belt(s))
+[    2,9s]   block 22 -> block 25: plastic-bar 26,80/s (1 belt(s))
+[    2,9s]   block 32 -> block 31: processing-unit 4,76/s (1 belt(s))
+[    2,9s]   block 28 -> block 34: productivity-module 2,38/s (1 belt(s))
+[    2,9s]   block 19 -> block 34: rail 71,43/s (3 belt(s))
+[    2,9s]   block 31 -> block 30: steel-plate 4,23/s (1 belt(s))
+[    2,9s]   block 23 -> block 20: steel-plate 3,81/s (1 belt(s))
+[    2,9s]   block 18 -> block 30: steel-plate 3,33/s (1 belt(s))
+[    2,9s]   block 18 -> block 19: steel-plate 5,56/s (1 belt(s))
+[    2,9s]   block 17 -> block 20: steel-plate 2,16/s (1 belt(s))
+[    2,9s]   block 17 -> block 19: steel-plate 2,92/s (1 belt(s))
+[    2,9s]   block 7 -> block 27: steel-plate 4,66/s (1 belt(s))
+[    2,9s]   block 27 -> block 19: steel-plate 2,02/s (1 belt(s))
+[    2,9s]   block 9 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    2,9s]   block 10 -> block 21: steel-plate 5,92/s (1 belt(s))
+[    2,9s]   block 21 -> block 15: steel-plate 4,14/s (1 belt(s))
+[    2,9s]   block 16 -> block 19: steel-plate 5,50/s (1 belt(s))
+[    2,9s]   block 29 -> block 19: steel-plate 0,04/s (1 belt(s))
+[    2,9s]   block 12 -> block 19: steel-plate 6,77/s (1 belt(s))
+[    2,9s]   block 8 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    2,9s]   block 19 -> block 15: steel-plate 4,86/s (1 belt(s))
+[    2,9s]   block 4 -> block 15: stone-brick 0,53/s (1 belt(s))
+[    2,9s]   block 4 -> block 21: stone-wall 7,14/s (1 belt(s))
+[    2,9s]   block 14 -> block 32: sulfur 8,90/s (1 belt(s))
+[    2,9s]   block 32 -> block 33: sulfur 3,57/s (1 belt(s))
+[    2,9s]   heavy-oil pipes: block 14 gives 14,0/s, block 29 takes 14,0/s
+[    2,9s]   light-oil pipes: block 14 gives 367,2/s, block 22 takes 367,2/s
+[    2,9s]   petroleum-gas pipes: block 14 gives 332,2/s, block 22 takes 332,2/s
+[    2,9s]   water pipes: block 14 takes 552,5/s, block 22 takes 367,2/s, block 32 takes 106,7/s, edge gives 1026,4/s
+[    2,9s]   9 inputs and outputs leave their block straight out of the factory, 37 run through the corridors to its edge
+[    2,9s] block 1: 43 machines (weight 43,0 of 39,7), 7 ports
+[    2,9s] block 2: 43 machines (weight 43,0 of 39,7), 9 ports
+[    2,9s] block 3: 43 machines (weight 43,0 of 39,7), 7 ports
+[    2,9s] block 4: 20 machines (weight 34,0 of 39,7), 5 ports
+[    2,9s] block 5: 32 machines (weight 43,0 of 39,7), 7 ports
+[    2,9s] block 6: 43 machines (weight 43,0 of 39,7), 6 ports
+[    2,9s] block 7: 43 machines (weight 43,0 of 39,7), 7 ports
+[    2,9s] block 8: 43 machines (weight 43,0 of 39,7), 6 ports
+[    2,9s] block 9: 43 machines (weight 43,0 of 39,7), 6 ports
+[    2,9s] block 10: 43 machines (weight 43,0 of 39,7), 6 ports
+[    2,9s] block 11: 43 machines (weight 43,0 of 39,7), 5 ports
+[    2,9s] block 12: 43 machines (weight 43,0 of 39,7), 5 ports
+[    2,9s] block 13: 32 machines (weight 43,0 of 39,7), 7 ports
+[    2,9s] block 14: 17 machines (weight 52,8 of 39,7), 6 ports
+[    2,9s] block 15: 27 machines (weight 43,0 of 39,7), 13 ports
+[    2,9s] block 16: 21 machines (weight 43,0 of 39,7), 9 ports
+[    2,9s] block 17: 20 machines (weight 42,0 of 39,7), 11 ports
+[    2,9s] block 18: 34 machines (weight 42,0 of 39,7), 7 ports
+[    2,9s] block 19: 17 machines (weight 42,5 of 39,7), 16 ports
+[    2,9s] block 20: 21 machines (weight 44,5 of 39,7), 5 ports
+[    2,9s] block 21: 20 machines (weight 46,0 of 39,7), 12 ports
+[    2,9s] block 22: 23 machines (weight 51,8 of 39,7), 9 ports
+[    2,9s] block 23: 27 machines (weight 43,0 of 39,7), 6 ports
+[    2,9s] block 24: 18 machines (weight 44,0 of 39,7), 7 ports
+[    2,9s] block 25: 18 machines (weight 44,0 of 39,7), 9 ports
+[    2,9s] block 26: 18 machines (weight 44,0 of 39,7), 9 ports
+[    2,9s] block 27: 19 machines (weight 46,0 of 39,7), 10 ports
+[    2,9s] block 28: 20 machines (weight 45,0 of 39,7), 9 ports
+[    2,9s] block 29: 21 machines (weight 43,0 of 39,7), 9 ports
+[    2,9s] block 30: 18 machines (weight 45,0 of 39,7), 9 ports
+[    2,9s] block 31: 26 machines (weight 42,0 of 39,7), 8 ports
+[    2,9s] block 32: 16 machines (weight 42,3 of 39,7), 14 ports
+[    2,9s] block 33: 28 machines (weight 56,0 of 39,7), 6 ports
+[    2,9s] block 34: 16 machines (weight 40,0 of 39,7), 6 ports
+[    7,6s] block 5: first layout 100 x 41
+[    7,7s] block 1: first layout 61 x 89
+[    7,8s] block 3: first layout 52 x 105
+[    7,8s] block 2: first layout 47 x 117
+[   12,3s] block 9: first layout 61 x 89
+[   12,5s] block 6: first layout 61 x 89
+[   12,6s] block 8: first layout 61 x 89
+[   13,0s] block 7: first layout 90 x 61
+[   16,3s] block 10: first layout 117 x 47
+[   17,0s] block 12: first layout 117 x 47
+[   17,0s] block 11: first layout 105 x 52
+[   19,2s] block 14: first layout 74 x 48
+[   25,8s] block 15: first layout 71 x 48
+[   26,9s] block 13: first layout 78 x 52
+[   29,4s] block 18: first layout 66 x 66
+[   33,9s] block 20: first layout 52 x 52
+[   36,7s] block 21: first layout 70 x 36
+[   40,7s] block 22: first layout 53 x 55
+[   42,4s] block 4: first layout 62 x 40
+[   43,1s] limit: 15597 s left
+[   43,4s] block 23: first layout 71 x 48
+[   44,1s] limit: 15896 s left
+[   44,6s] limit: 16195 s left
+[   44,7s] limit: 16495 s left
+[   44,8s] limit: 16795 s left
+[   44,9s] limit: 17095 s left
+[   45,0s] limit: 17395 s left
+[   45,0s] limit: 17695 s left
+[   45,1s] limit: 17995 s left
+[   45,2s] limit: 18295 s left
+[   45,3s] limit: 18595 s left
+[   45,4s] limit: 18895 s left
+[   45,5s] limit: 19195 s left
+[   45,5s] limit: 19494 s left
+[   46,5s] limit: 19793 s left
+[   46,9s] limit: 20093 s left
+[   47,1s] limit: 20393 s left
+[   48,2s] limit: 20692 s left
+[   48,7s] limit: 20991 s left
+[   50,0s] limit: 21290 s left
+[   50,2s] limit: 21590 s left
+[   50,4s] limit: 21890 s left
+[   50,9s] limit: 22189 s left
+[   51,0s] limit: 22489 s left
+[   51,1s] limit: 22789 s left
+[   51,2s] limit: 23089 s left
+[   51,3s] limit: 23389 s left
+[   51,3s] limit: 23689 s left
+[   51,4s] limit: 23989 s left
+[   51,5s] limit: 24288 s left
+[   51,5s] block 17: first layout 32 x 78
+[   51,6s] limit: 24588 s left
+[   51,7s] limit: 24888 s left
+[   51,8s] limit: 25188 s left
+[   51,8s] limit: 25488 s left
+[   51,9s] limit: 25788 s left
+[   52,0s] limit: 26088 s left
+[   52,1s] limit: 26388 s left
+[   52,2s] limit: 26688 s left
+[   52,3s] limit: 26988 s left
+[   58,3s] block 25: first layout 31 x 75
+[   59,0s] block 26: first layout 47 x 49
+[   65,5s] block 27: first layout 71 x 35
+[   69,5s] block 29: first layout 32 x 84
+[   72,9s] block 30: first layout 47 x 49
+[   76,9s] block 31: first layout 41 x 82
+[   78,1s] block 28: first layout 36 x 70
+[   79,5s] block 32: first layout 66 x 32
+[   83,4s] block 33: first layout 59 x 61
+[   86,5s] block 1 x1,80: first layout 82 x 67
+[   89,4s] block 1 x1,40: first layout 73 x 75
+[   92,6s] block 1 x1,20: first layout 67 x 82
+[   94,4s] block 34: first layout 37 x 90
+[   94,9s] block 1 x0,85: first layout 57 x 97
+[   96,8s] block 1 x0,75: first layout 53 x 103
+[   97,7s] block 1 x0,67: first layout 50 x 109
+[   99,5s] block 1 x0,55: first layout 45 x 120
+[   99,6s] block 1 x0,35: first layout 36 x 151
+[  103,4s] block 2 x1,80: first layout 63 x 87
+[  104,3s] block 2 x1,40: first layout 56 x 99
+[  107,2s] block 2 x1,20: first layout 51 x 106
+[  108,7s] block 2 x0,85: first layout 43 x 126
+[  112,9s] block 2 x0,67: first layout 38 x 142
+[  114,1s] block 2 x0,75: first layout 41 x 135
+[  116,9s] block 2 x0,55: first layout 35 x 157
+[  119,2s] block 2 x0,35: first layout 28 x 197
+[  120,5s] block 3 x1,80: first layout 70 x 78
+[  122,8s] block 3 x1,40: first layout 62 x 88
+[  124,6s] block 3 x1,20: first layout 57 x 96
+[  126,7s] block 3 x0,85: first layout 48 x 114
+[  128,1s] block 3 x0,75: first layout 45 x 121
+[  130,3s] block 3 x0,67: first layout 43 x 128
+[  132,4s] block 3 x0,55: first layout 39 x 141
+[  133,6s] block 4 x1,80: first layout 84 x 30
+[  134,7s] block 3 x0,35: first layout 31 x 177
+[  134,8s] block 4 x1,40: first layout 74 x 34
+[  136,0s] block 4 x0,85: first layout 57 x 44
+[  136,1s] block 4 x1,20: first layout 68 x 37
+[  137,3s] block 4 x0,75: first layout 54 x 46
+[  137,7s] block 4 x0,67: first layout 51 x 49
+[  138,6s] block 4 x0,55: first layout 46 x 54
+[  140,5s] block 4 x0,35: first layout 37 x 68
+[  154,3s] block 5 x1,40: first layout 119 x 35
+[  158,0s] block 5 x1,20: first layout 110 x 37
+[  180,4s] block 19: first layout 71 x 27
+[  191,0s] block 5 x0,75: first layout 87 x 47
+[  194,1s] block 5 x0,67: first layout 82 x 50
+[  197,4s] block 5 x0,85: first layout 92 x 44
+[  200,3s] block 5 x0,35: first layout 59 x 69
+[  205,7s] block 6 x1,80: first layout 82 x 67
+[  209,8s] block 6 x1,40: first layout 73 x 75
+[  213,3s] block 6 x1,20: first layout 67 x 82
+[  214,8s] block 5 x0,55: first layout 74 x 55
+[  217,5s] block 6 x0,85: first layout 57 x 97
+[  221,0s] block 6 x0,75: first layout 53 x 103
+[  221,0s] block 6 x0,67: first layout 50 x 109
+[  225,0s] block 6 x0,55: first layout 45 x 120
+[  225,1s] block 6 x0,35: first layout 36 x 151
+[  228,5s] block 7 x1,80: first layout 121 x 45
+[  229,0s] block 7 x1,40: first layout 107 x 51
+[  232,7s] block 7 x0,85: first layout 83 x 66
+[  232,8s] block 7 x1,20: first layout 99 x 55
+[  236,6s] block 7 x0,75: first layout 78 x 70
+[  237,1s] block 7 x0,67: first layout 74 x 74
+[  240,4s] block 7 x0,35: first layout 53 x 103
+[  242,4s] block 7 x0,55: first layout 67 x 82
+[  244,4s] block 8 x1,80: first layout 82 x 67
+[  244,4s] block 5 x1,80: first layout 135 x 30
+[  246,7s] block 8 x1,40: first layout 73 x 75
+[  248,3s] block 8 x1,20: first layout 67 x 82
+[  248,4s] block 8 x0,85: first layout 57 x 97
+[  250,3s] block 8 x0,75: first layout 53 x 103
+[  251,9s] block 8 x0,67: first layout 50 x 109
+[  252,4s] block 8 x0,55: first layout 45 x 120
+[  254,0s] block 8 x0,35: first layout 36 x 151
+[  256,0s] block 9 x1,80: first layout 82 x 67
+[  256,5s] block 9 x1,40: first layout 73 x 75
+[  258,3s] block 9 x1,20: first layout 67 x 82
+[  260,5s] block 9 x0,85: first layout 57 x 97
+[  260,6s] block 9 x0,75: first layout 53 x 103
+[  262,2s] block 9 x0,67: first layout 50 x 109
+[  264,5s] block 9 x0,55: first layout 45 x 120
+[  264,7s] block 9 x0,35: first layout 36 x 151
+[  266,2s] block 10 x1,80: first layout 156 x 35
+[  268,7s] block 10 x1,20: first layout 128 x 43
+[  269,5s] block 10 x1,40: first layout 138 x 40
+[  271,0s] block 10 x0,85: first layout 107 x 51
+[  273,7s] block 10 x0,67: first layout 95 x 57
+[  274,9s] block 10 x0,75: first layout 101 x 54
+[  275,6s] block 10 x0,55: first layout 86 x 63
+[  278,8s] block 11 x1,80: first layout 140 x 39
+[  279,2s] block 10 x0,35: first layout 69 x 79
+[  279,9s] block 11 x1,40: first layout 124 x 44
+[  282,8s] block 11 x1,20: first layout 115 x 48
+[  283,7s] block 11 x0,75: first layout 91 x 60
+[  284,0s] block 11 x0,85: first layout 96 x 57
+[  287,2s] block 11 x0,67: first layout 86 x 64
+[  288,0s] block 11 x0,55: first layout 78 x 71
+[  288,2s] block 11 x0,35: first layout 62 x 88
+[  291,3s] block 12 x1,80: first layout 156 x 35
+[  293,4s] block 12 x1,20: first layout 128 x 43
+[  293,7s] block 12 x1,40: first layout 138 x 40
+[  295,7s] block 12 x0,85: first layout 107 x 51
+[  298,3s] block 12 x0,75: first layout 101 x 54
+[  298,8s] block 24: first layout 39 x 59
+[  299,0s] block 12 x0,67: first layout 95 x 57
+[  300,5s] block 12 x0,55: first layout 86 x 63
+[  301,9s] block 13 x1,80: first layout 105 x 39
+[  302,5s] block 12 x0,35: first layout 69 x 79
+[  304,8s] block 13 x1,20: first layout 86 x 48
+[  306,1s] block 13 x0,85: first layout 72 x 57
+[  309,0s] block 13 x0,67: first layout 64 x 64
+[  309,7s] block 13 x0,55: first layout 58 x 70
+[  311,6s] block 14 x1,80: first layout 100 x 36
+[  313,3s] block 14 x1,40: first layout 88 x 41
+[  314,2s] block 13 x1,40: first layout 93 x 44
+[  315,4s] block 14 x1,20: first layout 82 x 44
+[  316,1s] block 14 x0,85: first layout 69 x 52
+[  317,4s] block 14 x0,75: first layout 64 x 56
+[  317,5s] block 14 x0,67: first layout 61 x 59
+[  319,3s] block 14 x0,55: first layout 55 x 65
+[  319,9s] block 14 x0,35: first layout 44 x 82
+[  324,7s] block 15 x1,40: first layout 83 x 40
+[  327,0s] block 15 x1,80: first layout 95 x 36
+[  327,9s] block 13 x0,35: first layout 46 x 88
+[  328,9s] block 13 x0,75: first layout 68 x 60
+[  332,4s] every block has a layout; stitching a preview
+[  332,5s] block 16: first layout 52 x 52
+[  333,0s] block 15 x0,85: first layout 65 x 52
+[  333,5s] block 15 x1,20: first layout 77 x 44
+[  336,4s] block 15 x0,67: first layout 58 x 58
+[  337,5s] block 15 x0,35: first layout 42 x 81
+[  341,4s] block 15 x0,55: first layout 52 x 64
+[  345,3s] block 16 x0,85: first layout 48 x 56
+[  348,9s] block 15 x0,75: first layout 61 x 55
+[  384,6s] block 16 x1,20: first layout 57 x 47
+[  386,6s] block 16 x0,75: first layout 45 x 60
+[  398,2s] block 16 x0,67: first layout 43 x 64
+[  412,2s] block 16 x1,40: first layout 62 x 44
+[  418,6s] block 16 x1,80: first layout 70 x 39
+[  438,7s] block 16 x0,35: first layout 31 x 88
+[  480,3s] preview: corridors at 387 x 408 did not route (3 conflicts, 0 unrouted); widening near 3 trouble tiles [(293,399), (82,276), (292,399)]
+[  498,3s] block 17 x1,80: first layout 43 x 58
+[  525,3s] preview: corridors at 387 x 408 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(293,399), (292,399)]
+[  525,8s] block 16 x0,55: first layout 39 x 70
+[  573,9s] preview: corridors at 387 x 408 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(293,399), (292,399)]
+[  643,8s] preview: corridors at 387 x 410 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(293,399), (292,399)]
+[  676,6s] block 17 x1,40: first layout 38 x 66
+[  694,4s] preview: corridors at 387 x 412 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(293,399), (292,399)]
+[  705,9s] block 17 x1,20: first layout 35 x 71
+[  744,3s] preview: corridors at 387 x 414 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(293,399), (292,399)]
+[  749,4s] block 17 x0,67: first layout 26 x 95
+[  753,2s] block 18 x1,80: first layout 89 x 49
+[  756,7s] block 18 x1,40: first layout 78 x 56
+[  760,8s] block 18 x1,20: first layout 72 x 60
+[  764,1s] block 18 x0,85: first layout 61 x 72
+[  768,0s] block 18 x0,75: first layout 57 x 76
+[  772,0s] block 18 x0,67: first layout 54 x 81
+[  776,2s] block 18 x0,55: first layout 49 x 89
+[  780,0s] block 18 x0,35: first layout 39 x 112
+[  798,0s] preview: corridors at 387 x 416 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(293,399), (292,399)]
+[  811,9s] block 17 x0,75: first layout 28 x 90
+[  927,8s] block 17 x0,55: first layout 24 x 105
+[  938,6s] block 17 x0,85: first layout 30 x 85
+[  949,8s] block 19 x1,40: first layout 83 x 23
+[ 1112,6s] preview: corridors at 387 x 418 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(293,399), (292,399)]
+[ 1112,6s] preview: did not stitch
+[ 1321,6s] block 17 x0,35: first layout 19 x 132
+[ 1587,7s] block 19 x0,85: first layout 81 x 37
+[ 1825,8s] block 19 x0,75: first layout 76 x 40
+[ 1874,8s] block 19 x1,80: first layout 118 x 26
+[ 1884,2s] block 20 x1,80: first layout 70 x 39
+[ 1887,9s] block 20 x1,40: first layout 62 x 44
+[ 1891,3s] block 20 x1,20: first layout 57 x 47
+[ 1894,4s] block 20 x0,85: first layout 48 x 56
+[ 1898,3s] block 20 x0,75: first layout 45 x 60
+[ 1900,5s] block 20 x0,67: first layout 43 x 64
+[ 1912,5s] block 20 x0,55: first layout 39 x 70
+[ 1916,7s] block 20 x0,35: first layout 31 x 88
+[ 1917,9s] block 19 x0,55: first layout 52 x 37
+[ 1922,6s] block 21 x1,40: first layout 82 x 30
+[ 1923,4s] block 21 x1,80: first layout 94 x 27
+[ 1925,4s] block 21 x1,20: first layout 76 x 33
+[ 1930,3s] block 21 x0,75: first layout 60 x 41
+[ 1930,8s] block 21 x0,85: first layout 64 x 39
+[ 1933,2s] block 21 x0,55: first layout 52 x 48
+[ 1933,7s] block 21 x0,67: first layout 57 x 44
+[ 1935,5s] block 22 x1,80: first layout 71 x 41
+[ 1936,2s] block 21 x0,35: first layout 41 x 61
+[ 1938,4s] block 22 x1,40: first layout 63 x 46
+[ 1938,5s] block 22 x1,20: first layout 58 x 50
+[ 1941,5s] block 22 x0,85: first layout 49 x 60
+[ 1942,6s] block 22 x0,75: first layout 46 x 63
+[ 1943,6s] block 22 x0,67: first layout 43 x 67
+[ 1947,9s] block 22 x0,55: first layout 39 x 74
+[ 1948,3s] block 22 x0,35: first layout 31 x 93
+[ 1951,4s] block 23 x1,80: first layout 95 x 36
+[ 1951,5s] block 23 x1,40: first layout 83 x 40
+[ 1954,3s] block 23 x1,20: first layout 77 x 44
+[ 1954,3s] block 23 x0,85: first layout 65 x 52
+[ 1957,1s] block 23 x0,75: first layout 61 x 55
+[ 1957,6s] block 23 x0,67: first layout 58 x 58
+[ 1959,8s] block 23 x0,55: first layout 52 x 64
+[ 1961,6s] block 23 x0,35: first layout 42 x 81
+[ 2074,9s] block 19 x0,35: first layout 42 x 46
+[ 2121,2s] block 24 x1,20: first layout 43 x 54
+[ 2138,2s] block 24 x0,85: first layout 36 x 64
+[ 2153,9s] block 24 x0,75: first layout 34 x 68
+[ 2183,9s] block 24 x0,67: first layout 32 x 72
+[ 2257,7s] block 19 x0,67: first layout 72 x 42
+[ 2271,2s] block 24 x0,55: first layout 29 x 80
+[ 2319,5s] block 24 x1,80: first layout 52 x 44
+[ 2332,4s] block 25 x1,40: first layout 36 x 64
+[ 2340,1s] block 25 x1,20: first layout 33 x 69
+[ 2399,3s] block 24 x0,35: first layout 23 x 100
+[ 2468,5s] block 19 x1,20: first layout 121 x 39
+[ 2595,4s] block 25 x0,75: first layout 26 x 87
+[ 2690,1s] block 24 x1,40: first layout 46 x 50
+[ 2730,3s] block 25 x0,67: first layout 25 x 92
+[ 2737,5s] block 25 x0,85: first layout 28 x 82
+[ 2739,8s] block 26 x1,80: first layout 63 x 37
+[ 2765,8s] block 26 x1,20: first layout 51 x 45
+[ 2771,1s] block 26 x1,40: first layout 56 x 41
+[ 2775,5s] block 26 x0,85: first layout 43 x 53
+[ 2792,2s] block 26 x0,75: first layout 41 x 57
+[ 2801,4s] block 26 x0,55: first layout 35 x 66
+[ 2908,5s] block 25 x0,55: first layout 23 x 102
+[ 3001,4s] block 26 x0,35: first layout 28 x 83
+[ 3042,3s] block 26 x0,67: first layout 38 x 60
+[ 3045,8s] block 27 x1,20: first layout 77 x 32
+[ 3049,2s] block 27 x0,85: first layout 65 x 38
+[ 3206,5s] block 27 x1,40: first layout 105 x 38
+[ 3296,5s] block 25 x1,80: first layout 41 x 56
+[ 3310,5s] block 27 x0,55: first layout 52 x 48
+[ 3313,4s] block 27 x0,35: first layout 42 x 60
+[ 3322,7s] block 28 x1,80: first layout 48 x 52
+[ 3377,2s] block 28 x1,40: first layout 42 x 59
+[ 3406,9s] block 28 x1,20: first layout 39 x 64
+[ 3426,1s] block 27 x0,67: first layout 58 x 43
+[ 3426,3s] block 28 x0,85: first layout 33 x 76
+[ 3444,7s] block 25 x0,35: first layout 23 x 159
+[ 3497,8s] block 27 x1,80: first layout 120 x 33
+[ 3613,2s] block 28 x0,35: first layout 21 x 118
+[ 3617,1s] block 29 x1,80: first layout 43 x 63
+[ 3621,1s] block 29 x1,40: first layout 38 x 71
+[ 3624,0s] block 29 x1,20: first layout 35 x 77
+[ 3627,3s] block 29 x0,85: first layout 30 x 91
+[ 3629,6s] block 29 x0,75: first layout 28 x 97
+[ 3635,8s] block 28 x0,55: first layout 27 x 94
+[ 3637,3s] block 29 x0,67: first layout 26 x 103
+[ 3640,0s] block 29 x0,55: first layout 24 x 114
+[ 3642,7s] block 28 x0,75: first layout 39 x 101
+[ 3644,9s] block 30 x1,80: first layout 63 x 37
+[ 3645,0s] block 29 x0,35: first layout 19 x 142
+[ 3648,6s] block 30 x0,85: first layout 43 x 53
+[ 3655,6s] block 30 x1,20: first layout 51 x 45
+[ 3661,1s] block 30 x0,75: first layout 41 x 57
+[ 3662,5s] block 30 x1,40: first layout 56 x 41
+[ 3664,0s] block 30 x0,55: first layout 35 x 66
+[ 3666,4s] block 30 x0,67: first layout 38 x 60
+[ 3667,0s] block 31 x1,80: first layout 55 x 61
+[ 3670,4s] block 31 x1,20: first layout 45 x 75
+[ 3670,6s] block 31 x1,40: first layout 49 x 69
+[ 3673,2s] block 31 x0,75: first layout 36 x 95
+[ 3673,3s] block 31 x0,85: first layout 38 x 89
+[ 3676,3s] block 31 x0,67: first layout 34 x 100
+[ 3677,4s] block 30 x0,35: first layout 28 x 83
+[ 3677,5s] block 31 x0,55: first layout 30 x 111
+[ 3679,1s] block 31 x0,35: first layout 24 x 139
+[ 3681,5s] block 32 x1,80: first layout 89 x 24
+[ 3682,0s] block 32 x1,20: first layout 72 x 29
+[ 3682,9s] block 32 x0,85: first layout 61 x 35
+[ 3683,8s] block 32 x0,75: first layout 57 x 37
+[ 3685,0s] block 32 x1,40: first layout 78 x 27
+[ 3686,2s] block 32 x0,55: first layout 49 x 43
+[ 3690,5s] block 32 x0,35: first layout 39 x 54
+[ 3695,5s] block 33 x1,40: first layout 70 x 52
+[ 3698,9s] block 32 x0,67: first layout 54 x 39
+[ 3703,6s] block 33 x1,20: first layout 65 x 56
+[ 3708,8s] block 33 x1,80: first layout 79 x 45
+[ 3709,6s] block 33 x0,75: first layout 51 x 70
+[ 3712,2s] block 33 x0,85: first layout 54 x 66
+[ 3713,1s] block 33 x0,67: first layout 48 x 74
+[ 3716,1s] block 34 x1,80: first layout 40 x 53
+[ 3717,0s] block 33 x0,35: first layout 35 x 103
+[ 3718,9s] block 34 x1,40: first layout 35 x 61
+[ 3719,8s] block 34 x1,20: first layout 32 x 65
+[ 3720,1s] block 33 x0,55: first layout 44 x 82
+[ 3736,9s] block 34 x0,85: first layout 27 x 78
+[ 3738,5s] block 34 x0,55: first layout 22 x 97
+[ 3750,7s] block 34 x0,67: first layout 24 x 88
+[ 3751,8s] block 4 x1,80: 62 x 22 (was 84 x 30)
+[ 3751,9s] block 34 x0,35: first layout 22 x 153
+[ 3753,1s] block 4 x0,85: 42 x 32 (was 57 x 44)
+[ 3753,5s] block 4 x1,40: 55 x 25 (was 74 x 34)
+[ 3756,3s] block 4 x0,55: 34 x 40 (was 46 x 54)
+[ 3759,9s] block 34 x0,75: first layout 26 x 83
+[ 3761,3s] block 14 x0,67: 46 x 44 (was 61 x 59)
+[ 3826,1s] block 4 x0,67: 38 x 36 (was 51 x 49)
+[ 3827,4s] block 14 x1,40: 66 x 31 (was 88 x 41)
+[ 3828,5s] block 14 x1,80: 75 x 27 (was 100 x 36)
+[ 3843,9s] block 14 x0,85: 51 x 39 (was 69 x 52)
+[ 3846,1s] block 14 x0,55: 41 x 49 (was 55 x 65)
+[ 3848,0s] block 14 x0,75: 48 x 42 (was 64 x 56)
+[ 3849,6s] block 1 x0,35: 27 x 112 (was 36 x 151)
+[ 3855,4s] block 14 x1,20: 61 x 33 (was 82 x 44)
+[ 3912,9s] block 1 x0,85: 42 x 72 (was 57 x 97)
+[ 3938,6s] block 1 x0,75: 39 x 77 (was 53 x 103)
+[ 3947,8s] block 27 x0,75: first layout 77 x 51
+[ 3949,2s] block 14 x0,35: 33 x 61 (was 44 x 82)
+[ 4008,3s] block 23 x0,55: 39 x 48 (was 52 x 64)
+[ 4087,4s] block 1 x0,67: 37 x 81 (was 50 x 109)
+[ 4172,6s] block 28 x0,67: first layout 37 x 107
+[ 4178,5s] block 14 x0,67: 38 x 36 (was 46 x 44)
+[ 4180,4s] block 23 x0,85: 48 x 38 (was 65 x 52)
+[ 4202,1s] block 4 x0,35: 27 x 50 (was 37 x 68)
+[ 4210,1s] block 4 x1,20: 50 x 27 (was 68 x 37)
+[ 4223,2s] block 23 x1,20: 57 x 32 (was 77 x 44)
+[ 4225,0s] block 23 x0,75: 45 x 41 (was 61 x 55)
+[ 4229,4s] block 31 x0,35: 18 x 103 (was 24 x 139)
+[ 4245,2s] block 32 x1,20: 54 x 22 (was 72 x 29)
+[ 4247,2s] block 14: 56 x 36 (was 74 x 48)
+[ 4249,4s] block 1 x1,40: 54 x 56 (was 73 x 75)
+[ 4257,7s] block 31 x0,85: 28 x 66 (was 38 x 89)
+[ 4351,4s] block 5 x0,67: 62 x 37 (was 82 x 50)
+[ 4353,2s] block 1 x1,20: 50 x 61 (was 67 x 82)
+[ 4357,6s] block 4 x0,75: 47 x 41 (was 54 x 46)
+[ 4361,4s] block 23 x1,40: 62 x 30 (was 83 x 40)
+[ 4363,9s] block 18 x0,85: 45 x 53 (was 61 x 72)
+[ 4366,2s] block 23 x0,67: 43 x 43 (was 58 x 58)
+[ 4410,9s] block 6 x0,67: 37 x 81 (was 50 x 109)
+[ 4415,1s] block 31 x1,20: 33 x 56 (was 45 x 75)
+[ 4421,3s] block 3 x0,75: 34 x 90 (was 45 x 121)
+[ 4423,2s] block 23 x1,80: 70 x 26 (was 95 x 36)
+[ 4440,6s] block 6 x1,20: 50 x 61 (was 67 x 82)
+[ 4443,0s] block 18: 49 x 49 (was 66 x 66)
+[ 4447,2s] block 18 x1,40: 58 x 41 (was 78 x 56)
+[ 4454,7s] block 13 x0,55: 44 x 53 (was 58 x 70)
+[ 4466,1s] block 3 x0,67: 32 x 95 (was 43 x 128)
+[ 4480,4s] block 5 x1,20: 82 x 28 (was 110 x 37)
+[ 4483,3s] block 18 x1,80: 66 x 37 (was 89 x 49)
+[ 4529,3s] block 18 x0,35: 29 x 83 (was 39 x 112)
+[ 4532,3s] block 11 x0,75: 67 x 45 (was 91 x 60)
+[ 4535,2s] block 2 x1,20: 38 x 79 (was 51 x 106)
+[ 4537,5s] block 3 x0,85: 36 x 84 (was 48 x 114)
+[ 4540,0s] block 18 x0,75: 42 x 57 (was 57 x 76)
+[ 4551,4s] block 14 x0,75: 40 x 34 (was 48 x 42)
+[ 4556,0s] block 2 x1,80: 47 x 65 (was 63 x 87)
+[ 4558,3s] block 7 x1,40: 79 x 38 (was 107 x 51)
+[ 4561,1s] block 7 x0,75: 58 x 52 (was 78 x 70)
+[ 4563,8s] block 9 x0,67: 37 x 81 (was 50 x 109)
+[ 4569,1s] block 11 x1,80: 104 x 29 (was 140 x 39)
+[ 4573,3s] block 8 x0,35: 27 x 112 (was 36 x 151)
+[ 4576,0s] block 8 x1,20: 50 x 61 (was 67 x 82)
+[ 4577,6s] block 8 x0,55: 34 x 90 (was 45 x 120)
+[ 4578,0s] block 23 x0,35: 31 x 60 (was 42 x 81)
+[ 4585,8s] block 8 x0,85: 42 x 72 (was 57 x 97)
+[ 4588,6s] block 10: 87 x 35 (was 117 x 47)
+[ 4606,4s] block 9 x1,80: 61 x 49 (was 82 x 67)
+[ 4609,3s] block 3 x1,20: 43 x 71 (was 57 x 96)
+[ 4612,6s] block 11 x1,20: 85 x 36 (was 115 x 48)
+[ 4616,0s] block 6 x1,40: 54 x 56 (was 73 x 75)
+[ 4620,8s] preview: routed at 336 x 349
+[ 4620,8s] preview: smallest routed factory 336 x 349 of 1 routed
+[ 4624,2s] block 18 x0,67: 40 x 60 (was 54 x 81)
+[ 4624,9s] block 18 x1,20: 54 x 45 (was 72 x 60)
+[ 4627,4s] block 6 x0,55: 34 x 90 (was 45 x 120)
+[ 4629,5s] block 12 x1,80: 116 x 26 (was 156 x 35)
+[ 4632,3s] block 29 x1,40: 28 x 53 (was 38 x 71)
+[ 4645,0s] block 14 x0,55: 34 x 40 (was 41 x 49)
+[ 4648,4s] block 9 x0,35: 27 x 112 (was 36 x 151)
+[ 4652,6s] block 12 x0,35: 51 x 59 (was 69 x 79)
+[ 4652,7s] block 11 x0,35: 46 x 66 (was 62 x 88)
+[ 4652,8s] block 6 x0,85: 42 x 72 (was 57 x 97)
+[ 4656,6s] block 31 x1,40: 36 x 51 (was 49 x 69)
+[ 4656,8s] block 6 x0,35: 27 x 112 (was 36 x 151)
+[ 4657,3s] preview: 336 x 349 has 1083 validation errors: [POLES_DISCONNECTED at (160,104): pole is not wired to the rest, POLES_DISCONNECTED at (265,236): pole is not wired to the rest, POLES_DISCONNECTED at (282,217): pole is not wired to the rest, POLES_DISCONNECTED at (186,237): pole is not wired to the rest, POLES_DISCONNECTED at (306,336): pole is not wired to the rest]
+[ 4657,3s] preview: did not stitch
+[ 4659,9s] block 10 x0,67: 71 x 43 (was 95 x 57)
+[ 4667,9s] block 13 x0,67: 48 x 48 (was 64 x 64)
+[ 4670,6s] block 2 x0,67: 29 x 106 (was 38 x 142)
+[ 4673,0s] block 18 x0,55: 36 x 66 (was 49 x 89)
+[ 4675,1s] block 13 x0,85: 54 x 43 (was 72 x 57)
+[ 4678,3s] block 9 x1,20: 50 x 61 (was 67 x 82)
+[ 4689,4s] block 7 x0,67: 55 x 55 (was 74 x 74)
+[ 4689,8s] block 3 x0,55: 29 x 105 (was 39 x 141)
+[ 4695,3s] block 11 x0,67: 64 x 48 (was 86 x 64)
+[ 4706,2s] block 11 x0,55: 58 x 52 (was 78 x 71)
+[ 4706,7s] block 12 x0,85: 80 x 38 (was 107 x 51)
+[ 4709,9s] block 9: 46 x 66 (was 61 x 89)
+[ 4709,9s] block 12: 87 x 35 (was 117 x 47)
+[ 4712,7s] block 3 x0,35: 23 x 131 (was 31 x 177)
+[ 4712,8s] block 11: 78 x 39 (was 105 x 52)
+[ 4715,5s] block 2 x0,85: 32 x 94 (was 43 x 126)
+[ 4718,8s] block 9 x0,85: 42 x 72 (was 57 x 97)
+[ 4726,1s] block 13 x1,20: 64 x 36 (was 86 x 48)
+[ 4729,1s] block 2 x1,40: 41 x 73 (was 56 x 99)
+[ 4749,4s] block 15 x0,35: 31 x 60 (was 42 x 81)
+[ 4751,6s] block 1 x0,55: 40 x 106 (was 45 x 120)
+[ 4835,6s] preview: corridors at 325 x 339 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,56), (77,56)]
+[ 4846,3s] block 23: 62 x 42 (was 71 x 48)
+[ 4880,7s] block 22 x0,35: 23 x 69 (was 31 x 93)
+[ 4887,3s] preview: corridors at 325 x 339 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,58), (77,58)]
+[ 4939,1s] preview: corridors at 325 x 340 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,60), (77,60)]
+[ 4962,0s] block 10 x0,85: 80 x 38 (was 107 x 51)
+[ 4963,3s] block 12 x0,75: 75 x 40 (was 101 x 54)
+[ 4966,6s] block 11 x0,85: 72 x 42 (was 96 x 57)
+[ 4966,7s] block 6: 46 x 66 (was 61 x 89)
+[ 4969,8s] block 3: 39 x 78 (was 52 x 105)
+[ 4983,4s] block 14 x1,40: 60 x 28 (was 66 x 31)
+[ 4988,8s] preview: corridors at 325 x 342 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,62), (77,62)]
+[ 4998,0s] block 2: 35 x 87 (was 47 x 117)
+[ 5002,7s] block 2 x0,35: 21 x 146 (was 28 x 197)
+[ 5007,9s] block 1 x1,80: 72 x 58 (was 82 x 67)
+[ 5011,8s] block 12 x1,20: 95 x 32 (was 128 x 43)
+[ 5013,5s] block 1 x0,35: 25 x 104 (was 27 x 112)
+[ 5023,2s] block 12 x0,67: 71 x 43 (was 95 x 57)
+[ 5030,9s] preview: corridors at 325 x 344 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,64), (77,64)]
+[ 5038,3s] block 10 x0,35: 51 x 59 (was 69 x 79)
+[ 5047,5s] block 12 x1,40: 103 x 30 (was 138 x 40)
+[ 5069,1s] block 15 x1,40: 62 x 30 (was 83 x 40)
+[ 5072,1s] block 7 x0,55: 50 x 61 (was 67 x 82)
+[ 5075,6s] block 3 x1,80: 62 x 69 (was 70 x 78)
+[ 5088,5s] preview: corridors at 325 x 346 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,66), (77,66)]
+[ 5136,4s] preview: corridors at 325 x 348 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,68), (77,68)]
+[ 5167,7s] block 15 x0,85: 48 x 38 (was 65 x 52)
+[ 5180,0s] preview: corridors at 325 x 350 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(76,70), (77,70)]
+[ 5180,0s] preview: did not stitch
+[ 5182,0s] block 7 x0,35: 47 x 90 (was 53 x 103)
+[ 5183,1s] block 6 x0,75: 39 x 77 (was 53 x 103)
+[ 5186,8s] block 22 x1,40: 55 x 40 (was 63 x 46)
+[ 5190,1s] block 3 x1,40: 54 x 78 (was 62 x 88)
+[ 5192,5s] block 8 x0,67: 44 x 96 (was 50 x 109)
+[ 5193,2s] block 3 x0,75: 28 x 75 (was 34 x 90)
+[ 5212,7s] block 22 x0,67: 38 x 58 (was 43 x 67)
+[ 5236,0s] block 1 x0,55: 37 x 98 (was 40 x 106)
+[ 5236,3s] block 7 x0,85: 73 x 58 (was 83 x 66)
+[ 5238,6s] block 1: 54 x 78 (was 61 x 89)
+[ 5243,1s] block 7 x1,80: 106 x 40 (was 121 x 45)
+[ 5254,3s] block 1 x0,35: 24 x 100 (was 25 x 104)
+[ 5257,8s] block 2 x0,75: 30 x 100 (was 41 x 135)
+[ 5284,0s] block 10 x1,80: 137 x 31 (was 156 x 35)
+[ 5303,0s] block 14 x1,40: 57 x 27 (was 60 x 28)
+[ 5374,7s] block 6 x0,55: 28 x 75 (was 34 x 90)
+[ 5376,0s] block 23 x0,55: 36 x 44 (was 39 x 48)
+[ 5381,4s] block 9 x0,55: 40 x 106 (was 45 x 120)
+[ 5408,7s] block 9 x0,75: 47 x 91 (was 53 x 103)
+[ 5426,1s] preview: corridors at 331 x 331 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(72,47), (73,47)]
+[ 5482,5s] block 10 x1,20: 112 x 38 (was 128 x 43)
+[ 5507,9s] block 1 x1,80: 67 x 54 (was 72 x 58)
+[ 5508,7s] block 15 x0,67: 43 x 43 (was 58 x 58)
+[ 5509,1s] block 1 x0,75: 38 x 74 (was 39 x 77)
+[ 5560,1s] block 29 x0,67: 20 x 77 (was 26 x 103)
+[ 5583,4s] block 8 x1,40: 64 x 66 (was 73 x 75)
+[ 5588,1s] block 8 x0,75: 47 x 91 (was 53 x 103)
+[ 5591,5s] preview: corridors at 331 x 332 did not route (5 conflicts, 0 unrouted); widening near 5 trouble tiles [(127,77), (128,77), (72,49), (73,49)]
+[ 5594,8s] block 15 x1,80: 70 x 26 (was 95 x 36)
+[ 5600,4s] block 10 x1,40: 121 x 35 (was 138 x 40)
+[ 5603,0s] block 8: 54 x 78 (was 61 x 89)
+[ 5607,0s] block 8 x1,80: 72 x 58 (was 82 x 67)
+[ 5610,9s] block 9 x1,40: 64 x 66 (was 73 x 75)
+[ 5615,9s] block 22 x0,75: 40 x 55 (was 46 x 63)
+[ 5616,0s] block 6 x0,75: 37 x 71 (was 39 x 77)
+[ 5619,9s] block 2 x0,67: 27 x 98 (was 29 x 106)
+[ 5619,9s] block 2 x0,55: 31 x 138 (was 35 x 157)
+[ 5623,8s] block 11 x1,40: 109 x 39 (was 124 x 44)
+[ 5628,8s] block 7 x1,20: 87 x 49 (was 99 x 55)
+[ 5633,2s] block 23 x0,67: 40 x 40 (was 43 x 43)
+[ 5634,5s] block 1 x0,55: 36 x 94 (was 37 x 98)
+[ 5658,3s] preview: corridors at 333 x 337 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(73,51), (72,51)]
+[ 5673,7s] block 12 x0,55: 76 x 56 (was 86 x 63)
+[ 5708,4s] preview: corridors at 333 x 339 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(72,53), (73,53)]
+[ 5745,2s] block 14 x0,85: 42 x 32 (was 51 x 39)
+[ 5755,2s] block 2 x1,20: 37 x 76 (was 38 x 79)
+[ 5758,3s] block 23: 57 x 39 (was 62 x 42)
+[ 5759,5s] block 14 x1,80: 68 x 25 (was 75 x 27)
+[ 5760,2s] preview: corridors at 333 x 341 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(72,55), (73,55)]
+[ 5766,6s] block 6 x1,80: 72 x 58 (was 82 x 67)
+[ 5797,8s] block 14: 51 x 33 (was 56 x 36)
+[ 5809,0s] block 10 x0,55: 76 x 56 (was 86 x 63)
+[ 5820,8s] preview: corridors at 333 x 343 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(72,57), (73,57)]
+[ 5821,0s] block 15: 52 x 35 (was 71 x 48)
+[ 5832,5s] block 15 x1,20: 57 x 32 (was 77 x 44)
+[ 5851,4s] block 15 x0,55: 39 x 48 (was 52 x 64)
+[ 5875,3s] block 31 x1,80: 48 x 54 (was 55 x 61)
+[ 5880,5s] block 7 x1,40: 74 x 35 (was 79 x 38)
+[ 5881,8s] block 3 x0,85: 35 x 81 (was 36 x 84)
+[ 5883,5s] block 1: 50 x 72 (was 54 x 78)
+[ 5884,4s] block 6 x0,75: 35 x 68 (was 37 x 71)
+[ 5888,8s] block 1 x1,80: 64 x 52 (was 67 x 54)
+[ 5892,0s] block 4 x0,75: 44 x 38 (was 47 x 41)
+[ 5892,1s] block 7: 79 x 53 (was 90 x 61)
+[ 5893,3s] preview: corridors at 333 x 345 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(72,59), (73,59)]
+[ 5926,0s] block 11 x1,80: 97 x 27 (was 104 x 29)
+[ 5928,3s] block 6 x0,67: 35 x 75 (was 37 x 81)
+[ 5931,0s] block 31 x0,55: 27 x 97 (was 30 x 111)
+[ 5932,4s] block 3 x1,80: 57 x 63 (was 62 x 69)
+[ 5934,7s] block 3 x0,35: 21 x 122 (was 23 x 131)
+[ 5947,8s] preview: corridors at 333 x 347 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(72,61), (73,61)]
+[ 5947,8s] preview: did not stitch
+[ 6021,7s] block 1 x0,85: 39 x 67 (was 42 x 72)
+[ 6042,6s] block 3 x0,55: 28 x 101 (was 29 x 105)
+[ 6047,1s] block 14 x0,35: 30 x 56 (was 33 x 61)
+[ 6048,3s] block 1 x0,55: 35 x 93 (was 36 x 94)
+[ 6051,7s] block 10 x0,75: 89 x 48 (was 101 x 54)
+[ 6066,1s] block 22 x0,67: 35 x 55 (was 38 x 58)
+[ 6067,7s] block 12 x0,85: 74 x 35 (was 80 x 38)
+[ 6070,7s] block 6: 42 x 62 (was 46 x 66)
+[ 6076,9s] block 8 x0,67: 41 x 88 (was 44 x 96)
+[ 6088,0s] block 3 x1,40: 50 x 72 (was 54 x 78)
+[ 6088,9s] block 1 x0,75: 37 x 72 (was 38 x 74)
+[ 6089,1s] block 2 x1,20: 36 x 75 (was 37 x 76)
+[ 6091,3s] block 6 x0,35: 25 x 104 (was 27 x 112)
+[ 6091,3s] block 6 x1,40: 50 x 52 (was 54 x 56)
+[ 6093,8s] block 7 x0,85: 67 x 53 (was 73 x 58)
+[ 6094,0s] block 3 x1,20: 41 x 68 (was 43 x 71)
+[ 6094,3s] block 4 x0,75: 42 x 36 (was 44 x 38)
+[ 6121,9s] block 7 x0,35: 43 x 83 (was 47 x 90)
+[ 6123,6s] block 4 x0,75: 41 x 35 (was 42 x 36)
+[ 6125,4s] block 2 x1,40: 40 x 71 (was 41 x 73)
+[ 6127,7s] block 10 x1,80: 127 x 28 (was 137 x 31)
+[ 6129,1s] block 1 x1,80: 63 x 51 (was 64 x 52)
+[ 6147,6s] block 6 x0,85: 39 x 67 (was 42 x 72)
+[ 6148,4s] block 18 x1,40: 53 x 38 (was 58 x 41)
+[ 6150,5s] preview: corridors at 306 x 347 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6155,4s] block 3 x0,35: 20 x 117 (was 21 x 122)
+[ 6159,4s] block 12 x0,35: 48 x 55 (was 51 x 59)
+[ 6162,3s] block 1 x0,35: 24 x 98 (was 24 x 100)
+[ 6185,3s] block 2 x0,67: 25 x 94 (was 27 x 98)
+[ 6186,2s] block 4 x0,75: 40 x 34 (was 41 x 35)
+[ 6187,5s] block 11: 75 x 37 (was 78 x 39)
+[ 6190,3s] block 2: 32 x 80 (was 35 x 87)
+[ 6193,0s] block 3 x1,80: 55 x 61 (was 57 x 63)
+[ 6195,4s] block 1: 48 x 70 (was 50 x 72)
+[ 6196,9s] block 11 x1,80: 93 x 26 (was 97 x 27)
+[ 6202,2s] preview: corridors at 306 x 349 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6207,9s] block 5 x0,75: 65 x 35 (was 87 x 47)
+[ 6209,8s] block 2 x1,20: 35 x 73 (was 36 x 75)
+[ 6212,0s] block 11 x0,75: 65 x 43 (was 67 x 45)
+[ 6213,0s] block 11 x0,35: 43 x 61 (was 46 x 66)
+[ 6215,5s] block 9 x0,55: 37 x 98 (was 40 x 106)
+[ 6248,2s] block 20 x0,75: 40 x 53 (was 45 x 60)
+[ 6249,7s] block 3 x0,85: 35 x 81 (was 35 x 81)
+[ 6259,7s] block 11 x0,55: 56 x 51 (was 58 x 52)
+[ 6262,9s] block 18 x0,35: 27 x 76 (was 29 x 83)
+[ 6265,1s] block 2 x0,85: 31 x 91 (was 32 x 94)
+[ 6269,1s] block 12 x0,75: 70 x 37 (was 75 x 40)
+[ 6277,7s] block 7 x1,80: 98 x 37 (was 106 x 40)
+[ 6278,8s] block 3 x0,55: 27 x 99 (was 28 x 101)
+[ 6280,6s] block 8: 50 x 72 (was 54 x 78)
+[ 6281,9s] block 8 x1,20: 49 x 60 (was 50 x 61)
+[ 6284,2s] block 4 x0,75: 39 x 33 (was 40 x 34)
+[ 6285,8s] block 9: 44 x 64 (was 46 x 66)
+[ 6287,0s] block 1 x1,80: 62 x 50 (was 63 x 51)
+[ 6292,7s] block 22 x1,80: 62 x 36 (was 71 x 41)
+[ 6295,6s] block 10 x1,40: 112 x 32 (was 121 x 35)
+[ 6298,9s] block 8 x1,40: 59 x 61 (was 64 x 66)
+[ 6300,0s] block 23: 55 x 37 (was 57 x 39)
+[ 6301,3s] block 1 x0,55: 34 x 91 (was 35 x 93)
+[ 6302,2s] preview: corridors at 306 x 351 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6302,4s] block 7 x0,67: 51 x 51 (was 55 x 55)
+[ 6304,2s] block 22 x1,20: 51 x 44 (was 58 x 50)
+[ 6305,7s] block 11: 74 x 37 (was 75 x 37)
+[ 6306,6s] block 7 x0,35: 42 x 80 (was 43 x 83)
+[ 6307,6s] block 1: 47 x 69 (was 48 x 70)
+[ 6308,5s] block 3 x0,35: 20 x 115 (was 20 x 117)
+[ 6309,3s] block 9 x1,40: 59 x 61 (was 64 x 66)
+[ 6310,4s] block 8 x1,80: 67 x 54 (was 72 x 58)
+[ 6311,6s] block 2 x1,40: 39 x 69 (was 40 x 71)
+[ 6311,7s] block 12 x1,40: 95 x 27 (was 103 x 30)
+[ 6312,9s] block 11 x1,40: 100 x 36 (was 109 x 39)
+[ 6313,9s] block 6 x0,35: 24 x 100 (was 25 x 104)
+[ 6314,0s] block 31 x1,80: 45 x 50 (was 48 x 54)
+[ 6315,9s] block 2 x0,55: 28 x 127 (was 31 x 138)
+[ 6318,2s] block 7 x0,85: 65 x 52 (was 67 x 53)
+[ 6319,8s] block 1 x0,67: 37 x 80 (was 37 x 81)
+[ 6321,6s] block 6 x1,20: 48 x 58 (was 50 x 61)
+[ 6329,2s] block 10 x0,55: 70 x 51 (was 76 x 56)
+[ 6333,6s] block 1 x0,85: 37 x 64 (was 39 x 67)
+[ 6335,6s] block 18 x0,75: 41 x 54 (was 42 x 57)
+[ 6337,1s] block 11 x0,35: 41 x 59 (was 43 x 61)
+[ 6337,9s] block 2 x0,35: 20 x 141 (was 21 x 146)
+[ 6338,3s] block 8 x0,67: 39 x 86 (was 41 x 88)
+[ 6339,6s] block 10 x1,20: 109 x 37 (was 112 x 38)
+[ 6340,9s] block 7: 73 x 49 (was 79 x 53)
+[ 6343,6s] block 10 x1,80: 123 x 27 (was 127 x 28)
+[ 6344,3s] block 8 x0,75: 43 x 84 (was 47 x 91)
+[ 6350,2s] block 7 x0,35: 41 x 79 (was 42 x 80)
+[ 6350,5s] block 23 x0,67: 38 x 38 (was 40 x 40)
+[ 6350,9s] block 23: 54 x 36 (was 55 x 37)
+[ 6353,8s] block 9 x0,75: 43 x 84 (was 47 x 91)
+[ 6356,1s] block 6 x1,80: 67 x 54 (was 72 x 58)
+[ 6357,3s] block 1 x0,55: 34 x 90 (was 34 x 91)
+[ 6358,2s] block 12 x0,55: 70 x 51 (was 76 x 56)
+[ 6358,3s] block 10 x0,75: 82 x 44 (was 89 x 48)
+[ 6361,0s] block 10: 85 x 34 (was 87 x 35)
+[ 6361,9s] block 9: 43 x 63 (was 44 x 64)
+[ 6362,4s] block 8: 48 x 70 (was 50 x 72)
+[ 6363,4s] block 2 x0,75: 28 x 93 (was 30 x 100)
+[ 6363,9s] block 3 x1,20: 40 x 67 (was 41 x 68)
+[ 6365,4s] block 9 x0,35: 26 x 110 (was 27 x 112)
+[ 6365,7s] block 7 x1,20: 80 x 45 (was 87 x 49)
+[ 6366,7s] preview: corridors at 306 x 353 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6367,3s] block 2 x1,40: 39 x 69 (was 39 x 69)
+[ 6368,6s] block 3 x1,40: 49 x 71 (was 50 x 72)
+[ 6368,9s] block 11: 72 x 36 (was 74 x 37)
+[ 6369,9s] block 2: 32 x 79 (was 32 x 80)
+[ 6372,1s] block 7 x0,75: 57 x 51 (was 58 x 52)
+[ 6372,9s] block 23: 52 x 35 (was 54 x 36)
+[ 6373,1s] block 9 x0,55: 36 x 94 (was 37 x 98)
+[ 6416,4s] block 6 x0,85: 37 x 64 (was 39 x 67)
+[ 6418,0s] block 11 x1,20: 84 x 35 (was 85 x 36)
+[ 6455,8s] preview: corridors at 306 x 355 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6464,6s] block 12 x0,85: 74 x 35 (was 74 x 35)
+[ 6465,8s] block 3 x0,35: 20 x 112 (was 20 x 115)
+[ 6467,4s] block 12 x0,75: 67 x 36 (was 70 x 37)
+[ 6470,1s] block 8 x0,67: 39 x 84 (was 39 x 86)
+[ 6479,7s] block 7 x1,80: 95 x 35 (was 98 x 37)
+[ 6482,3s] block 12 x1,40: 91 x 26 (was 95 x 27)
+[ 6490,0s] block 31 x0,55: 25 x 90 (was 27 x 97)
+[ 6492,9s] block 1 x0,75: 37 x 71 (was 37 x 72)
+[ 6494,9s] block 1: 46 x 68 (was 47 x 69)
+[ 6495,4s] block 1 x0,67: 37 x 80 (was 37 x 80)
+[ 6497,3s] block 12 x0,35: 47 x 54 (was 48 x 55)
+[ 6497,4s] block 1 x0,85: 37 x 63 (was 37 x 64)
+[ 6512,7s] block 14 x0,35: 29 x 53 (was 30 x 56)
+[ 6515,7s] block 6 x0,35: 24 x 98 (was 24 x 100)
+[ 6518,1s] block 9: 42 x 62 (was 43 x 63)
+[ 6519,5s] block 8 x1,80: 64 x 52 (was 67 x 54)
+[ 6520,5s] block 4 x0,75: 38 x 32 (was 39 x 33)
+[ 6522,7s] block 10 x0,35: 49 x 57 (was 51 x 59)
+[ 6525,7s] preview: corridors at 306 x 357 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6525,9s] block 7 x0,35: 40 x 78 (was 41 x 79)
+[ 6544,1s] block 18 x0,75: 40 x 53 (was 41 x 54)
+[ 6545,0s] block 2 x0,55: 27 x 123 (was 28 x 127)
+[ 6545,7s] block 23: 51 x 35 (was 52 x 35)
+[ 6547,8s] block 1 x0,55: 34 x 90 (was 34 x 90)
+[ 6549,3s] block 10 x0,55: 68 x 50 (was 70 x 51)
+[ 6551,1s] block 2 x0,85: 31 x 91 (was 31 x 91)
+[ 6558,7s] block 5 x1,40: 89 x 26 (was 119 x 35)
+[ 6559,8s] block 7 x0,85: 64 x 51 (was 65 x 52)
+[ 6560,8s] block 6 x1,20: 47 x 57 (was 48 x 58)
+[ 6562,3s] block 2 x1,20: 35 x 73 (was 35 x 73)
+[ 6563,7s] block 10 x1,20: 107 x 36 (was 109 x 37)
+[ 6564,8s] block 10 x1,80: 120 x 27 (was 123 x 27)
+[ 6566,4s] block 12 x0,67: 66 x 40 (was 71 x 43)
+[ 6566,7s] block 3 x1,80: 54 x 60 (was 55 x 61)
+[ 6567,8s] block 9 x0,55: 35 x 93 (was 36 x 94)
+[ 6568,8s] block 18 x0,35: 25 x 73 (was 27 x 76)
+[ 6568,9s] block 8: 47 x 69 (was 48 x 70)
+[ 6570,0s] block 11 x0,75: 64 x 42 (was 65 x 43)
+[ 6570,4s] block 2: 32 x 79 (was 32 x 79)
+[ 6571,0s] block 8 x1,20: 48 x 58 (was 49 x 60)
+[ 6571,1s] preview: corridors at 306 x 359 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6573,6s] block 18 x1,80: 63 x 35 (was 66 x 37)
+[ 6574,6s] block 3 x1,40: 49 x 69 (was 49 x 71)
+[ 6576,7s] block 10 x1,40: 108 x 31 (was 112 x 32)
+[ 6576,8s] block 31 x1,80: 43 x 47 (was 45 x 50)
+[ 6577,7s] block 7 x0,75: 56 x 50 (was 57 x 51)
+[ 6577,8s] block 6 x0,85: 37 x 63 (was 37 x 64)
+[ 6579,4s] block 7 x0,67: 50 x 50 (was 51 x 51)
+[ 6579,4s] block 2 x0,75: 27 x 89 (was 28 x 93)
+[ 6579,6s] block 3 x1,20: 40 x 66 (was 40 x 67)
+[ 6580,8s] block 11 x1,40: 97 x 35 (was 100 x 36)
+[ 6581,0s] block 9 x1,40: 57 x 59 (was 59 x 61)
+[ 6582,7s] block 23: 51 x 35 (was 51 x 35)
+[ 6584,3s] block 6 x0,67: 35 x 75 (was 35 x 75)
+[ 6584,5s] block 3 x0,55: 27 x 97 (was 27 x 99)
+[ 6585,1s] block 11 x1,80: 93 x 26 (was 93 x 26)
+[ 6585,8s] block 1 x1,80: 61 x 49 (was 62 x 50)
+[ 6586,7s] block 7 x1,80: 93 x 35 (was 95 x 35)
+[ 6587,0s] block 9 x0,35: 26 x 108 (was 26 x 110)
+[ 6587,9s] block 2 x0,35: 20 x 138 (was 20 x 141)
+[ 6587,9s] block 8 x0,67: 38 x 83 (was 39 x 84)
+[ 6588,6s] block 3 x0,85: 35 x 81 (was 35 x 81)
+[ 6589,8s] block 2 x0,55: 27 x 121 (was 27 x 123)
+[ 6591,4s] block 4 x0,75: 38 x 32 (was 38 x 32)
+[ 6593,6s] block 8 x1,40: 57 x 59 (was 59 x 61)
+[ 6594,2s] block 6 x1,40: 49 x 51 (was 50 x 52)
+[ 6594,7s] block 7: 71 x 48 (was 73 x 49)
+[ 6596,4s] block 6 x1,20: 47 x 57 (was 47 x 57)
+[ 6598,0s] block 9 x0,75: 42 x 81 (was 43 x 84)
+[ 6598,8s] block 2 x1,40: 38 x 68 (was 39 x 69)
+[ 6609,3s] block 11 x1,20: 84 x 35 (was 84 x 35)
+[ 6610,7s] block 7 x0,85: 63 x 50 (was 64 x 51)
+[ 6614,3s] block 1 x0,75: 37 x 71 (was 37 x 71)
+[ 6617,5s] block 10 x1,80: 118 x 26 (was 120 x 27)
+[ 6619,5s] block 21 x0,35: 36 x 53 (was 41 x 61)
+[ 6621,6s] block 10 x0,75: 79 x 43 (was 82 x 44)
+[ 6623,4s] block 8 x1,80: 63 x 51 (was 64 x 52)
+[ 6626,1s] block 6 x1,80: 64 x 52 (was 67 x 54)
+[ 6635,1s] preview: corridors at 306 x 361 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(195,304), (194,304)]
+[ 6635,1s] preview: did not stitch
+[ 6645,7s] block 6 x0,85: 36 x 62 (was 37 x 63)
+[ 6645,7s] block 7 x1,40: 74 x 35 (was 74 x 35)
+[ 6646,7s] block 7 x1,20: 77 x 43 (was 80 x 45)
+[ 6647,1s] block 18 x1,20: 51 x 43 (was 54 x 45)
+[ 6648,1s] block 7 x0,75: 55 x 49 (was 56 x 50)
+[ 6648,4s] block 3 x1,20: 39 x 65 (was 40 x 66)
+[ 6649,5s] block 10 x1,20: 105 x 35 (was 107 x 36)
+[ 6650,9s] block 7 x1,80: 92 x 34 (was 93 x 35)
+[ 6652,7s] block 18 x1,40: 53 x 38 (was 53 x 38)
+[ 6654,1s] block 8 x0,67: 37 x 81 (was 38 x 83)
+[ 6660,1s] block 22 x0,85: 43 x 52 (was 49 x 60)
+[ 6660,3s] block 2 x1,40: 38 x 68 (was 38 x 68)
+[ 6661,2s] block 3: 38 x 76 (was 39 x 78)
+[ 6663,0s] block 2: 31 x 77 (was 32 x 79)
+[ 6664,3s] block 1 x1,80: 60 x 49 (was 61 x 49)
+[ 6668,6s] block 8 x1,40: 56 x 58 (was 57 x 59)
+[ 6669,3s] block 2 x0,55: 26 x 119 (was 27 x 121)
+[ 6671,1s] block 10 x0,85: 77 x 36 (was 80 x 38)
+[ 6671,9s] block 1 x0,55: 34 x 90 (was 34 x 90)
+[ 6673,1s] block 10 x0,35: 48 x 56 (was 49 x 57)
+[ 6674,1s] block 9 x1,40: 56 x 58 (was 57 x 59)
+[ 6675,7s] block 6 x1,40: 49 x 51 (was 49 x 51)
+[ 6682,6s] block 6 x0,67: 35 x 75 (was 35 x 75)
+[ 6685,0s] block 12 x1,40: 89 x 26 (was 91 x 26)
+[ 6686,4s] block 6 x1,80: 63 x 51 (was 64 x 52)
+[ 6690,2s] block 1 x0,67: 37 x 80 (was 37 x 80)
+[ 6696,2s] block 10 x1,80: 116 x 26 (was 118 x 26)
+[ 6699,2s] block 9: 41 x 60 (was 42 x 62)
+[ 6700,2s] block 3 x1,40: 48 x 68 (was 49 x 69)
+[ 6702,6s] block 7 x1,20: 76 x 43 (was 77 x 43)
+[ 6704,0s] block 7 x0,85: 62 x 49 (was 63 x 50)
+[ 6705,4s] block 8 x0,75: 42 x 82 (was 43 x 84)
+[ 6705,4s] block 12 x0,55: 68 x 50 (was 70 x 51)
+[ 6707,5s] block 12 x0,85: 74 x 35 (was 74 x 35)
+[ 6709,1s] block 9 x0,35: 25 x 106 (was 26 x 108)
+[ 6710,0s] block 8 x0,85: 41 x 71 (was 42 x 72)
+[ 6710,9s] block 10 x1,40: 106 x 31 (was 108 x 31)
+[ 6711,9s] block 10 x1,20: 104 x 35 (was 105 x 35)
+[ 6711,9s] block 8: 47 x 69 (was 47 x 69)
+[ 6713,4s] block 9 x0,75: 41 x 79 (was 42 x 81)
+[ 6715,6s] block 18 x0,35: 25 x 71 (was 25 x 73)
+[ 6717,0s] block 11 x1,20: 82 x 34 (was 84 x 35)
+[ 6720,1s] block 3: 37 x 75 (was 38 x 76)
+[ 6721,5s] block 7 x0,75: 54 x 48 (was 55 x 49)
+[ 6722,7s] block 2 x1,20: 35 x 72 (was 35 x 73)
+[ 6723,7s] block 8 x1,20: 47 x 57 (was 48 x 58)
+[ 6725,2s] block 18 x1,20: 50 x 42 (was 51 x 43)
+[ 6726,0s] block 2 x0,67: 25 x 92 (was 25 x 94)
+[ 6727,4s] block 3 x1,20: 39 x 65 (was 39 x 65)
+[ 6731,1s] block 8 x1,80: 62 x 50 (was 63 x 51)
+[ 6731,9s] block 8 x0,67: 37 x 80 (was 37 x 81)
+[ 6734,9s] block 23 x0,67: 38 x 38 (was 38 x 38)
+[ 6736,4s] block 12 x0,75: 65 x 35 (was 67 x 36)
+[ 6740,2s] block 2 x0,75: 27 x 89 (was 27 x 89)
+[ 6742,8s] block 23: 51 x 35 (was 51 x 35)
+[ 6744,2s] block 11: 71 x 35 (was 72 x 36)
+[ 6751,2s] block 7 x0,35: 40 x 76 (was 40 x 78)
+[ 6752,9s] block 6 x1,20: 47 x 57 (was 47 x 57)
+[ 6763,8s] block 29 x0,85: 26 x 81 (was 30 x 91)
+[ 6767,0s] block 10 x1,80: 114 x 26 (was 116 x 26)
+[ 6768,5s] block 10 x0,75: 78 x 42 (was 79 x 43)
+[ 6770,9s] block 3 x0,35: 20 x 112 (was 20 x 112)
+[ 6789,4s] block 10 x0,35: 48 x 55 (was 48 x 56)
+[ 6790,9s] block 9 x0,55: 35 x 93 (was 35 x 93)
+[ 6792,5s] block 3 x1,40: 48 x 68 (was 48 x 68)
+[ 6795,1s] block 7: 69 x 47 (was 71 x 48)
+[ 6802,2s] block 2 x0,55: 26 x 117 (was 26 x 119)
+[ 6804,3s] preview: corridors at 305 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(48,216), (48,215)]
+[ 6805,4s] block 3 x0,55: 27 x 97 (was 27 x 97)
+[ 6807,5s] block 10 x1,20: 102 x 34 (was 104 x 35)
+[ 6808,5s] block 6 x1,80: 62 x 50 (was 63 x 51)
+[ 6813,0s] block 10: 83 x 34 (was 85 x 34)
+[ 6814,3s] block 7 x1,20: 75 x 42 (was 76 x 43)
+[ 6817,3s] block 3: 37 x 74 (was 37 x 75)
+[ 6820,5s] block 1 x1,20: 50 x 61 (was 50 x 61)
+[ 6821,8s] block 8 x0,75: 42 x 81 (was 42 x 82)
+[ 6826,2s] block 7 x0,85: 61 x 48 (was 62 x 49)
+[ 6826,6s] block 8 x1,20: 47 x 57 (was 47 x 57)
+[ 6827,9s] block 18 x1,80: 62 x 34 (was 63 x 35)
+[ 6828,3s] block 2 x0,67: 25 x 92 (was 25 x 92)
+[ 6829,9s] block 11 x0,75: 62 x 42 (was 64 x 42)
+[ 6831,4s] block 1 x0,75: 36 x 70 (was 37 x 71)
+[ 6832,0s] block 12 x0,55: 67 x 49 (was 68 x 50)
+[ 6833,5s] block 9 x1,40: 55 x 57 (was 56 x 58)
+[ 6834,1s] block 9 x0,75: 40 x 78 (was 41 x 79)
+[ 6835,6s] block 8 x1,80: 61 x 49 (was 62 x 50)
+[ 6836,3s] block 6 x0,85: 35 x 60 (was 36 x 62)
+[ 6839,2s] block 1 x0,67: 36 x 78 (was 37 x 80)
+[ 6841,7s] block 18 x1,20: 50 x 42 (was 50 x 42)
+[ 6844,9s] block 4 x0,75: 37 x 32 (was 38 x 32)
+[ 6847,9s] block 9 x0,35: 25 x 104 (was 25 x 106)
+[ 6856,3s] preview: corridors at 307 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(50,215), (50,216)]
+[ 6857,1s] block 29 x0,55: 21 x 100 (was 24 x 114)
+[ 6861,7s] block 14 x1,80: 67 x 24 (was 68 x 25)
+[ 6862,5s] block 11: 69 x 35 (was 71 x 35)
+[ 6864,1s] block 6 x1,80: 61 x 49 (was 62 x 50)
+[ 6865,8s] block 7: 69 x 47 (was 69 x 47)
+[ 6866,2s] block 12 x0,75: 65 x 35 (was 65 x 35)
+[ 6869,0s] block 3: 36 x 72 (was 37 x 74)
+[ 6871,4s] block 10 x0,75: 76 x 41 (was 78 x 42)
+[ 6872,7s] block 18 x0,75: 40 x 53 (was 40 x 53)
+[ 6873,6s] block 1 x0,55: 34 x 90 (was 34 x 90)
+[ 6877,0s] block 2 x0,75: 26 x 87 (was 27 x 89)
+[ 6877,5s] block 10 x1,80: 112 x 25 (was 114 x 26)
+[ 6878,8s] block 10 x0,55: 67 x 49 (was 68 x 50)
+[ 6881,9s] block 12 x0,55: 65 x 48 (was 67 x 49)
+[ 6882,9s] block 20 x1,20: 50 x 42 (was 57 x 47)
+[ 6884,8s] block 7 x1,20: 73 x 41 (was 75 x 42)
+[ 6885,3s] block 8 x0,67: 36 x 78 (was 37 x 80)
+[ 6885,3s] block 8 x0,85: 40 x 69 (was 41 x 71)
+[ 6886,1s] block 8 x0,75: 41 x 79 (was 42 x 81)
+[ 6887,0s] block 3 x1,20: 39 x 65 (was 39 x 65)
+[ 6888,6s] block 7 x0,85: 60 x 47 (was 61 x 48)
+[ 6889,5s] block 18 x1,80: 60 x 34 (was 62 x 34)
+[ 6894,2s] block 10 x1,40: 106 x 31 (was 106 x 31)
+[ 6901,2s] preview: corridors at 309 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(52,216), (52,215)]
+[ 6902,2s] block 3: 35 x 71 (was 36 x 72)
+[ 6906,2s] block 13 x0,35: 35 x 66 (was 46 x 88)
+[ 6907,6s] block 2 x0,55: 25 x 115 (was 26 x 117)
+[ 6908,5s] block 9 x0,75: 39 x 77 (was 40 x 78)
+[ 6936,1s] preview: corridors at 311 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(54,216), (54,215)]
+[ 6941,2s] block 9 x1,40: 54 x 56 (was 55 x 57)
+[ 6942,1s] block 8 x1,80: 60 x 49 (was 61 x 49)
+[ 6974,6s] preview: corridors at 313 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(56,216), (56,215)]
+[ 7011,2s] preview: corridors at 315 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(58,215), (58,216)]
+[ 7022,8s] block 6 x0,67: 35 x 75 (was 35 x 75)
+[ 7029,8s] block 31 x0,55: 24 x 86 (was 25 x 90)
+[ 7037,5s] block 1: 46 x 68 (was 46 x 68)
+[ 7039,6s] block 11 x1,20: 82 x 34 (was 82 x 34)
+[ 7043,3s] block 12 x0,35: 46 x 53 (was 47 x 54)
+[ 7046,2s] preview: corridors at 317 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(60,215), (60,216)]
+[ 7062,2s] block 11 x0,75: 61 x 41 (was 62 x 42)
+[ 7065,9s] block 10 x1,20: 100 x 34 (was 102 x 34)
+[ 7068,4s] block 7 x0,55: 50 x 61 (was 50 x 61)
+[ 7071,7s] block 9 x0,55: 34 x 91 (was 35 x 93)
+[ 7079,5s] block 10 x1,80: 110 x 25 (was 112 x 25)
+[ 7081,7s] block 1 x0,67: 35 x 77 (was 36 x 78)
+[ 7087,0s] preview: corridors at 319 x 334 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(62,215), (62,216)]
+[ 7087,0s] preview: did not stitch
+[ 7101,9s] block 2 x0,67: 24 x 90 (was 25 x 92)
+[ 7126,3s] block 14: 48 x 31 (was 51 x 33)
+[ 7127,6s] block 2 x1,80: 43 x 60 (was 47 x 65)
+[ 7130,1s] block 9 x0,35: 25 x 102 (was 25 x 104)
+[ 7133,6s] block 8 x0,75: 40 x 78 (was 41 x 79)
+[ 7134,2s] block 3: 35 x 69 (was 35 x 71)
+[ 7135,2s] block 12 x0,55: 64 x 47 (was 65 x 48)
+[ 7136,4s] block 8 x0,67: 35 x 77 (was 36 x 78)
+[ 7137,2s] block 12 x1,40: 89 x 26 (was 89 x 26)
+[ 7137,8s] block 8 x0,85: 40 x 68 (was 40 x 69)
+[ 7139,8s] block 9 x0,75: 39 x 75 (was 39 x 77)
+[ 7140,9s] block 7 x1,80: 90 x 34 (was 92 x 34)
+[ 7141,9s] block 2 x0,75: 26 x 85 (was 26 x 87)
+[ 7144,7s] block 7 x0,35: 40 x 76 (was 40 x 76)
+[ 7146,7s] block 10 x0,55: 65 x 48 (was 67 x 49)
+[ 7147,7s] block 7: 69 x 47 (was 69 x 47)
+[ 7161,4s] block 1 x0,35: 24 x 98 (was 24 x 98)
+[ 7164,1s] block 10 x0,35: 48 x 55 (was 48 x 55)
+[ 7168,3s] block 3 x0,55: 27 x 97 (was 27 x 97)
+[ 7169,7s] block 2 x0,55: 25 x 113 (was 25 x 115)
+[ 7170,5s] block 7 x1,20: 72 x 40 (was 73 x 41)
+[ 7171,9s] block 2 x0,85: 30 x 89 (was 31 x 91)
+[ 7173,1s] block 21 x0,35: 35 x 52 (was 36 x 53)
+[ 7186,8s] block 22 x0,55: 34 x 65 (was 39 x 74)
+[ 7188,8s] block 8 x1,40: 55 x 57 (was 56 x 58)
+[ 7203,6s] block 22 x0,85: 40 x 49 (was 43 x 52)
+[ 7208,1s] block 3: 35 x 69 (was 35 x 69)
+[ 7209,4s] block 10 x1,20: 98 x 33 (was 100 x 34)
+[ 7221,0s] block 5 x0,55: 56 x 41 (was 74 x 55)
+[ 7224,6s] block 9 x0,55: 34 x 90 (was 34 x 91)
+[ 7230,4s] block 2 x0,67: 24 x 90 (was 24 x 90)
+[ 7234,4s] block 8 x0,67: 35 x 75 (was 35 x 77)
+[ 7237,1s] block 2 x0,75: 26 x 85 (was 26 x 85)
+[ 7238,5s] block 4 x0,75: 36 x 31 (was 37 x 32)
+[ 7241,2s] block 13 x1,40: 81 x 39 (was 93 x 44)
+[ 7243,3s] block 10 x0,85: 76 x 36 (was 77 x 36)
+[ 7247,4s] block 10 x0,75: 75 x 40 (was 76 x 41)
+[ 7248,2s] block 18 x1,80: 59 x 33 (was 60 x 34)
+[ 7252,4s] block 14 x1,40: 56 x 26 (was 57 x 27)
+[ 7262,8s] block 11 x1,20: 81 x 34 (was 82 x 34)
+[ 7263,4s] block 3 x1,40: 47 x 67 (was 48 x 68)
+[ 7269,9s] block 18 x0,55: 33 x 61 (was 36 x 66)
+[ 7276,6s] block 7 x1,40: 74 x 35 (was 74 x 35)
+[ 7276,9s] block 10 x1,40: 104 x 30 (was 106 x 31)
+[ 7277,9s] block 8 x0,75: 39 x 77 (was 40 x 78)
+[ 7278,8s] block 21 x0,35: 35 x 51 (was 35 x 52)
+[ 7283,6s] block 2 x0,55: 24 x 110 (was 25 x 113)
+[ 7284,5s] block 9 x0,55: 33 x 88 (was 34 x 90)
+[ 7285,4s] block 10 x1,80: 108 x 24 (was 110 x 25)
+[ 7296,1s] block 3 x1,20: 38 x 63 (was 39 x 65)
+[ 7305,4s] block 20 x1,40: 54 x 39 (was 62 x 44)
+[ 7309,6s] block 29 x0,55: 20 x 94 (was 21 x 100)
+[ 7310,6s] block 10 x1,20: 97 x 32 (was 98 x 33)
+[ 7315,4s] block 11 x1,40: 95 x 34 (was 97 x 35)
+[ 7316,8s] block 9 x0,35: 24 x 100 (was 25 x 102)
+[ 7322,1s] block 2 x1,80: 43 x 59 (was 43 x 60)
+[ 7325,6s] block 18 x1,40: 53 x 38 (was 53 x 38)
+[ 7327,0s] block 7 x1,20: 71 x 40 (was 72 x 40)
+[ 7345,9s] block 1: 46 x 66 (was 46 x 68)
+[ 7349,0s] block 9 x0,75: 38 x 74 (was 39 x 75)
+[ 7351,1s] block 8 x0,75: 39 x 75 (was 39 x 77)
+[ 7354,1s] block 18 x0,55: 32 x 58 (was 33 x 61)
+[ 7357,3s] block 8 x1,40: 54 x 56 (was 55 x 57)
+[ 7362,1s] block 8 x1,80: 60 x 49 (was 60 x 49)
+[ 7365,2s] block 9 x0,55: 33 x 86 (was 33 x 88)
+[ 7366,4s] block 6 x0,67: 34 x 74 (was 35 x 75)
+[ 7371,2s] block 10 x1,40: 103 x 30 (was 104 x 30)
+[ 7372,4s] block 7 x1,80: 90 x 34 (was 90 x 34)
+[ 7373,9s] block 2 x0,67: 24 x 89 (was 24 x 90)
+[ 7375,9s] block 10 x1,20: 97 x 32 (was 97 x 32)
+[ 7376,7s] block 2 x0,55: 24 x 108 (was 24 x 110)
+[ 7378,0s] block 11 x1,40: 94 x 33 (was 95 x 34)
+[ 7380,2s] block 10 x0,75: 74 x 40 (was 75 x 40)
+[ 7381,0s] block 10 x0,85: 76 x 36 (was 76 x 36)
+[ 7381,4s] block 12 x1,80: 108 x 24 (was 116 x 26)
+[ 7383,5s] block 14 x1,40: 56 x 26 (was 56 x 26)
+[ 7384,9s] block 7 x0,55: 49 x 60 (was 50 x 61)
+[ 7385,5s] block 1: 46 x 66 (was 46 x 66)
+[ 7387,6s] block 10 x1,80: 106 x 24 (was 108 x 24)
+[ 7387,8s] block 9 x1,40: 54 x 56 (was 54 x 56)
+[ 7389,4s] block 2 x0,85: 30 x 87 (was 30 x 89)
+[ 7389,7s] block 11 x0,75: 60 x 40 (was 61 x 41)
+[ 7391,7s] block 9 x0,55: 33 x 86 (was 33 x 86)
+[ 7392,7s] block 6 x0,67: 33 x 72 (was 34 x 74)
+[ 7395,3s] block 6: 41 x 60 (was 42 x 62)
+[ 7397,3s] block 3 x1,40: 47 x 67 (was 47 x 67)
+[ 7399,2s] block 18 x1,80: 59 x 33 (was 59 x 33)
+[ 7399,6s] block 23 x0,67: 38 x 38 (was 38 x 38)
+[ 7400,3s] block 11 x1,80: 91 x 25 (was 93 x 26)
+[ 7403,2s] block 1 x1,20: 49 x 60 (was 50 x 61)
+[ 7404,7s] block 7 x0,35: 39 x 75 (was 40 x 76)
+[ 7406,0s] block 18 x1,40: 52 x 37 (was 53 x 38)
+[ 7407,3s] block 8 x1,20: 47 x 57 (was 47 x 57)
+[ 7407,5s] block 10 x1,40: 101 x 29 (was 103 x 30)
+[ 7409,6s] block 11 x0,67: 59 x 44 (was 64 x 48)
+[ 7417,7s] block 31 x0,67: 30 x 88 (was 34 x 100)
+[ 7418,6s] block 11 x1,40: 92 x 33 (was 94 x 33)
+[ 7419,4s] block 6 x1,80: 60 x 49 (was 61 x 49)
+[ 7421,1s] block 8 x0,75: 39 x 75 (was 39 x 75)
+[ 7422,2s] block 6 x0,67: 33 x 71 (was 33 x 72)
+[ 7422,3s] block 23: 50 x 34 (was 51 x 35)
+[ 7425,7s] block 1 x0,75: 35 x 68 (was 36 x 70)
+[ 7438,7s] block 8 x1,80: 59 x 48 (was 60 x 49)
+[ 7445,5s] block 10 x1,80: 106 x 24 (was 106 x 24)
+[ 7447,0s] block 10 x1,20: 95 x 32 (was 97 x 32)
+[ 7452,2s] block 10 x0,75: 72 x 39 (was 74 x 40)
+[ 7455,7s] block 20 x0,55: 34 x 62 (was 39 x 70)
+[ 7473,0s] block 22 x0,75: 39 x 54 (was 40 x 55)
+[ 7474,4s] block 6 x1,80: 60 x 49 (was 60 x 49)
+[ 7476,9s] block 1 x1,20: 49 x 60 (was 49 x 60)
+[ 7479,6s] block 1: 45 x 65 (was 46 x 66)
+[ 7502,8s] block 9 x0,55: 32 x 85 (was 33 x 86)
+[ 7504,9s] block 20 x1,20: 47 x 39 (was 50 x 42)
+[ 7506,3s] block 18 x1,40: 51 x 36 (was 52 x 37)
+[ 7507,4s] block 23 x0,75: 44 x 40 (was 45 x 41)
+[ 7509,3s] block 10 x1,40: 99 x 28 (was 101 x 29)
+[ 7518,3s] block 2 x0,55: 24 x 106 (was 24 x 108)
+[ 7532,4s] block 23: 49 x 33 (was 50 x 34)
+[ 7538,8s] block 2 x0,67: 24 x 89 (was 24 x 89)
+[ 7539,7s] block 7 x0,55: 48 x 59 (was 49 x 60)
+[ 7540,9s] block 2: 30 x 76 (was 31 x 77)
+[ 7551,3s] block 1 x1,40: 50 x 52 (was 54 x 56)
+[ 7555,9s] block 11 x1,80: 89 x 25 (was 91 x 25)
+[ 7606,8s] block 1: 44 x 64 (was 45 x 65)
+[ 7610,6s] block 7 x1,20: 69 x 39 (was 71 x 40)
+[ 7611,8s] block 2 x1,80: 42 x 58 (was 43 x 59)
+[ 7615,0s] block 20 x1,80: 62 x 34 (was 70 x 39)
+[ 7616,7s] block 11 x0,67: 57 x 42 (was 59 x 44)
+[ 7622,6s] block 2 x0,85: 30 x 87 (was 30 x 87)
+[ 7623,6s] block 10 x1,40: 97 x 28 (was 99 x 28)
+[ 7634,0s] block 8 x0,67: 35 x 75 (was 35 x 75)
+[ 7640,7s] block 8 x1,80: 59 x 48 (was 59 x 48)
+[ 7645,7s] block 6 x1,80: 60 x 49 (was 60 x 49)
+[ 7650,7s] block 18 x0,75: 40 x 53 (was 40 x 53)
+[ 7659,5s] block 1: 43 x 63 (was 44 x 64)
+[ 7663,0s] block 18 x1,40: 51 x 36 (was 51 x 36)
+[ 7665,5s] block 7 x0,85: 60 x 47 (was 60 x 47)
+[ 7669,0s] block 10 x1,20: 95 x 32 (was 95 x 32)
+[ 7670,0s] block 9 x0,75: 37 x 72 (was 38 x 74)
+[ 7673,0s] block 7 x0,55: 48 x 59 (was 48 x 59)
+[ 7675,4s] block 23: 49 x 33 (was 49 x 33)
+[ 7676,1s] block 6 x0,67: 32 x 69 (was 33 x 71)
+[ 7681,1s] block 12 x1,80: 106 x 24 (was 108 x 24)
+[ 7681,1s] block 10 x1,40: 95 x 27 (was 97 x 28)
+[ 7716,7s] block 14: 47 x 31 (was 48 x 31)
+[ 7753,6s] block 3 x1,20: 38 x 63 (was 38 x 63)
+[ 7756,3s] block 7 x0,35: 39 x 75 (was 39 x 75)
+[ 7762,4s] block 10 x0,75: 71 x 38 (was 72 x 39)
+[ 7763,0s] block 13 x0,75: 51 x 45 (was 68 x 60)
+[ 7768,8s] block 6 x0,67: 32 x 69 (was 32 x 69)
+[ 7770,7s] block 1: 43 x 63 (was 43 x 63)
+[ 7785,7s] block 9 x0,75: 37 x 71 (was 37 x 72)
+[ 7794,5s] block 21 x0,35: 35 x 51 (was 35 x 51)
+[ 7795,7s] block 2 x0,75: 25 x 84 (was 26 x 85)
+[ 7805,1s] block 11 x1,20: 81 x 34 (was 81 x 34)
+[ 7812,4s] block 10 x1,40: 93 x 27 (was 95 x 27)
+[ 7816,4s] block 11 x1,80: 89 x 25 (was 89 x 25)
+[ 7819,4s] block 11 x1,40: 90 x 32 (was 92 x 33)
+[ 7820,9s] block 7 x1,40: 74 x 35 (was 74 x 35)
+[ 7828,0s] block 14 x0,35: 28 x 52 (was 29 x 53)
+[ 7835,8s] block 18 x1,80: 58 x 32 (was 59 x 33)
+[ 7856,0s] block 23: 47 x 32 (was 49 x 33)
+[ 7857,1s] block 6 x1,80: 59 x 48 (was 60 x 49)
+[ 7862,7s] block 11 x1,40: 89 x 32 (was 90 x 32)
+[ 7871,3s] block 7 x1,80: 90 x 34 (was 90 x 34)
+[ 7947,9s] block 2 x0,85: 30 x 87 (was 30 x 87)
+[ 8014,0s] block 23: 47 x 32 (was 47 x 32)
+[ 8027,7s] block 10 x1,40: 93 x 27 (was 93 x 27)
+[ 8029,1s] block 7 x1,40: 72 x 35 (was 74 x 35)
+[ 8034,1s] block 9 x0,75: 37 x 71 (was 37 x 71)
+[ 8041,4s] block 12 x0,67: 64 x 39 (was 66 x 40)
+[ 8052,8s] block 8 x0,67: 35 x 75 (was 35 x 75)
+[ 8056,4s] block 2 x0,75: 25 x 82 (was 25 x 84)
+[ 8059,3s] block 22 x1,80: 58 x 33 (was 62 x 36)
+[ 8061,5s] block 13 x1,40: 78 x 37 (was 81 x 39)
+[ 8065,4s] block 7 x1,80: 88 x 33 (was 90 x 34)
+[ 8067,2s] block 1: 43 x 63 (was 43 x 63)
+[ 8071,6s] block 3 x1,20: 38 x 63 (was 38 x 63)
+[ 8071,9s] block 29 x0,75: 25 x 86 (was 28 x 97)
+[ 8078,9s] block 8 x1,80: 58 x 47 (was 59 x 48)
+[ 8081,4s] block 2 x0,55: 23 x 104 (was 24 x 106)
+[ 8090,8s] block 31 x0,67: 27 x 81 (was 30 x 88)
+[ 8097,9s] block 7 x1,80: 88 x 33 (was 88 x 33)
+[ 8103,2s] block 11 x1,40: 87 x 31 (was 89 x 32)
+[ 8115,4s] block 2: 30 x 76 (was 30 x 76)
+[ 8121,5s] block 1 x1,40: 50 x 52 (was 50 x 52)
+[ 8126,3s] block 3 x1,20: 38 x 63 (was 38 x 63)
+[ 8131,1s] block 23: 47 x 32 (was 47 x 32)
+[ 8133,0s] block 6 x1,80: 59 x 48 (was 59 x 48)
+[ 8135,7s] block 13 x1,40: 77 x 37 (was 78 x 37)
+[ 8137,5s] block 10 x0,75: 70 x 37 (was 71 x 38)
+[ 8142,8s] block 9 x1,40: 54 x 56 (was 54 x 56)
+[ 8146,9s] block 18 x0,55: 32 x 58 (was 32 x 58)
+[ 8155,9s] block 12 x0,67: 63 x 38 (was 64 x 39)
+[ 8160,5s] block 7 x0,35: 38 x 73 (was 39 x 75)
+[ 8166,5s] block 10 x0,67: 71 x 43 (was 71 x 43)
+[ 8172,7s] block 22 x1,80: 55 x 32 (was 58 x 33)
+[ 8183,5s] block 4 x1,80: 60 x 22 (was 62 x 22)
+[ 8186,0s] block 5: 88 x 36 (was 100 x 41)
+[ 8201,3s] block 1: 43 x 63 (was 43 x 63)
+[ 8205,1s] block 11 x0,67: 56 x 41 (was 57 x 42)
+[ 8205,3s] block 11 x1,20: 79 x 33 (was 81 x 34)
+[ 8207,1s] block 13 x1,40: 75 x 36 (was 77 x 37)
+[ 8210,4s] block 6 x0,67: 32 x 69 (was 32 x 69)
+[ 8211,0s] preview: routed at 303 x 333
+[ 8212,6s] block 7 x1,80: 88 x 33 (was 88 x 33)
+[ 8215,4s] block 1 x1,40: 50 x 52 (was 50 x 52)
+[ 8218,7s] block 20 x0,55: 33 x 61 (was 34 x 62)
+[ 8219,8s] preview: tighter corridors: 302 x 333
+[ 8219,8s] preview: smallest routed factory 302 x 333 of 2 routed
+[ 8220,3s] block 10 x0,75: 68 x 37 (was 70 x 37)
+[ 8223,1s] block 22 x1,40: 51 x 38 (was 55 x 40)
+[ 8235,7s] block 10 x1,80: 106 x 24 (was 106 x 24)
+[ 8246,3s] block 2 x0,85: 30 x 87 (was 30 x 87)
+[ 8247,7s] block 9 x0,75: 36 x 70 (was 37 x 71)
+[ 8253,7s] block 22 x0,55: 33 x 63 (was 34 x 65)
+[ 8264,8s] preview: 302 x 333 (100566 tiles), saved
+[ 8264,3s] block 1: 43 x 63 (was 43 x 63)
+[ 8264,9s] preview: 302 x 333 (100566 tiles); blocks setting its size: [3, 4, 5, 8, 9, 10, 12, 15, 16, 17, 18, 20, 21, 23, 24, 25, 26, 27, 30, 32, 33]
+[ 8266,5s] block 9 x0,85: 40 x 69 (was 42 x 72)
+[ 8269,8s] block 10 x0,75: 67 x 36 (was 68 x 37)
+[ 8284,1s] block 10 x1,40: 91 x 26 (was 93 x 27)
+[ 8314,6s] block 10 x0,75: 67 x 36 (was 67 x 36)
+[ 8316,3s] block 20 x1,80: 60 x 34 (was 62 x 34)
+[ 8319,5s] block 9 x0,85: 40 x 68 (was 40 x 69)
+[ 8323,4s] block 20 x0,55: 33 x 59 (was 33 x 61)
+[ 8331,2s] block 10 x0,67: 70 x 42 (was 71 x 43)
+[ 8332,4s] block 4 x1,80: 58 x 21 (was 60 x 22)
+[ 8336,0s] block 4 x1,80: 57 x 20 (was 58 x 21)
+[ 8336,3s] block 4: 55 x 35 (was 62 x 40)
+[ 8337,1s] block 23 x0,75: 44 x 40 (was 44 x 40)
+[ 8339,8s] block 18 x0,55: 32 x 58 (was 32 x 58)
+[ 8340,4s] block 4 x1,80: 55 x 20 (was 57 x 20)
+[ 8343,0s] block 10 x0,67: 70 x 42 (was 70 x 42)
+[ 8344,4s] block 5 x0,85: 81 x 39 (was 92 x 44)
+[ 8349,7s] block 20 x0,75: 37 x 50 (was 40 x 53)
+[ 8352,9s] block 4: 51 x 33 (was 55 x 35)
+[ 8364,3s] block 33 x0,55: 39 x 73 (was 44 x 82)
+[ 8377,2s] block 18 x0,85: 43 x 51 (was 45 x 53)
+[ 8409,0s] block 4: 49 x 31 (was 51 x 33)
+[ 8410,9s] block 5 x0,85: 75 x 36 (was 81 x 39)
+[ 8412,5s] block 9 x1,40: 53 x 55 (was 54 x 56)
+[ 8412,7s] block 9 x0,75: 35 x 68 (was 36 x 70)
+[ 8414,7s] block 4: 47 x 31 (was 49 x 31)
+[ 8417,0s] block 10 x1,40: 89 x 26 (was 91 x 26)
+[ 8424,0s] block 12: 87 x 35 (was 87 x 35)
+[ 8428,8s] block 9 x0,85: 39 x 67 (was 40 x 68)
+[ 8430,0s] block 9 x1,40: 52 x 54 (was 53 x 55)
+[ 8434,7s] block 4: 47 x 31 (was 47 x 31)
+[ 8437,1s] block 18 x0,85: 43 x 51 (was 43 x 51)
+[ 8438,0s] block 9 x1,40: 52 x 54 (was 52 x 54)
+[ 8439,1s] block 10 x1,40: 89 x 26 (was 89 x 26)
+[ 8440,1s] block 9 x0,67: 37 x 80 (was 37 x 81)
+[ 8440,8s] block 12 x0,67: 63 x 38 (was 63 x 38)
+[ 8444,8s] block 12: 87 x 35 (was 87 x 35)
+[ 8445,8s] block 9 x0,85: 38 x 65 (was 39 x 67)
+[ 8449,3s] block 9 x0,67: 36 x 78 (was 37 x 80)
+[ 8457,3s] block 10 x0,67: 70 x 42 (was 70 x 42)
+[ 8464,1s] block 4 x1,80: 55 x 20 (was 55 x 20)
+[ 8465,0s] block 5 x0,85: 72 x 35 (was 75 x 36)
+[ 8468,7s] block 9 x0,67: 36 x 78 (was 36 x 78)
+[ 8474,9s] block 20 x0,55: 32 x 58 (was 33 x 59)
+[ 8509,5s] block 20 x0,85: 42 x 50 (was 48 x 56)
+[ 8523,6s] block 18 x0,67: 38 x 57 (was 40 x 60)
+[ 8525,1s] block 9 x1,40: 51 x 53 (was 52 x 54)
+[ 8526,5s] block 12: 87 x 35 (was 87 x 35)
+[ 8527,4s] block 9 x0,85: 37 x 64 (was 38 x 65)
+[ 8531,8s] block 12 x0,67: 63 x 38 (was 63 x 38)
+[ 8533,8s] block 32 x1,40: 73 x 25 (was 78 x 27)
+[ 8533,9s] block 9 x1,40: 50 x 52 (was 51 x 53)
+[ 8535,0s] block 12: 85 x 34 (was 87 x 35)
+[ 8537,2s] block 9 x0,85: 37 x 63 (was 37 x 64)
+[ 8538,3s] block 9 x0,67: 35 x 77 (was 36 x 78)
+[ 8539,9s] block 18 x0,67: 38 x 56 (was 38 x 57)
+[ 8543,2s] block 4: 46 x 30 (was 47 x 31)
+[ 8556,6s] block 4: 45 x 29 (was 46 x 30)
+[ 8578,5s] block 18 x0,67: 37 x 55 (was 38 x 56)
+[ 8587,0s] block 18 x0,55: 32 x 58 (was 32 x 58)
+[ 8588,3s] block 33 x0,55: 36 x 67 (was 39 x 73)
+[ 8597,7s] block 20 x0,35: 27 x 78 (was 31 x 88)
+[ 8625,7s] block 4: 44 x 28 (was 45 x 29)
+[ 8628,2s] block 9 x0,67: 35 x 77 (was 35 x 77)
+[ 8631,1s] block 12: 83 x 34 (was 85 x 34)
+[ 8632,8s] block 4: 44 x 28 (was 44 x 28)
+[ 8639,1s] block 21 x0,35: 35 x 51 (was 35 x 51)
+[ 8662,4s] block 4: 44 x 28 (was 44 x 28)
+[ 8672,5s] block 4: 44 x 28 (was 44 x 28)
+[ 8673,7s] block 16 x0,35: 23 x 66 (was 31 x 88)
+[ 8674,5s] block 4: 42 x 27 (was 44 x 28)
+[ 8675,8s] block 4: 41 x 27 (was 42 x 27)
+[ 8680,9s] block 22 x0,67: 35 x 53 (was 35 x 55)
+[ 8687,2s] block 31 x0,67: 26 x 78 (was 27 x 81)
+[ 8688,2s] block 13 x1,40: 74 x 35 (was 75 x 36)
+[ 8689,6s] block 7 x1,20: 68 x 38 (was 69 x 39)
+[ 8722,1s] block 11 x1,40: 87 x 31 (was 87 x 31)
+[ 8727,3s] block 22: 46 x 48 (was 53 x 55)
+[ 8736,8s] block 30: 44 x 46 (was 47 x 49)
+[ 8746,5s] block 13 x1,40: 72 x 35 (was 74 x 35)
+[ 8748,9s] block 20 x0,55: 32 x 58 (was 32 x 58)
+[ 8749,6s] block 31 x1,80: 43 x 47 (was 43 x 47)
+[ 8752,1s] block 22 x0,67: 34 x 52 (was 35 x 53)
+[ 8754,3s] block 4: 40 x 26 (was 41 x 27)
+[ 8755,1s] block 7 x0,55: 47 x 58 (was 48 x 59)
+[ 8755,2s] block 7 x1,20: 67 x 37 (was 68 x 38)
+[ 8755,4s] block 32: 58 x 28 (was 66 x 32)
+[ 8756,2s] block 7 x0,35: 37 x 72 (was 38 x 73)
+[ 8758,3s] block 11 x1,20: 79 x 33 (was 79 x 33)
+[ 8760,1s] block 1: 43 x 63 (was 43 x 63)
+[ 8762,7s] block 13 x1,40: 71 x 34 (was 72 x 35)
+[ 8764,0s] block 7 x1,20: 65 x 37 (was 67 x 37)
+[ 8770,6s] block 11 x0,67: 54 x 41 (was 56 x 41)
+[ 8775,4s] block 7 x1,20: 64 x 36 (was 65 x 37)
+[ 8788,5s] block 7 x0,35: 37 x 71 (was 37 x 72)
+[ 8790,2s] block 7 x1,20: 63 x 35 (was 64 x 36)
+[ 8794,3s] block 22: 43 x 45 (was 46 x 48)
+[ 8799,0s] preview: routed at 299 x 330
+[ 8799,0s] preview: smallest routed factory 299 x 330 of 1 routed
+[ 8803,1s] block 29 x1,80: 41 x 59 (was 43 x 63)
+[ 8805,0s] block 22 x0,67: 33 x 51 (was 34 x 52)
+[ 8806,1s] block 7 x0,35: 36 x 69 (was 37 x 71)
+[ 8816,0s] block 30: 43 x 45 (was 44 x 46)
+[ 8825,6s] block 22 x0,55: 33 x 62 (was 33 x 63)
+[ 8829,7s] block 32: 56 x 27 (was 58 x 28)
+[ 8832,3s] block 22 x1,40: 49 x 36 (was 51 x 38)
+[ 8838,8s] preview: 299 x 330 (98670 tiles), saved
+[ 8838,5s] block 7 x0,35: 36 x 69 (was 36 x 69)
+[ 8838,8s] preview: 299 x 330 (98670 tiles); blocks setting its size: [6, 8, 9, 10, 27, 28, 31, 34]
+[ 8842,2s] block 31 x0,75: 31 x 83 (was 36 x 95)
+[ 8844,2s] block 6: 41 x 60 (was 41 x 60)
+[ 8880,8s] block 31 x1,40: 35 x 50 (was 36 x 51)
+[ 8883,2s] block 31 x0,75: 29 x 77 (was 31 x 83)
+[ 8894,8s] block 31 x0,75: 28 x 73 (was 29 x 77)
+[ 8895,7s] block 31 x1,80: 43 x 47 (was 43 x 47)
+[ 8898,5s] block 6: 41 x 60 (was 41 x 60)
+[ 8915,3s] block 6: 41 x 59 (was 41 x 60)
+[ 8918,4s] block 34 x1,40: 33 x 57 (was 35 x 61)
+[ 8923,1s] block 22 x0,75: 38 x 53 (was 39 x 54)
+[ 8934,5s] block 31: 36 x 72 (was 41 x 82)
+[ 8936,7s] block 31: 33 x 66 (was 36 x 72)
+[ 8937,5s] block 34: 35 x 84 (was 37 x 90)
+[ 8938,7s] block 31: 32 x 64 (was 33 x 66)
+[ 8941,2s] block 34: 33 x 81 (was 35 x 84)
+[ 8942,8s] block 31: 31 x 62 (was 32 x 64)
+[ 8944,1s] block 34: 33 x 79 (was 33 x 81)
+[ 8948,2s] block 34: 32 x 78 (was 33 x 79)
+[ 8952,2s] block 34: 31 x 76 (was 32 x 78)
+[ 8959,7s] block 22 x0,55: 32 x 60 (was 33 x 62)
+[ 8960,4s] block 22 x1,40: 48 x 35 (was 49 x 36)
+[ 8965,5s] block 34: 31 x 75 (was 31 x 76)
+[ 8968,4s] block 13 x1,40: 70 x 33 (was 71 x 34)
+[ 8969,4s] block 7 x0,35: 35 x 68 (was 36 x 69)
+[ 8972,3s] block 31: 30 x 61 (was 31 x 62)
+[ 8981,8s] block 7 x1,20: 63 x 35 (was 63 x 35)
+[ 8983,6s] block 29 x1,80: 40 x 58 (was 41 x 59)
+[ 8999,7s] block 34: 31 x 75 (was 31 x 75)
+[ 9009,5s] block 22 x0,55: 32 x 60 (was 32 x 60)
+[ 9021,3s] block 7 x0,35: 35 x 67 (was 35 x 68)
+[ 9023,6s] block 7 x1,20: 63 x 35 (was 63 x 35)
+[ 9027,7s] block 29 x1,80: 39 x 57 (was 40 x 58)
+[ 9033,8s] block 29 x0,55: 19 x 92 (was 20 x 94)
+[ 9040,5s] block 31: 30 x 61 (was 30 x 61)
+[ 9048,8s] block 2 x0,55: 23 x 104 (was 23 x 104)
+[ 9064,0s] block 29 x1,80: 38 x 56 (was 39 x 57)
+[ 9064,0s] block 34: 31 x 75 (was 31 x 75)
+[ 9069,2s] block 7 x0,35: 35 x 67 (was 35 x 67)
+[ 9080,6s] preview: corridors at 295 x 341 did not route (4 conflicts, 0 unrouted); widening near 4 trouble tiles [(0,337), (1,337), (0,48), (1,48)]
+[ 9084,9s] block 13 x1,40: 68 x 32 (was 70 x 33)
+[ 9087,3s] preview: routed at 297 x 347 (attempt 2)
+[ 9098,9s] block 13 x1,40: 67 x 32 (was 68 x 32)
+[ 9101,9s] block 29 x1,80: 37 x 54 (was 38 x 56)
+[ 9111,6s] block 6 x1,40: 49 x 51 (was 49 x 51)
+[ 9116,5s] block 6 x1,40: 48 x 50 (was 49 x 51)
+[ 9117,5s] block 6 x1,40: 47 x 49 (was 48 x 50)
+[ 9119,8s] block 6 x1,40: 47 x 49 (was 47 x 49)
+[ 9133,1s] preview: tighter corridors (295 x 345) did not route
+[ 9133,1s] preview: smallest routed factory 297 x 347 of 1 routed
+[ 9180,9s] preview: 297 x 347 is not smaller than 299 x 330
+[ 9180,9s] preview: 297 x 347 (103059 tiles); blocks setting its size: [3, 4, 6, 7, 8, 9, 10, 11, 13, 14, 18, 19, 20, 22, 32, 33]
+[ 9217,2s] block 22: 42 x 44 (was 43 x 45)
+[ 9240,2s] block 13: 69 x 46 (was 78 x 52)
+[ 9246,9s] block 22: 42 x 44 (was 42 x 44)
+[ 9250,1s] block 13: 64 x 42 (was 69 x 46)
+[ 9252,4s] block 14: 46 x 30 (was 47 x 31)
+[ 9253,3s] block 13: 61 x 41 (was 64 x 42)
+[ 9258,2s] block 13: 60 x 40 (was 61 x 41)
+[ 9261,0s] block 13: 59 x 39 (was 60 x 40)
+[ 9261,3s] block 3 x0,85: 34 x 80 (was 35 x 81)
+[ 9262,4s] block 3 x0,85: 33 x 78 (was 34 x 80)
+[ 9264,0s] block 3 x0,85: 33 x 78 (was 33 x 78)
+[ 9267,1s] block 22: 41 x 43 (was 42 x 44)
+[ 9268,6s] block 3 x0,85: 33 x 77 (was 33 x 78)
+[ 9268,9s] block 13: 58 x 38 (was 59 x 39)
+[ 9270,3s] block 3 x0,85: 33 x 77 (was 33 x 77)
+[ 9270,5s] block 13: 56 x 38 (was 58 x 38)
+[ 9271,8s] block 13: 55 x 37 (was 56 x 38)
+[ 9273,1s] block 3 x0,85: 33 x 77 (was 33 x 77)
+[ 9281,9s] block 13: 55 x 37 (was 55 x 37)
+[ 9290,3s] block 13: 55 x 37 (was 55 x 37)
+[ 9299,7s] block 33: 52 x 54 (was 59 x 61)
+[ 9326,0s] block 33: 48 x 50 (was 52 x 54)
+[ 9327,1s] preview: routed at 292 x 335
+[ 9328,2s] block 8: 47 x 69 (was 47 x 69)
+[ 9331,6s] preview: tighter corridors: 291 x 334
+[ 9331,6s] preview: smallest routed factory 291 x 334 of 2 routed
+[ 9334,1s] block 8: 47 x 69 (was 47 x 69)
+[ 9339,1s] block 8: 46 x 68 (was 47 x 69)
+[ 9343,6s] block 10 x0,55: 65 x 48 (was 65 x 48)
+[ 9346,8s] block 8: 46 x 68 (was 46 x 68)
+[ 9353,0s] block 10 x0,55: 65 x 48 (was 65 x 48)
+[ 9353,8s] block 8: 46 x 66 (was 46 x 68)
+[ 9358,1s] block 10 x0,55: 65 x 48 (was 65 x 48)
+[ 9361,3s] block 8: 46 x 66 (was 46 x 66)
+[ 9377,3s] preview: 291 x 334 (97194 tiles), saved
+[ 9377,3s] preview: 291 x 334 (97194 tiles); blocks setting its size: [2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21, 22, 24, 25, 26, 27, 29, 31, 34]
+[ 9379,5s] block 28: 32 x 61 (was 36 x 70)
+[ 9383,0s] block 29: 28 x 75 (was 32 x 84)
+[ 9388,1s] block 21: 61 x 32 (was 70 x 36)
+[ 9389,3s] block 22: 41 x 43 (was 41 x 43)
+[ 9393,5s] block 29: 28 x 73 (was 28 x 75)
+[ 9394,9s] block 15: 49 x 33 (was 52 x 35)
+[ 9403,3s] block 2 x1,40: 38 x 68 (was 38 x 68)
+[ 9414,5s] block 21: 60 x 31 (was 61 x 32)
+[ 9425,0s] block 29: 28 x 73 (was 28 x 73)
+[ 9446,8s] block 12 x0,35: 45 x 52 (was 46 x 53)
+[ 9450,4s] block 12 x0,35: 44 x 50 (was 45 x 52)
+[ 9453,4s] block 12 x0,35: 44 x 50 (was 44 x 50)
+[ 9459,3s] block 12 x0,35: 44 x 50 (was 44 x 50)
+[ 9462,5s] block 12 x0,35: 43 x 49 (was 44 x 50)
+[ 9473,6s] block 12 x0,35: 42 x 48 (was 43 x 49)
+[ 9477,9s] block 3 x0,55: 26 x 95 (was 27 x 97)
+[ 9479,7s] block 3 x0,55: 26 x 93 (was 26 x 95)
+[ 9483,0s] block 3 x0,55: 25 x 92 (was 26 x 93)
+[ 9484,5s] block 3 x0,55: 25 x 90 (was 25 x 92)
+[ 9486,5s] block 3 x0,55: 25 x 90 (was 25 x 90)
+[ 9490,3s] block 3 x0,55: 24 x 88 (was 25 x 90)
+[ 9490,5s] block 12 x0,55: 64 x 47 (was 64 x 47)
+[ 9507,9s] block 3 x0,55: 24 x 88 (was 24 x 88)
+[ 9516,6s] block 8 x1,40: 53 x 55 (was 54 x 56)
+[ 9520,2s] block 6 x0,75: 35 x 68 (was 35 x 68)
+[ 9524,4s] block 8 x1,40: 53 x 55 (was 53 x 55)
+[ 9524,8s] preview: routed at 297 x 318
+[ 9527,9s] block 8 x1,40: 52 x 54 (was 53 x 55)
+[ 9527,9s] block 15: 47 x 32 (was 49 x 33)
+[ 9528,9s] block 8 x1,40: 51 x 53 (was 52 x 54)
+[ 9530,3s] block 8 x1,40: 50 x 52 (was 51 x 53)
+[ 9530,8s] preview: tighter corridors: 296 x 317
+[ 9532,1s] block 2 x1,40: 38 x 67 (was 38 x 68)
+[ 9533,1s] block 2 x1,40: 37 x 65 (was 38 x 67)
+[ 9536,1s] block 7 x0,75: 54 x 48 (was 54 x 48)
+[ 9541,1s] preview: tighter corridors: 295 x 317
+[ 9541,1s] preview: smallest routed factory 295 x 317 of 3 routed
+[ 9570,5s] block 12 x1,40: 89 x 26 (was 89 x 26)
+[ 9576,9s] block 12 x1,40: 89 x 26 (was 89 x 26)
+[ 9582,5s] preview: 295 x 317 has 18 validation errors: [BELT_OVER_CAPACITY at (157,182): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (156,182): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (156,181): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (155,181): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (154,181): lanes carry 15,22/s and 4,62/s; a lane holds 15,00/s]
+[ 9588,1s] block 10 x1,20: 93 x 31 (was 95 x 32)
+[ 9599,5s] block 10 x1,20: 93 x 31 (was 93 x 31)
+[ 9624,3s] preview: 296 x 317 has 18 validation errors: [BELT_OVER_CAPACITY at (158,182): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (157,182): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (157,181): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (156,181): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (155,181): lanes carry 15,22/s and 4,62/s; a lane holds 15,00/s]
+[ 9643,5s] block 8 x0,75: 38 x 74 (was 39 x 75)
+[ 9645,2s] block 10 x0,85: 74 x 35 (was 76 x 36)
+[ 9645,6s] block 8 x0,75: 38 x 74 (was 38 x 74)
+[ 9647,1s] block 8 x0,75: 37 x 72 (was 38 x 74)
+[ 9649,4s] block 10 x0,85: 74 x 35 (was 74 x 35)
+[ 9652,7s] block 8 x0,75: 37 x 72 (was 37 x 72)
+[ 9654,0s] block 8 x0,75: 37 x 71 (was 37 x 72)
+[ 9655,1s] block 8 x0,75: 36 x 70 (was 37 x 71)
+[ 9656,8s] block 8 x0,75: 36 x 70 (was 36 x 70)
+[ 9657,8s] block 8 x0,75: 35 x 68 (was 36 x 70)
+[ 9661,8s] preview: 297 x 318 has 18 validation errors: [BELT_OVER_CAPACITY at (158,182): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (157,182): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (157,181): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (156,181): lanes carry 15,22/s and 0,00/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (155,181): lanes carry 15,22/s and 4,62/s; a lane holds 15,00/s]
+[ 9661,8s] preview: did not stitch
+[ 9662,5s] block 8 x0,75: 35 x 68 (was 35 x 68)
+[ 9667,6s] block 6 x1,40: 47 x 49 (was 47 x 49)
+[ 9685,6s] block 15: 47 x 32 (was 47 x 32)
+[ 9721,1s] block 2 x1,20: 35 x 72 (was 35 x 72)
+[ 9724,7s] block 4: 40 x 26 (was 40 x 26)
+[ 9732,1s] block 2 x0,85: 30 x 87 (was 30 x 87)
+[ 9737,9s] block 7: 68 x 46 (was 69 x 47)
+[ 9774,8s] block 3 x0,85: 33 x 77 (was 33 x 77)
+[ 9793,8s] block 2 x0,67: 24 x 89 (was 24 x 89)
+[ 9823,1s] block 2 x1,80: 41 x 56 (was 42 x 58)
+[ 9843,7s] block 7 x0,75: 53 x 47 (was 54 x 48)
+[ 9910,7s] block 12 x1,80: 106 x 24 (was 106 x 24)
+[ 9917,3s] block 7 x1,40: 72 x 35 (was 72 x 35)
+[ 9923,1s] block 7 x1,40: 72 x 35 (was 72 x 35)
+[ 9927,3s] block 3 x1,20: 37 x 62 (was 38 x 63)
+[ 9937,3s] block 12 x0,85: 73 x 34 (was 74 x 35)
+[ 9967,7s] block 6 x1,80: 58 x 47 (was 59 x 48)
+[ 9974,8s] block 10 x1,80: 104 x 23 (was 106 x 24)
+[ 9980,7s] block 1 x1,80: 59 x 48 (was 60 x 49)
+[ 9990,7s] block 2 x1,40: 36 x 64 (was 37 x 65)
+[ 9995,1s] block 2 x1,40: 36 x 64 (was 36 x 64)
+[10017,1s] block 8 x0,85: 39 x 67 (was 40 x 68)
+[10020,2s] block 27: 66 x 33 (was 71 x 35)
+[10021,2s] block 8 x0,85: 39 x 67 (was 39 x 67)
+[10026,2s] block 11 x1,20: 79 x 33 (was 79 x 33)
+[10027,8s] block 6 x1,20: 47 x 57 (was 47 x 57)
+[10032,8s] block 18 x1,20: 49 x 41 (was 50 x 42)
+[10034,4s] block 18 x1,20: 48 x 40 (was 49 x 41)
+[10044,1s] block 3 x0,35: 20 x 112 (was 20 x 112)
+[10067,8s] block 27: 65 x 33 (was 66 x 33)
+[10073,6s] block 10 x0,55: 64 x 47 (was 65 x 48)
+[10087,2s] block 18 x0,85: 43 x 51 (was 43 x 51)
+[10100,3s] block 13 x1,40: 65 x 31 (was 67 x 32)
+[10100,5s] block 4 x0,67: 37 x 35 (was 38 x 36)
+[10122,4s] block 6 x0,67: 32 x 69 (was 32 x 69)
+[10130,6s] block 34 x1,20: 28 x 57 (was 32 x 65)
+[10135,8s] block 2 x1,40: 35 x 63 (was 36 x 64)
+[10156,6s] block 31 x0,55: 24 x 86 (was 24 x 86)
+[10176,0s] block 27: 65 x 33 (was 65 x 33)
+[10186,2s] block 31 x1,80: 42 x 46 (was 43 x 47)
+[10199,1s] block 6 x1,80: 58 x 47 (was 58 x 47)
+[10206,0s] block 15 x0,75: 54 x 48 (was 61 x 55)
+[10212,7s] block 29 x1,80: 36 x 53 (was 37 x 54)
+[10229,9s] block 21 x0,55: 46 x 43 (was 52 x 48)
+[10282,3s] block 27: 65 x 33 (was 65 x 33)
+[10298,9s] block 2 x0,55: 23 x 104 (was 23 x 104)
+[10302,9s] block 4 x0,67: 37 x 35 (was 37 x 35)
+[10308,3s] block 2 x1,40: 35 x 61 (was 35 x 63)
+[10313,1s] block 15: 47 x 32 (was 47 x 32)
+[10315,2s] block 10 x0,67: 68 x 41 (was 70 x 42)
+[10320,7s] block 10 x1,20: 91 x 31 (was 93 x 31)
+[10322,6s] block 18 x0,85: 43 x 51 (was 43 x 51)
+[10331,1s] block 4 x0,85: 41 x 31 (was 42 x 32)
+[10334,6s] block 27: 64 x 32 (was 65 x 33)
+[10336,9s] block 2 x0,85: 30 x 87 (was 30 x 87)
+[10341,4s] block 3 x1,20: 36 x 61 (was 37 x 62)
+[10344,1s] block 2 x1,40: 35 x 61 (was 35 x 61)
+[10349,3s] block 18: 47 x 47 (was 49 x 49)
+[10351,4s] block 10 x1,20: 91 x 31 (was 91 x 31)
+[10354,9s] block 10 x0,67: 67 x 40 (was 68 x 41)
+[10363,4s] block 4 x0,85: 40 x 30 (was 41 x 31)
+[10378,8s] block 20: 49 x 49 (was 52 x 52)
+[10394,4s] block 18 x1,80: 58 x 32 (was 58 x 32)
+[10395,3s] block 29 x1,80: 36 x 52 (was 36 x 53)
+[10470,7s] block 20: 48 x 48 (was 49 x 49)
+[10478,0s] block 4 x0,85: 39 x 30 (was 40 x 30)
+[10486,3s] block 10 x1,20: 91 x 31 (was 91 x 31)
+[10499,2s] block 20: 47 x 47 (was 48 x 48)
+[10517,5s] block 21 x0,55: 42 x 40 (was 46 x 43)
+[10543,6s] block 8 x0,85: 38 x 65 (was 39 x 67)
+[10554,8s] block 7 x0,35: 35 x 67 (was 35 x 67)
+[10559,4s] block 1 x0,55: 33 x 88 (was 34 x 90)
+[10568,0s] block 1 x0,55: 33 x 86 (was 33 x 88)
+[10569,1s] block 1 x0,55: 32 x 85 (was 33 x 86)
+[10574,7s] block 21 x1,80: 82 x 24 (was 94 x 27)
+[10586,5s] block 2: 30 x 76 (was 30 x 76)
+[10596,0s] block 4 x0,85: 38 x 29 (was 39 x 30)
+[10614,1s] block 3 x1,20: 36 x 61 (was 36 x 61)
+[10625,1s] block 2 x0,85: 30 x 87 (was 30 x 87)
+[10627,2s] block 3 x0,85: 32 x 75 (was 33 x 77)
+[10629,2s] block 34 x0,55: 20 x 90 (was 22 x 97)
+[10633,4s] block 15 x0,75: 50 x 45 (was 54 x 48)
+[10646,5s] block 22 x1,40: 48 x 35 (was 48 x 35)
+[10647,5s] block 10: 82 x 33 (was 83 x 34)
+[10650,9s] block 3: 34 x 68 (was 35 x 69)
+[10655,8s] block 7 x1,20: 63 x 35 (was 63 x 35)
+[10665,2s] block 4 x0,67: 37 x 35 (was 37 x 35)
+[10686,7s] block 29 x1,80: 35 x 51 (was 36 x 52)
+[10698,6s] block 11 x0,75: 60 x 40 (was 60 x 40)
+[10705,2s] block 5 x0,35: 52 x 60 (was 59 x 69)
+[10719,4s] block 34 x0,55: 20 x 88 (was 20 x 90)
+[10721,4s] block 11 x1,20: 79 x 33 (was 79 x 33)
+[10726,3s] block 9 x0,55: 32 x 85 (was 32 x 85)
+[10728,1s] block 31 x1,40: 35 x 50 (was 35 x 50)
+[10736,4s] block 18 x0,67: 37 x 55 (was 37 x 55)
+[10738,2s] block 3 x0,85: 32 x 75 (was 32 x 75)
+[10744,4s] block 34 x1,80: 37 x 50 (was 40 x 53)
+[10751,0s] block 6 x1,40: 47 x 49 (was 47 x 49)
+[10752,5s] block 4 x0,67: 37 x 35 (was 37 x 35)
+[10764,8s] block 12: 82 x 33 (was 83 x 34)
+[10813,1s] block 7 x1,40: 72 x 35 (was 72 x 35)
+[10835,5s] block 4 x0,67: 37 x 35 (was 37 x 35)
+[10835,7s] block 8 x0,85: 38 x 65 (was 38 x 65)
+[10840,3s] block 3 x1,20: 36 x 59 (was 36 x 61)
+[10856,3s] block 31 x0,55: 24 x 86 (was 24 x 86)
+[10858,8s] block 7 x0,67: 50 x 50 (was 50 x 50)
+[10867,6s] block 34 x1,80: 36 x 49 (was 37 x 50)
+[10882,4s] block 4 x0,85: 37 x 28 (was 38 x 29)
+[10882,4s] block 31 x0,75: 28 x 73 (was 28 x 73)
+[10902,4s] block 3 x1,20: 36 x 59 (was 36 x 59)
+[10905,8s] block 7 x1,80: 87 x 32 (was 88 x 33)
+[10935,4s] block 18 x0,67: 37 x 55 (was 37 x 55)
+[11005,4s] block 29 x1,80: 35 x 51 (was 35 x 51)
+[11031,0s] block 12 x1,40: 88 x 25 (was 89 x 26)
+[11048,0s] block 34 x1,80: 35 x 48 (was 36 x 49)
+[11074,6s] block 6 x1,20: 46 x 56 (was 47 x 57)
+[11099,8s] block 8 x1,40: 50 x 52 (was 50 x 52)
+[11110,5s] block 12 x1,40: 88 x 25 (was 88 x 25)
+[11110,6s] block 10 x1,80: 104 x 23 (was 104 x 23)
+[11111,5s] block 6: 40 x 58 (was 41 x 59)
+[11123,8s] block 6: 39 x 57 (was 40 x 58)
+[11123,9s] block 8 x0,55: 33 x 86 (was 34 x 90)
+[11127,6s] block 6: 39 x 57 (was 39 x 57)
+[11136,3s] block 34 x0,55: 20 x 86 (was 20 x 88)
+[11137,2s] block 10 x0,85: 74 x 35 (was 74 x 35)
+[11162,9s] block 11 x1,80: 87 x 24 (was 89 x 25)
+[11165,0s] block 18 x0,85: 42 x 50 (was 43 x 51)
+[11173,0s] block 2 x0,75: 24 x 80 (was 25 x 82)
+[11178,6s] block 8 x0,55: 32 x 85 (was 33 x 86)
+[11186,1s] block 8 x1,40: 50 x 52 (was 50 x 52)
+[11198,7s] block 34 x1,80: 35 x 48 (was 35 x 48)
+[11217,1s] block 11 x0,75: 59 x 39 (was 60 x 40)
+[11229,5s] block 22: 40 x 42 (was 41 x 43)
+[11238,3s] block 8 x0,55: 32 x 85 (was 32 x 85)
+[11257,4s] block 8: 45 x 65 (was 46 x 66)
+[11260,9s] block 8: 44 x 64 (was 45 x 65)
+[11262,5s] block 8: 43 x 63 (was 44 x 64)
+[11265,1s] block 8: 42 x 62 (was 43 x 63)
+[11267,0s] block 8: 41 x 60 (was 42 x 62)
+[11279,7s] block 12 x0,75: 65 x 35 (was 65 x 35)
+[11281,0s] block 5 x0,35: 48 x 56 (was 52 x 60)
+[11284,5s] block 8: 41 x 59 (was 41 x 60)
+[11286,1s] block 6 x1,20: 46 x 56 (was 46 x 56)
+[11290,1s] block 3 x1,20: 36 x 59 (was 36 x 59)
+[11290,2s] preview: routed at 300 x 315
+[11297,2s] preview: tighter corridors: 300 x 314
+[11297,2s] preview: smallest routed factory 300 x 314 of 2 routed
+[11302,8s] block 4 x1,40: 50 x 23 (was 55 x 25)
+[11304,9s] block 32: 55 x 26 (was 56 x 27)
+[11309,8s] block 11 x0,75: 58 x 38 (was 59 x 39)
+[11312,1s] block 21 x0,85: 57 x 34 (was 64 x 39)
+[11319,4s] block 11 x0,35: 40 x 57 (was 41 x 59)
+[11340,6s] preview: 300 x 314 (94200 tiles), saved
+[11340,6s] preview: 300 x 314 (94200 tiles); blocks setting its size: [1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 18, 20, 22, 23, 25, 27, 28, 29]
+[11341,4s] block 31 x0,35: 18 x 100 (was 18 x 103)
+[11366,6s] block 1 x1,20: 49 x 60 (was 49 x 60)
+[11384,0s] block 20: 46 x 46 (was 47 x 47)
+[11394,9s] block 23 x0,75: 43 x 39 (was 44 x 40)
+[11416,4s] block 23 x0,75: 42 x 38 (was 43 x 39)
+[11417,6s] block 20: 46 x 46 (was 46 x 46)
+[11438,4s] block 20: 45 x 45 (was 46 x 46)
+[11445,1s] block 20: 44 x 44 (was 45 x 45)
+[11458,2s] block 23 x0,55: 36 x 44 (was 36 x 44)
+[11458,8s] block 20: 43 x 43 (was 44 x 44)
+[11461,9s] block 20 x0,75: 36 x 48 (was 37 x 50)
+[11470,6s] block 20 x0,67: 40 x 60 (was 43 x 64)
+[11471,9s] block 20 x0,35: 25 x 73 (was 27 x 78)
+[11474,7s] block 1 x1,80: 59 x 48 (was 59 x 48)
+[11479,6s] block 1: 42 x 62 (was 43 x 63)
+[11482,1s] block 14 x1,40: 54 x 25 (was 56 x 26)
+[11485,6s] block 20 x0,75: 36 x 48 (was 36 x 48)
+[11495,0s] block 1 x0,85: 36 x 62 (was 37 x 63)
+[11500,4s] block 1 x0,67: 35 x 77 (was 35 x 77)
+[11503,8s] block 23 x0,55: 35 x 43 (was 36 x 44)
+[11505,3s] block 20 x0,67: 39 x 59 (was 40 x 60)
+[11516,6s] block 20 x1,80: 59 x 33 (was 60 x 34)
+[11540,4s] block 23 x0,55: 35 x 43 (was 35 x 43)
+[11554,2s] block 20 x1,80: 58 x 32 (was 59 x 33)
+[11565,7s] block 20 x0,85: 40 x 47 (was 42 x 50)
+[11568,7s] block 23 x0,75: 41 x 37 (was 42 x 38)
+[11570,2s] block 20 x0,75: 36 x 47 (was 36 x 48)
+[11583,2s] block 1 x0,67: 35 x 75 (was 35 x 77)
+[11614,2s] block 23 x0,75: 40 x 36 (was 41 x 37)
+[11636,4s] block 1 x0,85: 35 x 60 (was 36 x 62)
+[11665,4s] block 1 x0,85: 35 x 60 (was 35 x 60)
+[11688,8s] block 11 x0,55: 55 x 50 (was 56 x 51)
+[11712,5s] block 7 x0,35: 35 x 67 (was 35 x 67)
+[11714,4s] block 1 x0,55: 32 x 85 (was 32 x 85)
+[11724,1s] block 2 x0,55: 23 x 102 (was 23 x 104)
+[11727,8s] block 10 x0,35: 47 x 54 (was 48 x 55)
+[11730,8s] block 6 x0,67: 32 x 69 (was 32 x 69)
+[11733,7s] block 22 x0,55: 32 x 60 (was 32 x 60)
+[11749,5s] block 2 x0,85: 30 x 87 (was 30 x 87)
+[11760,0s] block 8 x0,55: 31 x 83 (was 32 x 85)
+[11764,7s] block 8 x0,85: 37 x 64 (was 38 x 65)
+[11766,0s] block 14 x0,75: 39 x 34 (was 40 x 34)
+[11770,7s] block 10 x0,35: 47 x 54 (was 47 x 54)
+[11783,4s] block 10 x0,67: 66 x 40 (was 67 x 40)
+[11785,6s] block 12 x0,67: 62 x 37 (was 63 x 38)
+[11797,6s] block 2 x0,75: 24 x 80 (was 24 x 80)
+[11799,2s] block 8 x0,85: 37 x 63 (was 37 x 64)
+[11811,6s] block 23 x0,75: 39 x 35 (was 40 x 36)
+[11813,8s] block 27 x0,85: 61 x 36 (was 65 x 38)
+[11819,5s] block 11 x0,75: 58 x 38 (was 58 x 38)
+[11843,9s] block 12: 82 x 33 (was 82 x 33)
+[11872,3s] block 22: 39 x 41 (was 40 x 42)
+[11889,1s] block 1 x0,35: 24 x 98 (was 24 x 98)
+[11896,2s] block 23 x0,85: 45 x 36 (was 48 x 38)
+[11943,1s] block 4 x0,67: 36 x 34 (was 37 x 35)
+[11948,7s] block 12 x1,40: 86 x 25 (was 88 x 25)
+[11964,6s] block 23 x0,85: 44 x 35 (was 45 x 36)
+[11984,1s] block 14 x1,20: 56 x 30 (was 61 x 33)
+[12037,1s] block 8 x0,67: 34 x 74 (was 35 x 75)
+[12055,9s] block 7 x0,85: 60 x 47 (was 60 x 47)
+[12063,6s] block 11 x0,55: 53 x 49 (was 55 x 50)
+[12067,5s] block 18 x0,55: 32 x 58 (was 32 x 58)
+[12090,7s] block 20 x0,67: 38 x 57 (was 39 x 59)
+[12109,3s] block 23 x0,75: 39 x 35 (was 39 x 35)
+[12110,7s] block 22 x1,80: 54 x 31 (was 55 x 32)
+[12125,5s] block 6 x1,80: 57 x 46 (was 58 x 47)
+[12130,9s] block 18 x0,75: 39 x 52 (was 40 x 53)
+[12136,6s] block 4 x0,67: 35 x 33 (was 36 x 34)
+[12139,4s] block 6 x0,75: 35 x 68 (was 35 x 68)
+[12147,2s] block 6 x0,35: 23 x 96 (was 24 x 98)
+[12148,4s] block 7 x0,35: 35 x 67 (was 35 x 67)
+[12151,4s] block 18 x1,40: 50 x 35 (was 51 x 36)
+[12157,4s] block 14 x1,20: 53 x 29 (was 56 x 30)
+[12167,9s] block 8 x0,67: 34 x 74 (was 34 x 74)
+[12199,6s] block 7 x0,85: 58 x 46 (was 60 x 47)
+[12208,6s] block 5 x0,85: 71 x 34 (was 72 x 35)
+[12210,8s] block 29 x1,20: 33 x 72 (was 35 x 77)
+[12215,3s] block 14 x1,40: 54 x 25 (was 54 x 25)
+[12218,5s] block 11 x0,35: 40 x 57 (was 40 x 57)
+[12229,5s] block 7 x0,75: 53 x 47 (was 53 x 47)
+[12237,7s] block 13 x0,35: 35 x 66 (was 35 x 66)
+[12295,9s] block 13 x1,40: 64 x 30 (was 65 x 31)
+[12301,0s] block 7 x0,85: 58 x 46 (was 58 x 46)
+[12306,3s] block 18 x0,75: 38 x 51 (was 39 x 52)
+[12306,9s] block 4 x0,67: 34 x 32 (was 35 x 33)
+[12343,2s] block 11 x0,55: 52 x 48 (was 53 x 49)
+[12345,8s] block 22 x0,67: 32 x 50 (was 33 x 51)
+[12368,1s] block 18 x0,85: 41 x 49 (was 42 x 50)
+[12370,3s] block 12 x0,85: 71 x 34 (was 73 x 34)
+[12396,9s] block 29 x1,20: 32 x 71 (was 33 x 72)
+[12408,6s] block 10: 82 x 33 (was 82 x 33)
+[12414,8s] block 12 x0,67: 61 x 36 (was 62 x 37)
+[12436,0s] block 18 x1,20: 48 x 40 (was 48 x 40)
+[12478,3s] block 23: 46 x 31 (was 47 x 32)
+[12482,9s] block 23: 45 x 30 (was 46 x 31)
+[12502,0s] block 23: 45 x 30 (was 45 x 30)
+[12519,8s] block 23: 45 x 30 (was 45 x 30)
+[12526,2s] block 23: 44 x 30 (was 45 x 30)
+[12540,7s] block 18 x0,67: 36 x 54 (was 37 x 55)
+[12550,8s] block 23: 44 x 30 (was 44 x 30)
+[12580,2s] block 11 x0,75: 56 x 38 (was 58 x 38)
+[12590,6s] block 20 x0,35: 25 x 71 (was 25 x 73)
+[12625,9s] block 9 x0,75: 35 x 68 (was 35 x 68)
+[12630,7s] block 6 x0,35: 23 x 96 (was 23 x 96)
+[12648,7s] block 11 x0,55: 51 x 47 (was 52 x 48)
+[12663,4s] block 32: 53 x 26 (was 55 x 26)
+[12701,0s] block 20: 42 x 42 (was 43 x 43)
+[12712,3s] block 29 x1,20: 32 x 70 (was 32 x 71)
+[12716,3s] block 7 x1,80: 87 x 32 (was 87 x 32)
+[12719,3s] block 6 x1,80: 56 x 45 (was 57 x 46)
+[12729,3s] block 8 x0,55: 31 x 83 (was 31 x 83)
+[12748,7s] block 14 x0,75: 38 x 33 (was 39 x 34)
+[12754,3s] block 6 x1,80: 54 x 44 (was 56 x 45)
+[12814,7s] block 18 x1,80: 58 x 32 (was 58 x 32)
+[12848,5s] block 14 x1,20: 52 x 28 (was 53 x 29)
+[12853,4s] block 6 x1,80: 53 x 43 (was 54 x 44)
+[12869,4s] block 29 x1,20: 32 x 70 (was 32 x 70)
+[12892,4s] block 18 x1,40: 50 x 35 (was 50 x 35)
+[12937,4s] block 6: 39 x 57 (was 39 x 57)
+[13007,5s] block 18 x1,80: 58 x 32 (was 58 x 32)
+[13013,0s] block 27 x0,35: 37 x 53 (was 42 x 60)
+[13024,4s] block 18 x0,75: 38 x 51 (was 38 x 51)
+[13025,9s] block 18 x0,85: 41 x 49 (was 41 x 49)
+[13045,4s] block 7 x0,85: 57 x 45 (was 58 x 46)
+[13046,9s] block 11 x1,20: 77 x 32 (was 79 x 33)
+[13064,7s] block 8 x0,55: 31 x 81 (was 31 x 83)
+[13073,6s] block 10 x1,40: 88 x 25 (was 89 x 26)
+[13074,6s] block 20 x0,35: 25 x 71 (was 25 x 71)
+[13075,2s] block 2 x1,80: 40 x 55 (was 41 x 56)
+[13102,3s] block 6 x0,35: 23 x 96 (was 23 x 96)
+[13111,1s] block 29 x1,80: 35 x 51 (was 35 x 51)
+[13117,1s] block 9 x1,40: 50 x 52 (was 50 x 52)
+[13129,0s] block 14 x1,40: 53 x 25 (was 54 x 25)
+[13143,3s] block 7 x0,85: 56 x 44 (was 57 x 45)
+[13153,6s] block 1 x0,35: 24 x 98 (was 24 x 98)
+[13180,5s] block 7 x0,85: 56 x 44 (was 56 x 44)
+[13200,7s] block 29 x0,75: 24 x 84 (was 25 x 86)
+[13207,7s] block 20 x0,75: 35 x 46 (was 36 x 47)
+[13222,7s] block 18 x0,35: 25 x 71 (was 25 x 71)
+[13229,7s] block 6 x1,80: 53 x 43 (was 53 x 43)
+[13239,6s] block 11 x1,20: 77 x 32 (was 77 x 32)
+[13269,4s] block 9 x0,55: 31 x 83 (was 32 x 85)
+[13273,2s] block 13 x1,40: 64 x 30 (was 64 x 30)
+[13288,5s] block 8 x1,20: 47 x 57 (was 47 x 57)
+[13335,0s] block 4 x0,35: 27 x 49 (was 27 x 50)
+[13341,2s] block 27 x0,85: 60 x 35 (was 61 x 36)
+[13342,2s] block 10: 82 x 33 (was 82 x 33)
+[13363,0s] block 18 x0,85: 41 x 48 (was 41 x 49)
+[13392,8s] block 27 x0,35: 36 x 51 (was 37 x 53)
+[13408,3s] block 20 x0,75: 35 x 46 (was 35 x 46)
+[13411,4s] block 4 x0,35: 26 x 48 (was 27 x 49)
+[13430,4s] block 20 x0,85: 40 x 47 (was 40 x 47)
+[13463,7s] block 20 x0,67: 38 x 56 (was 38 x 57)
+[13483,4s] block 6 x0,55: 27 x 72 (was 28 x 75)
+[13483,7s] block 2 x0,35: 20 x 138 (was 20 x 138)
+[13497,2s] block 29 x1,20: 32 x 70 (was 32 x 70)
+[13516,0s] block 12 x1,40: 84 x 24 (was 86 x 25)
+[13522,7s] block 23 x1,80: 65 x 25 (was 70 x 26)
+[13540,8s] block 8 x0,55: 30 x 80 (was 31 x 81)
+[13544,9s] block 27 x0,35: 35 x 50 (was 36 x 51)
+[13578,1s] block 10 x0,35: 47 x 54 (was 47 x 54)
+[13582,6s] block 10 x1,20: 90 x 30 (was 91 x 31)
+[13585,9s] block 18 x0,85: 40 x 47 (was 41 x 48)
+[13595,0s] block 20 x0,67: 37 x 55 (was 38 x 56)
+[13596,8s] block 1: 41 x 60 (was 42 x 62)
+[13607,3s] block 9 x0,55: 31 x 83 (was 31 x 83)
+[13607,4s] block 12 x0,85: 71 x 34 (was 71 x 34)
+[13619,3s] block 8 x1,40: 49 x 51 (was 50 x 52)
+[13631,3s] block 7 x0,67: 49 x 49 (was 50 x 50)
+[13645,4s] block 9 x0,67: 35 x 77 (was 35 x 77)
+[13692,4s] block 18 x0,85: 40 x 47 (was 40 x 47)
+[13695,1s] block 18 x1,80: 58 x 32 (was 58 x 32)
+[13704,7s] block 33 x1,80: 70 x 40 (was 79 x 45)
+[13714,7s] block 2 x0,35: 19 x 136 (was 20 x 138)
+[13746,3s] block 20 x0,67: 36 x 54 (was 37 x 55)
+[13793,6s] block 27 x0,35: 35 x 50 (was 35 x 50)
+[13828,9s] block 18 x0,85: 39 x 46 (was 40 x 47)
+[13847,9s] block 30 x1,40: 49 x 36 (was 56 x 41)
+[13865,3s] block 8 x0,55: 30 x 80 (was 30 x 80)
+[13892,8s] block 29 x0,75: 24 x 82 (was 24 x 84)
+[13910,5s] block 20 x0,67: 35 x 53 (was 36 x 54)
+[13937,0s] block 5: 85 x 34 (was 88 x 36)
+[13955,1s] block 14 x0,67: 37 x 35 (was 38 x 36)
+[13967,1s] block 9 x0,85: 36 x 62 (was 37 x 63)
+[13969,9s] block 20 x0,75: 35 x 46 (was 35 x 46)
+[14007,0s] block 29 x1,80: 35 x 51 (was 35 x 51)
+[14030,6s] block 8 x1,40: 48 x 50 (was 49 x 51)
+[14046,6s] block 9 x0,85: 35 x 60 (was 36 x 62)
+[14052,0s] block 20 x0,67: 35 x 53 (was 35 x 53)
+[14099,5s] block 28 x1,20: 35 x 56 (was 39 x 64)
+[14141,9s] block 5: 83 x 34 (was 85 x 34)
+[14144,4s] block 8 x1,40: 48 x 50 (was 48 x 50)
+[14166,5s] block 29 x1,20: 31 x 68 (was 32 x 70)
+[14186,6s] block 23 x1,20: 53 x 30 (was 57 x 32)
+[14205,1s] block 11 x1,40: 87 x 31 (was 87 x 31)
+[14205,3s] block 28: 32 x 61 (was 32 x 61)
+[14206,5s] block 12: 80 x 32 (was 82 x 33)
+[14221,7s] block 1 x0,55: 32 x 85 (was 32 x 85)
+[14285,6s] block 2 x1,20: 35 x 72 (was 35 x 72)
+[14300,4s] block 9 x0,67: 35 x 75 (was 35 x 77)
+[14347,3s] block 33 x1,40: 66 x 49 (was 70 x 52)
+[14349,2s] block 5: 81 x 33 (was 83 x 34)
+[14351,6s] block 23 x1,20: 52 x 29 (was 53 x 30)
+[14357,0s] block 18 x1,80: 58 x 32 (was 58 x 32)
+[14360,1s] block 20 x0,85: 40 x 47 (was 40 x 47)
+[14362,7s] block 5: 80 x 33 (was 81 x 33)
+[14372,4s] block 10 x0,55: 64 x 47 (was 64 x 47)
+[14378,7s] block 5: 78 x 32 (was 80 x 33)
+[14393,1s] block 7 x0,85: 55 x 44 (was 56 x 44)
+[14398,8s] block 23 x1,40: 58 x 28 (was 62 x 30)
+[14403,1s] block 8 x1,40: 48 x 50 (was 48 x 50)
+[14446,0s] block 20: 42 x 42 (was 42 x 42)
+[14447,4s] block 20 x1,20: 46 x 38 (was 47 x 39)
+[14458,1s] block 7 x0,85: 54 x 43 (was 55 x 44)
+[14459,5s] block 20 x0,67: 35 x 53 (was 35 x 53)
+[14463,9s] block 9 x0,35: 24 x 98 (was 24 x 100)
+[14483,2s] block 7 x0,75: 53 x 47 (was 53 x 47)
+[14509,0s] block 9: 41 x 60 (was 41 x 60)
+[14518,6s] block 7 x0,85: 54 x 43 (was 54 x 43)
+[14625,7s] block 13: 55 x 37 (was 55 x 37)
+[14626,8s] block 13 x1,40: 64 x 30 (was 64 x 30)
+[14633,2s] block 13: 55 x 37 (was 55 x 37)
+[14638,9s] block 13: 54 x 36 (was 55 x 37)
+[14652,4s] block 8 x1,40: 48 x 50 (was 48 x 50)
+[14653,3s] block 18 x0,75: 38 x 51 (was 38 x 51)
+[14664,0s] block 9 x0,75: 35 x 68 (was 35 x 68)
+[14687,2s] block 7 x0,85: 54 x 43 (was 54 x 43)
+[14693,0s] block 5 x0,85: 69 x 33 (was 71 x 34)
+[14755,6s] block 6 x1,80: 53 x 43 (was 53 x 43)
+[14756,3s] block 8 x1,40: 48 x 50 (was 48 x 50)
+[14765,3s] block 30 x0,55: 34 x 65 (was 35 x 66)
+[14774,9s] block 32 x0,75: 54 x 35 (was 57 x 37)
+[14786,5s] block 30 x0,75: 36 x 50 (was 41 x 57)
+[14803,5s] block 10 x1,20: 90 x 30 (was 90 x 30)
+[14814,7s] block 33 x1,40: 64 x 47 (was 66 x 49)
+[14835,3s] block 23 x0,85: 43 x 34 (was 44 x 35)
+[14840,9s] block 5 x0,85: 68 x 33 (was 69 x 33)
+[14930,3s] block 29 x0,35: 19 x 140 (was 19 x 142)
+[14968,1s] block 33: 47 x 49 (was 48 x 50)
+[14973,0s] block 23 x1,20: 51 x 29 (was 52 x 29)
+[14975,9s] block 11 x0,85: 70 x 41 (was 72 x 42)
+[14979,4s] block 23 x0,85: 41 x 33 (was 43 x 34)
+[15005,8s] preview: routed at 297 x 303
+[15005,8s] preview: smallest routed factory 297 x 303 of 1 routed
+[15017,7s] block 25 x1,40: 35 x 62 (was 36 x 64)
+[15040,1s] preview: 297 x 303 (89991 tiles), saved
+[15040,1s] preview: 297 x 303 (89991 tiles); blocks setting its size: [5, 7, 8, 9, 11, 12, 13, 16, 17, 18, 20, 23, 28, 30, 33, 34]
+[15040,6s] block 9 x0,55: 31 x 81 (was 31 x 83)
+[15047,5s] block 29 x1,20: 31 x 68 (was 31 x 68)
+[15050,8s] block 30 x0,55: 34 x 65 (was 34 x 65)
+[15055,7s] block 9 x0,55: 30 x 80 (was 31 x 81)
+[15065,7s] block 16 x0,85: 42 x 50 (was 48 x 56)
+[15082,6s] block 34 x0,67: 21 x 76 (was 24 x 88)
+[15159,3s] block 9 x1,40: 50 x 52 (was 50 x 52)
+[15181,7s] block 30: 42 x 44 (was 43 x 45)
+[15182,5s] block 30 x0,55: 33 x 63 (was 34 x 65)
+[15202,1s] block 34 x1,80: 35 x 48 (was 35 x 48)
+[15205,1s] block 9: 41 x 59 (was 41 x 60)
+[15210,7s] block 9 x0,75: 35 x 68 (was 35 x 68)
+[15287,7s] block 9 x0,55: 30 x 80 (was 30 x 80)
+[15290,1s] block 30 x0,75: 35 x 48 (was 36 x 50)
+[15291,5s] block 33 x1,80: 67 x 39 (was 70 x 40)
+[15305,7s] block 9 x0,75: 35 x 68 (was 35 x 68)
+[15330,2s] block 16: 46 x 46 (was 52 x 52)
+[15346,1s] block 30 x0,67: 38 x 59 (was 38 x 60)
+[15350,4s] block 33 x0,35: 31 x 91 (was 35 x 103)
+[15374,8s] block 34 x0,55: 20 x 86 (was 20 x 86)
+[15381,4s] block 33 x0,55: 35 x 66 (was 36 x 67)
+[15397,8s] block 34 x1,80: 35 x 48 (was 35 x 48)
+[15405,7s] block 30 x0,55: 33 x 62 (was 33 x 63)
+[15407,6s] block 9 x0,67: 34 x 74 (was 35 x 75)
+[15411,4s] block 9 x1,20: 49 x 60 (was 50 x 61)
+[15459,2s] block 30 x0,67: 37 x 57 (was 38 x 59)
+[15469,2s] block 9 x1,20: 49 x 60 (was 49 x 60)
+[15506,0s] block 34 x0,67: 20 x 74 (was 21 x 76)
+[15565,0s] block 9 x1,20: 49 x 60 (was 49 x 60)
+[15565,8s] block 16: 43 x 43 (was 46 x 46)
+[15572,5s] block 30 x0,67: 36 x 56 (was 37 x 57)
+[15587,1s] block 9 x0,55: 30 x 80 (was 30 x 80)
+[15593,8s] block 33 x0,67: 43 x 66 (was 48 x 74)
+[15607,0s] block 30 x0,67: 35 x 55 (was 36 x 56)
+[15617,8s] block 9 x0,75: 35 x 68 (was 35 x 68)
+[15638,3s] block 33 x0,75: 45 x 62 (was 51 x 70)
+[15647,9s] block 30 x0,55: 33 x 62 (was 33 x 62)
+[15662,8s] block 30 x0,85: 41 x 50 (was 43 x 53)
+[15688,6s] block 34 x0,67: 20 x 72 (was 20 x 74)
+[15721,9s] block 30 x0,55: 32 x 61 (was 33 x 62)
+[15744,8s] block 33 x0,67: 39 x 61 (was 43 x 66)
+[15757,2s] block 33 x0,55: 35 x 66 (was 35 x 66)
+[15785,3s] block 30 x1,80: 62 x 36 (was 63 x 37)
+[15790,7s] block 34 x1,40: 33 x 57 (was 33 x 57)
+[15844,3s] block 9 x1,20: 48 x 58 (was 49 x 60)
+[15848,7s] block 33 x1,40: 64 x 47 (was 64 x 47)
+[15849,0s] block 33 x0,85: 48 x 58 (was 54 x 66)
+[15860,7s] block 9: 40 x 58 (was 41 x 59)
+[15943,9s] block 8 x1,40: 47 x 49 (was 48 x 50)
+[15953,4s] block 23 x0,35: 31 x 60 (was 31 x 60)
+[15959,0s] block 28 x1,40: 37 x 52 (was 42 x 59)
+[15982,2s] block 11 x0,85: 69 x 41 (was 70 x 41)
+[15996,3s] block 16: 42 x 42 (was 43 x 43)
+[16015,1s] block 8 x1,20: 47 x 57 (was 47 x 57)
+[16028,4s] block 18 x0,75: 38 x 51 (was 38 x 51)
+[16029,5s] block 11 x0,85: 69 x 41 (was 69 x 41)
+[16056,5s] block 31 x1,20: 33 x 54 (was 33 x 56)
+[16068,1s] block 23 x0,85: 41 x 33 (was 41 x 33)
+[16076,9s] block 8 x0,67: 33 x 72 (was 34 x 74)
+[16092,1s] block 11 x0,85: 69 x 41 (was 69 x 41)
+[16152,3s] block 11 x0,85: 68 x 40 (was 69 x 41)
+[16152,4s] block 7 x1,80: 85 x 32 (was 87 x 32)
+[16165,1s] block 28 x1,40: 35 x 48 (was 37 x 52)
+[16178,6s] block 12 x0,85: 71 x 34 (was 71 x 34)
+[16187,0s] block 9 x0,75: 35 x 68 (was 35 x 68)
+[16192,2s] block 23 x0,35: 31 x 60 (was 31 x 60)
+[16201,8s] block 23 x0,67: 37 x 37 (was 38 x 38)
+[16214,4s] block 31 x1,20: 32 x 53 (was 33 x 54)
+[16241,7s] block 33 x1,80: 67 x 39 (was 67 x 39)
+[16280,1s] block 11 x1,40: 87 x 31 (was 87 x 31)
+[16286,4s] block 12 x0,55: 63 x 46 (was 64 x 47)
+[16331,1s] block 3 x0,55: 24 x 88 (was 24 x 88)
+[16333,0s] block 31 x0,67: 25 x 76 (was 26 x 78)
+[16333,3s] block 20 x1,40: 51 x 36 (was 54 x 39)
+[16355,7s] block 31 x0,35: 18 x 100 (was 18 x 100)
+[16382,3s] block 7 x0,85: 54 x 43 (was 54 x 43)
+[16388,3s] block 5 x0,55: 53 x 40 (was 56 x 41)
+[16392,4s] block 34 x0,67: 20 x 72 (was 20 x 72)
+[16398,9s] block 12 x0,35: 42 x 48 (was 42 x 48)
+[16403,4s] block 11 x0,75: 56 x 38 (was 56 x 38)
+[16415,6s] block 7 x0,67: 49 x 49 (was 49 x 49)
+[16429,2s] block 23 x1,20: 51 x 29 (was 51 x 29)
+[16444,0s] block 23 x0,67: 37 x 37 (was 37 x 37)
+[16469,6s] block 34 x1,40: 32 x 55 (was 33 x 57)
+[16473,2s] block 23 x0,85: 40 x 32 (was 41 x 33)
+[16528,9s] block 26: 44 x 46 (was 47 x 49)
+[16567,1s] block 33: 47 x 49 (was 47 x 49)
+[16576,1s] block 21 x0,85: 53 x 32 (was 57 x 34)
+[16581,3s] block 11 x0,85: 66 x 39 (was 68 x 40)
+[16593,2s] block 32 x0,85: 60 x 34 (was 61 x 35)
+[16602,8s] block 7 x0,85: 53 x 42 (was 54 x 43)
+[16640,6s] block 20 x0,85: 39 x 46 (was 40 x 47)
+[16643,0s] block 13: 53 x 35 (was 54 x 36)
+[16704,1s] block 5 x0,55: 53 x 40 (was 53 x 40)
+[16732,3s] block 5 x0,35: 47 x 55 (was 48 x 56)
+[16796,1s] block 13 x0,35: 34 x 65 (was 35 x 66)
+[16796,1s] block 7 x1,80: 83 x 31 (was 85 x 32)
+[16809,6s] block 31 x0,35: 18 x 100 (was 18 x 100)
+[16813,8s] block 26 x1,40: 49 x 36 (was 56 x 41)
+[16815,6s] block 34 x0,35: 20 x 142 (was 22 x 153)
+[16815,8s] block 5 x0,85: 68 x 33 (was 68 x 33)
+[16824,9s] block 32 x0,75: 54 x 35 (was 54 x 35)
+[16835,5s] block 11 x0,85: 65 x 38 (was 66 x 39)
+[16843,9s] block 31 x0,55: 24 x 86 (was 24 x 86)
+[16844,0s] block 13 x0,35: 33 x 63 (was 34 x 65)
+[16883,1s] block 11 x0,85: 64 x 38 (was 65 x 38)
+[16884,4s] block 20 x1,40: 49 x 35 (was 51 x 36)
+[16886,3s] block 34 x0,35: 20 x 137 (was 20 x 142)
+[16975,3s] block 11 x0,85: 63 x 37 (was 64 x 38)
+[16988,2s] block 13 x0,35: 33 x 63 (was 33 x 63)
+[16994,6s] block 16: 41 x 41 (was 42 x 42)
+[17041,8s] block 11 x0,85: 61 x 36 (was 63 x 37)
+[17047,6s] block 13 x0,35: 33 x 63 (was 33 x 63)
+[17057,3s] block 30 x1,80: 60 x 35 (was 62 x 36)
+[17072,4s] block 13 x0,55: 42 x 51 (was 44 x 53)
+[17115,4s] block 23 x1,20: 49 x 28 (was 51 x 29)
+[17139,9s] block 15 x0,75: 47 x 43 (was 50 x 45)
+[17153,1s] block 23 x0,35: 31 x 60 (was 31 x 60)
+[17206,9s] block 21 x1,20: 67 x 29 (was 76 x 33)
+[17215,6s] block 21 x0,67: 50 x 39 (was 57 x 44)
+[17232,0s] block 13 x0,35: 33 x 63 (was 33 x 63)
+[17235,9s] block 11 x0,85: 60 x 35 (was 61 x 36)
+[17273,3s] block 20 x0,85: 38 x 44 (was 39 x 46)
+[17278,1s] block 8 x0,55: 30 x 80 (was 30 x 80)
+[17299,1s] block 3 x0,55: 24 x 88 (was 24 x 88)
+[17303,3s] block 32 x0,85: 58 x 33 (was 60 x 34)
+[17313,1s] block 32 x1,40: 71 x 25 (was 73 x 25)
+[17315,1s] block 34 x1,40: 32 x 55 (was 32 x 55)
+[17318,4s] block 13 x1,80: 92 x 34 (was 105 x 39)
+[17367,5s] block 8 x0,55: 30 x 80 (was 30 x 80)
+[17376,7s] block 16 x0,85: 41 x 49 (was 42 x 50)
+[17379,4s] block 5 x0,35: 47 x 55 (was 47 x 55)
+[17390,9s] block 13 x0,35: 33 x 63 (was 33 x 63)
+[17416,5s] block 12 x0,55: 63 x 46 (was 63 x 46)
+[17430,2s] block 32 x0,75: 54 x 35 (was 54 x 35)
+[17430,4s] block 7 x0,75: 53 x 47 (was 53 x 47)
+[17440,0s] block 32 x0,85: 57 x 32 (was 58 x 33)
+[17462,9s] block 20 x1,20: 45 x 37 (was 46 x 38)
+[17464,9s] block 5 x0,75: 64 x 35 (was 65 x 35)
+[17471,6s] block 7 x0,85: 53 x 42 (was 53 x 42)
+[17508,2s] block 33 x1,20: 57 x 49 (was 65 x 56)
+[17517,6s] block 26: 43 x 45 (was 44 x 46)
+[17535,5s] block 13 x0,55: 41 x 50 (was 42 x 51)
+[17536,9s] block 34 x0,85: 25 x 73 (was 27 x 78)
+[17538,6s] block 13 x0,35: 33 x 62 (was 33 x 63)
+[17553,0s] block 31 x0,55: 24 x 86 (was 24 x 86)
+[17558,0s] block 16 x0,85: 41 x 48 (was 41 x 49)
+[17560,7s] block 30 x1,80: 60 x 35 (was 60 x 35)
+[17563,7s] block 23 x0,35: 31 x 60 (was 31 x 60)
+[17584,0s] block 32 x0,85: 56 x 32 (was 57 x 32)
+[17588,0s] block 34 x0,67: 20 x 72 (was 20 x 72)
+[17597,3s] block 33 x0,35: 30 x 89 (was 31 x 91)
+[17609,3s] block 33 x0,55: 35 x 66 (was 35 x 66)
+[17716,6s] block 32 x0,85: 54 x 31 (was 56 x 32)
+[17722,5s] block 23 x1,40: 58 x 28 (was 58 x 28)
+[17757,1s] block 32 x1,20: 52 x 21 (was 54 x 22)
+[17765,6s] block 7 x1,40: 72 x 35 (was 72 x 35)
+[17774,0s] block 11 x0,55: 50 x 46 (was 51 x 47)
+[17779,1s] block 32 x0,75: 52 x 34 (was 54 x 35)
+[17799,4s] block 34: 30 x 73 (was 31 x 75)
+[17800,0s] block 26: 42 x 44 (was 43 x 45)
+[17806,5s] block 5 x0,55: 53 x 40 (was 53 x 40)
+[17810,0s] block 8 x1,40: 46 x 48 (was 47 x 49)
+[17843,2s] block 23 x0,67: 36 x 36 (was 37 x 37)
+[17902,5s] block 8 x0,85: 36 x 62 (was 37 x 63)
+[17940,5s] block 33 x1,80: 67 x 39 (was 67 x 39)
+[17947,6s] block 32 x0,85: 53 x 30 (was 54 x 31)
+[18033,7s] block 21 x1,20: 63 x 27 (was 67 x 29)
+[18053,8s] block 3 x0,55: 24 x 88 (was 24 x 88)
+[18060,2s] block 28 x1,80: 45 x 49 (was 48 x 52)
+[18070,1s] block 32 x0,75: 51 x 33 (was 52 x 34)
+[18078,5s] block 30 x0,55: 32 x 61 (was 32 x 61)
+[18124,8s] block 16 x0,85: 41 x 48 (was 41 x 48)
+[18133,5s] block 11 x1,80: 85 x 24 (was 87 x 24)
+[18225,6s] block 32 x1,40: 70 x 24 (was 71 x 25)
+[18230,9s] block 32 x0,75: 51 x 33 (was 51 x 33)
+[18257,8s] block 32 x0,85: 53 x 30 (was 53 x 30)
+[18282,6s] block 17: 31 x 77 (was 32 x 78)
+[18339,4s] block 28: 32 x 61 (was 32 x 61)
+[18343,1s] block 31 x0,67: 25 x 74 (was 25 x 76)
+[18358,5s] block 13 x0,55: 40 x 48 (was 41 x 50)
+[18395,1s] block 33 x0,85: 47 x 57 (was 48 x 58)
+[18511,2s] block 7 x0,67: 49 x 49 (was 49 x 49)
+[18520,2s] block 8 x1,80: 58 x 47 (was 58 x 47)
+[18531,6s] block 13 x0,35: 33 x 62 (was 33 x 62)
+[18534,7s] block 28: 32 x 61 (was 32 x 61)
+[18548,1s] block 8 x0,85: 35 x 60 (was 36 x 62)
+[18577,0s] block 32: 53 x 26 (was 53 x 26)
+[18589,1s] block 31 x0,55: 24 x 86 (was 24 x 86)
+[18617,9s] block 33 x0,85: 47 x 57 (was 47 x 57)
+[18628,0s] block 32 x0,75: 51 x 33 (was 51 x 33)
+[18649,7s] block 34 x0,35: 19 x 134 (was 20 x 137)
+[18700,2s] block 15 x0,35: 30 x 58 (was 31 x 60)
+[18713,2s] block 16 x0,75: 40 x 53 (was 45 x 60)
+[18736,0s] block 21 x0,75: 53 x 36 (was 60 x 41)
+[18751,6s] block 23 x0,67: 35 x 35 (was 36 x 36)
+[18781,6s] block 17: 31 x 75 (was 31 x 77)
+[18794,6s] block 31 x1,20: 32 x 53 (was 32 x 53)
+[18800,0s] block 13 x1,80: 85 x 32 (was 92 x 34)
+[18802,9s] block 13 x0,35: 33 x 62 (was 33 x 62)
+[18838,9s] block 8: 41 x 59 (was 41 x 59)
+[18856,5s] block 8 x0,85: 35 x 60 (was 35 x 60)
+[18870,8s] block 31 x0,67: 24 x 73 (was 25 x 74)
+[18941,9s] block 13 x0,67: 47 x 47 (was 48 x 48)
+[18993,5s] block 13 x0,35: 32 x 61 (was 33 x 62)
+[19067,5s] block 13 x1,20: 63 x 35 (was 64 x 36)
+[19103,9s] block 32 x0,75: 50 x 32 (was 51 x 33)
+[19193,7s] block 32: 52 x 25 (was 53 x 26)
+[19341,6s] preview: corridors at 300 x 293 did not route (4 conflicts, 0 unrouted); widening near 4 trouble tiles [(99,27), (35,74), (100,27), (21,73)]
+[19365,0s] block 20: 41 x 41 (was 42 x 42)
+[19367,5s] block 26 x0,85: 38 x 47 (was 43 x 53)
+[19378,4s] block 11 x0,85: 59 x 35 (was 60 x 35)
+[19397,8s] preview: corridors at 301 x 295 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(99,27), (100,27)]
+[19422,3s] block 30 x1,40: 47 x 35 (was 49 x 36)
+[19441,2s] preview: corridors at 301 x 297 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(99,27), (100,27)]
+[19444,3s] block 31 x0,75: 28 x 73 (was 28 x 73)
+[19447,6s] block 17: 31 x 75 (was 31 x 75)
+[19462,8s] block 21 x0,75: 52 x 36 (was 53 x 36)
+[19494,7s] preview: corridors at 301 x 299 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(99,27), (100,27)]
+[19495,8s] block 32 x0,75: 50 x 32 (was 50 x 32)
+[19509,2s] block 33 x1,40: 64 x 47 (was 64 x 47)
+[19557,6s] preview: corridors at 301 x 301 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(99,27), (100,27)]
+[19583,0s] block 32 x0,55: 46 x 40 (was 49 x 43)
+[19604,8s] preview: corridors at 301 x 303 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(99,27), (100,27)]
+[19613,9s] block 3 x0,55: 24 x 86 (was 24 x 88)
+[19622,3s] block 33 x0,75: 43 x 60 (was 45 x 62)
+[19648,6s] preview: corridors at 301 x 305 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(99,27), (100,27)]
+[19650,1s] block 34 x1,40: 32 x 55 (was 32 x 55)
+[19659,1s] block 33 x1,20: 55 x 47 (was 57 x 49)
+[19668,2s] block 21 x0,75: 51 x 35 (was 52 x 36)
+[19686,1s] block 11 x0,35: 39 x 56 (was 40 x 57)
+[19687,2s] block 13 x0,75: 49 x 43 (was 51 x 45)
+[19687,4s] block 33 x0,55: 35 x 66 (was 35 x 66)
+[19691,4s] block 3 x1,20: 35 x 58 (was 36 x 59)
+[19695,8s] preview: corridors at 301 x 307 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(99,27), (100,27)]
+[19695,8s] preview: did not stitch
+[19703,9s] block 13 x0,75: 48 x 42 (was 49 x 43)
+[19729,7s] block 32 x0,35: 37 x 51 (was 39 x 54)
+[19779,9s] block 30 x0,75: 35 x 48 (was 35 x 48)
+[19803,4s] block 9 x0,75: 35 x 68 (was 35 x 68)
+[19894,5s] block 34 x0,55: 20 x 86 (was 20 x 86)
+[20014,0s] block 23 x1,40: 58 x 28 (was 58 x 28)
+[20017,7s] block 32 x0,35: 36 x 49 (was 37 x 51)
+[20122,8s] block 32 x0,67: 51 x 37 (was 54 x 39)
+[20142,0s] block 33 x0,85: 47 x 57 (was 47 x 57)
+[20150,0s] block 13 x0,75: 48 x 42 (was 48 x 42)
+[20176,8s] block 34 x1,40: 31 x 54 (was 32 x 55)
+[20183,7s] block 5 x1,40: 82 x 24 (was 89 x 26)
+[20185,2s] block 33 x1,20: 54 x 46 (was 55 x 47)
+[20193,7s] block 34 x1,80: 34 x 46 (was 35 x 48)
+[20202,4s] block 3 x1,40: 47 x 67 (was 47 x 67)
+[20202,8s] block 32 x0,35: 35 x 48 (was 36 x 49)
+[20212,7s] block 31 x0,55: 24 x 86 (was 24 x 86)
+[20214,4s] block 32 x0,75: 49 x 31 (was 50 x 32)
+[20221,6s] block 32 x0,67: 49 x 36 (was 51 x 37)
+[20233,2s] block 23 x1,40: 58 x 28 (was 58 x 28)
+[20237,4s] block 13 x0,75: 47 x 41 (was 48 x 42)
+[20275,3s] block 32 x0,55: 45 x 39 (was 46 x 40)
+[20294,1s] block 32 x0,75: 47 x 31 (was 49 x 31)
+[20294,1s] block 32 x0,67: 48 x 35 (was 49 x 36)
+[20339,7s] block 15 x0,67: 42 x 42 (was 43 x 43)
+[20349,5s] block 13 x0,75: 47 x 41 (was 47 x 41)
+[20433,5s] block 32 x0,55: 44 x 38 (was 45 x 39)
+[20460,1s] block 15 x1,80: 65 x 25 (was 70 x 26)
+[20468,0s] block 34 x1,40: 31 x 54 (was 31 x 54)
+[20469,5s] block 18 x0,67: 35 x 53 (was 36 x 54)
+[20472,8s] block 13 x0,75: 46 x 41 (was 47 x 41)
+[20523,0s] block 31 x1,20: 32 x 53 (was 32 x 53)
+[20562,0s] block 28 x0,35: 20 x 111 (was 21 x 118)
+[20568,6s] block 32 x0,55: 43 x 38 (was 44 x 38)
+[20571,4s] block 20 x0,85: 38 x 44 (was 38 x 44)
+[20629,9s] block 21 x1,80: 77 x 22 (was 82 x 24)
+[20643,2s] block 13 x0,75: 46 x 41 (was 46 x 41)
+[20669,8s] block 15 x0,85: 45 x 36 (was 48 x 38)
+[20768,6s] block 12: 79 x 32 (was 80 x 32)
+[20785,6s] block 32 x0,55: 42 x 37 (was 43 x 38)
+[20834,7s] block 32 x0,35: 34 x 47 (was 35 x 48)
+[20875,3s] block 21 x0,75: 51 x 35 (was 51 x 35)
+[20880,7s] block 9 x1,40: 49 x 51 (was 50 x 52)
+[20898,5s] block 13 x0,67: 47 x 47 (was 47 x 47)
+[20920,9s] block 9 x1,40: 49 x 51 (was 49 x 51)
+[21002,1s] block 16 x0,67: 40 x 60 (was 43 x 64)
+[21011,0s] block 11 x1,20: 76 x 32 (was 77 x 32)
+[21012,7s] block 18 x0,85: 39 x 46 (was 39 x 46)
+[21064,4s] block 18 x1,40: 50 x 35 (was 50 x 35)
+[21088,3s] block 3 x1,20: 35 x 58 (was 35 x 58)
+[21117,1s] block 32 x0,55: 41 x 36 (was 42 x 37)
+[21144,4s] block 32 x0,85: 53 x 30 (was 53 x 30)
+[21156,1s] block 32 x0,67: 48 x 35 (was 48 x 35)
+[21184,1s] block 32 x1,40: 68 x 24 (was 70 x 24)
+[21226,4s] block 5 x0,67: 59 x 36 (was 62 x 37)
+[21230,4s] block 34 x0,35: 19 x 134 (was 19 x 134)
+[21250,2s] block 5 x1,20: 76 x 26 (was 82 x 28)
+[21276,8s] block 32 x0,55: 41 x 36 (was 41 x 36)
+[21427,2s] block 32 x0,67: 47 x 34 (was 48 x 35)
+[21474,6s] block 8 x0,55: 30 x 80 (was 30 x 80)
+[21488,6s] block 17 x1,80: 38 x 51 (was 43 x 58)
+[21526,5s] block 11 x1,40: 85 x 30 (was 87 x 31)
+[21625,6s] block 15 x0,55: 38 x 47 (was 39 x 48)
+[21706,1s] block 7 x1,40: 71 x 34 (was 72 x 35)
+[21719,0s] block 20 x0,35: 24 x 69 (was 25 x 71)
+[21834,9s] block 32 x0,55: 41 x 36 (was 41 x 36)
+[21891,1s] block 24: 38 x 58 (was 39 x 59)
+[21894,4s] block 16 x1,40: 54 x 39 (was 62 x 44)
+[21896,0s] block 18 x0,67: 35 x 53 (was 35 x 53)
+[21912,8s] block 21 x1,40: 73 x 27 (was 82 x 30)
+[21916,7s] block 17 x0,75: 21 x 67 (was 28 x 90)
+[21946,7s] block 8: 40 x 58 (was 41 x 59)
+[22037,9s] block 32 x1,20: 52 x 21 (was 52 x 21)
+[22119,8s] block 32 x1,40: 66 x 23 (was 68 x 24)
+[22164,5s] block 12 x0,67: 59 x 36 (was 61 x 36)
+[22210,7s] block 20 x1,20: 44 x 37 (was 45 x 37)
+[22239,5s] block 15 x0,67: 41 x 41 (was 42 x 42)
+[22352,1s] block 31 x0,67: 24 x 71 (was 24 x 73)
+[22374,7s] block 16 x0,85: 41 x 48 (was 41 x 48)
+[22414,3s] block 21 x0,85: 53 x 32 (was 53 x 32)
+[22421,3s] block 7: 68 x 46 (was 68 x 46)
+[22434,9s] block 8 x1,40: 46 x 48 (was 46 x 48)
+[22489,6s] block 13 x0,55: 40 x 48 (was 40 x 48)
+[22522,2s] block 15 x0,55: 37 x 45 (was 38 x 47)
+[22568,1s] block 14 x0,75: 37 x 32 (was 38 x 33)
+[22572,9s] block 1: 41 x 60 (was 41 x 60)
+[22581,0s] block 1: 41 x 59 (was 41 x 60)
+[22590,6s] block 1: 40 x 58 (was 41 x 59)
+[22598,1s] block 7 x0,55: 47 x 58 (was 47 x 58)
+[22640,8s] block 31 x1,20: 32 x 53 (was 32 x 53)
+[22816,9s] block 15 x0,67: 41 x 41 (was 41 x 41)
+[22857,7s] block 32 x0,67: 47 x 34 (was 47 x 34)
+[22952,2s] block 31 x0,55: 24 x 86 (was 24 x 86)
+[22997,2s] block 32 x0,55: 41 x 36 (was 41 x 36)
+[23014,7s] block 26 x1,40: 47 x 35 (was 49 x 36)
+[23105,2s] block 18: 46 x 46 (was 47 x 47)
+[23110,9s] block 18: 46 x 46 (was 46 x 46)
+[23119,5s] block 18: 45 x 45 (was 46 x 46)
+[23122,6s] block 18: 45 x 45 (was 45 x 45)
+[23127,1s] block 18: 44 x 44 (was 45 x 45)
+[23158,7s] block 10 x1,80: 101 x 23 (was 104 x 23)
+[23164,8s] block 23 x1,40: 56 x 27 (was 58 x 28)
+[23184,9s] block 6 x0,75: 35 x 68 (was 35 x 68)
+[23231,8s] block 8 x1,80: 58 x 47 (was 58 x 47)
+[23235,3s] block 22 x1,40: 48 x 35 (was 48 x 35)
+[23252,1s] block 33 x1,80: 66 x 38 (was 67 x 39)
+[23266,5s] block 24: 37 x 57 (was 38 x 58)
+[23342,5s] block 8 x0,55: 30 x 80 (was 30 x 80)
+[23397,4s] block 20 x0,67: 35 x 53 (was 35 x 53)
+[23410,4s] block 15 x0,55: 36 x 44 (was 37 x 45)
+[23453,3s] block 33 x0,75: 43 x 59 (was 43 x 60)
+[23462,4s] block 11 x0,55: 50 x 46 (was 50 x 46)
+[23486,6s] block 4 x0,35: 26 x 48 (was 26 x 48)
+[23500,0s] block 16 x0,35: 22 x 64 (was 23 x 66)
+[23507,9s] block 9 x0,67: 34 x 74 (was 34 x 74)
+[23542,3s] block 3 x0,67: 31 x 93 (was 32 x 95)
+[23565,1s] block 5 x1,80: 118 x 27 (was 135 x 30)
+[23565,5s] block 24: 36 x 56 (was 37 x 57)
+[23569,2s] block 8 x0,55: 30 x 80 (was 30 x 80)
+[23774,5s] block 22 x1,80: 54 x 31 (was 54 x 31)
+[23780,4s] block 1 x1,20: 48 x 58 (was 49 x 60)
+[23857,3s] block 5 x0,35: 47 x 55 (was 47 x 55)
+[23884,2s] block 28 x0,75: 34 x 87 (was 39 x 101)
+[23896,8s] block 3 x0,67: 31 x 92 (was 31 x 93)
+[23935,5s] block 18 x1,40: 49 x 35 (was 50 x 35)
+[23971,2s] block 14 x0,67: 36 x 34 (was 37 x 35)
+[23977,5s] block 34 x1,20: 28 x 57 (was 28 x 57)
+[23997,2s] block 24: 36 x 54 (was 36 x 56)
+[24062,7s] block 9: 39 x 57 (was 40 x 58)
+[24118,3s] block 18 x0,67: 35 x 53 (was 35 x 53)
+[24125,4s] block 9 x0,35: 24 x 98 (was 24 x 98)
+[24127,8s] block 9 x1,40: 48 x 50 (was 49 x 51)
+[24185,0s] block 13 x0,75: 45 x 40 (was 46 x 41)
+[24253,4s] block 12 x0,55: 63 x 46 (was 63 x 46)
+[24268,0s] block 7 x0,75: 53 x 47 (was 53 x 47)
+[24290,9s] block 5 x1,80: 109 x 25 (was 118 x 27)
+[24319,6s] block 16 x0,35: 22 x 63 (was 22 x 64)
+[24322,8s] block 30 x1,20: 50 x 44 (was 51 x 45)
+[24347,2s] block 3 x0,67: 31 x 92 (was 31 x 92)
+[24363,2s] block 12 x0,35: 41 x 47 (was 42 x 48)
+[24377,3s] block 5 x1,80: 105 x 24 (was 109 x 25)
+[24415,7s] block 30 x1,20: 49 x 43 (was 50 x 44)
+[24424,1s] block 15 x0,67: 40 x 40 (was 41 x 41)
+[24430,7s] block 12: 79 x 32 (was 79 x 32)
+[24523,8s] block 33 x0,75: 42 x 57 (was 43 x 59)
+[24544,6s] block 16 x0,35: 21 x 61 (was 22 x 63)
+[24554,2s] block 3 x0,67: 31 x 92 (was 31 x 92)
+[24568,2s] block 11 x0,55: 49 x 45 (was 50 x 46)
+[24605,7s] block 16 x0,67: 39 x 59 (was 40 x 60)
+[24669,4s] block 18: 43 x 43 (was 44 x 44)
+[24899,3s] block 20: 41 x 41 (was 41 x 41)
+[24942,4s] block 20 x1,40: 49 x 35 (was 49 x 35)
+[24948,5s] block 16 x0,75: 37 x 50 (was 40 x 53)
+[24952,4s] block 29 x1,80: 35 x 51 (was 35 x 51)
+[24961,0s] block 11 x0,55: 48 x 44 (was 49 x 45)
+[24998,5s] block 30 x1,20: 49 x 43 (was 49 x 43)
+[25028,5s] block 11 x0,55: 47 x 43 (was 48 x 44)
+[25067,6s] block 16 x0,67: 38 x 57 (was 39 x 59)
+[25085,0s] block 29 x0,67: 20 x 77 (was 20 x 77)
+[25094,3s] block 11 x0,55: 47 x 43 (was 47 x 43)
+[25154,2s] block 29 x0,75: 23 x 80 (was 24 x 82)
+[25157,3s] block 1 x1,20: 48 x 58 (was 48 x 58)
+[25179,8s] block 9 x0,67: 34 x 74 (was 34 x 74)
+[25236,4s] block 32 x0,55: 39 x 35 (was 41 x 36)
+[25250,1s] block 32 x0,35: 33 x 46 (was 34 x 47)
+[25268,3s] block 10 x0,67: 64 x 39 (was 66 x 40)
+[25359,2s] block 34 x0,67: 20 x 72 (was 20 x 72)
+[25381,8s] block 31 x0,85: 27 x 64 (was 28 x 66)
+[25514,1s] block 15 x0,35: 30 x 57 (was 30 x 58)
+[25534,8s] block 32 x1,20: 52 x 21 (was 52 x 21)
+[25540,3s] block 11 x0,75: 56 x 38 (was 56 x 38)
+[25594,6s] block 4 x1,80: 55 x 20 (was 55 x 20)
+[25619,8s] block 28 x1,20: 35 x 56 (was 35 x 56)
+[25692,8s] block 10: 80 x 32 (was 82 x 33)
+[25797,4s] block 32 x1,80: 77 x 21 (was 89 x 24)
+[25840,1s] block 30 x0,35: 27 x 81 (was 28 x 83)
+[25844,5s] block 10 x1,20: 90 x 30 (was 90 x 30)
+[26198,4s] block 14 x1,80: 67 x 24 (was 67 x 24)
+[26203,3s] block 24: 35 x 53 (was 36 x 54)
+[26245,5s] block 28 x0,35: 20 x 108 (was 20 x 111)
+[26294,5s] block 17: 31 x 75 (was 31 x 75)
+[26306,1s] block 21 x0,75: 51 x 35 (was 51 x 35)
+[26332,8s] block 3 x1,80: 53 x 59 (was 54 x 60)
+[26449,4s] block 17 x1,80: 35 x 48 (was 38 x 51)
+[26548,8s] block 32 x1,80: 75 x 20 (was 77 x 21)
+[26575,8s] block 21 x1,80: 73 x 21 (was 77 x 22)
+[26621,2s] block 32 x0,55: 39 x 35 (was 39 x 35)
+[26748,7s] block 17 x1,40: 33 x 58 (was 38 x 66)
+[26753,5s] block 15 x0,75: 46 x 42 (was 47 x 43)
+[26820,4s] block 3 x1,80: 52 x 58 (was 53 x 59)
+[26848,1s] block 32 x1,80: 73 x 20 (was 75 x 20)
+[26881,3s] block 9 x0,67: 34 x 74 (was 34 x 74)
+[26999,2s] block 4 x0,35: 25 x 46 (was 26 x 48)
+[27012,1s] block 3 x1,80: 51 x 57 (was 52 x 58)
+[27055,2s] final factory: stitching and compacting
+[27055,2s] block 1: 40 x 58; shapes 59 x 48, 50 x 52, 48 x 58, 35 x 60, 35 x 68, 35 x 75, 32 x 85, 24 x 98
+[27055,2s] block 2: 30 x 76; shapes 40 x 55, 35 x 61, 35 x 72, 30 x 87, 24 x 80, 24 x 89, 23 x 102, 19 x 136
+[27055,2s] block 3: 34 x 68; shapes 51 x 57, 47 x 67, 35 x 58, 32 x 75, 28 x 75, 31 x 92, 24 x 86, 20 x 112
+[27055,2s] block 4: 40 x 26; shapes 55 x 20, 50 x 23, 50 x 27, 37 x 28, 36 x 31, 34 x 32, 34 x 40, 25 x 46
+[27055,2s] block 5: 78 x 32; shapes 105 x 24, 82 x 24, 76 x 26, 68 x 33, 64 x 35, 59 x 36, 53 x 40, 47 x 55
+[27055,2s] block 6: 39 x 57; shapes 53 x 43, 47 x 49, 46 x 56, 35 x 60, 35 x 68, 32 x 69, 27 x 72, 23 x 96
+[27055,2s] block 7: 68 x 46; shapes 83 x 31, 71 x 34, 63 x 35, 53 x 42, 53 x 47, 49 x 49, 47 x 58, 35 x 67
+[27055,2s] block 8: 40 x 58; shapes 58 x 47, 46 x 48, 47 x 57, 35 x 60, 35 x 68, 33 x 72, 30 x 80, 27 x 112
+[27055,2s] block 9: 39 x 57; shapes 61 x 49, 48 x 50, 48 x 58, 35 x 60, 35 x 68, 34 x 74, 30 x 80, 24 x 98
+[27055,2s] block 10: 80 x 32; shapes 101 x 23, 88 x 25, 90 x 30, 74 x 35, 67 x 36, 64 x 39, 64 x 47, 47 x 54
+[27055,2s] block 11: 69 x 35; shapes 85 x 24, 85 x 30, 76 x 32, 59 x 35, 56 x 38, 54 x 41, 47 x 43, 39 x 56
+[27055,2s] block 12: 79 x 32; shapes 106 x 24, 84 x 24, 95 x 32, 71 x 34, 65 x 35, 59 x 36, 63 x 46, 41 x 47
+[27055,2s] block 13: 53 x 35; shapes 85 x 32, 64 x 30, 63 x 35, 54 x 43, 45 x 40, 47 x 47, 40 x 48, 32 x 61
+[27055,2s] block 14: 46 x 30; shapes 67 x 24, 53 x 25, 52 x 28, 42 x 32, 37 x 32, 36 x 34, 34 x 40, 28 x 52
+[27055,2s] block 15: 47 x 32; shapes 65 x 25, 62 x 30, 57 x 32, 45 x 36, 46 x 42, 40 x 40, 36 x 44, 30 x 57
+[27055,2s] block 16: 41 x 41; shapes 70 x 39, 54 x 39, 57 x 47, 41 x 48, 37 x 50, 38 x 57, 39 x 70, 21 x 61
+[27055,2s] block 17: 31 x 75; shapes 35 x 48, 33 x 58, 35 x 71, 30 x 85, 21 x 67, 26 x 95, 24 x 105, 19 x 132
+[27055,2s] block 18: 43 x 43; shapes 58 x 32, 49 x 35, 48 x 40, 39 x 46, 38 x 51, 35 x 53, 32 x 58, 25 x 71
+[27055,2s] block 19: 71 x 27; shapes 118 x 26, 83 x 23, 121 x 39, 81 x 37, 76 x 40, 72 x 42, 52 x 37, 42 x 46
+[27055,2s] block 20: 41 x 41; shapes 58 x 32, 49 x 35, 44 x 37, 38 x 44, 35 x 46, 35 x 53, 32 x 58, 24 x 69
+[27055,2s] block 21: 60 x 31; shapes 73 x 21, 73 x 27, 63 x 27, 53 x 32, 51 x 35, 50 x 39, 42 x 40, 35 x 51
+[27055,2s] block 22: 39 x 41; shapes 54 x 31, 48 x 35, 51 x 44, 40 x 49, 38 x 53, 32 x 50, 32 x 60, 23 x 69
+[27055,2s] block 23: 44 x 30; shapes 65 x 25, 56 x 27, 49 x 28, 40 x 32, 39 x 35, 35 x 35, 35 x 43, 31 x 60
+[27055,2s] block 24: 35 x 53; shapes 52 x 44, 46 x 50, 43 x 54, 36 x 64, 34 x 68, 32 x 72, 29 x 80, 23 x 100
+[27055,2s] block 25: 31 x 75; shapes 41 x 56, 35 x 62, 33 x 69, 28 x 82, 26 x 87, 25 x 92, 23 x 102, 23 x 159
+[27055,2s] block 26: 42 x 44; shapes 63 x 37, 47 x 35, 51 x 45, 38 x 47, 41 x 57, 38 x 60, 35 x 66, 28 x 83
+[27055,2s] block 27: 64 x 32; shapes 120 x 33, 105 x 38, 77 x 32, 60 x 35, 77 x 51, 58 x 43, 52 x 48, 35 x 50
+[27055,2s] block 28: 32 x 61; shapes 45 x 49, 35 x 48, 35 x 56, 33 x 76, 34 x 87, 37 x 107, 27 x 94, 20 x 108
+[27055,2s] block 29: 28 x 73; shapes 35 x 51, 28 x 53, 31 x 68, 26 x 81, 23 x 80, 20 x 77, 19 x 92, 19 x 140
+[27055,2s] block 30: 42 x 44; shapes 60 x 35, 47 x 35, 49 x 43, 41 x 50, 35 x 48, 35 x 55, 32 x 61, 27 x 81
+[27055,2s] block 31: 30 x 61; shapes 42 x 46, 35 x 50, 32 x 53, 27 x 64, 28 x 73, 24 x 71, 24 x 86, 18 x 100
+[27055,2s] block 32: 52 x 25; shapes 73 x 20, 66 x 23, 52 x 21, 53 x 30, 47 x 31, 47 x 34, 39 x 35, 33 x 46
+[27055,2s] block 33: 47 x 49; shapes 66 x 38, 64 x 47, 54 x 46, 47 x 57, 42 x 57, 39 x 61, 35 x 66, 30 x 89
+[27055,2s] block 34: 30 x 73; shapes 34 x 46, 31 x 54, 28 x 57, 25 x 73, 26 x 83, 20 x 72, 20 x 86, 19 x 134
+[27077,3s] factory (floorplan 10/10): routed at 286 x 301
+[27077,5s] factory (floorplan 9/10): routed at 292 x 304
+[27080,6s] factory (floorplan 6/10): routed at 291 x 296
+[27085,4s] factory (floorplan 7/10): routed at 285 x 311
+[27085,5s] factory (floorplan 10/10): tighter corridors: 286 x 300
+[27087,5s] factory (floorplan 5/10): routed at 278 x 305
+[27087,7s] factory (floorplan 1/10): routed at 290 x 296
+[27088,3s] factory (floorplan 6/10): tighter corridors: 290 x 295
+[27096,9s] factory (floorplan 8/10): routed at 289 x 301
+[27097,2s] factory (floorplan 6/10): tighter corridors: 290 x 294
+[27099,5s] factory (floorplan 2/10): corridors at 287 x 302 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,223), (169,223)]
+[27102,0s] factory (floorplan 1/10): tighter corridors: 289 x 296
+[27116,8s] factory (floorplan 8/10): tighter corridors: 289 x 300
+[27125,3s] factory (floorplan 2/10): corridors at 287 x 303 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,225), (169,225)]
+[27149,7s] factory (floorplan 5/10): tighter corridors: 277 x 305
+[27154,7s] factory (floorplan 2/10): corridors at 287 x 305 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,227), (169,227)]
+[27182,1s] factory (floorplan 2/10): corridors at 287 x 307 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(169,229), (168,229)]
+[27200,3s] factory (floorplan 4/10): corridors at 281 x 308 did not route (11 conflicts, 0 unrouted); widening near 11 trouble tiles [(79,201), (80,153), (81,153), (84,154)]
+[27212,0s] factory (floorplan 2/10): corridors at 287 x 309 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,231), (169,231)]
+[27225,5s] factory (floorplan 4/10): routed at 284 x 312 (attempt 2)
+[27242,7s] factory (floorplan 3/10): corridors at 272 x 321 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(236,133), (236,134)]
+[27255,2s] factory (floorplan 2/10): corridors at 287 x 311 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,233), (169,233)]
+[27275,9s] factory (floorplan 3/10): routed at 276 x 321 (attempt 2)
+[27294,8s] factory (floorplan 2/10): corridors at 287 x 313 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,235), (169,235)]
+[27327,5s] factory (floorplan 2/10): corridors at 287 x 315 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,237), (169,237)]
+[28268,9s] factory (floorplan 8/10): squeezed 5 corridor lines out: 285 x 299
+[28470,4s] factory (floorplan 9/10): squeezed 7 corridor lines out: 283 x 302
+[28627,8s] factory (floorplan 6/10): squeezed 8 corridor lines out: 281 x 293
+[29416,0s] factory (floorplan 10/10): squeezed 8 corridor lines out: 278 x 296
+[29430,4s] factory (floorplan 4/10): squeezed 8 corridor lines out: 278 x 309
+[29483,0s] factory (floorplan 1/10): squeezed 9 corridor lines out: 284 x 291
+[29562,1s] factory (floorplan 3/10): squeezed 4 corridor lines out: 272 x 321
+[29573,2s] factory (floorplan 5/10): squeezed 6 corridor lines out: 274 x 302
+[29805,8s] factory (floorplan 7/10): squeezed 8 corridor lines out: 273 x 309
+[29805,8s] factory: compacting the smallest floorplans, 278 x 296 and 281 x 293
+[29965,5s] factory (compacting): 278 x 295 (82010 tiles), saved
+[30157,5s] factory (compacting): 278 x 294 (81732 tiles), saved
+[30781,1s] factory: squeezed 2 corridor lines out: 278 x 294
+[36590,0s] factory: smallest routed factory 278 x 294 of 80 routed
+[36604,6s] factory: 278 x 294 is not smaller than 278 x 294
+[36604,6s] done: 278 x 294 (81732 tiles)
+[    0,0s] resume: split of 34 blocks from solves/six_ore_10ps_beacon_1/resume
+[    0,0s] 959 machines in 34 blocks: block 1: 43, block 2: 43, block 3: 43, block 4: 20, block 5: 32, block 6: 43, block 7: 43, block 8: 43, block 9: 43, block 10: 43, block 11: 43, block 12: 43, block 13: 32, block 14: 17, block 15: 27, block 16: 21, block 17: 20, block 18: 34, block 19: 17, block 20: 21, block 21: 20, block 22: 23, block 23: 27, block 24: 18, block 25: 18, block 26: 18, block 27: 19, block 28: 20, block 29: 21, block 30: 18, block 31: 26, block 32: 16, block 33: 28, block 34: 16; 169 ports between blocks and edges (greedy split: 134; 156 with machine rates rebalanced), cost 370,7 (greedy 383,6)
+[    0,0s]   block 1: 43x copper-plate; planned at (42,53) 35 x 51
+[    0,0s]   block 2: 22x iron-plate, 21x copper-plate; planned at (81,58) 27 x 67
+[    0,0s]   block 3: 22x iron-plate, 21x copper-plate; planned at (2,101) 30 x 60
+[    0,0s]   block 4: 18x stone-brick, 2x stone-wall; planned at (81,34) 31 x 20
+[    0,0s]   block 5: 28x copper-plate, 2x copper-cable, 2x electronic-circuit; planned at (2,2) 54 x 22
+[    0,0s]   block 6: 18x copper-plate, 15x iron-plate, 10x steel-plate; planned at (2,28) 35 x 51
+[    0,0s]   block 7: 32x iron-plate, 11x steel-plate; planned at (117,157) 52 x 35
+[    0,0s]   block 8: 31x iron-plate, 12x steel-plate; planned at (174,172) 35 x 51
+[    0,0s]   block 9: 31x iron-plate, 12x steel-plate; planned at (36,108) 35 x 51
+[    0,0s]   block 10: 29x iron-plate, 14x steel-plate; planned at (139,36) 67 x 27
+[    0,0s]   block 11: 29x iron-plate, 14x steel-plate; planned at (147,2) 60 x 30
+[    0,0s]   block 12: 27x iron-plate, 16x steel-plate; planned at (32,196) 67 x 27
+[    0,0s]   block 13: 20x iron-plate, 8x steel-plate, 2x copper-cable, 2x electronic-circuit; planned at (101,2) 42 x 28
+[    0,0s]   block 14: 10x advanced-oil-processing, 3x heavy-oil-cracking, 2x light-oil-cracking, 2x sulfur; planned at (2,165) 40 x 26
+[    0,0s]   block 15: 13x steel-plate, 11x stone-brick, 3x electric-furnace; planned at (60,2) 37 x 25
+[    0,0s]   block 16: 13x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (2,195) 26 x 26
+[    0,0s]   block 17: 12x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (97,150) 16 x 39
+[    0,0s]   block 18: 21x steel-plate, 12x automation-science-pack, 1x iron-gear-wheel; planned at (171,67) 36 x 36
+[    0,0s]   block 19: 8x steel-plate, 6x rail, 3x iron-stick; planned at (2,83) 36 x 14
+[    0,0s]   block 20: 19x engine-unit, 1x iron-gear-wheel, 1x pipe; planned at (103,196) 26 x 26
+[    0,0s]   block 21: 12x military-science-pack, 5x grenade, 2x piercing-rounds-magazine, 1x firearm-magazine; planned at (42,31) 35 x 18
+[    0,0s]   block 22: 13x plastic-bar, 10x light-oil-cracking; planned at (46,163) 27 x 28
+[    0,0s]   block 23: 14x logistic-science-pack, 9x steel-plate, 2x inserter, 1x iron-gear-wheel, 1x transport-belt; planned at (133,196) 37 x 25
+[    0,0s]   block 24: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (116,36) 19 x 29
+[    0,0s]   block 25: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (152,67) 15 x 37
+[    0,0s]   block 26: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (117,129) 23 x 24
+[    0,0s]   block 27: 9x advanced-circuit, 7x low-density-structure, 2x copper-cable, 1x electronic-circuit; planned at (112,108) 34 x 17
+[    0,0s]   block 28: 9x advanced-circuit, 6x productivity-module, 3x copper-cable, 2x electronic-circuit; planned at (130,69) 18 x 35
+[    0,0s]   block 29: 11x flying-robot-frame, 5x steel-plate, 4x electric-engine-unit, 1x lubricant; planned at (77,150) 16 x 42
+[    0,0s]   block 30: 18x low-density-structure; planned at (175,108) 23 x 24
+[    0,0s]   block 31: 16x utility-science-pack, 10x steel-plate; planned at (150,108) 21 x 42
+[    0,0s]   block 32: 11x processing-unit, 4x battery, 1x sulfuric-acid; planned at (76,130) 31 x 15
+[    0,0s]   block 33: 28x chemical-science-pack; planned at (175,136) 31 x 32
+[    0,0s]   block 34: 16x production-science-pack; planned at (112,69) 14 x 34
+[    0,0s]   block 25 -> block 28: advanced-circuit 7,63/s (1 belt(s))
+[    0,0s]   block 28 -> block 15: advanced-circuit 2,34/s (1 belt(s))
+[    0,0s]   block 25 -> block 33: advanced-circuit 1,57/s (1 belt(s))
+[    0,0s]   block 26 -> block 32: advanced-circuit 6,80/s (1 belt(s))
+[    0,0s]   block 26 -> block 33: advanced-circuit 2,76/s (1 belt(s))
+[    0,0s]   block 24 -> block 15: advanced-circuit 9,56/s (1 belt(s))
+[    0,0s]   block 27 -> block 33: advanced-circuit 6,39/s (1 belt(s))
+[    0,0s]   block 32 -> block 29: battery 3,40/s (1 belt(s)), iron-plate 17,00/s (1 belt(s))
+[    0,0s]   block 17 -> block 26: copper-cable 5,79/s (1 belt(s))
+[    0,0s]   block 26 -> block 25: copper-cable 2,16/s (1 belt(s))
+[    0,0s]   block 25 -> block 24: copper-cable 0,67/s (1 belt(s)), plastic-bar 13,66/s (1 belt(s))
+[    0,0s]   block 5 -> block 24: copper-cable 2,96/s (1 belt(s))
+[    0,0s]   block 1 -> block 21: copper-plate 24,94/s (1 belt(s))
+[    0,0s]   block 21 -> block 24: copper-plate 21,37/s (1 belt(s))
+[    0,0s]   block 24 -> block 30: copper-plate 2,46/s (1 belt(s))
+[    0,0s]   block 1 -> block 25: copper-plate 26,05/s (1 belt(s))
+[    0,0s]   block 25 -> block 18: copper-plate 7,14/s (1 belt(s))
+[    0,0s]   block 1 -> block 27: copper-plate 15,18/s (1 belt(s))
+[    0,0s]   block 1 -> block 17: copper-plate 23,22/s (1 belt(s))
+[    0,0s]   block 2 -> block 32: copper-plate 26,13/s (1 belt(s))
+[    0,0s]   block 32 -> block 27: copper-plate 23,52/s (1 belt(s))
+[    0,0s]   block 2 -> block 28: copper-plate 18,30/s (1 belt(s)), iron-plate 16,17/s (1 belt(s))
+[    0,0s]   block 3 -> block 16: copper-plate 23,10/s (1 belt(s)), iron-plate 33,80/s (2 belt(s))
+[    0,0s]   block 3 -> block 26: copper-plate 20,86/s (1 belt(s))
+[    0,0s]   block 26 -> block 17: copper-plate 1,95/s (1 belt(s))
+[    0,0s]   block 5 -> block 30: copper-plate 35,09/s (2 belt(s))
+[    0,0s]   block 5 -> block 13: copper-plate 11,55/s (1 belt(s))
+[    0,0s]   block 6 -> block 30: copper-plate 38,09/s (2 belt(s))
+[    0,0s]   block 15 -> block 34: electric-furnace 2,38/s (1 belt(s))
+[    0,0s]   block 17 -> block 29: electronic-circuit 7,53/s (1 belt(s))
+[    0,0s]   block 17 -> block 32: electronic-circuit 22,65/s (1 belt(s))
+[    0,0s]   block 13 -> block 28: electronic-circuit 15,09/s (1 belt(s))
+[    0,0s]   block 28 -> block 27: electronic-circuit 8,82/s (1 belt(s)), iron-plate 5,39/s (1 belt(s))
+[    0,0s]   block 27 -> block 32: electronic-circuit 7,24/s (1 belt(s))
+[    0,0s]   block 16 -> block 23: electronic-circuit 7,14/s (1 belt(s))
+[    0,0s]   block 16 -> block 32: electronic-circuit 23,04/s (1 belt(s))
+[    0,0s]   block 5 -> block 32: electronic-circuit 15,09/s (1 belt(s))
+[    0,0s]   block 20 -> block 29: engine-unit 8,36/s (1 belt(s))
+[    0,0s]   block 29 -> block 33: engine-unit 7,14/s (1 belt(s))
+[    0,0s]   block 29 -> block 31: flying-robot-frame 2,38/s (1 belt(s))
+[    0,0s]   block 20 -> block 23: iron-gear-wheel 1,89/s (1 belt(s))
+[    0,0s]   block 6 -> block 19: iron-plate 14,11/s (1 belt(s)), steel-plate 4,23/s (1 belt(s))
+[    0,0s]   block 13 -> block 24: iron-plate 9,76/s (1 belt(s))
+[    0,0s]   block 13 -> block 15: iron-plate 7,68/s (1 belt(s)), steel-plate 3,39/s (1 belt(s))
+[    0,0s]   block 9 -> block 32: iron-plate 20,68/s (1 belt(s))
+[    0,0s]   block 29 -> block 26: iron-plate 9,76/s (1 belt(s))
+[    0,0s]   block 9 -> block 17: iron-plate 23,75/s (1 belt(s))
+[    0,0s]   block 7 -> block 23: iron-plate 39,19/s (2 belt(s))
+[    0,0s]   block 7 -> block 17: iron-plate 8,15/s (1 belt(s))
+[    0,0s]   block 3 -> block 19: iron-plate 12,76/s (1 belt(s))
+[    0,0s]   block 10 -> block 18: iron-plate 27,29/s (2 belt(s))
+[    0,0s]   block 10 -> block 25: iron-plate 9,39/s (1 belt(s))
+[    0,0s]   block 2 -> block 21: iron-plate 30,38/s (2 belt(s))
+[    0,0s]   block 12 -> block 20: iron-plate 23,17/s (1 belt(s))
+[    0,0s]   block 12 -> block 16: iron-plate 5,75/s (1 belt(s))
+[    0,0s]   block 11 -> block 18: iron-plate 19,94/s (1 belt(s))
+[    0,0s]   block 11 -> block 15: iron-plate 16,73/s (1 belt(s)), steel-plate 5,92/s (1 belt(s))
+[    0,0s]   block 15 -> block 21: iron-plate 1,49/s (1 belt(s))
+[    0,0s]   block 8 -> block 31: iron-plate 17,90/s (1 belt(s))
+[    0,0s]   block 31 -> block 21: iron-plate 0,27/s (1 belt(s))
+[    0,0s]   block 8 -> block 17: iron-plate 26,53/s (1 belt(s))
+[    0,0s]   block 17 -> block 16: iron-plate 15,72/s (1 belt(s))
+[    0,0s]   block 16 -> block 5: iron-plate 10,78/s (1 belt(s))
+[    0,0s]   block 30 -> block 31: low-density-structure 5,29/s (1 belt(s))
+[    0,0s]   block 27 -> block 31: low-density-structure 1,85/s (1 belt(s))
+[    0,0s]   block 22 -> block 26: plastic-bar 23,11/s (1 belt(s))
+[    0,0s]   block 26 -> block 28: plastic-bar 9,45/s (1 belt(s))
+[    0,0s]   block 22 -> block 27: plastic-bar 15,73/s (1 belt(s))
+[    0,0s]   block 22 -> block 30: plastic-bar 18,91/s (1 belt(s))
+[    0,0s]   block 22 -> block 25: plastic-bar 26,80/s (1 belt(s))
+[    0,0s]   block 32 -> block 31: processing-unit 4,76/s (1 belt(s))
+[    0,0s]   block 28 -> block 34: productivity-module 2,38/s (1 belt(s))
+[    0,0s]   block 19 -> block 34: rail 71,43/s (3 belt(s))
+[    0,0s]   block 31 -> block 30: steel-plate 4,23/s (1 belt(s))
+[    0,0s]   block 23 -> block 20: steel-plate 3,81/s (1 belt(s))
+[    0,0s]   block 18 -> block 30: steel-plate 3,33/s (1 belt(s))
+[    0,0s]   block 18 -> block 19: steel-plate 5,56/s (1 belt(s))
+[    0,0s]   block 17 -> block 20: steel-plate 2,16/s (1 belt(s))
+[    0,0s]   block 17 -> block 19: steel-plate 2,92/s (1 belt(s))
+[    0,0s]   block 7 -> block 27: steel-plate 4,66/s (1 belt(s))
+[    0,0s]   block 27 -> block 19: steel-plate 2,02/s (1 belt(s))
+[    0,0s]   block 9 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    0,0s]   block 10 -> block 21: steel-plate 5,92/s (1 belt(s))
+[    0,0s]   block 21 -> block 15: steel-plate 4,14/s (1 belt(s))
+[    0,0s]   block 16 -> block 19: steel-plate 5,50/s (1 belt(s))
+[    0,0s]   block 29 -> block 19: steel-plate 0,04/s (1 belt(s))
+[    0,0s]   block 12 -> block 19: steel-plate 6,77/s (1 belt(s))
+[    0,0s]   block 8 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    0,0s]   block 19 -> block 15: steel-plate 4,86/s (1 belt(s))
+[    0,0s]   block 4 -> block 15: stone-brick 0,53/s (1 belt(s))
+[    0,0s]   block 4 -> block 21: stone-wall 7,14/s (1 belt(s))
+[    0,0s]   block 14 -> block 32: sulfur 8,90/s (1 belt(s))
+[    0,0s]   block 32 -> block 33: sulfur 3,57/s (1 belt(s))
+[    0,0s]   heavy-oil pipes: block 14 gives 14,0/s, block 29 takes 14,0/s
+[    0,0s]   light-oil pipes: block 14 gives 367,2/s, block 22 takes 367,2/s
+[    0,0s]   petroleum-gas pipes: block 14 gives 332,2/s, block 22 takes 332,2/s
+[    0,0s]   water pipes: block 14 takes 552,5/s, block 22 takes 367,2/s, block 32 takes 106,7/s, edge gives 1026,4/s
+[    0,0s]   9 inputs and outputs leave their block straight out of the factory, 37 run through the corridors to its edge
+[    0,3s] block 1: 40 x 58, resumed (9 layout(s)); refining it
+[    0,3s] block 2: 30 x 76, resumed (9 layout(s)); refining it
+[    0,3s] block 3: 34 x 68, resumed (9 layout(s)); refining it
+[    0,3s] block 4: 40 x 26, resumed (9 layout(s)); refining it
+[    0,3s] block 5: 78 x 32, resumed (9 layout(s)); refining it
+[    0,3s] block 6: 39 x 57, resumed (9 layout(s)); refining it
+[    0,3s] block 7: 68 x 46, resumed (9 layout(s)); refining it
+[    0,3s] block 8: 40 x 58, resumed (9 layout(s)); refining it
+[    0,3s] block 9: 39 x 57, resumed (9 layout(s)); refining it
+[    0,3s] block 10: 80 x 32, resumed (9 layout(s)); refining it
+[    0,3s] block 11: 69 x 35, resumed (9 layout(s)); refining it
+[    0,3s] block 12: 79 x 32, resumed (9 layout(s)); refining it
+[    0,3s] block 13: 53 x 35, resumed (9 layout(s)); refining it
+[    0,3s] block 14: 46 x 30, resumed (9 layout(s)); refining it
+[    0,3s] block 15: 47 x 32, resumed (9 layout(s)); refining it
+[    0,3s] block 16: 41 x 41, resumed (9 layout(s)); refining it
+[    0,3s] block 17: 31 x 75, resumed (9 layout(s)); refining it
+[    0,3s] block 18: 43 x 43, resumed (9 layout(s)); refining it
+[    0,3s] block 19: 71 x 27, resumed (9 layout(s)); refining it
+[    0,3s] block 20: 41 x 41, resumed (9 layout(s)); refining it
+[    0,3s] block 21: 60 x 31, resumed (9 layout(s)); refining it
+[    0,3s] block 22: 39 x 41, resumed (9 layout(s)); refining it
+[    0,3s] block 23: 44 x 30, resumed (9 layout(s)); refining it
+[    0,3s] block 24: 35 x 53, resumed (9 layout(s)); refining it
+[    0,3s] block 25: 31 x 75, resumed (9 layout(s)); refining it
+[    0,3s] block 26: 42 x 44, resumed (9 layout(s)); refining it
+[    0,3s] block 27: 64 x 32, resumed (9 layout(s)); refining it
+[    0,3s] block 28: 32 x 61, resumed (9 layout(s)); refining it
+[    0,3s] block 29: 28 x 73, resumed (9 layout(s)); refining it
+[    0,3s] block 30: 42 x 44, resumed (9 layout(s)); refining it
+[    0,3s] block 31: 30 x 61, resumed (9 layout(s)); refining it
+[    0,3s] block 32: 52 x 25, resumed (9 layout(s)); refining it
+[    0,3s] block 33: 47 x 49, resumed (9 layout(s)); refining it
+[    0,3s] block 34: 30 x 73, resumed (9 layout(s)); refining it
+[    0,3s] block 1: 43 machines (weight 43,0 of 39,7), 7 ports
+[    0,3s] block 2: 43 machines (weight 43,0 of 39,7), 9 ports
+[    0,3s] block 3: 43 machines (weight 43,0 of 39,7), 7 ports
+[    0,3s] block 4: 20 machines (weight 34,0 of 39,7), 5 ports
+[    0,3s] block 5: 32 machines (weight 43,0 of 39,7), 7 ports
+[    0,3s] block 6: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,3s] block 7: 43 machines (weight 43,0 of 39,7), 7 ports
+[    0,3s] block 8: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,3s] block 9: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,3s] block 10: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,3s] block 11: 43 machines (weight 43,0 of 39,7), 5 ports
+[    0,3s] block 12: 43 machines (weight 43,0 of 39,7), 5 ports
+[    0,3s] block 13: 32 machines (weight 43,0 of 39,7), 7 ports
+[    0,3s] block 14: 17 machines (weight 52,8 of 39,7), 6 ports
+[    0,3s] block 15: 27 machines (weight 43,0 of 39,7), 13 ports
+[    0,3s] block 16: 21 machines (weight 43,0 of 39,7), 9 ports
+[    0,3s] block 17: 20 machines (weight 42,0 of 39,7), 11 ports
+[    0,3s] block 18: 34 machines (weight 42,0 of 39,7), 7 ports
+[    0,3s] block 19: 17 machines (weight 42,5 of 39,7), 16 ports
+[    0,3s] block 20: 21 machines (weight 44,5 of 39,7), 5 ports
+[    0,3s] block 21: 20 machines (weight 46,0 of 39,7), 12 ports
+[    0,3s] block 22: 23 machines (weight 51,8 of 39,7), 9 ports
+[    0,3s] block 23: 27 machines (weight 43,0 of 39,7), 6 ports
+[    0,3s] block 24: 18 machines (weight 44,0 of 39,7), 7 ports
+[    0,3s] block 25: 18 machines (weight 44,0 of 39,7), 9 ports
+[    0,3s] block 26: 18 machines (weight 44,0 of 39,7), 9 ports
+[    0,3s] block 27: 19 machines (weight 46,0 of 39,7), 10 ports
+[    0,3s] block 28: 20 machines (weight 45,0 of 39,7), 9 ports
+[    0,3s] block 29: 21 machines (weight 43,0 of 39,7), 9 ports
+[    0,3s] block 30: 18 machines (weight 45,0 of 39,7), 9 ports
+[    0,3s] block 31: 26 machines (weight 42,0 of 39,7), 8 ports
+[    0,3s] block 32: 16 machines (weight 42,3 of 39,7), 14 ports
+[    0,3s] block 33: 28 machines (weight 56,0 of 39,7), 6 ports
+[    0,3s] block 34: 16 machines (weight 40,0 of 39,7), 6 ports
+[    0,3s] every block has a layout; stitching a preview
+[   31,7s] preview: routed at 294 x 300
+[   52,1s] preview: tighter corridors: 293 x 299
+[   52,1s] preview: smallest routed factory 293 x 299 of 2 routed
+[   64,5s] limit: 14976 s left
+[   65,0s] limit: 14675 s left
+[   65,1s] limit: 14375 s left
+[   65,1s] limit: 14075 s left
+[   65,2s] limit: 13775 s left
+[   65,3s] limit: 13475 s left
+[   65,4s] limit: 13175 s left
+[   65,5s] limit: 12875 s left
+[   65,6s] limit: 12574 s left
+[   65,6s] limit: 12274 s left
+[   65,7s] limit: 11974 s left
+[   65,8s] limit: 11674 s left
+[   65,9s] limit: 11374 s left
+[   66,0s] limit: 11074 s left
+[   66,1s] limit: 10774 s left
+[   66,1s] limit: 10474 s left
+[   66,2s] limit: 10174 s left
+[   66,3s] limit: 9874 s left
+[   66,4s] limit: 9574 s left
+[   66,5s] limit: 9274 s left
+[   66,6s] limit: 8973 s left
+[   66,6s] limit: 8673 s left
+[   66,7s] limit: 8373 s left
+[   66,8s] limit: 8073 s left
+[   66,9s] limit: 7773 s left
+[   67,0s] limit: 7473 s left
+[   67,1s] limit: 7173 s left
+[   67,1s] limit: 6873 s left
+[   67,2s] limit: 6573 s left
+[   67,3s] limit: 6273 s left
+[   67,4s] limit: 5973 s left
+[   67,5s] limit: 5673 s left
+[   67,6s] limit: 5372 s left
+[   67,6s] limit: 5072 s left
+[   67,7s] limit: 4772 s left
+[   67,8s] limit: 4472 s left
+[   67,9s] limit: 4172 s left
+[   68,0s] limit: 3872 s left
+[   68,1s] limit: 3572 s left
+[   68,2s] limit: 3272 s left
+[   68,2s] limit: 2972 s left
+[   68,3s] limit: 2672 s left
+[   68,4s] limit: 2372 s left
+[   68,5s] limit: 2072 s left
+[   68,6s] limit: 1771 s left
+[   68,7s] limit: 1471 s left
+[   68,7s] limit: 1171 s left
+[   68,8s] limit: 871 s left
+[   68,9s] limit: 571 s left
+[   69,0s] limit: 271 s left
+[   70,1s] limit: 0 s left
+[   87,1s] preview: 293 x 299 has 5 validation errors: [BELT_OVER_CAPACITY at (133,66): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (133,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (121,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s]
+[  117,3s] preview: 294 x 300 has 5 validation errors: [BELT_OVER_CAPACITY at (133,66): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (133,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (121,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s]
+[  117,3s] preview: did not stitch
+[  139,1s] focus on block 1: every thread from its next turn
+[  143,0s] focus off
+[  251,7s] final factory: stitching and compacting
+[  251,7s] block 1: 40 x 58; shapes 59 x 48, 50 x 52, 48 x 58, 35 x 60, 35 x 68, 35 x 75, 32 x 85, 24 x 98
+[  251,7s] block 2: 30 x 76; shapes 40 x 55, 35 x 61, 35 x 72, 30 x 87, 24 x 80, 24 x 89, 23 x 102, 19 x 136
+[  251,7s] block 3: 34 x 68; shapes 51 x 57, 47 x 67, 35 x 58, 32 x 75, 28 x 75, 31 x 92, 24 x 86, 20 x 112
+[  251,7s] block 4: 40 x 26; shapes 55 x 20, 50 x 23, 50 x 27, 37 x 28, 36 x 31, 34 x 32, 34 x 40, 25 x 46
+[  251,7s] block 5: 78 x 32; shapes 105 x 24, 82 x 24, 76 x 26, 68 x 33, 64 x 35, 59 x 36, 53 x 40, 47 x 55
+[  251,7s] block 6: 39 x 57; shapes 53 x 43, 47 x 49, 46 x 56, 35 x 60, 35 x 68, 32 x 69, 27 x 72, 23 x 96
+[  251,7s] block 7: 68 x 46; shapes 83 x 31, 71 x 34, 63 x 35, 53 x 42, 53 x 47, 49 x 49, 47 x 58, 35 x 67
+[  251,7s] block 8: 40 x 58; shapes 58 x 47, 46 x 48, 47 x 57, 35 x 60, 35 x 68, 33 x 72, 30 x 80, 27 x 112
+[  251,7s] block 9: 39 x 57; shapes 61 x 49, 48 x 50, 48 x 58, 35 x 60, 35 x 68, 34 x 74, 30 x 80, 24 x 98
+[  251,7s] block 10: 80 x 32; shapes 101 x 23, 88 x 25, 90 x 30, 74 x 35, 67 x 36, 64 x 39, 64 x 47, 47 x 54
+[  251,7s] block 11: 69 x 35; shapes 85 x 24, 85 x 30, 76 x 32, 59 x 35, 56 x 38, 54 x 41, 47 x 43, 39 x 56
+[  251,7s] block 12: 79 x 32; shapes 106 x 24, 84 x 24, 95 x 32, 71 x 34, 65 x 35, 59 x 36, 63 x 46, 41 x 47
+[  251,7s] block 13: 53 x 35; shapes 85 x 32, 64 x 30, 63 x 35, 54 x 43, 45 x 40, 47 x 47, 40 x 48, 32 x 61
+[  251,7s] block 14: 46 x 30; shapes 67 x 24, 53 x 25, 52 x 28, 42 x 32, 37 x 32, 36 x 34, 34 x 40, 28 x 52
+[  251,7s] block 15: 47 x 32; shapes 65 x 25, 62 x 30, 57 x 32, 45 x 36, 46 x 42, 40 x 40, 36 x 44, 30 x 57
+[  251,7s] block 16: 41 x 41; shapes 70 x 39, 54 x 39, 57 x 47, 41 x 48, 37 x 50, 38 x 57, 39 x 70, 21 x 61
+[  251,7s] block 17: 31 x 75; shapes 35 x 48, 33 x 58, 35 x 71, 30 x 85, 21 x 67, 26 x 95, 24 x 105, 19 x 132
+[  251,7s] block 18: 43 x 43; shapes 58 x 32, 49 x 35, 48 x 40, 39 x 46, 38 x 51, 35 x 53, 32 x 58, 25 x 71
+[  251,7s] block 19: 71 x 27; shapes 118 x 26, 83 x 23, 121 x 39, 81 x 37, 76 x 40, 72 x 42, 52 x 37, 42 x 46
+[  251,7s] block 20: 41 x 41; shapes 58 x 32, 49 x 35, 44 x 37, 38 x 44, 35 x 46, 35 x 53, 32 x 58, 24 x 69
+[  251,7s] block 21: 60 x 31; shapes 73 x 21, 73 x 27, 63 x 27, 53 x 32, 51 x 35, 50 x 39, 42 x 40, 35 x 51
+[  251,7s] block 22: 39 x 41; shapes 54 x 31, 48 x 35, 51 x 44, 40 x 49, 38 x 53, 32 x 50, 32 x 60, 23 x 69
+[  251,7s] block 23: 44 x 30; shapes 65 x 25, 56 x 27, 49 x 28, 40 x 32, 39 x 35, 35 x 35, 35 x 43, 31 x 60
+[  251,7s] block 24: 35 x 53; shapes 52 x 44, 46 x 50, 43 x 54, 36 x 64, 34 x 68, 32 x 72, 29 x 80, 23 x 100
+[  251,7s] block 25: 31 x 75; shapes 41 x 56, 35 x 62, 33 x 69, 28 x 82, 26 x 87, 25 x 92, 23 x 102, 23 x 159
+[  251,7s] block 26: 42 x 44; shapes 63 x 37, 47 x 35, 51 x 45, 38 x 47, 41 x 57, 38 x 60, 35 x 66, 28 x 83
+[  251,7s] block 27: 64 x 32; shapes 120 x 33, 105 x 38, 77 x 32, 60 x 35, 77 x 51, 58 x 43, 52 x 48, 35 x 50
+[  251,7s] block 28: 32 x 61; shapes 45 x 49, 35 x 48, 35 x 56, 33 x 76, 34 x 87, 37 x 107, 27 x 94, 20 x 108
+[  251,7s] block 29: 28 x 73; shapes 35 x 51, 28 x 53, 31 x 68, 26 x 81, 23 x 80, 20 x 77, 19 x 92, 19 x 140
+[  251,7s] block 30: 42 x 44; shapes 60 x 35, 47 x 35, 49 x 43, 41 x 50, 35 x 48, 35 x 55, 32 x 61, 27 x 81
+[  251,7s] block 31: 30 x 61; shapes 42 x 46, 35 x 50, 32 x 53, 27 x 64, 28 x 73, 24 x 71, 24 x 86, 18 x 100
+[  251,7s] block 32: 52 x 25; shapes 73 x 20, 66 x 23, 52 x 21, 53 x 30, 47 x 31, 47 x 34, 39 x 35, 33 x 46
+[  251,7s] block 33: 47 x 49; shapes 66 x 38, 64 x 47, 54 x 46, 47 x 57, 42 x 57, 39 x 61, 35 x 66, 30 x 89
+[  251,7s] block 34: 30 x 73; shapes 34 x 46, 31 x 54, 28 x 57, 25 x 73, 26 x 83, 20 x 72, 20 x 86, 19 x 134
+[  273,4s] factory (floorplan 10/10): routed at 286 x 301
+[  274,3s] factory (floorplan 9/10): routed at 292 x 304
+[  277,7s] factory (floorplan 6/10): routed at 291 x 296
+[  280,9s] factory (floorplan 1/10): routed at 294 x 300
+[  282,0s] factory (floorplan 10/10): tighter corridors: 286 x 300
+[  282,5s] factory (floorplan 7/10): routed at 285 x 311
+[  284,7s] factory (floorplan 5/10): routed at 278 x 305
+[  285,8s] factory (floorplan 6/10): tighter corridors: 290 x 295
+[  295,2s] factory (floorplan 8/10): routed at 289 x 301
+[  295,2s] factory (floorplan 6/10): tighter corridors: 290 x 294
+[  297,2s] factory (floorplan 2/10): corridors at 287 x 302 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,223), (169,223)]
+[  302,3s] factory (floorplan 1/10): tighter corridors: 293 x 299
+[  316,7s] factory (floorplan 8/10): tighter corridors: 289 x 300
+[  324,9s] factory (floorplan 2/10): corridors at 287 x 303 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,225), (169,225)]
+[  353,1s] factory (floorplan 5/10): tighter corridors: 277 x 305
+[  357,1s] factory (floorplan 2/10): corridors at 287 x 305 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,227), (169,227)]
+[  388,6s] factory (floorplan 2/10): corridors at 287 x 307 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(169,229), (168,229)]
+[  395,3s] factory (floorplan 4/10): corridors at 281 x 308 did not route (11 conflicts, 0 unrouted); widening near 11 trouble tiles [(79,201), (80,153), (81,153), (84,154)]
+[  423,0s] factory (floorplan 2/10): corridors at 287 x 309 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,231), (169,231)]
+[  425,9s] factory (floorplan 4/10): routed at 284 x 312 (attempt 2)
+[  463,7s] factory (floorplan 3/10): corridors at 272 x 321 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(236,133), (236,134)]
+[  476,2s] factory (floorplan 2/10): corridors at 287 x 311 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,233), (169,233)]
+[  504,0s] factory (floorplan 3/10): routed at 276 x 321 (attempt 2)
+[  522,2s] factory (floorplan 2/10): corridors at 287 x 313 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,235), (169,235)]
+[  564,5s] factory (floorplan 2/10): corridors at 287 x 315 did not route (2 conflicts, 0 unrouted); widening near 2 trouble tiles [(168,237), (169,237)]
+[ 1829,4s] factory (floorplan 1/10): squeezed 6 corridor lines out: 285 x 298
+[ 1907,9s] factory (floorplan 8/10): squeezed 5 corridor lines out: 285 x 299
+[ 2154,6s] factory (floorplan 9/10): squeezed 7 corridor lines out: 283 x 302
+[ 2329,5s] factory (floorplan 6/10): squeezed 8 corridor lines out: 281 x 293
+[ 2625,3s] factory (floorplan 10/10): squeezed 7 corridor lines out: 278 x 297
+[ 2649,4s] factory (floorplan 7/10): squeezed 7 corridor lines out: 273 x 311
+[ 2706,6s] factory (floorplan 5/10): squeezed 6 corridor lines out: 274 x 302
+[ 2777,8s] factory (floorplan 4/10): squeezed 8 corridor lines out: 278 x 309
+[ 2865,5s] factory (floorplan 3/10): squeezed 4 corridor lines out: 272 x 321
+[ 2865,5s] factory: compacting the smallest floorplans, 281 x 293 and 278 x 297
+[ 3717,8s] factory (compacting): 278 x 296 (82288 tiles), saved
+[ 3912,7s] factory (compacting): 278 x 295 (82010 tiles), saved
+[ 4140,6s] factory (compacting): 278 x 294 (81732 tiles), saved
+[ 4859,1s] factory: squeezed 3 corridor lines out: 278 x 294
+[ 5160,2s] stopped during the final factory; the best factory so far is saved
+[    0,0s] resume: split of 34 blocks from solves/six_ore_10ps_beacon_1/resume
+[    0,0s] 959 machines in 34 blocks: block 1: 43, block 2: 43, block 3: 43, block 4: 20, block 5: 32, block 6: 43, block 7: 43, block 8: 43, block 9: 43, block 10: 43, block 11: 43, block 12: 43, block 13: 32, block 14: 17, block 15: 27, block 16: 21, block 17: 20, block 18: 34, block 19: 17, block 20: 21, block 21: 20, block 22: 23, block 23: 27, block 24: 18, block 25: 18, block 26: 18, block 27: 19, block 28: 20, block 29: 21, block 30: 18, block 31: 26, block 32: 16, block 33: 28, block 34: 16; 169 ports between blocks and edges (greedy split: 134; 156 with machine rates rebalanced), cost 370,7 (greedy 383,6)
+[    0,0s]   block 1: 43x copper-plate; planned at (42,53) 35 x 51
+[    0,0s]   block 2: 22x iron-plate, 21x copper-plate; planned at (81,58) 27 x 67
+[    0,0s]   block 3: 22x iron-plate, 21x copper-plate; planned at (2,101) 30 x 60
+[    0,0s]   block 4: 18x stone-brick, 2x stone-wall; planned at (81,34) 31 x 20
+[    0,0s]   block 5: 28x copper-plate, 2x copper-cable, 2x electronic-circuit; planned at (2,2) 54 x 22
+[    0,0s]   block 6: 18x copper-plate, 15x iron-plate, 10x steel-plate; planned at (2,28) 35 x 51
+[    0,0s]   block 7: 32x iron-plate, 11x steel-plate; planned at (117,157) 52 x 35
+[    0,0s]   block 8: 31x iron-plate, 12x steel-plate; planned at (174,172) 35 x 51
+[    0,0s]   block 9: 31x iron-plate, 12x steel-plate; planned at (36,108) 35 x 51
+[    0,0s]   block 10: 29x iron-plate, 14x steel-plate; planned at (139,36) 67 x 27
+[    0,0s]   block 11: 29x iron-plate, 14x steel-plate; planned at (147,2) 60 x 30
+[    0,0s]   block 12: 27x iron-plate, 16x steel-plate; planned at (32,196) 67 x 27
+[    0,0s]   block 13: 20x iron-plate, 8x steel-plate, 2x copper-cable, 2x electronic-circuit; planned at (101,2) 42 x 28
+[    0,0s]   block 14: 10x advanced-oil-processing, 3x heavy-oil-cracking, 2x light-oil-cracking, 2x sulfur; planned at (2,165) 40 x 26
+[    0,0s]   block 15: 13x steel-plate, 11x stone-brick, 3x electric-furnace; planned at (60,2) 37 x 25
+[    0,0s]   block 16: 13x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (2,195) 26 x 26
+[    0,0s]   block 17: 12x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (97,150) 16 x 39
+[    0,0s]   block 18: 21x steel-plate, 12x automation-science-pack, 1x iron-gear-wheel; planned at (171,67) 36 x 36
+[    0,0s]   block 19: 8x steel-plate, 6x rail, 3x iron-stick; planned at (2,83) 36 x 14
+[    0,0s]   block 20: 19x engine-unit, 1x iron-gear-wheel, 1x pipe; planned at (103,196) 26 x 26
+[    0,0s]   block 21: 12x military-science-pack, 5x grenade, 2x piercing-rounds-magazine, 1x firearm-magazine; planned at (42,31) 35 x 18
+[    0,0s]   block 22: 13x plastic-bar, 10x light-oil-cracking; planned at (46,163) 27 x 28
+[    0,0s]   block 23: 14x logistic-science-pack, 9x steel-plate, 2x inserter, 1x iron-gear-wheel, 1x transport-belt; planned at (133,196) 37 x 25
+[    0,0s]   block 24: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (116,36) 19 x 29
+[    0,0s]   block 25: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (152,67) 15 x 37
+[    0,0s]   block 26: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (117,129) 23 x 24
+[    0,0s]   block 27: 9x advanced-circuit, 7x low-density-structure, 2x copper-cable, 1x electronic-circuit; planned at (112,108) 34 x 17
+[    0,0s]   block 28: 9x advanced-circuit, 6x productivity-module, 3x copper-cable, 2x electronic-circuit; planned at (130,69) 18 x 35
+[    0,0s]   block 29: 11x flying-robot-frame, 5x steel-plate, 4x electric-engine-unit, 1x lubricant; planned at (77,150) 16 x 42
+[    0,0s]   block 30: 18x low-density-structure; planned at (175,108) 23 x 24
+[    0,0s]   block 31: 16x utility-science-pack, 10x steel-plate; planned at (150,108) 21 x 42
+[    0,0s]   block 32: 11x processing-unit, 4x battery, 1x sulfuric-acid; planned at (76,130) 31 x 15
+[    0,0s]   block 33: 28x chemical-science-pack; planned at (175,136) 31 x 32
+[    0,0s]   block 34: 16x production-science-pack; planned at (112,69) 14 x 34
+[    0,0s]   block 25 -> block 28: advanced-circuit 7,63/s (1 belt(s))
+[    0,0s]   block 28 -> block 15: advanced-circuit 2,34/s (1 belt(s))
+[    0,0s]   block 25 -> block 33: advanced-circuit 1,57/s (1 belt(s))
+[    0,0s]   block 26 -> block 32: advanced-circuit 6,80/s (1 belt(s))
+[    0,0s]   block 26 -> block 33: advanced-circuit 2,76/s (1 belt(s))
+[    0,0s]   block 24 -> block 15: advanced-circuit 9,56/s (1 belt(s))
+[    0,0s]   block 27 -> block 33: advanced-circuit 6,39/s (1 belt(s))
+[    0,0s]   block 32 -> block 29: battery 3,40/s (1 belt(s)), iron-plate 17,00/s (1 belt(s))
+[    0,0s]   block 17 -> block 26: copper-cable 5,79/s (1 belt(s))
+[    0,0s]   block 26 -> block 25: copper-cable 2,16/s (1 belt(s))
+[    0,0s]   block 25 -> block 24: copper-cable 0,67/s (1 belt(s)), plastic-bar 13,66/s (1 belt(s))
+[    0,0s]   block 5 -> block 24: copper-cable 2,96/s (1 belt(s))
+[    0,0s]   block 1 -> block 21: copper-plate 24,94/s (1 belt(s))
+[    0,0s]   block 21 -> block 24: copper-plate 21,37/s (1 belt(s))
+[    0,0s]   block 24 -> block 30: copper-plate 2,46/s (1 belt(s))
+[    0,0s]   block 1 -> block 25: copper-plate 26,05/s (1 belt(s))
+[    0,0s]   block 25 -> block 18: copper-plate 7,14/s (1 belt(s))
+[    0,0s]   block 1 -> block 27: copper-plate 15,18/s (1 belt(s))
+[    0,0s]   block 1 -> block 17: copper-plate 23,22/s (1 belt(s))
+[    0,0s]   block 2 -> block 32: copper-plate 26,13/s (1 belt(s))
+[    0,0s]   block 32 -> block 27: copper-plate 23,52/s (1 belt(s))
+[    0,0s]   block 2 -> block 28: copper-plate 18,30/s (1 belt(s)), iron-plate 16,17/s (1 belt(s))
+[    0,0s]   block 3 -> block 16: copper-plate 23,10/s (1 belt(s)), iron-plate 33,80/s (2 belt(s))
+[    0,0s]   block 3 -> block 26: copper-plate 20,86/s (1 belt(s))
+[    0,0s]   block 26 -> block 17: copper-plate 1,95/s (1 belt(s))
+[    0,0s]   block 5 -> block 30: copper-plate 35,09/s (2 belt(s))
+[    0,0s]   block 5 -> block 13: copper-plate 11,55/s (1 belt(s))
+[    0,0s]   block 6 -> block 30: copper-plate 38,09/s (2 belt(s))
+[    0,0s]   block 15 -> block 34: electric-furnace 2,38/s (1 belt(s))
+[    0,0s]   block 17 -> block 29: electronic-circuit 7,53/s (1 belt(s))
+[    0,0s]   block 17 -> block 32: electronic-circuit 22,65/s (1 belt(s))
+[    0,0s]   block 13 -> block 28: electronic-circuit 15,09/s (1 belt(s))
+[    0,0s]   block 28 -> block 27: electronic-circuit 8,82/s (1 belt(s)), iron-plate 5,39/s (1 belt(s))
+[    0,0s]   block 27 -> block 32: electronic-circuit 7,24/s (1 belt(s))
+[    0,0s]   block 16 -> block 23: electronic-circuit 7,14/s (1 belt(s))
+[    0,0s]   block 16 -> block 32: electronic-circuit 23,04/s (1 belt(s))
+[    0,0s]   block 5 -> block 32: electronic-circuit 15,09/s (1 belt(s))
+[    0,0s]   block 20 -> block 29: engine-unit 8,36/s (1 belt(s))
+[    0,0s]   block 29 -> block 33: engine-unit 7,14/s (1 belt(s))
+[    0,0s]   block 29 -> block 31: flying-robot-frame 2,38/s (1 belt(s))
+[    0,0s]   block 20 -> block 23: iron-gear-wheel 1,89/s (1 belt(s))
+[    0,0s]   block 6 -> block 19: iron-plate 14,11/s (1 belt(s)), steel-plate 4,23/s (1 belt(s))
+[    0,0s]   block 13 -> block 24: iron-plate 9,76/s (1 belt(s))
+[    0,0s]   block 13 -> block 15: iron-plate 7,68/s (1 belt(s)), steel-plate 3,39/s (1 belt(s))
+[    0,0s]   block 9 -> block 32: iron-plate 20,68/s (1 belt(s))
+[    0,0s]   block 29 -> block 26: iron-plate 9,76/s (1 belt(s))
+[    0,0s]   block 9 -> block 17: iron-plate 23,75/s (1 belt(s))
+[    0,0s]   block 7 -> block 23: iron-plate 39,19/s (2 belt(s))
+[    0,0s]   block 7 -> block 17: iron-plate 8,15/s (1 belt(s))
+[    0,0s]   block 3 -> block 19: iron-plate 12,76/s (1 belt(s))
+[    0,0s]   block 10 -> block 18: iron-plate 27,29/s (2 belt(s))
+[    0,0s]   block 10 -> block 25: iron-plate 9,39/s (1 belt(s))
+[    0,0s]   block 2 -> block 21: iron-plate 30,38/s (2 belt(s))
+[    0,0s]   block 12 -> block 20: iron-plate 23,17/s (1 belt(s))
+[    0,0s]   block 12 -> block 16: iron-plate 5,75/s (1 belt(s))
+[    0,0s]   block 11 -> block 18: iron-plate 19,94/s (1 belt(s))
+[    0,0s]   block 11 -> block 15: iron-plate 16,73/s (1 belt(s)), steel-plate 5,92/s (1 belt(s))
+[    0,0s]   block 15 -> block 21: iron-plate 1,49/s (1 belt(s))
+[    0,0s]   block 8 -> block 31: iron-plate 17,90/s (1 belt(s))
+[    0,0s]   block 31 -> block 21: iron-plate 0,27/s (1 belt(s))
+[    0,0s]   block 8 -> block 17: iron-plate 26,53/s (1 belt(s))
+[    0,0s]   block 17 -> block 16: iron-plate 15,72/s (1 belt(s))
+[    0,0s]   block 16 -> block 5: iron-plate 10,78/s (1 belt(s))
+[    0,0s]   block 30 -> block 31: low-density-structure 5,29/s (1 belt(s))
+[    0,0s]   block 27 -> block 31: low-density-structure 1,85/s (1 belt(s))
+[    0,0s]   block 22 -> block 26: plastic-bar 23,11/s (1 belt(s))
+[    0,0s]   block 26 -> block 28: plastic-bar 9,45/s (1 belt(s))
+[    0,0s]   block 22 -> block 27: plastic-bar 15,73/s (1 belt(s))
+[    0,0s]   block 22 -> block 30: plastic-bar 18,91/s (1 belt(s))
+[    0,0s]   block 22 -> block 25: plastic-bar 26,80/s (1 belt(s))
+[    0,0s]   block 32 -> block 31: processing-unit 4,76/s (1 belt(s))
+[    0,0s]   block 28 -> block 34: productivity-module 2,38/s (1 belt(s))
+[    0,0s]   block 19 -> block 34: rail 71,43/s (3 belt(s))
+[    0,0s]   block 31 -> block 30: steel-plate 4,23/s (1 belt(s))
+[    0,0s]   block 23 -> block 20: steel-plate 3,81/s (1 belt(s))
+[    0,0s]   block 18 -> block 30: steel-plate 3,33/s (1 belt(s))
+[    0,0s]   block 18 -> block 19: steel-plate 5,56/s (1 belt(s))
+[    0,0s]   block 17 -> block 20: steel-plate 2,16/s (1 belt(s))
+[    0,0s]   block 17 -> block 19: steel-plate 2,92/s (1 belt(s))
+[    0,0s]   block 7 -> block 27: steel-plate 4,66/s (1 belt(s))
+[    0,0s]   block 27 -> block 19: steel-plate 2,02/s (1 belt(s))
+[    0,0s]   block 9 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    0,0s]   block 10 -> block 21: steel-plate 5,92/s (1 belt(s))
+[    0,0s]   block 21 -> block 15: steel-plate 4,14/s (1 belt(s))
+[    0,0s]   block 16 -> block 19: steel-plate 5,50/s (1 belt(s))
+[    0,0s]   block 29 -> block 19: steel-plate 0,04/s (1 belt(s))
+[    0,0s]   block 12 -> block 19: steel-plate 6,77/s (1 belt(s))
+[    0,0s]   block 8 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    0,0s]   block 19 -> block 15: steel-plate 4,86/s (1 belt(s))
+[    0,0s]   block 4 -> block 15: stone-brick 0,53/s (1 belt(s))
+[    0,0s]   block 4 -> block 21: stone-wall 7,14/s (1 belt(s))
+[    0,0s]   block 14 -> block 32: sulfur 8,90/s (1 belt(s))
+[    0,0s]   block 32 -> block 33: sulfur 3,57/s (1 belt(s))
+[    0,0s]   heavy-oil pipes: block 14 gives 14,0/s, block 29 takes 14,0/s
+[    0,0s]   light-oil pipes: block 14 gives 367,2/s, block 22 takes 367,2/s
+[    0,0s]   petroleum-gas pipes: block 14 gives 332,2/s, block 22 takes 332,2/s
+[    0,0s]   water pipes: block 14 takes 552,5/s, block 22 takes 367,2/s, block 32 takes 106,7/s, edge gives 1026,4/s
+[    0,0s]   9 inputs and outputs leave their block straight out of the factory, 37 run through the corridors to its edge
+[    0,2s] block 1: 40 x 58, resumed (9 layout(s)); refining it
+[    0,2s] block 2: 30 x 76, resumed (9 layout(s)); refining it
+[    0,2s] block 3: 34 x 68, resumed (9 layout(s)); refining it
+[    0,2s] block 4: 40 x 26, resumed (9 layout(s)); refining it
+[    0,2s] block 5: 78 x 32, resumed (9 layout(s)); refining it
+[    0,2s] block 6: 39 x 57, resumed (9 layout(s)); refining it
+[    0,2s] block 7: 68 x 46, resumed (9 layout(s)); refining it
+[    0,2s] block 8: 40 x 58, resumed (9 layout(s)); refining it
+[    0,2s] block 9: 39 x 57, resumed (9 layout(s)); refining it
+[    0,2s] block 10: 80 x 32, resumed (9 layout(s)); refining it
+[    0,2s] block 11: 69 x 35, resumed (9 layout(s)); refining it
+[    0,2s] block 12: 79 x 32, resumed (9 layout(s)); refining it
+[    0,2s] block 13: 53 x 35, resumed (9 layout(s)); refining it
+[    0,2s] block 14: 46 x 30, resumed (9 layout(s)); refining it
+[    0,2s] block 15: 47 x 32, resumed (9 layout(s)); refining it
+[    0,2s] block 16: 41 x 41, resumed (9 layout(s)); refining it
+[    0,2s] block 17: 31 x 75, resumed (9 layout(s)); refining it
+[    0,2s] block 18: 43 x 43, resumed (9 layout(s)); refining it
+[    0,2s] block 19: 71 x 27, resumed (9 layout(s)); refining it
+[    0,2s] block 20: 41 x 41, resumed (9 layout(s)); refining it
+[    0,2s] block 21: 60 x 31, resumed (9 layout(s)); refining it
+[    0,2s] block 22: 39 x 41, resumed (9 layout(s)); refining it
+[    0,2s] block 23: 44 x 30, resumed (9 layout(s)); refining it
+[    0,2s] block 24: 35 x 53, resumed (9 layout(s)); refining it
+[    0,2s] block 25: 31 x 75, resumed (9 layout(s)); refining it
+[    0,2s] block 26: 42 x 44, resumed (9 layout(s)); refining it
+[    0,2s] block 27: 64 x 32, resumed (9 layout(s)); refining it
+[    0,2s] block 28: 32 x 61, resumed (9 layout(s)); refining it
+[    0,2s] block 29: 28 x 73, resumed (9 layout(s)); refining it
+[    0,2s] block 30: 42 x 44, resumed (9 layout(s)); refining it
+[    0,2s] block 31: 30 x 61, resumed (9 layout(s)); refining it
+[    0,2s] block 32: 52 x 25, resumed (9 layout(s)); refining it
+[    0,2s] block 33: 47 x 49, resumed (9 layout(s)); refining it
+[    0,2s] block 34: 30 x 73, resumed (9 layout(s)); refining it
+[    0,2s] block 1: 43 machines (weight 43,0 of 39,7), 7 ports
+[    0,2s] block 2: 43 machines (weight 43,0 of 39,7), 9 ports
+[    0,2s] block 3: 43 machines (weight 43,0 of 39,7), 7 ports
+[    0,2s] block 4: 20 machines (weight 34,0 of 39,7), 5 ports
+[    0,2s] block 5: 32 machines (weight 43,0 of 39,7), 7 ports
+[    0,2s] block 6: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,2s] block 7: 43 machines (weight 43,0 of 39,7), 7 ports
+[    0,2s] block 8: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,2s] block 9: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,2s] block 10: 43 machines (weight 43,0 of 39,7), 6 ports
+[    0,2s] block 11: 43 machines (weight 43,0 of 39,7), 5 ports
+[    0,2s] block 12: 43 machines (weight 43,0 of 39,7), 5 ports
+[    0,2s] block 13: 32 machines (weight 43,0 of 39,7), 7 ports
+[    0,2s] block 14: 17 machines (weight 52,8 of 39,7), 6 ports
+[    0,2s] block 15: 27 machines (weight 43,0 of 39,7), 13 ports
+[    0,2s] block 16: 21 machines (weight 43,0 of 39,7), 9 ports
+[    0,2s] block 17: 20 machines (weight 42,0 of 39,7), 11 ports
+[    0,2s] block 18: 34 machines (weight 42,0 of 39,7), 7 ports
+[    0,2s] block 19: 17 machines (weight 42,5 of 39,7), 16 ports
+[    0,2s] block 20: 21 machines (weight 44,5 of 39,7), 5 ports
+[    0,2s] block 21: 20 machines (weight 46,0 of 39,7), 12 ports
+[    0,2s] block 22: 23 machines (weight 51,8 of 39,7), 9 ports
+[    0,2s] block 23: 27 machines (weight 43,0 of 39,7), 6 ports
+[    0,2s] block 24: 18 machines (weight 44,0 of 39,7), 7 ports
+[    0,2s] block 25: 18 machines (weight 44,0 of 39,7), 9 ports
+[    0,2s] block 26: 18 machines (weight 44,0 of 39,7), 9 ports
+[    0,2s] block 27: 19 machines (weight 46,0 of 39,7), 10 ports
+[    0,2s] block 28: 20 machines (weight 45,0 of 39,7), 9 ports
+[    0,2s] block 29: 21 machines (weight 43,0 of 39,7), 9 ports
+[    0,2s] block 30: 18 machines (weight 45,0 of 39,7), 9 ports
+[    0,2s] block 31: 26 machines (weight 42,0 of 39,7), 8 ports
+[    0,2s] block 32: 16 machines (weight 42,3 of 39,7), 14 ports
+[    0,2s] block 33: 28 machines (weight 56,0 of 39,7), 6 ports
+[    0,2s] block 34: 16 machines (weight 40,0 of 39,7), 6 ports
+[    0,3s] every block has a layout; stitching a preview
+[   36,2s] preview: routed at 294 x 300
+[   58,5s] preview: tighter corridors: 293 x 299
+[   58,5s] preview: smallest routed factory 293 x 299 of 2 routed
+[   96,2s] preview: 293 x 299 has 5 validation errors: [BELT_OVER_CAPACITY at (133,66): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (133,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (121,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s]
+[  135,7s] preview: 294 x 300 has 5 validation errors: [BELT_OVER_CAPACITY at (133,66): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (133,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,65): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (122,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s, BELT_OVER_CAPACITY at (121,64): lanes carry 13,03/s and 15,34/s; a lane holds 15,00/s]
+[  135,7s] preview: did not stitch
+[  436,5s] block 17: 30 x 73 (was 31 x 75)
+[  470,0s] block 25: 30 x 73 (was 31 x 75)
+[  801,6s] block 3 x0,35: 20 x 111 (was 20 x 112)
+[  837,0s] block 4 x1,40: 50 x 23 (was 50 x 23)
+[  863,1s] block 4 x1,20: 49 x 26 (was 50 x 27)
+[  865,5s] block 3 x0,75: 28 x 75 (was 28 x 75)
+[  897,6s] block 4 x0,35: 24 x 45 (was 25 x 46)
+[  899,9s] block 5 x1,20: 75 x 26 (was 76 x 26)
+[  938,4s] block 5 x0,67: 58 x 35 (was 59 x 36)
+[ 1170,0s] block 5 x0,35: 47 x 55 (was 47 x 55)
+[ 1195,7s] block 7 x0,35: 35 x 66 (was 35 x 67)
+[ 1202,7s] block 8 x1,20: 46 x 56 (was 47 x 57)
+[ 1211,9s] block 8 x0,35: 27 x 110 (was 27 x 112)
+[ 1212,9s] block 9 x1,80: 60 x 48 (was 61 x 49)
+[ 1231,9s] block 10 x1,20: 88 x 29 (was 90 x 30)
+[ 1274,2s] block 12 x1,20: 95 x 32 (was 95 x 32)
+[ 1339,1s] block 13 x1,20: 63 x 35 (was 63 x 35)
+[ 1368,5s] block 13 x0,85: 53 x 42 (was 54 x 43)
+[ 1457,0s] block 5 x1,80: 102 x 23 (was 105 x 24)
+[ 1537,8s] block 14 x0,85: 42 x 32 (was 42 x 32)
+[ 1586,8s] block 14 x0,67: 35 x 33 (was 36 x 34)
+[ 1670,8s] block 15 x1,80: 64 x 25 (was 65 x 25)
+[ 1774,1s] block 15 x1,20: 56 x 31 (was 57 x 32)
+[ 1779,0s] block 15 x1,40: 60 x 29 (was 62 x 30)
+[ 1806,8s] block 16 x1,80: 68 x 38 (was 70 x 39)
+[ 1809,2s] block 15 x0,35: 30 x 57 (was 30 x 57)
+[ 1810,3s] block 16 x1,40: 54 x 39 (was 54 x 39)
+[ 1815,0s] block 16 x1,20: 56 x 46 (was 57 x 47)
+[ 1823,2s] block 15 x0,67: 40 x 40 (was 40 x 40)
+[ 1906,7s] block 16 x0,85: 41 x 48 (was 41 x 48)
+[ 1908,2s] block 16 x0,55: 38 x 68 (was 39 x 70)
+[ 1981,3s] block 16 x0,35: 21 x 60 (was 21 x 61)
+[ 2000,5s] block 16 x0,75: 36 x 49 (was 37 x 50)
+[ 2024,3s] block 17 x1,20: 35 x 71 (was 35 x 71)
+[ 2026,5s] block 15 x0,75: 46 x 42 (was 46 x 42)
+[ 2032,8s] block 17 x0,85: 30 x 84 (was 30 x 85)
+[ 2041,8s] block 17 x0,67: 26 x 94 (was 26 x 95)
+[ 2045,3s] block 17 x0,55: 23 x 102 (was 24 x 105)
+[ 2133,0s] block 17 x0,75: 21 x 66 (was 21 x 67)
+[ 2169,2s] block 18 x0,85: 39 x 46 (was 39 x 46)
+[ 2298,5s] block 17 x1,40: 32 x 57 (was 33 x 58)
+[ 2417,7s] block 19 x1,20: 120 x 39 (was 121 x 39)
+[ 2427,1s] block 19 x1,40: 82 x 23 (was 83 x 23)
+[ 2526,5s] block 19 x0,85: 80 x 36 (was 81 x 37)
+[ 2702,2s] block 19 x0,75: 74 x 39 (was 76 x 40)
+[ 2837,5s] block 19 x0,55: 51 x 36 (was 52 x 37)
+[ 2924,8s] block 19 x0,67: 71 x 41 (was 72 x 42)
+[ 2945,8s] block 19 x0,35: 41 x 45 (was 42 x 46)
+[ 2963,4s] block 19 x1,80: 117 x 26 (was 118 x 26)
+[ 3036,0s] block 21 x0,85: 51 x 31 (was 53 x 32)
+[ 3044,6s] block 21 x1,40: 72 x 27 (was 73 x 27)
+[ 3056,1s] block 21 x0,67: 49 x 38 (was 50 x 39)
+[ 3077,9s] block 21 x1,80: 73 x 21 (was 73 x 21)
+[ 3083,9s] block 22 x1,20: 50 x 43 (was 51 x 44)
+[ 3108,1s] block 22 x0,85: 39 x 48 (was 40 x 49)
+[ 3168,0s] block 22 x0,35: 23 x 68 (was 23 x 69)
+[ 3168,6s] block 23 x1,80: 64 x 25 (was 65 x 25)
+[ 3184,6s] block 22 x0,55: 32 x 60 (was 32 x 60)
+[ 3188,3s] block 20 x0,55: 31 x 57 (was 32 x 58)
+[ 3255,5s] block 24 x1,80: 51 x 43 (was 52 x 44)
+[ 3275,7s] block 24 x0,85: 35 x 63 (was 36 x 64)
+[ 3313,6s] block 24 x0,75: 33 x 66 (was 34 x 68)
+[ 3327,2s] block 24 x0,55: 28 x 78 (was 29 x 80)
+[ 3331,1s] block 24 x0,35: 23 x 98 (was 23 x 100)
+[ 3366,9s] block 25 x1,80: 40 x 55 (was 41 x 56)
+[ 3369,1s] block 25 x1,40: 35 x 61 (was 35 x 62)
+[ 3374,6s] block 25 x1,20: 33 x 68 (was 33 x 69)
+[ 3432,8s] block 25 x0,85: 27 x 80 (was 28 x 82)
+[ 3445,9s] block 25 x0,75: 26 x 86 (was 26 x 87)
+[ 3456,9s] block 24 x0,67: 31 x 71 (was 32 x 72)
+[ 3457,0s] block 24 x1,40: 45 x 49 (was 46 x 50)
+[ 3462,5s] block 25 x0,35: 23 x 158 (was 23 x 159)
+[ 3468,0s] block 26 x1,80: 61 x 36 (was 63 x 37)
+[ 3469,0s] block 25 x0,55: 23 x 101 (was 23 x 102)
+[ 3485,0s] block 26 x1,20: 51 x 45 (was 51 x 45)
+[ 3519,9s] block 25 x0,67: 25 x 90 (was 25 x 92)
+[ 3546,0s] block 26 x0,67: 37 x 59 (was 38 x 60)
+[ 3589,8s] block 26 x0,55: 35 x 66 (was 35 x 66)
+[ 3603,6s] block 27 x1,80: 118 x 33 (was 120 x 33)
+[ 3604,8s] block 27 x1,40: 103 x 37 (was 105 x 38)
+[ 3606,2s] block 27 x1,20: 76 x 32 (was 77 x 32)
+[ 3620,3s] block 27 x0,85: 60 x 35 (was 60 x 35)
+[ 3621,7s] block 27 x0,75: 76 x 50 (was 77 x 51)
+[ 3627,9s] block 27 x0,67: 57 x 42 (was 58 x 43)
+[ 3629,6s] block 27 x0,55: 51 x 47 (was 52 x 48)
+[ 3642,1s] block 24 x1,20: 43 x 54 (was 43 x 54)
+[ 3666,0s] block 26 x0,35: 27 x 81 (was 28 x 83)
+[ 3681,8s] block 28 x0,85: 32 x 74 (was 33 x 76)
+[ 3684,3s] block 28 x0,67: 36 x 105 (was 37 x 107)
+[ 3687,6s] block 28 x0,55: 27 x 93 (was 27 x 94)
+[ 3690,8s] block 26 x0,75: 41 x 57 (was 41 x 57)
+[ 3707,3s] block 28 x0,75: 34 x 86 (was 34 x 87)
+[ 3741,2s] block 28 x0,35: 20 x 107 (was 20 x 108)
+[ 3773,6s] block 29 x1,40: 28 x 52 (was 28 x 53)
+[ 3783,3s] block 29 x0,67: 20 x 77 (was 20 x 77)
+[ 3805,0s] block 30 x0,85: 40 x 49 (was 41 x 50)
+[ 3961,5s] block 29 x0,85: 26 x 81 (was 26 x 81)
+[ 3980,1s] block 31 x0,55: 24 x 85 (was 24 x 86)
+[ 3982,8s] block 31 x0,35: 18 x 99 (was 18 x 100)
+[ 4054,6s] block 32 x0,55: 39 x 35 (was 39 x 35)
+[ 4071,1s] block 33 x1,80: 65 x 37 (was 66 x 38)
+[ 4096,0s] block 28 x1,80: 45 x 49 (was 45 x 49)
+[ 4166,9s] block 33 x0,55: 35 x 66 (was 35 x 66)
+[ 4203,3s] block 30 x0,35: 27 x 81 (was 27 x 81)
+[ 4242,2s] block 34 x1,40: 31 x 54 (was 31 x 54)
+[ 4271,8s] block 34 x0,67: 20 x 70 (was 20 x 72)
+[ 4274,7s] block 34 x0,55: 20 x 85 (was 20 x 86)
+[ 4286,6s] block 34 x0,85: 25 x 73 (was 25 x 73)
+[ 4298,2s] block 27 x1,40: 101 x 37 (was 103 x 37)
+[ 4299,5s] block 3 x1,80: 50 x 56 (was 51 x 57)
+[ 4300,6s] block 4 x0,55: 34 x 40 (was 34 x 40)
+[ 4304,3s] block 27 x0,75: 75 x 50 (was 76 x 50)
+[ 4328,1s] block 16 x0,55: 37 x 67 (was 38 x 68)
+[ 4403,5s] block 10 x1,20: 88 x 29 (was 88 x 29)
+[ 4413,8s] block 27 x0,75: 74 x 49 (was 75 x 50)
+[ 4423,1s] block 27 x1,40: 100 x 36 (was 101 x 37)
+[ 4431,8s] block 25 x1,40: 35 x 61 (was 35 x 61)
+[ 4437,1s] block 27 x0,55: 51 x 47 (was 51 x 47)
+[ 4438,0s] block 3 x1,80: 49 x 55 (was 50 x 56)
+[ 4444,3s] block 28 x0,67: 36 x 104 (was 36 x 105)
+[ 4459,7s] block 23 x1,80: 63 x 24 (was 64 x 25)
+[ 4461,9s] block 34 x0,55: 20 x 85 (was 20 x 85)
+[ 4471,8s] block 27 x1,40: 98 x 35 (was 100 x 36)
+[ 4473,5s] block 28 x0,55: 26 x 91 (was 27 x 93)
+[ 4484,9s] block 17 x0,55: 23 x 100 (was 23 x 102)
+[ 4490,9s] block 3 x1,80: 49 x 55 (was 49 x 55)
+[ 4499,7s] block 16 x0,55: 37 x 66 (was 37 x 67)
+[ 4521,6s] block 3 x0,35: 20 x 111 (was 20 x 111)
+[ 4532,7s] block 16 x1,80: 67 x 37 (was 68 x 38)
+[ 4546,0s] block 27 x1,40: 96 x 35 (was 98 x 35)
+[ 4549,1s] block 12 x1,80: 105 x 24 (was 106 x 24)
+[ 4550,2s] block 4 x0,55: 33 x 39 (was 34 x 40)
+[ 4564,8s] block 3: 33 x 66 (was 34 x 68)
+[ 4568,9s] block 24 x0,35: 22 x 96 (was 23 x 98)
+[ 4574,6s] block 25 x0,35: 22 x 155 (was 23 x 158)
+[ 4581,6s] block 26 x1,80: 60 x 35 (was 61 x 36)
+[ 4588,6s] block 27 x0,75: 72 x 48 (was 74 x 49)
+[ 4595,4s] block 27 x1,80: 116 x 32 (was 118 x 33)
+[ 4621,1s] block 8 x0,35: 27 x 110 (was 27 x 110)
+[ 4627,6s] block 27 x0,67: 57 x 42 (was 57 x 42)
+[ 4675,4s] block 5 x1,20: 75 x 26 (was 75 x 26)
+[ 4683,3s] block 25 x0,35: 22 x 152 (was 22 x 155)
+[ 4683,5s] block 16 x1,20: 55 x 45 (was 56 x 46)
+[ 4686,4s] block 9 x1,80: 60 x 48 (was 60 x 48)
+[ 4688,3s] block 16 x0,55: 36 x 64 (was 37 x 66)
+[ 4718,4s] block 32 x1,80: 73 x 20 (was 73 x 20)
+[ 4728,6s] block 14 x1,40: 52 x 25 (was 53 x 25)
+[ 4738,2s] block 17 x0,85: 29 x 82 (was 30 x 84)
+[ 4753,3s] block 28 x0,67: 35 x 102 (was 36 x 104)
+[ 4755,1s] block 16 x0,55: 35 x 63 (was 36 x 64)
+[ 4765,1s] block 25 x0,35: 22 x 150 (was 22 x 152)
+[ 4879,3s] block 27 x1,40: 95 x 34 (was 96 x 35)
+[ 4887,2s] block 25 x0,35: 21 x 147 (was 22 x 150)
+[ 4909,0s] block 27 x1,80: 114 x 31 (was 116 x 32)
+[ 4917,6s] block 17 x0,55: 22 x 98 (was 23 x 100)
+[ 4918,1s] block 28 x0,55: 26 x 90 (was 26 x 91)
+[ 4978,6s] block 4 x1,40: 50 x 23 (was 50 x 23)
+[ 5005,3s] block 17 x0,85: 29 x 81 (was 29 x 82)
+[ 5033,7s] block 25 x0,55: 22 x 99 (was 23 x 101)
+[ 5033,9s] block 16 x1,40: 53 x 38 (was 54 x 39)
+[ 5062,4s] block 27 x0,85: 60 x 35 (was 60 x 35)
+[ 5067,3s] block 24 x0,55: 28 x 76 (was 28 x 78)
+[ 5081,4s] block 12 x1,80: 103 x 23 (was 105 x 24)
+[ 5091,5s] block 27 x1,40: 95 x 34 (was 95 x 34)
+[ 5120,1s] block 28 x0,85: 32 x 73 (was 32 x 74)
+[ 5122,5s] block 21 x0,67: 48 x 37 (was 49 x 38)
+[ 5123,8s] block 10 x1,20: 88 x 29 (was 88 x 29)
+[ 5135,2s] block 17 x0,55: 22 x 96 (was 22 x 98)
+[ 5138,7s] block 26 x1,20: 50 x 44 (was 51 x 45)
+[ 5147,6s] block 31: 30 x 61 (was 30 x 61)
+[ 5156,4s] block 16 x0,55: 35 x 63 (was 35 x 63)
+[ 5159,7s] block 25 x0,35: 21 x 145 (was 21 x 147)
+[ 5169,9s] block 25 x0,75: 26 x 86 (was 26 x 86)
+[ 5186,6s] block 28 x0,55: 26 x 90 (was 26 x 90)
+[ 5201,5s] block 25 x0,35: 21 x 142 (was 21 x 145)
+[ 5201,8s] block 10 x1,20: 87 x 29 (was 88 x 29)
+[ 5217,9s] block 27 x1,40: 93 x 34 (was 95 x 34)
+[ 5230,3s] block 21 x0,67: 46 x 36 (was 48 x 37)
+[ 5231,8s] block 25 x0,35: 20 x 139 (was 21 x 142)
+[ 5239,8s] block 24 x0,85: 35 x 61 (was 35 x 63)
+[ 5242,9s] block 17 x0,85: 28 x 79 (was 29 x 81)
+[ 5244,7s] block 10 x1,20: 85 x 28 (was 87 x 29)
+[ 5255,3s] block 25 x0,35: 20 x 137 (was 20 x 139)
+[ 5270,6s] block 10 x1,20: 83 x 28 (was 85 x 28)
+[ 5300,4s] block 27 x1,40: 91 x 33 (was 93 x 34)
+[ 5300,9s] block 21 x0,85: 51 x 31 (was 51 x 31)
+[ 5320,8s] block 28 x0,67: 35 x 100 (was 35 x 102)
+[ 5338,5s] block 10 x1,20: 83 x 28 (was 83 x 28)
+[ 5343,8s] block 22 x0,35: 23 x 68 (was 23 x 68)
+[ 5383,2s] block 22 x1,40: 48 x 35 (was 48 x 35)
+[ 5405,3s] block 16 x0,55: 35 x 63 (was 35 x 63)
+[ 5416,0s] block 28 x0,75: 33 x 85 (was 34 x 86)
+[ 5470,0s] block 26 x0,67: 37 x 58 (was 37 x 59)
+[ 5480,4s] block 25 x0,35: 20 x 137 (was 20 x 137)
+[ 5484,9s] block 27 x0,85: 60 x 35 (was 60 x 35)
+[ 5487,3s] block 17 x0,55: 22 x 94 (was 22 x 96)
+[ 5490,1s] block 27 x0,75: 71 x 47 (was 72 x 48)
+[ 5516,3s] block 4 x1,20: 48 x 26 (was 49 x 26)
+[ 5527,0s] block 28 x0,85: 31 x 71 (was 32 x 73)
+[ 5531,0s] block 10 x1,20: 83 x 28 (was 83 x 28)
+[ 5545,9s] block 15 x0,55: 35 x 43 (was 36 x 44)
+[ 5548,9s] block 33 x0,85: 46 x 56 (was 47 x 57)
+[ 5588,0s] block 21 x0,67: 45 x 35 (was 46 x 36)
+[ 5607,5s] block 25 x1,40: 34 x 60 (was 35 x 61)
+[ 5665,0s] block 24 x1,80: 50 x 42 (was 51 x 43)
+[ 5674,7s] block 26 x1,20: 49 x 43 (was 50 x 44)
+[ 5703,5s] block 22 x0,85: 38 x 46 (was 39 x 48)
+[ 5725,8s] block 15 x0,55: 35 x 43 (was 35 x 43)
+[ 5893,4s] block 14 x0,67: 35 x 33 (was 35 x 33)
+[ 5903,6s] block 21 x0,67: 45 x 35 (was 45 x 35)
+[ 5921,6s] block 28 x0,85: 31 x 71 (was 31 x 71)
+[ 5962,4s] block 17 x0,55: 21 x 92 (was 22 x 94)
+[ 5975,1s] block 10 x1,20: 81 x 27 (was 83 x 28)
+[ 5992,1s] block 24 x0,75: 33 x 65 (was 33 x 66)
+[ 6019,7s] block 25 x1,80: 39 x 54 (was 40 x 55)
+[ 6029,9s] block 27 x1,40: 90 x 32 (was 91 x 33)
+[ 6034,7s] block 25: 30 x 72 (was 30 x 73)
+[ 6043,6s] block 27 x0,75: 71 x 47 (was 71 x 47)
+[ 6059,5s] block 17 x0,55: 21 x 90 (was 21 x 92)
+[ 6069,9s] block 28 x0,75: 33 x 83 (was 33 x 85)
+[ 6070,3s] block 29 x0,67: 20 x 77 (was 20 x 77)
+[ 6073,2s] block 27 x1,40: 88 x 32 (was 90 x 32)
+[ 6093,3s] block 29 x0,75: 23 x 78 (was 23 x 80)
+[ 6097,6s] block 24 x0,85: 34 x 60 (was 35 x 61)
+[ 6112,4s] block 25 x1,40: 33 x 59 (was 34 x 60)
+[ 6113,2s] block 12 x1,80: 103 x 23 (was 103 x 23)
+[ 6147,3s] block 26 x0,55: 34 x 65 (was 35 x 66)
+[ 6208,7s] block 29 x0,75: 22 x 76 (was 23 x 78)
+[ 6217,7s] block 28 x0,75: 32 x 82 (was 33 x 83)
+[ 6245,6s] block 4 x1,20: 48 x 26 (was 48 x 26)
+[ 6270,5s] block 24 x0,75: 32 x 64 (was 33 x 65)
+[ 6291,3s] block 25 x1,40: 32 x 57 (was 33 x 59)
+[ 6292,9s] block 34 x0,85: 25 x 72 (was 25 x 73)
+[ 6301,7s] block 14 x0,35: 27 x 50 (was 28 x 52)
+[ 6343,6s] block 12 x1,20: 93 x 31 (was 95 x 32)
+[ 6354,1s] block 29 x0,75: 21 x 75 (was 22 x 76)
+[ 6381,2s] block 33 x1,80: 63 x 36 (was 65 x 37)
+[ 6388,7s] block 29 x0,67: 20 x 77 (was 20 x 77)
+[ 6438,1s] block 25 x0,85: 27 x 79 (was 27 x 80)
+[ 6473,8s] block 3 x1,80: 49 x 55 (was 49 x 55)
+[ 6474,8s] block 3 x1,80: 48 x 54 (was 49 x 55)
+[ 6492,7s] block 25: 30 x 72 (was 30 x 72)
+[ 6503,4s] block 4 x0,55: 32 x 38 (was 33 x 39)
+[ 6519,4s] block 3: 33 x 65 (was 33 x 66)
+[ 6558,9s] block 2 x0,67: 23 x 87 (was 24 x 89)
+[ 6564,9s] block 3 x1,40: 47 x 67 (was 47 x 67)
+[ 6583,8s] block 7: 67 x 45 (was 68 x 46)
+[ 6594,0s] block 7: 66 x 44 (was 67 x 45)
+[ 6603,3s] block 7: 64 x 44 (was 66 x 44)
+[ 6605,3s] block 7: 63 x 43 (was 64 x 44)
+[ 6607,7s] block 7: 63 x 43 (was 63 x 43)
+[ 6612,8s] block 7: 62 x 42 (was 63 x 43)
+[ 6619,7s] block 7: 61 x 41 (was 62 x 42)
+[ 6643,3s] block 7: 60 x 40 (was 61 x 41)
+[ 6666,2s] block 24: 35 x 53 (was 35 x 53)
+[ 6674,8s] block 4 x0,55: 31 x 37 (was 32 x 38)
+[ 6755,9s] block 10 x0,67: 63 x 38 (was 64 x 39)
+[ 6848,3s] block 3 x0,67: 31 x 91 (was 31 x 92)
+[ 6853,1s] block 3 x0,67: 31 x 91 (was 31 x 91)
+[ 6989,1s] block 1 x0,35: 24 x 97 (was 24 x 98)
+[ 7051,3s] block 11 x1,20: 74 x 31 (was 76 x 32)
+[ 7187,1s] block 3 x1,80: 47 x 53 (was 48 x 54)
+[ 7233,4s] block 29: 27 x 71 (was 28 x 73)
+[ 7269,8s] block 29: 27 x 69 (was 27 x 71)
+[ 7302,3s] block 10: 79 x 32 (was 80 x 32)
+[ 7343,2s] block 29: 27 x 69 (was 27 x 69)
+[ 7376,4s] block 29: 27 x 69 (was 27 x 69)
+[ 7397,7s] block 29: 26 x 68 (was 27 x 69)
+[ 7412,1s] block 29 x0,35: 19 x 138 (was 19 x 140)
+[ 7569,9s] block 29 x1,20: 31 x 68 (was 31 x 68)
+[ 7575,0s] block 29 x1,20: 30 x 67 (was 31 x 68)
+[ 7753,6s] block 24: 35 x 53 (was 35 x 53)
+[ 8024,1s] block 3 x1,40: 46 x 66 (was 47 x 67)
+[ 8093,9s] block 26: 42 x 44 (was 42 x 44)
+[ 8126,6s] block 1 x0,35: 24 x 97 (was 24 x 97)
+[ 8148,4s] block 12 x1,20: 93 x 31 (was 93 x 31)
+[ 8182,7s] block 27 x0,35: 35 x 50 (was 35 x 50)
+[ 8292,0s] block 9 x1,80: 59 x 48 (was 60 x 48)
+[ 8383,1s] block 1 x0,85: 35 x 60 (was 35 x 60)
+[ 8434,6s] block 27 x0,67: 57 x 42 (was 57 x 42)
+[ 8455,2s] block 32 x0,67: 46 x 33 (was 47 x 34)
+[ 8461,5s] block 5 x1,20: 74 x 25 (was 75 x 26)
+[ 8524,6s] block 15 x1,80: 63 x 24 (was 64 x 25)
+[ 8591,0s] block 32 x1,20: 52 x 21 (was 52 x 21)
+[ 8596,1s] block 16 x1,80: 66 x 37 (was 67 x 37)
+[ 8604,1s] block 17 x1,20: 34 x 70 (was 35 x 71)
+[ 8720,7s] block 34 x1,80: 34 x 45 (was 34 x 46)
+[ 8742,3s] block 7 x0,55: 47 x 58 (was 47 x 58)
+[ 8794,8s] block 17 x0,85: 27 x 77 (was 28 x 79)
+[ 8956,3s] block 28: 32 x 61 (was 32 x 61)
+[ 9020,2s] block 21 x0,75: 51 x 35 (was 51 x 35)
+[ 9080,0s] block 24 x0,35: 22 x 96 (was 22 x 96)
+[ 9169,7s] block 11 x0,67: 53 x 40 (was 54 x 41)
+[ 9179,3s] focus on block 34: every thread from its next turn
+[ 9214,5s] block 34: 30 x 73 (was 30 x 73)
+[ 9432,4s] block 34: 29 x 72 (was 30 x 73)
+[ 9469,9s] block 34: 29 x 72 (was 29 x 72)
+[ 9505,3s] block 34: 29 x 70 (was 29 x 72)
+[ 9517,7s] block 34: 28 x 69 (was 29 x 70)
+[ 9524,7s] block 34: 28 x 67 (was 28 x 69)
+[ 9554,7s] block 34: 27 x 66 (was 28 x 67)
+[ 9729,3s] block 34: 27 x 66 (was 27 x 66)
+[ 9738,7s] limit: 5301 s left
+[ 9739,2s] limit: 5001 s left
+[ 9739,3s] limit: 4701 s left
+[ 9739,4s] limit: 4401 s left
+[ 9739,4s] limit: 4101 s left
+[ 9739,5s] limit: 3800 s left
+[ 9739,6s] limit: 3500 s left
+[ 9739,7s] limit: 3200 s left
+[ 9739,8s] limit: 2900 s left
+[ 9739,9s] limit: 2600 s left
+[ 9739,9s] limit: 2300 s left
+[ 9740,0s] limit: 2000 s left
+[ 9740,1s] limit: 1700 s left
+[ 9740,2s] limit: 1400 s left
+[ 9740,3s] limit: 1100 s left
+[ 9747,0s] limit: 793 s left
+[ 9747,5s] limit: 492 s left
+[ 9747,6s] limit: 192 s left
+[ 9747,7s] limit: 0 s left
+[ 9747,8s] limit: 0 s left
+[ 9747,9s] limit: 0 s left
+[ 9748,0s] limit: 0 s left
+[ 9748,1s] limit: 0 s left
+[ 9748,1s] limit: 0 s left
+[ 9748,2s] limit: 0 s left
+[ 9894,5s] final factory: stitching and compacting
+[ 9894,5s] block 1: 40 x 58; shapes 59 x 48, 50 x 52, 48 x 58, 35 x 60, 35 x 68, 35 x 75, 32 x 85, 24 x 97
+[ 9894,5s] block 2: 30 x 76; shapes 40 x 55, 35 x 61, 35 x 72, 30 x 87, 24 x 80, 23 x 87, 23 x 102, 19 x 136
+[ 9894,5s] block 3: 33 x 65; shapes 47 x 53, 46 x 66, 35 x 58, 32 x 75, 28 x 75, 31 x 91, 24 x 86, 20 x 111
+[ 9894,5s] block 4: 40 x 26; shapes 55 x 20, 50 x 23, 48 x 26, 37 x 28, 36 x 31, 34 x 32, 31 x 37, 24 x 45
+[ 9894,5s] block 5: 78 x 32; shapes 102 x 23, 82 x 24, 74 x 25, 68 x 33, 64 x 35, 58 x 35, 53 x 40, 47 x 55
+[ 9894,5s] block 6: 39 x 57; shapes 53 x 43, 47 x 49, 46 x 56, 35 x 60, 35 x 68, 32 x 69, 27 x 72, 23 x 96
+[ 9894,5s] block 7: 60 x 40; shapes 83 x 31, 71 x 34, 63 x 35, 53 x 42, 53 x 47, 49 x 49, 47 x 58, 35 x 66
+[ 9894,5s] block 8: 40 x 58; shapes 58 x 47, 46 x 48, 46 x 56, 35 x 60, 35 x 68, 33 x 72, 30 x 80, 27 x 110
+[ 9894,5s] block 9: 39 x 57; shapes 59 x 48, 48 x 50, 48 x 58, 35 x 60, 35 x 68, 34 x 74, 30 x 80, 24 x 98
+[ 9894,5s] block 10: 79 x 32; shapes 101 x 23, 88 x 25, 81 x 27, 74 x 35, 67 x 36, 63 x 38, 64 x 47, 47 x 54
+[ 9894,5s] block 11: 69 x 35; shapes 85 x 24, 85 x 30, 74 x 31, 59 x 35, 56 x 38, 53 x 40, 47 x 43, 39 x 56
+[ 9894,5s] block 12: 79 x 32; shapes 103 x 23, 84 x 24, 93 x 31, 71 x 34, 65 x 35, 59 x 36, 63 x 46, 41 x 47
+[ 9894,5s] block 13: 53 x 35; shapes 85 x 32, 64 x 30, 63 x 35, 53 x 42, 45 x 40, 47 x 47, 40 x 48, 32 x 61
+[ 9894,5s] block 14: 46 x 30; shapes 67 x 24, 52 x 25, 52 x 28, 42 x 32, 37 x 32, 35 x 33, 34 x 40, 27 x 50
+[ 9894,5s] block 15: 47 x 32; shapes 63 x 24, 60 x 29, 56 x 31, 45 x 36, 46 x 42, 40 x 40, 35 x 43, 30 x 57
+[ 9894,5s] block 16: 41 x 41; shapes 66 x 37, 53 x 38, 55 x 45, 41 x 48, 36 x 49, 38 x 57, 35 x 63, 21 x 60
+[ 9894,5s] block 17: 30 x 73; shapes 35 x 48, 32 x 57, 34 x 70, 27 x 77, 21 x 66, 26 x 94, 21 x 90, 19 x 132
+[ 9894,5s] block 18: 43 x 43; shapes 58 x 32, 49 x 35, 48 x 40, 39 x 46, 38 x 51, 35 x 53, 32 x 58, 25 x 71
+[ 9894,5s] block 19: 71 x 27; shapes 117 x 26, 82 x 23, 120 x 39, 80 x 36, 74 x 39, 71 x 41, 51 x 36, 41 x 45
+[ 9894,5s] block 20: 41 x 41; shapes 58 x 32, 49 x 35, 44 x 37, 38 x 44, 35 x 46, 35 x 53, 31 x 57, 24 x 69
+[ 9894,5s] block 21: 60 x 31; shapes 73 x 21, 72 x 27, 63 x 27, 51 x 31, 51 x 35, 45 x 35, 42 x 40, 35 x 51
+[ 9894,5s] block 22: 39 x 41; shapes 54 x 31, 48 x 35, 50 x 43, 38 x 46, 38 x 53, 32 x 50, 32 x 60, 23 x 68
+[ 9894,5s] block 23: 44 x 30; shapes 63 x 24, 56 x 27, 49 x 28, 40 x 32, 39 x 35, 35 x 35, 35 x 43, 31 x 60
+[ 9894,5s] block 24: 35 x 53; shapes 50 x 42, 45 x 49, 43 x 54, 34 x 60, 32 x 64, 31 x 71, 28 x 76, 22 x 96
+[ 9894,5s] block 25: 30 x 72; shapes 39 x 54, 32 x 57, 33 x 68, 27 x 79, 26 x 86, 25 x 90, 22 x 99, 20 x 137
+[ 9894,5s] block 26: 42 x 44; shapes 60 x 35, 47 x 35, 49 x 43, 38 x 47, 41 x 57, 37 x 58, 34 x 65, 27 x 81
+[ 9894,5s] block 27: 64 x 32; shapes 114 x 31, 88 x 32, 76 x 32, 60 x 35, 71 x 47, 57 x 42, 51 x 47, 35 x 50
+[ 9894,5s] block 28: 32 x 61; shapes 45 x 49, 35 x 48, 35 x 56, 31 x 71, 32 x 82, 35 x 100, 26 x 90, 20 x 107
+[ 9894,5s] block 29: 26 x 68; shapes 35 x 51, 28 x 52, 30 x 67, 26 x 81, 21 x 75, 20 x 77, 19 x 92, 19 x 138
+[ 9894,5s] block 30: 42 x 44; shapes 60 x 35, 47 x 35, 49 x 43, 40 x 49, 35 x 48, 35 x 55, 32 x 61, 27 x 81
+[ 9894,5s] block 31: 30 x 61; shapes 42 x 46, 35 x 50, 32 x 53, 27 x 64, 28 x 73, 24 x 71, 24 x 85, 18 x 99
+[ 9894,5s] block 32: 52 x 25; shapes 73 x 20, 66 x 23, 52 x 21, 53 x 30, 47 x 31, 46 x 33, 39 x 35, 33 x 46
+[ 9894,5s] block 33: 47 x 49; shapes 63 x 36, 64 x 47, 54 x 46, 46 x 56, 42 x 57, 39 x 61, 35 x 66, 30 x 89
+[ 9894,5s] block 34: 27 x 66; shapes 34 x 45, 31 x 54, 28 x 57, 25 x 72, 26 x 83, 20 x 70, 20 x 85, 19 x 134
+[ 9920,4s] factory (floorplan 7/10): routed at 296 x 291
+[ 9920,7s] factory (floorplan 9/10): corridors at 293 x 292 did not route (1 conflicts, 0 unrouted); widening near 1 trouble tiles [(292,290)]
+[ 9922,7s] factory (floorplan 3/10): routed at 286 x 299
+[ 9926,1s] factory (floorplan 8/10): routed at 292 x 294
+[ 9930,4s] factory (floorplan 5/10): routed at 282 x 304
+[ 9932,9s] factory (floorplan 3/10): tighter corridors: 286 x 298
+[ 9933,4s] factory (floorplan 9/10): routed at 295 x 292 (attempt 2)
+[ 9934,3s] factory (floorplan 1/10): routed at 289 x 295
+[ 9941,8s] factory (floorplan 4/10): routed at 296 x 286
+[ 9945,5s] factory (floorplan 9/10): tighter corridors: 293 x 291
+[10033,7s] factory (floorplan 2/10): corridors at 286 x 303 did not route (1 conflicts, 0 unrouted); widening near 1 trouble tiles [(18,253)]
+[10092,1s] factory (floorplan 2/10): routed at 286 x 307 (attempt 2)
+[10147,4s] factory (floorplan 4/10): tighter corridors (295 x 286) did not route
+[10522,1s] factory (floorplan 7/10): squeezed 9 corridor lines out: 289 x 288
+[10552,8s] factory (floorplan 6/10): corridors at 290 x 296 did not route (61 conflicts, 0 unrouted); widening near 61 trouble tiles [(91,228), (200,178), (129,190), (94,228)]
+[10565,6s] factory (floorplan 6/10): routed at 300 x 304 (attempt 2)
+[10580,7s] factory (floorplan 6/10): tighter corridors: 300 x 303
+[10598,8s] factory (floorplan 6/10): tighter corridors: 299 x 303
+[10662,8s] factory (floorplan 10/10): corridors at 289 x 301 did not route (17 conflicts, 0 unrouted); widening near 17 trouble tiles [(112,52), (113,52), (93,153), (173,240)]
+[10692,4s] factory (floorplan 8/10): squeezed 9 corridor lines out: 288 x 289
+[10702,4s] factory (floorplan 10/10): routed at 296 x 305 (attempt 2)
+[10749,5s] factory (floorplan 10/10): tighter corridors: 292 x 305
+[10783,0s] factory (floorplan 10/10): tighter corridors: 291 x 305
+[11169,8s] factory (floorplan 9/10): squeezed 4 corridor lines out: 288 x 291
+[12219,0s] factory (floorplan 6/10): squeezed 15 corridor lines out: 289 x 298
+[12259,6s] factory (floorplan 3/10): squeezed 12 corridor lines out: 279 x 291
+[12260,0s] factory (floorplan 2/10): squeezed 9 corridor lines out: 282 x 302
+[12325,5s] factory (floorplan 1/10): squeezed 9 corridor lines out: 281 x 292
+[12341,1s] factory (floorplan 5/10): squeezed 6 corridor lines out: 273 x 299
+[12644,5s] factory (floorplan 10/10): squeezed 10 corridor lines out: 283 x 300
+[12644,5s] factory: compacting the smallest floorplans, 279 x 291 and 273 x 299
+[13367,0s] factory (compacting): 279 x 291 (81189 tiles), saved
+[18982,9s] stopped during the final factory; the best factory so far is saved

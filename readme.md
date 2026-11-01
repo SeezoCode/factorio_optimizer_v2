@@ -43,6 +43,8 @@ as separate chains between scattered machines.
 | [Six science 1/s each from plates, 13 blocks of at most 15 machines](docs/status/six_science_plates_13_blocks) | 177 | 92 × 107 | 30 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_plates_13_blocks.json) |
 | [Six science 1/s each from ore, 44 blocks of at most 15 machines](docs/status/six_science_ore_44_blocks) (at the bottom of the page) | 618 | 165 × 182 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_44_blocks.json) |
 | [Six science 1/s each from ore, 28 blocks sized by weight](docs/status/six_science_ore_28_blocks) (at the bottom of the page) | 618 | 163 × 176 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_28_blocks.json) |
+| [Six science 2/s each from ore, 64 blocks of at most 20 machines](docs/examples/two_science_per_second) ([below](#in-game-2-sciences-for-9-hours)) | 1,220 | 230 × 237 | 7 h 55 min | 7 h 10 min | [details](docs/examples/two_science_per_second.json) |
+| [Six science 10/s each from ore with productivity modules and beacons, 34 blocks](docs/examples/ten_science_beacons) (at the bottom of the page) | 959 + 956 beacons | 279 × 291 | 16 h 52 min (10 h 10 min, then resumed twice) | 15 h 19 min | [details](docs/examples/ten_science_beacons.json) |
 | [Red + green science 2/s each with modules and beacons](docs/examples/beacons_red_green) ([below](#modules-and-beacons)) | 10–42 | 20 × 20 to 39 × 39 | 4–10 min | | [details](docs/examples/beacons_red_green/beacons_4.json) |
 
 Each render next to the same blueprint built in game. Red + green was generated with belt sharing on
@@ -85,15 +87,23 @@ lane).
 
 ### In game: 2 science/s for 9 hours
 
-<!-- PLACEHOLDER: put the screenshot at docs/examples/two_science_per_second/in_game.jpg, the job file at
-     docs/examples/two_science_per_second.json and the blueprint next to it, then fill in the numbers below. -->
-
 ![2 science/s factory, in game](docs/examples/two_science_per_second/in_game.jpg)
 
-*TODO: which science packs, machines, blocks, factory size, search time. A factory of blocks at 2 science/s that
-ran for 9 hours in game with everything working. The only fix needed by hand was heavy oil: the cracking plants
-took the oil lubricant needed and the refineries backed up. Crackers now work only on surplus oil (a storage
-tank wired to them, see `fluids.surplus_only`).*
+*All six science packs at 2/s each from ore, coal, stone, crude oil and water: 1,220 machines (834 electric
+furnaces, 312 assemblers, 52 chemical plants, 22 oil refineries) in 64 blocks of at most 20 machines, 230 × 237 =
+54,510 tiles. It ran for 9 hours in game with everything working.*
+
+The search ran for 7 h 55 min on 10 threads (M5): 4 h 15 min for the blocks (about 4 minutes each), 2 h 12 min
+for two extra shapes of every block, then 14 floorplans and compaction; the smallest factory came out of
+compaction at 7 h 10 min. The blueprint has 21,508 entities: 8,798 belts, 6,162 undergrounds (2,772 of them
+express, for weaving), 2,921 inserters, 884 poles and 187 splitters. It eats 222 iron ore, 159 copper ore, 43
+stone and 27 coal per second, plus 427 crude oil and 683 water; most inputs enter on the west edge and the six
+packs leave on the east edge.
+
+Twice the rate of the 1/s factories below took 1.97 times the machines and 1.90 times the area of the 28-block
+one: 44.7 tiles per machine against 46.4, so the factory of blocks does not lose density as it grows.
+
+![2 science/s factory, render](docs/examples/two_science_per_second/best.jpg)
 
 ### Modules and beacons
 
@@ -572,7 +582,10 @@ validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 
 at 317 × 137 in 30 minutes, as a factory of 44 blocks of at most 15 machines at 165 × 182 (31 % fewer
 tiles) with the 2D floorplanner, rotation, lane pairs and compaction, and as 28 blocks sized by weight at
 163 × 176 (34 % fewer). Six science from plates went from 182 × 79
-(3 blocks) to 92 × 107 (13 blocks, 32 % fewer tiles). See [More layouts](#more-layouts).
+(3 blocks) to 92 × 107 (13 blocks, 32 % fewer tiles). Six science at 2/s each from ore (1,220 machines) is
+230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours); at 10/s each with
+productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in 34 blocks. See [More
+layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
 not shown: Aquilo needs heat pipes to keep machines warm, and the generator does not place them.
@@ -684,6 +697,36 @@ Six science from plates with blocks of at most 15 machines: 13 blocks, 92 × 107
 compaction, against 14,378 for the 3-block factory at the top of the page.
 
 ![Six science from plates, 13 blocks](docs/status/six_science_plates_13_blocks/best.png)
+
+Six science at 10/s each from ore, five times the [2/s factory](#in-game-2-sciences-for-9-hours), with four
+productivity-module-3 in every machine (two in furnaces) and beacons of two speed-module-3, up to 2 per machine:
+959 machines (606 electric furnaces, 307 assemblers, 36 chemical plants, 10 oil refineries) and 956 beacons in 34
+blocks sized by weight (`max_machines` 16; smelting blocks grow to 43 furnaces), 279 × 291 = 81,189 tiles. Crackers
+work only on surplus oil, through one storage tank. The first run took 10 h 10 min and ended at 278 × 294 (81,732
+tiles); resuming it twice (1 h 26 min and 5 h 16 min more) shrank it by only 0.7 %, so the first run was already
+close to what this code finds.
+
+| | 2/s, no modules | 10/s, modules and beacons |
+|-|----------------:|--------------------------:|
+| Machines | 1,220 | 959 + 956 beacons |
+| Area | 54,510 tiles | 81,189 tiles (1.49 times) |
+| Tiles per science pack/s | 4,543 | 1,353 (3.4 times denser) |
+| Ore, stone and coal per science pack | 37.7 | 14.8 (61 % less) |
+| Crude oil per science pack | 35.6 | 8.5 (76 % less) |
+| Entities | 21,508 | 27,297 |
+| Belts / undergrounds / inserters | 8,798 / 6,162 / 2,921 | 10,748 / 9,520 / 2,874 |
+| Modules | 0 | 2,462 productivity-3, 2,028 speed-3 |
+
+Five times the output takes fewer machines (plus about one beacon each) and only half again the area. Without
+modules the same 10/s would need about 6,100 machines. Productivity also cuts what comes in: 454 iron ore, 229
+copper ore, 135 stone and 68 coal per second, 511 crude oil and 1,026 water: about twice the 2/s factory's ore for
+five times the science.
+
+![Six science 10/s with beacons, render](docs/examples/ten_science_beacons/best.jpg)
+
+Built in game:
+
+![Six science 10/s with beacons, in game](docs/examples/ten_science_beacons/in_game.jpg)
 
 ## License
 

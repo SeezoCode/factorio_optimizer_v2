@@ -1,0 +1,226 @@
+{
+    "engine": "sa",
+    "quality": "normal",
+    "targets": [
+        {
+            "name": "automation-science-pack",
+            "amount": 10.0
+        },
+        {
+            "name": "logistic-science-pack",
+            "amount": 10.0
+        },
+        {
+            "name": "military-science-pack",
+            "amount": 10.0
+        },
+        {
+            "name": "chemical-science-pack",
+            "amount": 10.0
+        },
+        {
+            "name": "production-science-pack",
+            "amount": 10.0
+        },
+        {
+            "name": "utility-science-pack",
+            "amount": 10.0
+        }
+    ],
+    "forbidden_recipes": [],
+    "recipe_overrides": {},
+    "machine": "assembling-machine-3",
+    "machines": [
+        "assembling-machine-3",
+        "electric-furnace",
+        "chemical-plant",
+        "oil-refinery",
+        "centrifuge"
+    ],
+    "fuel": "coal",
+    "belt_tier": "fast",
+    "weave_tier": "express",
+    "lane_sharing": true,
+    "inserters": {
+        "allowed": [
+            "inserter",
+            "long-handed-inserter",
+            "fast-inserter"
+        ],
+        "belt_pickup_derate": 0.7
+    },
+    "research": {
+        "inserter_capacity": 4,
+        "productivity": {}
+    },
+    "tricks": {},
+    "box": {
+        "aspect": 1.0
+    },
+    "forbidden_tiles": [],
+    "forbidden_places": [],
+    "sources": [
+        {
+            "name": "iron-ore",
+            "edge": "west",
+            "force": 1.0
+        },
+        {
+            "name": "copper-ore",
+            "edge": "west",
+            "force": 1.0
+        },
+        {
+            "name": "stone",
+            "edge": "west",
+            "force": 1.0
+        },
+        {
+            "name": "coal",
+            "edge": "west",
+            "force": 1.0
+        },
+        {
+            "name": "crude-oil",
+            "edge": "west",
+            "force": 1.0
+        },
+        {
+            "name": "water",
+            "edge": "west",
+            "force": 1.0
+        }
+    ],
+    "outputs": [
+        {
+            "name": "automation-science-pack",
+            "edge": "east",
+            "force": 1.0
+        },
+        {
+            "name": "logistic-science-pack",
+            "edge": "east",
+            "force": 1.0
+        },
+        {
+            "name": "military-science-pack",
+            "edge": "east",
+            "force": 1.0
+        },
+        {
+            "name": "chemical-science-pack",
+            "edge": "east",
+            "force": 1.0
+        },
+        {
+            "name": "production-science-pack",
+            "edge": "east",
+            "force": 1.0
+        },
+        {
+            "name": "utility-science-pack",
+            "edge": "east",
+            "force": 1.0
+        }
+    ],
+    "sinks": {
+        "mode": "port",
+        "chest": "steel-chest"
+    },
+    "fluids": {
+        "mode": "pipes",
+        "surplus_only": {
+            "heavy-oil-cracking": "heavy-oil",
+            "light-oil-cracking": "light-oil"
+        },
+        "surplus_level": 0.5
+    },
+    "power": {
+        "mode": "set-cover",
+        "pole": "medium-electric-pole",
+        "allow_outside_ring": true
+    },
+    "beacons": {
+        "mode": "lattice",
+        "beacon": "beacon",
+        "modules": [
+            "speed-module-3",
+            "speed-module-3"
+        ],
+        "per_machine": 2,
+        "machine_modules": [
+            "productivity-module-3",
+            "productivity-module-3",
+            "productivity-module-3",
+            "productivity-module-3"
+        ],
+        "fallback_module": "speed-module-3"
+    },
+    "search": {
+        "time_budget_s": 26000.0,
+        "seeds_per_size": 10,
+        "threads": 10,
+        "seed": 12345,
+        "verbose": true
+    },
+    "score": {
+        "belt": 0.3,
+        "underground": 1.0,
+        "inserter": 0.2
+    },
+    "test_mode": false,
+    "blocks": {
+        "max_machines": 16,
+        "size_by": "weight",
+        "park_after": 4,
+        "restitch_share": 0.03,
+        "overflow_cost": 0.85,
+        "hard_max": 2.2,
+        "split_at": [
+            "iron-plate",
+            "copper-plate",
+            "steel-plate"
+        ],
+        "corridor": 4,
+        "link_belt_share": 0.9,
+        "split_at_weight": 0.1,
+        "link_cost": 1.0,
+        "fluid_link_cost": 3.0,
+        "block_cost": 4.0,
+        "aspect_weight": 0.5,
+        "wire_weight": 2.0,
+        "block_time_share": 0.59,
+        "pass_through": true,
+        "lane_pairs": true,
+        "rotate": true,
+        "compact_s": 9400.0,
+        "shape_variants": [
+            1.8,
+            1.4,
+            1.2,
+            0.85,
+            0.75,
+            0.67,
+            0.55,
+            0.35
+        ],
+        "shape_variant_s": 60.0,
+        "floorplan_tries": 10,
+        "compact": true,
+        "repack": false,
+        "repack_share": 0.25,
+        "merge": false,
+        "merge_share": 0.3
+    },
+    "reserved": [],
+    "ports_on_ring": true,
+    "marker_tile": "hazard-concrete-left",
+    "tuning": {
+        "route": {
+            "max_chain_visits": 24,
+            "chain_belt_share": 0.95,
+            "weave_penalty": 0.02
+        }
+    },
+    "debug_renders": false
+}
