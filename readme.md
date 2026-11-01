@@ -191,7 +191,16 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
   layout were saved in `<dir>/resume/`; blocks without one are searched, and the others keep shrinking from where
   they were for the time given, then the factory is stitched and validated again. Useful after stopping a run, to
   give a run more time, or to re-stitch finished blocks with newer code. It uses the job saved there unless
-  `--config` is given.
+  `--config` is given. A bare `--resume` continues the run in `--out`, so the same command with `--resume`
+  added works:
+
+  ```bash
+  ./optimize --ram=12g --config=job.json --out=solves/big --resume
+  ```
+
+  It stops with a message, instead of starting afresh, when nothing is saved in the folder, or when the job's
+  plan has changed since (other targets, rates, modules or beacons give other machines, and the saved split no
+  longer fits).
 - `--until-stopped`: a factory of blocks searches its blocks until stopped (see below) instead of until the
   time budget; the final factory is stitched after the stop.
 - `--plain`: line-by-line output instead of the live view.

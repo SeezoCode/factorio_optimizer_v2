@@ -100,6 +100,22 @@ fun saveAll(out: File, config: RunConfiguration, split: Split, variants: List<Li
 fun savedJob(out: File): RunConfiguration? =
     File(out, "resume/job.json").takeIf { it.exists() }?.let { RunConfiguration.parse(it.readText()) }
 
+/** Machines per recipe: a saved split fits a plan when these match. */
+fun recipeCounts(p: ProductionPlan): Map<String, Int> = p.machines.groupingBy { it.recipe }.eachCount()
+
+/** Why a run in [out] cannot be resumed for [plan] (the job's plan before the split), or null when it can. */
+fun resumeProblem(out: File, plan: ProductionPlan): String? {
+    if (!out.isDirectory) return "$out does not exist"
+    val saved = runCatching { loadSplit(out) }.getOrElse { return "$out/resume/split.json cannot be read (${it.message})" }
+        ?: return "nothing saved in $out/resume (only a factory of blocks saves its split and blocks there, from its split on)"
+    val a = recipeCounts(saved.plan); val b = recipeCounts(plan)
+    if (a != b) {
+        val diff = (a.keys + b.keys).filter { a[it] != b[it] }.take(4).joinToString(", ") { "$it ${a[it] ?: 0} -> ${b[it] ?: 0}" }
+        return "the job's plan changed since that run (machines: $diff); a resumed run keeps the old split, so start afresh instead"
+    }
+    return null
+}
+
 /** The split saved in [out], or null. */
 fun loadSplit(out: File): Split? {
     val f = File(out, "resume/split.json").takeIf { it.exists() } ?: return null

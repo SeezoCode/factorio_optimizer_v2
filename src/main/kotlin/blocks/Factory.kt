@@ -106,7 +106,7 @@ fun runFactory(
     }
     fun left() = (deadline - System.currentTimeMillis()) / 1000.0
     val tier = GameConstants.beltTier(config.beltTier)
-    fun recipes(p: ProductionPlan) = p.machines.groupingBy { it.recipe }.eachCount()
+    fun recipes(p: ProductionPlan) = recipeCounts(p)
     val saved = if (resume) loadSplit(out) else null
     if (resume) say(when {
         saved == null -> "resume: nothing saved in $out; starting afresh"
