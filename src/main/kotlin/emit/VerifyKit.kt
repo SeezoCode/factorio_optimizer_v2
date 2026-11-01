@@ -238,6 +238,14 @@ object VerifyKit {
             beacons(),
         ),
         Case(
+            "v21-loaders", "Loader type and direction (test copies feed ports with them)",
+            "Four lines, one per direction: an infinity chest of iron plates, a loader of type output (chest to belt), " +
+                "three express belts, a loader of type input (belt to chest), a steel chest. Plates must reach every steel " +
+                "chest. A loader facing the wrong way means the loader direction in GameConstants.LOADERS is the other " +
+                "way round from undergrounds (travel direction).",
+            loaders(),
+        ),
+        Case(
             "v19-cracking-on-surplus", "A storage tank on heavy oil, wired to a cracking plant that works on a condition",
             "A heavy oil cracking plant (water from an infinity pipe, light oil drained) gets heavy oil through a storage " +
                 "tank filled by an infinity pipe, and has a red wire from the tank with the condition heavy oil > 12500. " +
@@ -360,6 +368,25 @@ object VerifyKit {
         error("no room for the tank in the v19 verify case")
     }
 
+    /** Chest, output loader, belts, input loader, chest: east, west, south and north. */
+    private fun loaders(): Layout {
+        val list = ArrayList<PlacedEntity>()
+        fun line(start: geom.Tile, d: Dir) {
+            fun at(i: Int) = start.step(d, i)
+            fun loader(i: Int, type: String) = (if (d == Dir.W || d == Dir.N) at(i + 1) else at(i)).let { e("express-loader", it.x, it.y, d, ug = type) }
+            list += e("infinity-chest", at(0).x, at(0).y, item = "iron-plate")
+            list += loader(1, "output")
+            (3..5).forEach { list += e("express-transport-belt", at(it).x, at(it).y, d) }
+            list += loader(6, "input")
+            list += e("steel-chest", at(8).x, at(8).y)
+        }
+        line(geom.Tile(0, 0), Dir.E)
+        line(geom.Tile(8, 2), Dir.W)
+        line(geom.Tile(10, 0), Dir.S)
+        line(geom.Tile(12, 8), Dir.N)
+        return Layout(13, 9, list)
+    }
+
     /** Gear assemblers with productivity modules next to 1, 2 and 0 beacons in range (the last one 3 tiles off). */
     private fun beacons(): Layout {
         val list = ArrayList<PlacedEntity>()
@@ -379,8 +406,8 @@ object VerifyKit {
                 1 -> { list += beacon(7, y); list += beacon(7, y + 3) }
                 else -> list += beacon(8, y)         // gap 3 (x 5..7): out of range
             }
-            list += pole(10, y + 1)
-            if (row < 2) list += pole(10, y + 6)
+            list += pole(11, y + 1)   // east of the out-of-range beacon in row 3
+            if (row < 2) list += pole(11, y + 6)
         }
         return Layout(12, 24, list)
     }

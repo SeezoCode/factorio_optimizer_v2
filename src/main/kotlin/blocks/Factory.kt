@@ -1104,6 +1104,10 @@ private fun writeFactory(f: Factory, out: File, config: RunConfiguration) {
     val l = f.layout
     File(out, "best_output_string.txt").writeText(l.toBlueprintString(config.quality))
     File(out, "best_blueprint.json").writeText(l.toBlueprint(config.quality).toJson())
+    if (!config.testMode) power.testCopy(l, f.sources, f.outputs, config).let { tc ->
+        File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.quality))
+        File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
+    }
     renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}"))
     File(out, "ports.json").writeText(strictJson.encodeToString(JsonObject.serializer(), factoryManifest(f)))
 }

@@ -192,6 +192,10 @@ class Search(
         out.mkdirs()
         File(out, "best_output_string.txt").writeText(bp)
         File(out, "best_blueprint.json").writeText(l.toBlueprint(config.quality).toJson())
+        if (!config.testMode) power.testCopy(l, t.sources, t.outputs, config).let { tc ->
+            File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.quality))
+            File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
+        }
         File(out, "ports.json").writeText(prettyJson.encodeToString(JsonObject.serializer(), portManifest(t)))
         File(out, "allSolves").mkdirs()
         File(out, "allSolves/%03d - %dx%d - %.1f.txt".format(n, t.w, t.h, t.score)).writeText(bp)

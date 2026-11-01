@@ -33,6 +33,7 @@ Regenerate the strings with:
 | `v18-filtered-output-inserters.txt` | Inserter filters in blueprints split a machine's products (recycler, crusher, uranium) | Each chest holds only its item | ☐ |
 | `v20-beacons.txt` | Beacon supply area (3 tiles beyond its edge), the 2.0 profile 1/√n with effectivity 1.5, module item requests (inventory 1 beacon, 4 machine) | Machine speeds 2.375, 3.15 and 0.5, productivity +40 %, every slot filled | ☐ |
 | `v19-cracking-on-surplus.txt` | Storage tank connections, red wire ids, a crafting machine's circuit condition (`control_behavior`), wire reach | The tank fills and the plant runs; with the heavy oil pipe at 40 % the plant stops | ☐ |
+| `v21-loaders.txt` | Loader `type` (output: chest to belt, input: belt to chest) and direction (travel direction, as for undergrounds), used by test copies | Plates reach all four steel chests | ☐ |
 
 Also from the plan's list:
 

@@ -55,6 +55,36 @@ class TrialTest {
     }
 
     @Test
+    fun `the test copy feeds every port of the real layout with loaders`() {
+        val r = anySeed("t3", 24)
+        assertTrue(r.success, "failed at ${r.stage}: ${r.errors.take(5)} ${r.notes}")
+        val config = TestData.job("t3")
+        val tc = power.testCopy(r.layout!!, r.sources, r.outputs, config)
+        renderLayout(tc.layout, File("build/renders/trial/t3_test_copy.png"), RenderOptions(showSupply = false, title = "t3 test copy"))
+        assertTrue(tc.warnings.isEmpty(), "${tc.warnings}")
+        val extra = tc.layout.entities.drop(r.layout!!.entities.size)
+        assertEquals(r.layout!!.entities, tc.layout.entities.take(r.layout!!.entities.size), "the layout itself is unchanged")
+        // Each item input: a loader whose belt end points at the port, the item's chest behind it.
+        r.sources.filter { !it.fluid }.groupBy { it.tile }.forEach { (t, g) ->
+            val l = extra.single { it.kind == Kind.LOADER_OUT && it.rect.tiles().any { a -> a + it.dir == t } }
+            val back = l.rect.tiles().first { a -> a + l.dir.opposite !in l.rect.tiles() } + l.dir.opposite
+            val chest = extra.single { it.kind == Kind.INFINITY_CHEST && it.tile == back }
+            assertEquals(g[0].item, chest.item)
+        }
+        // Each item output: a loader taking the belt into a void chest.
+        r.outputs.filter { !it.fluid }.forEach { o ->
+            val l = extra.single { it.kind == Kind.LOADER_IN && it.rect.tiles().any { a -> a + it.dir.opposite == o.tile } }
+            val front = l.rect.tiles().first { a -> a + l.dir !in l.rect.tiles() } + l.dir
+            assertTrue(extra.single { it.kind == Kind.INFINITY_CHEST && it.tile == front }.item == null)
+        }
+        // Nothing overlaps, and the loaders survive the blueprint.
+        val tiles = tc.layout.entities.flatMap { it.rect.tiles() }
+        assertEquals(tiles.size, tiles.toSet().size)
+        val back = emit.decodeBlueprint(tc.layout.toBlueprintString()).toLayout(tc.layout.w, tc.layout.h)
+        assertEquals(tc.layout.entities.map { Triple(it.kind, it.tile, it.dir) }, back.entities.map { Triple(it.kind, it.tile, it.dir) })
+    }
+
+    @Test
     fun `test mode feeds every source from infinity chests`() {
         val r = anySeed("t4", 24) { it.copy(testMode = true, fluids = config.FluidConfig("infinity-pipe")) }
         assertTrue(r.success, "failed at ${r.stage}: ${r.errors.take(5)} ${r.notes}")

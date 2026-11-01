@@ -2,7 +2,7 @@ package geom
 
 import data.GameConstants
 
-enum class Kind { MACHINE, BELT, UG_IN, UG_OUT, SPLITTER, INSERTER, CHEST, POLE, INFINITY_PIPE, INFINITY_CHEST, PIPE, PIPE_UG, TANK, BEACON;
+enum class Kind { MACHINE, BELT, UG_IN, UG_OUT, SPLITTER, INSERTER, CHEST, POLE, INFINITY_PIPE, INFINITY_CHEST, PIPE, PIPE_UG, TANK, BEACON, LOADER_IN, LOADER_OUT;
 
     val beltFamily: Boolean get() = this == BELT || this == UG_IN || this == UG_OUT || this == SPLITTER
 }
@@ -49,6 +49,7 @@ data class PlacedEntity(
             Kind.POLE -> GameConstants.footprint(name)
             Kind.TANK -> 3 to 3
             Kind.BEACON -> 3 to 3
+            Kind.LOADER_IN, Kind.LOADER_OUT -> if (dir.axis == 1) 1 to 2 else 2 to 1
             else -> 1 to 1
         }
 
@@ -68,6 +69,7 @@ data class PlacedEntity(
                 name == GameConstants.PIPE_TO_GROUND -> Kind.PIPE_UG
                 name == GameConstants.STORAGE_TANK -> Kind.TANK
                 name == GameConstants.BEACON -> Kind.BEACON
+                name in GameConstants.LOADERS.values -> if (ugType == "input") Kind.LOADER_IN else Kind.LOADER_OUT
                 else -> error("Unknown entity '$name'")
             }
         }

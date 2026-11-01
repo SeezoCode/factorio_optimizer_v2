@@ -239,6 +239,14 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
                 g.color = Color(230, 90, 200)
                 g.fillRect(sx(e.x + 0.15), sy(e.y + 0.15), (px * 0.7).toInt(), (px * 0.7).toInt())
             }
+            Kind.LOADER_IN, Kind.LOADER_OUT -> {
+                g.color = Color(120, 120, 120)
+                g.fillRect(sx(e.x + 0.1), sy(e.y + 0.1), ((e.w - 0.2) * px).toInt(), ((e.h - 0.2) * px).toInt())
+                g.color = Color(240, 200, 60)
+                g.stroke = BasicStroke((px / 6f).coerceAtLeast(1.5f))
+                val r = 0.35 * maxOf(e.w, e.h)
+                g.drawLine(sx(cx - e.dir.dx * r), sy(cy - e.dir.dy * r), sx(cx + e.dir.dx * r), sy(cy + e.dir.dy * r))
+            }
             Kind.INFINITY_PIPE -> {
                 g.color = if (e.fluid != null) fluidColor(e.fluid) else Color(130, 60, 200)
                 g.fillOval(sx(e.x + 0.15), sy(e.y + 0.15), (px * 0.7).toInt(), (px * 0.7).toInt())

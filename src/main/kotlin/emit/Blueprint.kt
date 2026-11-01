@@ -96,7 +96,7 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
             position = BpPosition(e.x + e.w / 2.0, e.y + e.h / 2.0),
             // A storage tank has two orientations: north (as south) and east (as west).
             direction = if (e.kind == Kind.TANK) (if (e.dir.axis == 0) Dir.E.value16 else null) else e.dir.value16.takeIf { it != 0 && e.kind.hasDirection },
-            type = when (e.kind) { Kind.UG_IN -> "input"; Kind.UG_OUT -> "output"; else -> null },
+            type = when (e.kind) { Kind.UG_IN, Kind.LOADER_IN -> "input"; Kind.UG_OUT, Kind.LOADER_OUT -> "output"; else -> null },
             recipe = e.recipe?.takeIf { GameConstants.takesRecipe(e.name) },
             recipeQuality = if (e.recipe != null && GameConstants.takesRecipe(e.name)) quality else null,
             mirror = if (e.mirror) true else null,

@@ -112,6 +112,13 @@ object GameConstants {
     const val INFINITY_CHEST = "infinity-chest"
     const val INFINITY_PIPE = "infinity-pipe"
 
+    /**
+     * 1x2 loaders by belt tier (editor-only in 2.0; the test copy uses them to feed and empty ports at full belt
+     * speed). Blueprint `type` is "output" (container to belt) or "input" (belt to container); the direction is the
+     * way items travel, as for undergrounds. [P] VERIFY (v21)
+     */
+    val LOADERS = mapOf("basic" to "loader", "fast" to "fast-loader", "express" to "express-loader", "turbo" to "turbo-loader")
+
     /** Default size of non-machine entities (recipes.json lists only machines). */
     fun footprint(name: String): Pair<Int, Int> = when {
         POLES[name] != null -> POLES.getValue(name).size to POLES.getValue(name).size

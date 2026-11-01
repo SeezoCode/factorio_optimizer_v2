@@ -171,6 +171,8 @@ Results go to `src/main/resources/solves/<time> - sa/` (or `--out=<dir>`):
 |------|----------|
 | `best_output_string.txt` | Blueprint string of the best layout so far |
 | `best_blueprint.json` | The same blueprint as readable JSON |
+| `test_output_string.txt` | The same blueprint with test feeds on its ports, for trying it in the editor (see below) |
+| `test_feeds.txt` | Ports the test copy could not feed (`every port fed` when there are none) |
 | `best.png`, `renders/` | Render of the best layout, and one per improvement |
 | `allSolves/` | Blueprint string of every improvement |
 | `scores.tsv`, `score_vs_time.svg` | Score log and graph |
@@ -330,8 +332,17 @@ Unknown keys are an error. Everything except `targets` has a default.
 - `ports_on_ring` (default on) moves every input and output one tile out of the box, onto the ring around it,
   so ports stand out. `marker_tile` is the floor tile drawn around blocks and reserved areas in the blueprint
   (`"none"` for no tiles, e.g. on a space platform, where concrete cannot be placed).
-- `test_mode` feeds every input from infinity chests or pipes outside the box and empties every output into
-  void chests or drains, for testing in the editor.
+- Every best layout also comes as a **test copy**, `test_output_string.txt`: the same blueprint, unchanged
+  inside the box, with a feed on every port. An item input gets a loader pointing at its belt with an infinity
+  chest of that item behind it, an item output a loader into a void infinity chest, and a fluid port an infinity
+  pipe (a drain for outputs). Each feed runs straight out from its port, so ports side by side all fit. Paste it
+  in the editor (`/editor`; loaders and infinity chests are editor items), add power (an
+  electric-energy-interface), and it runs at once; production statistics (P) show the output rates. A belt
+  carrying two items, one per lane, gets the inserter feeder of `test_mode` instead, where there is room.
+  `test_feeds.txt` lists any port that got no feed.
+- `test_mode` builds the feeds into the search instead: inputs from infinity chests with inserters, outputs into
+  void chests, ports spaced out so every feeder fits. The layout differs from the real one; the test copy above
+  is usually what you want.
 - `tricks` toggles individual techniques (I1–I13, B1–B13, F1, F2, P1, P2, H1); v1 ones are on by default.
 - The old CP-SAT fields (`forbidden_places`, source `force`) are still accepted so old job files load, but do nothing.
 
@@ -420,7 +431,7 @@ Reserved areas are placed by the floorplan in their corners. `rows` is ignored n
 
 Every smaller valid factory is saved as it is found, so stopping the run early keeps the best so far.
 
-The output folder holds the factory (`best_output_string.txt`, `best.png`, `ports.json`, `factory.txt` with the
+The output folder holds the factory (`best_output_string.txt`, its test copy `test_output_string.txt`, `best.png`, `ports.json`, `factory.txt` with the
 split, the links, the pipe trees and every stitching step) and each block in `block_<n>/`.
 
 ### Space Age
