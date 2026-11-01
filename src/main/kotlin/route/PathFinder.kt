@@ -96,7 +96,7 @@ class PathFinder(internal val p: RouteProblem) {
     private val maxJ = tier.maxUndergroundGap + 1
     private val ugAllowed = config.trick("B2")
     /** Tiles undergrounds may not pass under ([RouteProblem.noTunnel]). */
-    private val noTunnel = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noTunnel.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
+    internal val noTunnel = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noTunnel.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
     /** Weaving tier (B5): its undergrounds have their own channels, so they pass under the main tier's. */
     private val weave = config.weave()
     private val maxJw = (weave?.maxUndergroundGap ?: -1) + 1
@@ -161,6 +161,8 @@ class PathFinder(internal val p: RouteProblem) {
         val item2: String? = null, val sourceRate2: Double = 0.0,
         /** Plan ports this chain starts from and ends at (-1: none), for telling ports of one item apart. */
         val srcPort: Int = -1, val outPort: Int = -1,
+        /** Plan port of [item2] on a shared belt (-1: none). */
+        val srcPort2: Int = -1,
     )
     private val nets = ArrayList<RNet>()
 
@@ -361,7 +363,7 @@ class PathFinder(internal val p: RouteProblem) {
                     srcPort = source?.base?.port ?: -1, outPort = output?.base?.port ?: -1)
             }
         }
-        if (config.laneSharing) pairChains()
+        if (config.laneSharing || plan.ports.any { it.pairWith >= 0 }) pairChains()
         routed = arrayOfNulls(nets.size)
         netOrder = arrayOfNulls(nets.size)
         termNet = IntArray(vts.size) { vts[it].net }
@@ -1314,8 +1316,8 @@ class PathFinder(internal val p: RouteProblem) {
                 val r = routed[n.idx]?.takeIf { it.sourceTile >= 0 } ?: return@flatMap emptyList()
                 val t = dims.tile(r.sourceTile)
                 if (n.item2 == null) listOf(SourceSpec(t, n.item, n.sourceRate, port = n.srcPort))
-                else listOfNotNull(SourceSpec(t, n.item, n.sourceRate, lane = 0).takeIf { n.sourceRate > 0 },
-                    SourceSpec(t, n.item2, n.sourceRate2, lane = 1).takeIf { n.sourceRate2 > 0 })
+                else listOfNotNull(SourceSpec(t, n.item, n.sourceRate, lane = 0, port = n.srcPort).takeIf { n.sourceRate > 0 },
+                    SourceSpec(t, n.item2, n.sourceRate2, lane = 1, port = n.srcPort2).takeIf { n.sourceRate2 > 0 })
             } + (pr?.sources() ?: emptyList()),
             outputs = nets.mapNotNull { n -> routed[n.idx]?.takeIf { it.outTile >= 0 }?.let { OutputSpec(dims.tile(it.outTile), n.item, n.outRate, port = n.outPort) } } +
                 (pr?.outputs() ?: emptyList()),
@@ -1495,7 +1497,9 @@ class PathFinder(internal val p: RouteProblem) {
      * Two items per belt: merges pairs of single chains whose consumer machines mostly coincide and whose flow
      * fits one lane each into one chain carrying one item per lane (slot 0 left, slot 1 right). A port-fed item
      * takes slot 0; two port-fed items need an edge tile both ports allow. Chains with fixed-tile ports, output
-     * ports or single-belt ports (links between the blocks of a factory) keep a belt of their own.
+     * ports or single-belt ports (links between the blocks of a factory) keep a belt of their own, except input ports
+     * the plan pairs ([plan.Port.pairWith]: two links of a factory sharing a belt), which are merged whatever their
+     * consumers, even with lane sharing off, when each is one chain that fits a lane.
      */
     private fun pairChains() {
         fun flow(n: RNet) = n.sourceRate + n.terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate }
@@ -1523,6 +1527,13 @@ class PathFinder(internal val p: RouteProblem) {
         }
         found.sortByDescending { it.score }
         val partner = HashMap<Int, RNet>()
+        // Pairs the plan asks for come first.
+        nets.filter { n -> n.srcPort >= 0 && plan.ports[n.srcPort].pairWith >= 0 }.forEach { n ->
+            val m = nets.firstOrNull { it.srcPort == plan.ports[n.srcPort].pairWith } ?: return@forEach
+            val ok = listOf(n, m).all { chainsOf[it.planId] == 1 && it.outTiles.isEmpty() && it.item2 == null && flow(it) <= laneCap }
+            if (ok && n.idx !in partner && m.idx !in partner) { partner[n.idx] = m; partner[m.idx] = n }
+        }
+        if (!config.laneSharing) found.clear()
         found.forEach { c -> if (c.a.idx !in partner && c.b.idx !in partner) { partner[c.a.idx] = c.b; partner[c.b.idx] = c.a } }
         if (partner.isEmpty()) return
         val old = nets.toList()
@@ -1544,7 +1555,7 @@ class PathFinder(internal val p: RouteProblem) {
                 tiles = keep.map { first.portTiles[it] }.toIntArray(); outs = keep.map { first.portOut[it] }.toIntArray()
             }
             nets += RNet(idx, first.planId, first.item, first.terms + second.terms, tiles, outs, maxOf(first.hpwl, second.hpwl),
-                first.sourceRate, item2 = second.item, sourceRate2 = second.sourceRate)
+                first.sourceRate, item2 = second.item, sourceRate2 = second.sourceRate, srcPort = first.srcPort, srcPort2 = second.srcPort)
             log += "shared belt: ${first.item} (left lane) with ${second.item} (right lane)"
         }
         vts.forEach { it.net = remap.getValue(it.net) }
@@ -1620,7 +1631,10 @@ class PathFinder(internal val p: RouteProblem) {
                 .coerceAtMost(parts.size)
             return if (g == 1) listOf(parts) else groupConsumers(parts, g, center)
         }
-        // 1. Output ports.
+        // 1. Output ports. An output chain fed from a single-belt input port (an item passing through a block of a
+        // factory) waits for step 2: the consumers that port feeds join it, so the port stays one belt.
+        class Pending(val parts: List<EffectiveTerminal>, val srcRate: Double, val out: EffectiveTerminal, val outRate: Double)
+        val pending = HashMap<EffectiveTerminal, MutableList<Pending>>()
         outputs.forEach { o ->
             val pieces = if (plan.ports[o.base.port!!].single) 1 else maxOf(1, kotlin.math.ceil(o.rate / beltCap - 1e-9).toInt())
             repeat(pieces) {
@@ -1633,7 +1647,8 @@ class PathFinder(internal val p: RouteProblem) {
                     if (src != null) { srcRate = min(missing, srcLeft.getValue(src)); srcLeft[src] = srcLeft.getValue(src) - srcRate }
                 }
                 if (missing - srcRate > 1e-6) log += "net ${net.id} (${net.item}): output chain short of ${"%.2f".format(missing - srcRate)}/s"
-                addChain(net, parts, src, srcRate, o, r, rectOf)
+                if (src != null && plan.ports[src.base.port!!].single) pending.getOrPut(src) { ArrayList() } += Pending(parts, srcRate, o, r)
+                else addChain(net, parts, src, srcRate, o, r, rectOf)
             }
         }
         // 2. Consumers nearest each input port, fed by it.
@@ -1650,10 +1665,16 @@ class PathFinder(internal val p: RouteProblem) {
                 mine += part(c, take, pickRate)
             }
             srcLeft[s] = left
-            // A link port is one belt: one chain (branches serve many consumers), so it pairs with its other end.
-            val groups = if (plan.ports[s.base.port!!].single) listOf(mine).filter { it.isNotEmpty() } else chainsOf(mine, portTilesOf(s.base.port).size)
-            groups.forEach { group -> addChain(net, group, s, group.sumOf { it.rate }, null, 0.0, rectOf) }
+            // A link port is one belt: one chain (branches serve many consumers), so it pairs with its other end; an item
+            // passing through runs past these consumers on to its output port.
+            if (plan.ports[s.base.port!!].single) {
+                val through = pending.remove(s)?.firstOrNull()
+                if (through != null) addChain(net, mine + through.parts, s, through.srcRate + mine.sumOf { it.rate }, through.out, through.outRate, rectOf)
+                else if (mine.isNotEmpty()) addChain(net, mine, s, mine.sumOf { it.rate }, null, 0.0, rectOf)
+            } else chainsOf(mine, portTilesOf(s.base.port).size).forEach { group -> addChain(net, group, s, group.sumOf { it.rate }, null, 0.0, rectOf) }
         }
+        // Pass-through chains whose port fed no consumers here.
+        pending.forEach { (s, ps) -> ps.forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) } }
         // 3. The rest from producers.
         val rest = need.filter { it.value > 1e-9 }.map { (c, r) -> part(c, r, pickRate) }
         chainsOf(rest).forEach { group ->

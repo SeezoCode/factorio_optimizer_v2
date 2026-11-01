@@ -1,0 +1,198 @@
+{
+  "engine": "sa",
+  "quality": "normal",
+  "targets": [
+    {
+      "name": "automation-science-pack",
+      "amount": 1.0
+    },
+    {
+      "name": "logistic-science-pack",
+      "amount": 1.0
+    },
+    {
+      "name": "military-science-pack",
+      "amount": 1.0
+    },
+    {
+      "name": "chemical-science-pack",
+      "amount": 1.0
+    },
+    {
+      "name": "production-science-pack",
+      "amount": 1.0
+    },
+    {
+      "name": "utility-science-pack",
+      "amount": 1.0
+    }
+  ],
+  "forbidden_recipes": [],
+  "recipe_overrides": {},
+  "machine": "assembling-machine-3",
+  "machines": [
+    "assembling-machine-3",
+    "electric-furnace",
+    "chemical-plant",
+    "oil-refinery",
+    "centrifuge"
+  ],
+  "fuel": "coal",
+  "belt_tier": "fast",
+  "weave_tier": "auto",
+  "lane_sharing": true,
+  "inserters": {
+    "allowed": [
+      "inserter",
+      "long-handed-inserter",
+      "fast-inserter"
+    ],
+    "belt_pickup_derate": 0.7
+  },
+  "research": {
+    "inserter_capacity": 4,
+    "productivity": {}
+  },
+  "tricks": {},
+  "box": {
+    "aspect": 1.0
+  },
+  "forbidden_tiles": [],
+  "forbidden_places": [],
+  "sources": [
+    {
+      "name": "iron-plate",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "copper-plate",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "steel-plate",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "stone-brick",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "coal",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "petroleum-gas",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "heavy-oil",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "water",
+      "edge": "west",
+      "force": 1.0
+    },
+    {
+      "name": "stone",
+      "edge": "west",
+      "force": 1.0
+    }
+  ],
+  "outputs": [
+    {
+      "name": "automation-science-pack",
+      "edge": "east",
+      "force": 1.0
+    },
+    {
+      "name": "logistic-science-pack",
+      "edge": "east",
+      "force": 1.0
+    },
+    {
+      "name": "military-science-pack",
+      "edge": "east",
+      "force": 1.0
+    },
+    {
+      "name": "chemical-science-pack",
+      "edge": "east",
+      "force": 1.0
+    },
+    {
+      "name": "production-science-pack",
+      "edge": "east",
+      "force": 1.0
+    },
+    {
+      "name": "utility-science-pack",
+      "edge": "east",
+      "force": 1.0
+    }
+  ],
+  "sinks": {
+    "mode": "port",
+    "chest": "steel-chest"
+  },
+  "fluids": {
+    "mode": "pipes"
+  },
+  "power": {
+    "mode": "set-cover",
+    "pole": "medium-electric-pole",
+    "allow_outside_ring": true
+  },
+  "search": {
+    "time_budget_s": 1800.0,
+    "seeds_per_size": 4,
+    "threads": 4,
+    "seed": 12345,
+    "verbose": false
+  },
+  "score": {
+    "belt": 0.3,
+    "underground": 1.0,
+    "inserter": 0.2
+  },
+  "test_mode": false,
+  "blocks": {
+    "max_machines": 15,
+    "split_at": [
+      "iron-plate",
+      "copper-plate",
+      "steel-plate"
+    ],
+    "corridor": 4,
+    "link_belt_share": 0.9,
+    "split_at_weight": 0.1,
+    "link_cost": 1.0,
+    "fluid_link_cost": 3.0,
+    "block_cost": 4.0,
+    "aspect_weight": 0.5,
+    "wire_weight": 2.0,
+    "block_time_share": 0.96,
+    "compact": true,
+    "repack": false,
+    "repack_share": 0.25,
+    "merge": false,
+    "merge_share": 0.3
+  },
+  "reserved": [],
+  "ports_on_ring": true,
+  "marker_tile": "hazard-concrete-left",
+  "tuning": {
+    "route": {
+      "max_chain_visits": 24,
+      "chain_belt_share": 0.95
+    }
+  },
+  "debug_renders": false
+}

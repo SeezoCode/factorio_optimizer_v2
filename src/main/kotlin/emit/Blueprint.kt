@@ -1,6 +1,7 @@
 package emit
 
 import data.GameConstants
+import geom.CircuitCondition
 import geom.Dir
 import geom.Kind
 import geom.Layout
@@ -77,6 +78,13 @@ data class BpEntity(
     @SerialName("filter_mode") val filterMode: String? = null,
     val bar: Int? = null,
     val mirror: Boolean? = null,
+    /** Circuit settings; for a crafting machine its enable condition. VERIFY (v19) */
+    @SerialName("control_behavior") val controlBehavior: JsonObject? = null,
+    /**
+     * Item requests: modules into slots, [{id: {name}, items: {in_inventory: [{inventory, stack}]}}], stacks
+     * 0-based; inventory 1 for a beacon, 4 for a crafting machine. VERIFY (v20)
+     */
+    val items: kotlinx.serialization.json.JsonArray? = null,
 )
 
 /** Layout -> 2.0 blueprint. Entity numbers are layout index + 1. */
@@ -86,8 +94,9 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
             entityNumber = i + 1,
             name = e.name,
             position = BpPosition(e.x + e.w / 2.0, e.y + e.h / 2.0),
-            direction = e.dir.value16.takeIf { it != 0 && e.kind.hasDirection },
-            type = when (e.kind) { Kind.UG_IN -> "input"; Kind.UG_OUT -> "output"; else -> null },
+            // A storage tank has two orientations: north (as south) and east (as west).
+            direction = if (e.kind == Kind.TANK) (if (e.dir.axis == 0) Dir.E.value16 else null) else e.dir.value16.takeIf { it != 0 && e.kind.hasDirection },
+            type = when (e.kind) { Kind.UG_IN, Kind.LOADER_IN -> "input"; Kind.UG_OUT, Kind.LOADER_OUT -> "output"; else -> null },
             recipe = e.recipe?.takeIf { GameConstants.takesRecipe(e.name) },
             recipeQuality = if (e.recipe != null && GameConstants.takesRecipe(e.name)) quality else null,
             mirror = if (e.mirror) true else null,
@@ -114,6 +123,31 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
             // Filters leave out the quality, so they match an item of any quality.
             useFilters = if (e.kind == Kind.INSERTER && e.item != null) true else null,
             filters = if ((e.kind == Kind.CHEST || e.kind == Kind.INSERTER) && e.item != null) listOf(BpItemFilter(1, e.item)) else null,
+            items = e.modules?.takeIf { it.isNotEmpty() }?.let { ms ->
+                val inv = if (e.kind == Kind.BEACON) GameConstants.BEACON_MODULE_INVENTORY else GameConstants.MACHINE_MODULE_INVENTORY
+                buildJsonArray {
+                    ms.withIndex().groupBy({ it.value }, { it.index }).forEach { (module, stacks) ->
+                        add(buildJsonObject {
+                            put("id", buildJsonObject { put("name", module) })
+                            put("items", buildJsonObject {
+                                put("in_inventory", buildJsonArray {
+                                    stacks.forEach { st -> add(buildJsonObject { put("inventory", inv); put("stack", st) }) }
+                                })
+                            })
+                        })
+                    }
+                }
+            },
+            controlBehavior = e.circuit?.let { c ->
+                buildJsonObject {
+                    put("circuit_enable_disable", true)
+                    put("circuit_condition", buildJsonObject {
+                        put("first_signal", buildJsonObject { if (c.fluid) put("type", "fluid"); put("name", c.signal) })
+                        put("constant", c.constant)
+                        put("comparator", c.comparator)
+                    })
+                }
+            },
         )
     }
     val icon = entities.firstOrNull { it.kind == Kind.MACHINE }?.recipe ?: entities.firstOrNull()?.name
@@ -121,13 +155,14 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
         label = label,
         icons = listOfNotNull(icon?.let { BpIcon(BpSignal(it), 1) }),
         entities = bpEntities,
-        wires = wires.map { (a, b) -> listOf(minOf(a, b) + 1, GameConstants.WIRE_POLE_COPPER, maxOf(a, b) + 1, GameConstants.WIRE_POLE_COPPER) },
+        wires = wires.map { (a, b) -> listOf(minOf(a, b) + 1, GameConstants.WIRE_POLE_COPPER, maxOf(a, b) + 1, GameConstants.WIRE_POLE_COPPER) } +
+            circuitWires.map { (a, b, c) -> listOf(minOf(a, b) + 1, c, maxOf(a, b) + 1, c) },
         tiles = tiles.takeIf { it.isNotEmpty() }?.map { BpTile(it.name, BpTilePosition(it.x, it.y)) },
     )
 }
 
 private val Kind.hasDirection: Boolean
-    get() = this != Kind.CHEST && this != Kind.POLE && this != Kind.INFINITY_CHEST && this != Kind.INFINITY_PIPE && this != Kind.PIPE
+    get() = this != Kind.CHEST && this != Kind.POLE && this != Kind.BEACON && this != Kind.INFINITY_CHEST && this != Kind.INFINITY_PIPE && this != Kind.PIPE
 
 /** 2.0 blueprint -> layout. Inverse of [toBlueprint] for the entity types this tool emits. */
 fun Blueprint.toLayout(w: Int, h: Int): Layout {
@@ -155,12 +190,30 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
             mirror = b.mirror == true,
             w = ew,
             h = eh,
+            circuit = b.controlBehavior?.get("circuit_condition")?.jsonObject?.let { c ->
+                val sig = c["first_signal"]?.jsonObject ?: return@let null
+                CircuitCondition(sig["name"]?.jsonPrimitive?.content ?: return@let null, c["comparator"]?.jsonPrimitive?.content ?: "<",
+                    c["constant"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0, sig["type"]?.jsonPrimitive?.content == "fluid")
+            },
+            modules = b.items?.let { reqs ->
+                val slots = sortedMapOf<Int, String>()
+                reqs.forEach { r ->
+                    val o = r.jsonObject
+                    val name = o["id"]?.jsonObject?.get("name")?.jsonPrimitive?.content ?: return@forEach
+                    o["items"]?.jsonObject?.get("in_inventory")?.jsonArray?.forEach { st ->
+                        st.jsonObject["stack"]?.jsonPrimitive?.content?.toIntOrNull()?.let { slots[it] = name }
+                    }
+                }
+                slots.values.toList().takeIf { it.isNotEmpty() }
+            },
         )
     }
     val numberToIndex = entities.sortedBy { it.entityNumber }.mapIndexed { i, b -> b.entityNumber to i }.toMap()
     val wirePairs = wires.filter { it.size == 4 && it[1] == GameConstants.WIRE_POLE_COPPER && it[3] == GameConstants.WIRE_POLE_COPPER }
         .map { numberToIndex.getValue(it[0]) to numberToIndex.getValue(it[2]) }
-    return Layout(w, h, list, wirePairs, label, tiles?.map { geom.GroundTile(it.name, it.position.x, it.position.y) } ?: emptyList())
+    val circuit = wires.filter { it.size == 4 && it[1] == it[3] && (it[1] == GameConstants.WIRE_RED || it[1] == GameConstants.WIRE_GREEN) }
+        .map { Triple(numberToIndex.getValue(it[0]), numberToIndex.getValue(it[2]), it[1]) }
+    return Layout(w, h, list, wirePairs, label, tiles?.map { geom.GroundTile(it.name, it.position.x, it.position.y) } ?: emptyList(), circuit)
 }
 
 fun Blueprint.toJson(): String = blueprintJson.encodeToString(BlueprintRoot.serializer(), BlueprintRoot(this))

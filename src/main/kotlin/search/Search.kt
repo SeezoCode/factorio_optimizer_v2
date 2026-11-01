@@ -47,12 +47,20 @@ class Search(
     private val startFrom: place.Placement? = null,
     /** Called for every finished trial (calibration collects routing statistics here). */
     private val onTrial: (TrialResult) -> Unit = {},
+    /** A finished layout to refine (a resumed block): the search starts from its size and tries smaller. */
+    initial: TrialResult? = null,
+    /** Where progress lines go besides log.txt (stdout by default; a factory's live view keeps them off screen). */
+    private val printer: (String) -> Unit = ::println,
 ) {
     private val start = clock()
-    private val deadline = start + (config.search.timeBudgetS * 1000).toLong()
+    /** When the search stops; [extendTo] moves it (a factory run whose limit changed, or a stop). */
+    @Volatile var deadline = start + (config.search.timeBudgetS * 1000).toLong()
+        private set
+    fun extendTo(epochMs: Long) { deadline = epochMs }
     private val log = ArrayList<String>()
     private val improvements = ArrayList<Improvement>()
-    @Volatile private var best: TrialResult? = null
+    @Volatile var best: TrialResult? = initial
+        private set
     private var trials = 0
     private val scores = ArrayList<timestampToScore>()
     /** Seeds used so far per size, so every retry at a size gets fresh ones. */
@@ -157,7 +165,7 @@ class Search(
 
     private fun say(msg: String) {
         val line = "[%7.1fs] %s".format((clock() - start) / 1000.0, msg)
-        println(line)
+        printer(line)
         synchronized(lock) { log += line; File(out, "log.txt").appendText(line + "\n") }
     }
 
@@ -184,6 +192,10 @@ class Search(
         out.mkdirs()
         File(out, "best_output_string.txt").writeText(bp)
         File(out, "best_blueprint.json").writeText(l.toBlueprint(config.quality).toJson())
+        if (!config.testMode) power.testCopy(l, t.sources, t.outputs, config).let { tc ->
+            File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.quality))
+            File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
+        }
         File(out, "ports.json").writeText(prettyJson.encodeToString(JsonObject.serializer(), portManifest(t)))
         File(out, "allSolves").mkdirs()
         File(out, "allSolves/%03d - %dx%d - %.1f.txt".format(n, t.w, t.h, t.score)).writeText(bp)
@@ -207,14 +219,17 @@ class Search(
 
     private fun timeLeft() = clock() < deadline
 
-    /** Runs K fresh seeds at size s in parallel; true if any succeeded. */
-    private fun trySize(s: Int, seeds: Int): Boolean {
+    /** Set by [trySize]: the last size was cut short (deadline) before all its seeds ran and none succeeded. */
+    private var inconclusive = false
+
+    /** Runs K fresh seeds at size s on [threads] threads; true if any succeeded. */
+    private fun trySize(s: Int, seeds: Int, threads: Int = config.search.threads): Boolean {
         val (w, h) = box(s)
         val offset = seedsUsed.getOrDefault(s, 0)
         seedsUsed[s] = offset + seeds
         val warm = best?.placement ?: startFrom
         val warmT0 = best?.annealT0
-        val pool = Executors.newFixedThreadPool(config.search.threads.coerceAtLeast(1))
+        val pool = Executors.newFixedThreadPool(threads.coerceAtLeast(1))
         try {
             val jobs = (0 until seeds).map { k ->
                 val seed = config.search.seed * 1_000_003L + s * 1009L + (k + offset)
@@ -226,6 +241,7 @@ class Search(
                 }
             }
             val results = pool.invokeAll(jobs).mapNotNull { it.get() }
+            inconclusive = results.size < seeds && results.none { it.success }
             trials += results.size
             results.forEach { offer(it); onTrial(it) }
             val ok = results.count { it.success }
@@ -241,51 +257,109 @@ class Search(
         }
     }
 
-    fun run(): SearchResult {
+    // ---- the search as steps (one box size, K seeds, per step), so a factory can interleave its blocks ----
+    private enum class Phase { START, GROW, BINARY, EXTRA, DONE }
+    private var phase = Phase.START
+    private var hi = 0
+    private var lo = 0
+    private var sLo = 0
+    private var growRound = 0
+    private var extraRound = 0
+    private var endReason = ""
+    /** Steps in a row at the smallest size so far that found nothing smaller or better. */
+    var stalls = 0
+        private set
+    /** Steps taken. */
+    var steps = 0
+        private set
+    val done: Boolean get() = phase == Phase.DONE
+    /** The box size parameter of the smallest success so far (0 before the first). */
+    val bestSize: Int get() = if (best == null) 0 else hi
+
+    /** The size parameter whose box holds [t]'s layout at the configured aspect. */
+    private fun sizeOf(t: TrialResult): Int {
+        var s = maxOf(3, sqrt(t.w.toDouble() * t.h).roundToInt())
+        while (box(s).let { (w, h) -> w * h } < t.w * t.h) s++
+        return s
+    }
+
+    private fun begin() {
         out.mkdirs()
         val area = plan.totalMachineArea() + config.reserved.sumOf { it.w * it.h }
         val cap = config.box.maxSize
         val estimate = maxOf(3, ceil(sqrt(area * tuning.search.areaFactor)).toInt())
-        var hi = minOf(cap ?: Int.MAX_VALUE, config.box.startSize ?: cap ?: (2 * estimate))
-        val sLo = minOf(estimate, hi)
+        hi = minOf(cap ?: Int.MAX_VALUE, config.box.startSize ?: cap ?: (2 * estimate))
+        sLo = minOf(estimate, hi)
         val k = config.search.seedsPerSize
         say("machines ${plan.machines.size}, machine area $area, s_lo $sLo, start $hi${cap?.let { ", max $it" } ?: ""}, budget ${config.search.timeBudgetS}s, $k seeds x ${config.search.threads} threads")
         box(hi).let { (w, h) -> sayPlan(w, h) }
-
-        // 1. Upper bound: grow gently until a size succeeds, with several seed rounds per size first. A failed
-        //    size usually means routing dead ends other seeds avoid; doubling the box gives sparse layouts.
-        var feasible = -1
-        val grow = tuning.search.growRounds.coerceAtLeast(1)
-        while (timeLeft() && feasible < 0) {
-            for (round in 0 until grow) {
-                if (!timeLeft()) break
-                if (trySize(hi, k)) { feasible = hi; break }
-            }
-            if (feasible >= 0) break
-            if (cap != null && hi >= cap) continue   // at the largest allowed size: keep trying new seeds
-            if (cap == null && hi >= 8 * sLo) { say("no success up to size $hi"); break }
-            hi = minOf(cap ?: Int.MAX_VALUE, maxOf(hi + 1, ceil(hi * tuning.search.growFactor).toInt()))
-        }
-        if (feasible < 0) return finish("no feasible size found")
-
-        // 2. Binary search between s_lo and the smallest known success.
-        var lo = sLo
-        hi = feasible
-        while (lo < hi && timeLeft()) {
-            val mid = (lo + hi) / 2
-            if (trySize(mid, k)) hi = mid else lo = mid + 1
-        }
-        say("search interval closed at size $hi")
-
-        // 3. Extra seeds at the smallest feasible size and the one below, until the budget runs out.
-        var round = 1
-        while (timeLeft() && round <= tuning.search.extraRounds) {
-            if (hi - 1 >= sLo && trySize(hi - 1, k)) hi -= 1
-            else if (timeLeft()) trySize(hi, k)
-            round++
-        }
-        return finish(if (timeLeft()) "extra seed rounds done" else "time budget spent")
+        val b = best
+        if (b != null) {
+            // Refining a finished layout: from its size, try smaller.
+            hi = sizeOf(b); sLo = minOf(sLo, hi)
+            say("refining a ${b.w}x${b.h} layout (size $hi)")
+            phase = Phase.EXTRA
+        } else phase = Phase.GROW
     }
+
+    /**
+     * One step: one box size with K seeds on [threads] threads. 1. Upper bound: grow gently until a size succeeds,
+     * with several seed rounds per size first (a failed size usually means routing dead ends other seeds avoid;
+     * doubling the box gives sparse layouts). 2. Binary search between s_lo and the smallest success. 3. Extra seeds
+     * at the smallest feasible size and the one below. False when there is nothing left to do.
+     */
+    fun step(threads: Int = config.search.threads, seeds: Int = maxOf(config.search.seedsPerSize, threads)): Boolean {
+        // At least one seed per thread, so no thread waits while others work.
+        val k = maxOf(seeds, threads)
+        val cap = config.box.maxSize
+        if (phase == Phase.START) begin()
+        if (!timeLeft()) return false
+        steps++
+        when (phase) {
+            Phase.GROW -> {
+                if (trySize(hi, k, threads)) { lo = sLo; phase = Phase.BINARY; if (lo >= hi) closeInterval() }
+                else if (inconclusive) {}   // cut short: says nothing about this size
+                else if (++growRound >= tuning.search.growRounds.coerceAtLeast(1)) {
+                    growRound = 0
+                    when {
+                        cap != null && hi >= cap -> {}   // at the largest allowed size: keep trying new seeds
+                        cap == null && hi >= 8 * sLo -> { say("no success up to size $hi"); end("no feasible size found") }
+                        else -> hi = minOf(cap ?: Int.MAX_VALUE, maxOf(hi + 1, ceil(hi * tuning.search.growFactor).toInt()))
+                    }
+                }
+            }
+            Phase.BINARY -> {
+                val mid = (lo + hi) / 2
+                if (trySize(mid, k, threads)) hi = mid else if (!inconclusive) lo = mid + 1
+                if (lo >= hi) closeInterval()
+            }
+            Phase.EXTRA -> {
+                val before = best
+                if (hi - 1 >= sLo && trySize(hi - 1, k, threads)) hi -= 1
+                else if (timeLeft()) trySize(hi, k, threads)
+                stalls = if (best !== before) 0 else if (inconclusive) stalls else stalls + 1
+                if (++extraRound > tuning.search.extraRounds) end("extra seed rounds done")
+            }
+            else -> {}
+        }
+        return phase != Phase.DONE
+    }
+
+    private fun closeInterval() { say("search interval closed at size $hi"); phase = Phase.EXTRA }
+    private fun end(reason: String) { endReason = reason; phase = Phase.DONE }
+
+    fun run(): SearchResult {
+        while (step()) {}
+        if (phase == Phase.START) begin()
+        return finish(when {
+            endReason.isNotEmpty() -> endReason
+            best == null && phase == Phase.GROW -> "no feasible size found"
+            else -> "time budget spent"
+        })
+    }
+
+    /** The result so far (a stepped search's caller finishes it this way). */
+    fun result(): SearchResult = finish(endReason.ifEmpty { if (timeLeft()) "stopped" else "time budget spent" })
 
     private fun finish(reason: String): SearchResult {
         say("done: $reason after $trials trials; best ${best?.let { "${it.w}x${it.h} score ${"%.1f".format(it.score)}" } ?: "none"}")

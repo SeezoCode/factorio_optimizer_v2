@@ -36,6 +36,15 @@ data class MachineInstance(
     val fluidIn: Map<String, Int> = emptyMap(),
     val fluidOut: Map<String, Int> = emptyMap(),
     val crafts: Double = 0.0,
+    /**
+     * Crafts/s this instance could run at: its crafting speed, and what its inserters (as many as [crafts] needs)
+     * can move. Machines of a recipe in different blocks of a factory may run at different rates up to this.
+     */
+    val maxCrafts: Double = 0.0,
+    /** Beacons this machine was planned with (0 without beacons). */
+    val beacons: Int = 0,
+    /** Crafts/s its crafting speed allows with 0, 1, ... [beacons] beacons in range (empty without beacons). */
+    val beaconCrafts: List<Double> = emptyList(),
 ) {
     val label: String get() = "$recipe#$id"
     /** Items (not fluids) this machine makes. */
@@ -53,6 +62,8 @@ data class Port(
     val output: Boolean = false,
     /** Exactly one belt (a link between blocks of a split factory, so its two ends pair up). */
     val single: Boolean = false,
+    /** Another input port whose item should arrive on the same belt, one item per lane (-1: none). */
+    val pairWith: Int = -1,
 )
 
 @Serializable
@@ -103,7 +114,8 @@ data class ProductionPlan(
     fun terminal(id: Int): Terminal = terminals[id]
     fun netTerminals(net: Net): List<Terminal> = net.terminals.map { terminals[it] }
     fun machineTerminals(machine: Int): List<Terminal> = terminals.filter { it.machine == machine }
-    fun totalMachineArea(): Int = machines.sumOf { it.w * it.h }
+    /** Machine footprints, plus a share of the beacons their rates need (each beacon serving about four machines). */
+    fun totalMachineArea(): Int = machines.sumOf { it.w * it.h + beaconNeed(it.crafts, it.beaconCrafts) * 2 }
 
     fun toJson(): String = strictJson.encodeToString(serializer(), this)
     fun write(path: String) = File(path).also { it.parentFile?.mkdirs() }.writeText(toJson())
@@ -159,8 +171,13 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         while (inserters(n) > room && n < base * 20) n++
         if (n > base) warn("${r.name}: ${n - base} more ${c.machine} than its rate needs, so each one's inserters fit around it")
         val crafts = x / n
+        val insCap = demandPer.values.filter { it > 1e-12 }.map { a -> inserterCount(crafts * a, pickRate0) * pickRate0 / a } +
+            itemOut.values.map { a -> inserterCount(crafts * a, dropRate0) * dropRate0 / a }
+        val maxCrafts = maxOf(crafts, minOf(1.0 / c.machineTime, insCap.minOrNull() ?: Double.MAX_VALUE))
         val products = productsPer.mapValues { crafts * it.value }
         val demand = demandPer.mapValues { crafts * it.value }
+        val beacons = plannedBeacons(data, config, r, c.machine)
+        val beaconCrafts = if (beacons == 0) emptyList() else (0..beacons).map { k -> moduleSpeed(data, config, r, c.machine, k) / r.energy }
         repeat(n) {
             machines += MachineInstance(
                 id = machines.size,
@@ -177,6 +194,9 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 fluidIn = fluidIngredients.mapIndexed { i, ing -> ing.name to (ing.fluidboxIndex ?: (i + 1)) }.toMap(),
                 fluidOut = fluidProducts.mapIndexed { i, p -> p.name to (p.fluidboxIndex ?: (i + 1)) }.toMap(),
                 crafts = crafts,
+                maxCrafts = maxCrafts,
+                beacons = beacons,
+                beaconCrafts = beaconCrafts,
             )
         }
     }

@@ -1,0 +1,38 @@
+{
+ "targets": [
+  {
+   "name": "automation-science-pack",
+   "amount": 2.0
+  },
+  {
+   "name": "logistic-science-pack",
+   "amount": 2.0
+  }
+ ],
+ "sources": [
+  {
+   "name": "iron-plate",
+   "edge": "west"
+  },
+  {
+   "name": "copper-plate",
+   "edge": "west"
+  }
+ ],
+ "search": {
+  "time_budget_s": 240,
+  "seeds_per_size": 4,
+  "threads": 2,
+  "seed": 2026
+ },
+ "beacons": {
+  "per_machine": 4,
+  "machine_modules": [
+   "productivity-module-3",
+   "productivity-module-3",
+   "productivity-module-3",
+   "productivity-module-3"
+  ],
+  "fallback_module": "speed-module-3"
+ }
+}

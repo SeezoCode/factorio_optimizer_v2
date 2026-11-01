@@ -1,0 +1,313 @@
+{
+    "box": {
+        "w": 92,
+        "h": 107
+    },
+    "inputs": [
+        {
+            "item": "copper-plate",
+            "rate": 0.5,
+            "fluid": false,
+            "x": -1,
+            "y": 73,
+            "edge": "west",
+            "lane": "left"
+        },
+        {
+            "item": "steel-plate",
+            "rate": 0.25,
+            "fluid": false,
+            "x": -1,
+            "y": 73,
+            "edge": "west",
+            "lane": "right"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 4.5,
+            "fluid": false,
+            "x": -1,
+            "y": 68,
+            "edge": "west",
+            "lane": "left"
+        },
+        {
+            "item": "coal",
+            "rate": 5.0,
+            "fluid": false,
+            "x": -1,
+            "y": 68,
+            "edge": "west",
+            "lane": "right"
+        },
+        {
+            "item": "stone-brick",
+            "rate": 5.0,
+            "fluid": false,
+            "x": -1,
+            "y": 79,
+            "edge": "west"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 5.500000000000007,
+            "fluid": false,
+            "x": -1,
+            "y": 9,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 3.500000000000003,
+            "fluid": false,
+            "x": -1,
+            "y": 17,
+            "edge": "west"
+        },
+        {
+            "item": "water",
+            "rate": 65.8333333333335,
+            "fluid": true,
+            "x": 0,
+            "y": 8,
+            "edge": "west"
+        },
+        {
+            "item": "steel-plate",
+            "rate": 0.33333333333333337,
+            "fluid": false,
+            "x": -1,
+            "y": 51,
+            "edge": "west",
+            "lane": "left"
+        },
+        {
+            "item": "heavy-oil",
+            "rate": 4.999999999999999,
+            "fluid": true,
+            "x": 0,
+            "y": 47,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 2.5,
+            "fluid": false,
+            "x": -1,
+            "y": 98,
+            "edge": "west"
+        },
+        {
+            "item": "steel-plate",
+            "rate": 8.333333333333332,
+            "fluid": false,
+            "x": -1,
+            "y": 91,
+            "edge": "west",
+            "lane": "left"
+        },
+        {
+            "item": "stone-brick",
+            "rate": 3.333333333333332,
+            "fluid": false,
+            "x": -1,
+            "y": 91,
+            "edge": "west",
+            "lane": "right"
+        },
+        {
+            "item": "stone",
+            "rate": 5.0,
+            "fluid": false,
+            "x": -1,
+            "y": 94,
+            "edge": "west"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 20.0,
+            "fluid": false,
+            "x": 0,
+            "y": 59,
+            "edge": "west"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 7.5,
+            "fluid": false,
+            "x": 0,
+            "y": 105,
+            "edge": "west"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 10.0,
+            "fluid": false,
+            "x": 0,
+            "y": 24,
+            "edge": "west"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 7.5,
+            "fluid": false,
+            "x": 0,
+            "y": 64,
+            "edge": "west"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 22.5,
+            "fluid": false,
+            "x": 0,
+            "y": 0,
+            "edge": "north"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 5.0,
+            "fluid": false,
+            "x": 0,
+            "y": 106,
+            "edge": "south"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 0.9999999999999716,
+            "fluid": false,
+            "x": 0,
+            "y": 2,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 2.5,
+            "fluid": false,
+            "x": 0,
+            "y": 84,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 5.0,
+            "fluid": false,
+            "x": 0,
+            "y": 26,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 5.333333333333333,
+            "fluid": false,
+            "x": 0,
+            "y": 65,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 2.5,
+            "fluid": false,
+            "x": 0,
+            "y": 58,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 15.0,
+            "fluid": false,
+            "x": 0,
+            "y": 25,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 8.999999999999996,
+            "fluid": false,
+            "x": 0,
+            "y": 81,
+            "edge": "west"
+        },
+        {
+            "item": "steel-plate",
+            "rate": 2.0000000000000004,
+            "fluid": false,
+            "x": 0,
+            "y": 62,
+            "edge": "west"
+        },
+        {
+            "item": "steel-plate",
+            "rate": 1.333333333333333,
+            "fluid": false,
+            "x": 0,
+            "y": 80,
+            "edge": "west"
+        },
+        {
+            "item": "coal",
+            "rate": 8.666666666666666,
+            "fluid": false,
+            "x": 0,
+            "y": 63,
+            "edge": "west"
+        },
+        {
+            "item": "petroleum-gas",
+            "rate": 205.83333333333337,
+            "fluid": true,
+            "x": 0,
+            "y": 1,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "logistic-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 92,
+            "y": 75,
+            "edge": "east"
+        },
+        {
+            "item": "automation-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 92,
+            "y": 68,
+            "edge": "east"
+        },
+        {
+            "item": "chemical-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 92,
+            "y": 32,
+            "edge": "east"
+        },
+        {
+            "item": "military-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 91,
+            "y": 71,
+            "edge": "east"
+        },
+        {
+            "item": "production-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 91,
+            "y": 106,
+            "edge": "south"
+        },
+        {
+            "item": "utility-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 91,
+            "y": 72,
+            "edge": "east"
+        }
+    ]
+}

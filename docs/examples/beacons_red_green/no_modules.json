@@ -1,0 +1,28 @@
+{
+ "targets": [
+  {
+   "name": "automation-science-pack",
+   "amount": 2.0
+  },
+  {
+   "name": "logistic-science-pack",
+   "amount": 2.0
+  }
+ ],
+ "sources": [
+  {
+   "name": "iron-plate",
+   "edge": "west"
+  },
+  {
+   "name": "copper-plate",
+   "edge": "west"
+  }
+ ],
+ "search": {
+  "time_budget_s": 240,
+  "seeds_per_size": 4,
+  "threads": 2,
+  "seed": 2026
+ }
+}

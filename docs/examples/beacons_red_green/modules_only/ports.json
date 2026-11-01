@@ -1,0 +1,66 @@
+{
+    "box": {
+        "w": 39,
+        "h": 39
+    },
+    "inputs": [
+        {
+            "item": "copper-plate",
+            "rate": 1.0476190431588241,
+            "fluid": false,
+            "x": -1,
+            "y": 13,
+            "edge": "west"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 1.4742468260078243,
+            "fluid": false,
+            "x": -1,
+            "y": 25,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 8.265306061193316,
+            "fluid": false,
+            "x": -1,
+            "y": 33,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "automation-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": -1,
+            "y": 19,
+            "edge": "west"
+        },
+        {
+            "item": "automation-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": -1,
+            "y": 6,
+            "edge": "west"
+        },
+        {
+            "item": "logistic-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 39,
+            "y": 21,
+            "edge": "east"
+        },
+        {
+            "item": "logistic-science-pack",
+            "rate": 1.0,
+            "fluid": false,
+            "x": 38,
+            "y": -1,
+            "edge": "east"
+        }
+    ]
+}

@@ -77,6 +77,8 @@ data class PlaceTuning(
     val gamma: Double = 12.0,
     /** Direct-insertion bonus per belt inserter a fitting pair saves, in units of one belt tile. */
     val delta: Double = 6.0,
+    /** Weight of the squared beacon shortfall per machine (beacons in lattice mode, see BeaconConfig). */
+    @SerialName("beacon_weight") val beaconWeight: Double = 15.0,
     @SerialName("rudy_bin") val rudyBin: Int = 4,
     /**
      * Belt-access demand around machines, added to the RUDY bins: per belt terminal, its inserters plus

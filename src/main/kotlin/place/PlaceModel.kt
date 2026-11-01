@@ -7,6 +7,7 @@ import geom.Tile
 import plan.ProductionPlan
 import plan.Role
 import plan.bestInserterRate
+import plan.beaconNeed as needOf
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -24,6 +25,9 @@ class PlaceModel(
     val w: Int,
     val h: Int,
     obstacles: Set<Tile>,
+    /** Fixed beacon spots (top-left; beacon lattice) machines are pulled next to, with their beacon. */
+    beacons: List<Tile> = emptyList(),
+    beaconSpec: plan.BeaconSpec? = null,
 ) {
     val nM = plan.machines.size
     val mw = IntArray(nM) { plan.machines[it].w }
@@ -97,6 +101,43 @@ class PlaceModel(
     private val diScore: DoubleArray
     private val machinePairs: Array<IntArray>
 
+    // ---- beacons: lattice spots in range of each machine size at each position, and each machine's need ----
+    private val beaconNeed = IntArray(nM) { m -> if (beaconSpec == null || beacons.isEmpty()) 0 else needOf(plan.machines[m].crafts, plan.machines[m].beaconCrafts) }
+    private val beaconCov: Map<Pair<Int, Int>, IntArray> = if (beaconNeed.all { it == 0 }) emptyMap() else
+        (0 until nM).filter { beaconNeed[it] > 0 }.map { mw[it] to mh[it] }.distinct().associateWith { (sw, sh) ->
+            // Difference array over machine top-left positions in range of each beacon.
+            val spec = beaconSpec!!
+            val d = IntArray((w + 1) * (h + 1))
+            beacons.forEach { b ->
+                val x0 = max(0, b.x - spec.supply - sw + 1); val x1 = min(w, b.x + spec.size + spec.supply)
+                val y0 = max(0, b.y - spec.supply - sh + 1); val y1 = min(h, b.y + spec.size + spec.supply)
+                if (x0 < x1 && y0 < y1) {
+                    d[y0 * (w + 1) + x0]++; d[y0 * (w + 1) + x1]--; d[y1 * (w + 1) + x0]--; d[y1 * (w + 1) + x1]++
+                }
+            }
+            val c = IntArray(w * h)
+            for (y in 0 until h) for (x in 0 until w) {
+                d[y * (w + 1) + x] += (if (x > 0) d[y * (w + 1) + x - 1] else 0) + (if (y > 0) d[(y - 1) * (w + 1) + x] else 0) -
+                    (if (x > 0 && y > 0) d[(y - 1) * (w + 1) + x - 1] else 0)
+                c[y * w + x] = d[y * (w + 1) + x]
+            }
+            c
+        }
+    private val beaconPen = DoubleArray(nM)
+
+    /** Squared shortfall of beacons in range of machine [m] where it stands. */
+    private fun beaconPenalty(m: Int): Double {
+        if (beaconNeed[m] == 0) return 0.0
+        val c = beaconCov.getValue(mw[m] to mh[m])
+        val x = px[m]; val y = py[m]
+        val have = if (x in 0 until w && y in 0 until h) c[y * w + x] else 0
+        val s = max(0, beaconNeed[m] - have)
+        return (s * s).toDouble()
+    }
+
+    /** Beacons machine [m] is short of where it stands (lattice spots only). */
+    fun beaconShort(m: Int): Int = if (beaconNeed[m] == 0) 0 else kotlin.math.sqrt(beaconPenalty(m)).toInt()
+
     // ---- totals ----
     var wl = 0.0; private set
     var cong = 0.0; private set
@@ -104,9 +145,10 @@ class PlaceModel(
     /** Belt inserters the fitting direct-insertion pairs save. */
     var di = 0.0; private set
     var fb = 0.0; private set
+    var bcn = 0.0; private set
     var beta2 = 0.0
 
-    val cost: Double get() = tun.alpha * wl + tun.beta * cong + tun.gamma * pin - tun.delta * di + beta2 * fb
+    val cost: Double get() = tun.alpha * wl + tun.beta * cong + tun.gamma * pin - tun.delta * di + beta2 * fb + tun.beaconWeight * bcn
 
     init {
         obstacles.forEach { if (it.x in 0 until w && it.y in 0 until h) occ[it.y * w + it.x] = -1 }
@@ -530,6 +572,8 @@ class PlaceModel(
         for (i in diA.indices) { diFit[i] = fits(diA[i], diB[i]); diScore[i] = closeness(diA[i], diB[i]); di += diGain[i] * diScore[i] }
         pin = 0.0
         for (m in 0 until nM) { pinPen[m] = pinPenalty(m); pin += pinPen[m] }
+        bcn = 0.0
+        for (m in 0 until nM) { beaconPen[m] = beaconPenalty(m); bcn += beaconPen[m] }
     }
 
     private fun congOf(b: Int): Double { val o = binD[b] - binS[b]; return if (o > 0) o * o else 0.0 }
@@ -566,6 +610,7 @@ class PlaceModel(
             if (c != diScore[i]) { di += diGain[i] * (c - diScore[i]); diScore[i] = c }
         }
         pinMachines.forEach { m -> pin -= pinPen[m]; pinPen[m] = pinPenalty(m); pin += pinPen[m] }
+        ms.forEach { m -> bcn -= beaconPen[m]; beaconPen[m] = beaconPenalty(m); bcn += beaconPen[m] }
     }
 
     /** Routing feedback: PathFinder history per tile, summed per bin. */

@@ -80,6 +80,8 @@ data class RunConfiguration(
     val sinks: SinkConfig = SinkConfig(),
     val fluids: FluidConfig = FluidConfig(),
     val power: PowerConfig = PowerConfig(),
+    /** Modules in the machines and beacons around them (see [BeaconConfig]); null for none. */
+    val beacons: BeaconConfig? = null,
 
     val search: SearchConfig = SearchConfig(),
     val score: ScoreConfig = ScoreConfig(),
@@ -133,6 +135,11 @@ data class RunConfiguration(
         require(sinks.chest in GameConstants.CHESTS) { "Unknown chest '${sinks.chest}'" }
         require(fluids.mode in setOf("pipes", "infinity-pipe", "manual")) { "fluids.mode must be 'pipes', 'infinity-pipe' or 'manual'" }
         require(power.mode in setOf("set-cover", "lattice", "none")) { "power.mode must be 'set-cover', 'lattice' or 'none'" }
+        beacons?.let { b ->
+            require(b.mode in setOf("lattice", "set-cover")) { "beacons.mode must be 'lattice' or 'set-cover'" }
+            require(b.perMachine in 0..16) { "beacons.per_machine must be 0..16" }
+            require(b.pitch == null || b.pitch >= 6) { "beacons.pitch must be at least 6" }
+        }
         sources.forEach { it.validate() }
         outputs.forEach { it.validate() }
         Tuning().withOverrides(tuning)   // unknown or mistyped tuning keys fail here, not mid-run
@@ -144,8 +151,13 @@ data class RunConfiguration(
         require(markerTile == "none" || markerTile in GameConstants.MARKER_TILES) { "marker_tile must be \"none\" or one of ${GameConstants.MARKER_TILES}" }
         blocks?.let { b ->
             require(b.maxMachines >= 2) { "blocks.max_machines must be at least 2" }
+            require(b.sizeBy in setOf("weight", "machines")) { "blocks.size_by must be 'weight' or 'machines'" }
+            require(b.lanes == null || b.lanes >= 1) { "blocks.lanes must be at least 1" }
+            require(b.parkAfter >= 1 && b.restitchShare >= 0) { "blocks.park_after must be at least 1, restitch_share not negative" }
+            require(b.overflowCost >= 0 && b.hardMax >= 1.0) { "blocks.overflow_cost must not be negative, hard_max at least 1" }
             require(b.corridor >= 2) { "blocks.corridor must be at least 2" }
-            b.rows?.let { require(it in 1..2) { "blocks.rows must be 1 or 2" } }
+            require(b.linkCost > 0 && b.fluidLinkCost > 0 && b.blockCost >= 0) { "blocks.link_cost and fluid_link_cost must be positive, block_cost not negative" }
+            require(b.aspectWeight >= 0 && b.wireWeight >= 0) { "blocks.aspect_weight and wire_weight must not be negative" }
             require(b.linkBeltShare > 0 && b.linkBeltShare <= 1) { "blocks.link_belt_share must be in (0, 1]" }
             require(b.splitAtWeight >= 0) { "blocks.split_at_weight must not be negative" }
             require(b.blockTimeShare > 0 && b.blockTimeShare <= 1) { "blocks.block_time_share must be in (0, 1]" }
@@ -241,38 +253,98 @@ data class BoxConfig(
 )
 
 /**
- * A factory made of several blocks: the plan is split into blocks of at most [maxMachines] machines (machines
- * joined by pipes stay together), each block is generated on its own with its ports facing the blocks it
- * trades with, and the belts between them are routed through corridors. Jobs with fewer machines stay one block.
+ * A factory made of several blocks: the plan is split into blocks of at most [maxMachines] machines (by a cost on
+ * the ports and belts between them, see blocks.PartitionModel), the blocks are floorplanned in any arrangement, each
+ * is generated on its own with its ports facing what it trades with, and the belts and pipes between them are
+ * routed through corridors. Jobs with fewer machines stay one block.
  */
 @Serializable
 data class BlocksConfig(
+    /**
+     * Target block size. With [sizeBy] "weight" (default) a target, not a cap: machines count by how hard they are
+     * to connect (inserters and pipe connections; a furnace with one in and one out counts least), a block aims at
+     * max_machines average machines of the plan, may grow past that at a price ([overflowCost]) and never past
+     * [hardMax] times it. With "machines", at most max_machines machines, whatever they are.
+     */
     @SerialName("max_machines") val maxMachines: Int,
+    @SerialName("size_by") val sizeBy: String = "weight",
+    /**
+     * Blocks searched side by side, each on its share of search.threads (default half the threads, at least 1).
+     * Blocks are searched in turns: first one layout each and a preview factory, then smaller boxes, blocks that
+     * set the factory's size first, blocks that stop improving parked.
+     */
+    val lanes: Int? = null,
+    /** A block is parked after this many turns without a smaller or better layout (it keeps a fifth of its share of the time). */
+    @SerialName("park_after") val parkAfter: Int = 4,
+    /** Stitch a new preview once the blocks' total area has dropped by this share since the last one (and at most every 2 minutes). */
+    @SerialName("restitch_share") val restitchShare: Double = 0.03,
+    /** Price of a block over its target: this many ports for 20 % over, growing with the square. */
+    @SerialName("overflow_cost") val overflowCost: Double = 1.0,
+    /** No block weighs more than this times the target (size_by weight). */
+    @SerialName("hard_max") val hardMax: Double = 1.5,
     /** Items to prefer cutting at (e.g. plates), on top of the split that minimises traffic between blocks. */
     @SerialName("split_at") val splitAt: List<String> = emptyList(),
     /** Corridor width between blocks in tiles (it widens by itself if the belts between blocks do not fit). */
     val corridor: Int = 4,
-    /** Rows of blocks: 1 or 2 (default: 1 up to 3 blocks, else 2). */
+    /** Ignored: blocks are floorplanned in any arrangement now (kept so old job files load). */
     val rows: Int? = null,
     /** A link between two blocks above this share of a belt is split over several belts. */
     @SerialName("link_belt_share") val linkBeltShare: Double = 0.9,
-    /** Weight of [splitAt] items' traffic when deciding which machines share a block (1 = like any other item). */
+    /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,
+    /** Price of a belt between blocks when splitting (a port on each block and a belt through the corridors). */
+    @SerialName("link_cost") val linkCost: Double = 1.0,
+    /** Price of a block's port on a fluid's pipe tree between blocks (pipes take more corridor than belts). */
+    @SerialName("fluid_link_cost") val fluidLinkCost: Double = 3.0,
+    /** Price of one more block, in links: fewer, fuller blocks unless splitting saves more links than this. */
+    @SerialName("block_cost") val blockCost: Double = 4.0,
+    /** Floorplan: how much a factory off the job's box aspect costs (area x weight x (ratio - 1)^2). */
+    @SerialName("aspect_weight") val aspectWeight: Double = 0.5,
+    /** Floorplan: price of one tile of belt between blocks, in tiles of factory area. */
+    @SerialName("wire_weight") val wireWeight: Double = 2.0,
     /** Share of the time budget spent generating blocks; the rest is left for stitching them together. */
     @SerialName("block_time_share") val blockTimeShare: Double = 0.9,
+    /**
+     * What one block (or the factory edge) sends to several blocks may pass through them in a chain: the nearest
+     * keeps its share and passes the rest on, so blocks inside the factory get plates from a neighbour, not each its
+     * own belt from the edge. Off by default: on six science (from plates and from ore, 15 machines per block) the
+     * belts passing through made blocks bigger than the corridor belts they saved (4.5% and 3.6% larger factories).
+     */
+    @SerialName("pass_through") val passThrough: Boolean = false,
+    /** Two items going between the same two blocks, each fitting a lane, share one belt (one item per lane). */
+    @SerialName("lane_pairs") val lanePairs: Boolean = true,
+    /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */
+    val rotate: Boolean = true,
+    /**
+     * Seconds spent compacting the stitched factory (squeezing corridor lines out and floorplanning again, belts
+     * growing longer if need be); every smaller valid factory is saved on the way. Default: the time left for
+     * stitching by [blockTimeShare], at least half a minute.
+     */
+    @SerialName("compact_s") val compactS: Double? = null,
+    /**
+     * Each block is also searched at its aspect times each of these (e.g. [0.6, 1.7]), and the floorplan picks among
+     * all its shapes (and their turns): blocks whose shapes fit together leave fewer holes.
+     */
+    @SerialName("shape_variants") val shapeVariants: List<Double> = emptyList(),
+    /** Search time a shape variant gets at the same share as its block; then it is parked (a fifth of the share). Null: no cap. */
+    @SerialName("shape_variant_s") val shapeVariantS: Double? = null,
+    /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */
+    @SerialName("floorplan_tries") val floorplanTries: Int = 3,
     /** Remove rows and columns that only straight belts and pipes cross from the stitched factory. */
     val compact: Boolean = true,
     /**
-     * After the first factory: search every block again at a common height per row, chosen so the factory comes
-     * out about square, and keep the result if the factory is smaller ([repackShare] of the time budget).
+     * After the first factory: search blocks again at the shapes a floorplan of their real areas asks for, and let
+     * the floorplan pick each block's shape among all it has; kept if the factory is smaller ([repackShare] of the
+     * time budget).
      */
     val repack: Boolean = false,
     @SerialName("repack_share") val repackShare: Double = 0.25,
     /**
-     * Then, until the time budget runs out: merge two neighbouring blocks of a row into one, search it starting
+     * Then, until the time budget runs out: merge two neighbouring blocks into one, search it starting
      * from their current placements side by side, and keep it if the factory gets smaller ([mergeShare] of the
-     * budget is set aside for it; a merged block has at most [mergeMaxMachines] machines, default twice
-     * [maxMachines]).
+     * budget is set aside for it). Pairs that share recipes or trade with each other go first, lightest first; a
+     * merged block weighs at most twice the target ([mergeMaxMachines] machines with size_by machines, default
+     * twice [maxMachines]).
      */
     val merge: Boolean = false,
     @SerialName("merge_share") val mergeShare: Double = 0.3,
@@ -291,6 +363,13 @@ data class FluidConfig(
     /** "pipes": route pipes from fluid ports and producers; "infinity-pipe": an infinity pipe on every used
      *  connection (quick tests); "manual": leave the connection tiles free. */
     val mode: String = "pipes",
+    /**
+     * Recipes that should only use what is left over of a fluid (recipe -> fluid): a storage tank on that fluid's
+     * pipes and a red wire make them work only while the tank is more than [surplusLevel] full, when other machines
+     * also use the fluid. By default the two cracking recipes. `{}` turns it off.
+     */
+    @SerialName("surplus_only") val surplusOnly: Map<String, String> = mapOf("heavy-oil-cracking" to "heavy-oil", "light-oil-cracking" to "light-oil"),
+    @SerialName("surplus_level") val surplusLevel: Double = 0.5,
 )
 
 @Serializable
@@ -298,6 +377,28 @@ data class PowerConfig(
     val mode: String = "set-cover",
     val pole: String = "medium-electric-pole",
     @SerialName("allow_outside_ring") val allowOutsideRing: Boolean = true,
+)
+
+/**
+ * Modules and beacons, placed like electricity poles. Every machine that takes modules gets [machineModules] in
+ * its own slots (one the recipe does not allow, such as productivity in a recipe that allows none, is replaced by
+ * [fallbackModule] or left out), and machines of [recipes] (all that take beacon effects when null) are planned
+ * with [perMachine] beacons of [modules] each, so fewer machines make the same rate. In "lattice" mode rows of
+ * beacon spots are kept free before placement, every [pitch] tiles (from the machine size and [perMachine] when
+ * null), and the placer pulls the machines next to them; after routing, beacons that serve nobody go, and any
+ * machine still short gets beacons on free tiles, like set-cover poles. "set-cover" places them after routing
+ * only, rerouting around machines left short, and falls back to the lattice.
+ */
+@Serializable
+data class BeaconConfig(
+    val mode: String = "lattice",
+    val beacon: String = "beacon",
+    val modules: List<String> = listOf("speed-module-3", "speed-module-3"),
+    @SerialName("per_machine") val perMachine: Int = 2,
+    @SerialName("machine_modules") val machineModules: List<String> = emptyList(),
+    @SerialName("fallback_module") val fallbackModule: String? = null,
+    val recipes: List<String>? = null,
+    val pitch: Int? = null,
 )
 
 @Serializable

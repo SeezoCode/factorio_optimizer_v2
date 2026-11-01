@@ -40,6 +40,10 @@ as separate chains between scattered machines.
 | [Metallurgic science 4/s (Space Age, Vulcanus)](docs/examples/metallurgic_science) (at the bottom of the page) | 38 | 46 × 46 | 15 min | 14 min 41 s (46 × 46 first at 5 min 34 s) | [details](docs/examples/metallurgic_science.json) |
 | [Agricultural science 5/s + carbon fiber 5/s (Space Age, Gleba)](docs/examples/gleba_agricultural_carbon_fiber) (at the bottom of the page) | 43 | 50 × 50 | 15 min | 15 min | [details](docs/examples/gleba_agricultural_carbon_fiber.json) |
 | [Six science 1/s each from ore, as a factory of 10 blocks](docs/status/six_science_9_blocks) (at the bottom of the page) | 618 | 317 × 137 | 41 min | 30 min | [details](docs/status/six_science_9_blocks.json) |
+| [Six science 1/s each from plates, 13 blocks of at most 15 machines](docs/status/six_science_plates_13_blocks) | 177 | 92 × 107 | 30 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_plates_13_blocks.json) |
+| [Six science 1/s each from ore, 44 blocks of at most 15 machines](docs/status/six_science_ore_44_blocks) (at the bottom of the page) | 618 | 165 × 182 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_44_blocks.json) |
+| [Six science 1/s each from ore, 28 blocks sized by weight](docs/status/six_science_ore_28_blocks) (at the bottom of the page) | 618 | 163 × 176 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_28_blocks.json) |
+| [Red + green science 2/s each with modules and beacons](docs/examples/beacons_red_green) ([below](#modules-and-beacons)) | 10–42 | 20 × 20 to 39 × 39 | 4–10 min | | [details](docs/examples/beacons_red_green/beacons_4.json) |
 
 Each render next to the same blueprint built in game. Red + green was generated with belt sharing on
 (`lane_sharing`, two items per belt, one per lane), chemical science with it off (one item per belt).
@@ -79,6 +83,51 @@ the bend, the inside lane when it stands outside the curve, and the router and v
 It is fixed now; this blueprint was generated before the fix (9 of its 206 belt drops land on a curve's other
 lane).
 
+### In game: 2 science/s for 9 hours
+
+<!-- PLACEHOLDER: put the screenshot at docs/examples/two_science_per_second/in_game.jpg, the job file at
+     docs/examples/two_science_per_second.json and the blueprint next to it, then fill in the numbers below. -->
+
+![2 science/s factory, in game](docs/examples/two_science_per_second/in_game.jpg)
+
+*TODO: which science packs, machines, blocks, factory size, search time. A factory of blocks at 2 science/s that
+ran for 9 hours in game with everything working. The only fix needed by hand was heavy oil: the cracking plants
+took the oil lubricant needed and the refineries backed up. Crackers now work only on surplus oil (a storage
+tank wired to them, see `fluids.surplus_only`).*
+
+### Modules and beacons
+
+![Red + green science 2/s each, without modules and with productivity modules and 4 beacons per machine, same scale](docs/examples/beacons_red_green/side_by_side.png)
+
+*Red + green science at 2/s each, drawn at the same scale. Left: no modules, 25 assemblers in 29 × 29. Right:
+four productivity modules in every assembler and up to 4 beacons per machine, 10 assemblers in 20 × 20 with half
+the plates in. Dark green squares are beacons; machines in reach of one are green, with the number of beacons in
+range in their bottom-right corner (each has as many as its own rate needs).*
+
+The same job, red + green science at 2/s each, with four productivity-module-3 in every assembler (speed-module-3
+where a recipe takes no productivity) and beacons of two speed-module-3. The beacon runs searched for 4 minutes,
+the two without beacons for 10 (they have far more machines); every box is the smallest that routed, the next size
+down failed on every try. Power counts assemblers and beacons only: average with each machine working the share
+of time its rate needs, peak with every machine running flat out.
+
+| Setup | Machines | Beacons placed | Box | Iron / copper in (per s) | Belts | Inserters | Power (avg / peak) |
+|-------|---------:|---------------:|----:|-------------------------:|------:|----------:|-------------------:|
+| [No modules](docs/examples/beacons_red_green/no_modules) | 25 | 0 | 29 × 29 | 15.0 / 5.0 | 298 | 86 | 8.9 / 9.7 MW |
+| [Modules, no beacons](docs/examples/beacons_red_green/modules_only) | 42 | 0 | 39 × 39 | 8.27 / 2.52 | 542 | 129 | 57.8 / 66.4 MW |
+| [Modules, 1 beacon per machine](docs/examples/beacons_red_green/beacons_1) | 13 | 4 | 23 × 23 | 8.27 / 2.52 | 128 | 42 | 20.5 / 32.0 MW |
+| [Modules, 2 beacons per machine](docs/examples/beacons_red_green/beacons_2) | 11 | 7 | 22 × 22 | 8.27 / 2.52 | 143 | 38 | 19.3 / 30.9 MW |
+| [Modules, 4 beacons per machine](docs/examples/beacons_red_green/beacons_4) | 10 | 9 | 20 × 20 | 8.27 / 2.52 | 112 | 34 | 19.6 / 30.3 MW |
+
+- Productivity cuts the plates needed by about half, whatever the beacons.
+- Productivity modules alone are the worst choice: they slow each machine to 40 %, so the block needs 42 machines,
+  6.5 times the power and almost twice the area of the one without modules.
+- Beacons win back the speed. Area shrinks by 37 %, 42 % and 52 % with 1, 2 and 4 beacons per machine, but each
+  step adds less: 2.0 weakens every beacon to $1/\sqrt{n}$ when $n$ reach a machine, so $n$ beacons give $\sqrt{n}$
+  times one. Power stays about the same from 1 to 4 beacons, since fewer machines offset the extra beacons.
+- Fewer beacons are placed than machines × `per_machine`: machine counts are rounded up, so each machine gets only
+  what its own rate needs (some none), and one beacon usually serves several machines. In renders, machines in
+  reach of a beacon are green and show the number of beacons in range in their bottom-right corner.
+
 ## How to run
 
 Java 25 (LTS) with Gradle 9.8.2 (the wrapper downloads it) and Kotlin 2.4; it runs on macOS, Linux and
@@ -107,8 +156,14 @@ creation.
 Run a job (the job file is a classpath resource name or a path):
 
 ```sh
-./gradlew run --args="--config=src/test/resources/jobs/t3.json"
+./optimize --config=src/test/resources/jobs/t3.json
 ```
+
+`./optimize` (`optimize.bat` on Windows) builds whatever changed and runs the program in your terminal, which a
+factory of blocks needs for its [live view](#watching-and-steering-a-factory-run). `--ram=12g` sets the Java heap
+(default 6g; on Windows `set OPTIMIZE_RAM=12g` first), e.g. `./optimize --ram=12g --config=job.json`. `./gradlew run
+--args="--config=..."` works too, but Gradle runs the program without a terminal, so you get plain output (the
+control file still works).
 
 Results go to `src/main/resources/solves/<time> - sa/` (or `--out=<dir>`):
 
@@ -116,6 +171,8 @@ Results go to `src/main/resources/solves/<time> - sa/` (or `--out=<dir>`):
 |------|----------|
 | `best_output_string.txt` | Blueprint string of the best layout so far |
 | `best_blueprint.json` | The same blueprint as readable JSON |
+| `test_output_string.txt` | The same blueprint with test feeds on its ports, for trying it in the editor (see below) |
+| `test_feeds.txt` | Ports the test copy could not feed (`every port fed` when there are none) |
 | `best.png`, `renders/` | Render of the best layout, and one per improvement |
 | `allSolves/` | Blueprint string of every improvement |
 | `scores.tsv`, `score_vs_time.svg` | Score log and graph |
@@ -130,6 +187,63 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 - `--calibrate=<job>,<job>,... --budget=<s>`: refits `tuning.json` from short searches.
 - `--verify-kit=<dir>`: in-game check blueprints (see [docs/VERIFY.md](docs/VERIFY.md)).
 - `--render=<dir>`: redraws `best.png` of an output folder from its blueprint and `ports.json`.
+- `--resume=<dir>`: continues a factory-of-blocks run in that output folder. The split and every block's best
+  layout were saved in `<dir>/resume/`; blocks without one are searched, and the others keep shrinking from where
+  they were for the time given, then the factory is stitched and validated again. Useful after stopping a run, to
+  give a run more time, or to re-stitch finished blocks with newer code. It uses the job saved there unless
+  `--config` is given. A bare `--resume` continues the run in `--out`, so the same command with `--resume`
+  added works:
+
+  ```bash
+  ./optimize --ram=12g --config=job.json --out=solves/big --resume
+  ```
+
+  It stops with a message, instead of starting afresh, when nothing is saved in the folder, or when the job's
+  plan has changed since (other targets, rates, modules or beacons give other machines, and the saved split no
+  longer fits).
+- `--until-stopped`: a factory of blocks searches its blocks until stopped (see below) instead of until the
+  time budget; the final factory is stitched after the stop.
+- `--plain`: line-by-line output instead of the live view.
+
+### Watching and steering a factory run
+
+(The live view needs the program in a terminal: start it with `./optimize`, not `./gradlew run`.)
+
+A factory of blocks first gives every block one layout and stitches a preview factory from them (within a few
+minutes even for hundreds of machines; it is saved like any result, so `best.png` shows it), then keeps shrinking
+blocks in turns until the time budget is spent or you stop it, stitching a new preview whenever the blocks have
+shrunk enough. In a terminal it shows a live view:
+
+```
+out   12:41 elapsed, 27:19 left   2 lane(s) on 4 thread(s)
+factory 163x176 (28688 tiles), stitched 1:02 ago   refining
+
+ thr  block  mach  weight   size     first    turns  better ago   spent   state
+ [2]      1    29    29.0   34x23    46x31        4        0:14    4:10   refining *
+ [ ]      2    29    29.0   34x23    46x31        3        2:31    3:05   refining
+ [ ]      3    17    27.4   28x28    38x38        6        6:02    5:40   parked
+ ...
+q stop  Q stop now  s stitch  +/- limit 5 min  u no limit  p pause  arrows select  f focus  x skip  l/L lanes
+```
+
+`thr` is the number of threads on a block right now, `first` its first layout, `better ago` the time since it last
+got smaller (or better at its size), `*` marks blocks that set the factory's width or height (shrinking any other
+cannot shrink the factory). Search time is shared fairly: the row with the least time for its weight goes next,
+weight 2 for `*` rows (a block's shape variants count as the block), 1 for the others, a fifth of that for parked
+rows. A block is parked after `park_after` turns without improving. Keys: `q` stops after the current turns and builds the final
+factory, which the view keeps showing (`q` twice, `Q`, or `q` while the final factory is built: stop at once,
+keeping the best factory so far), `s` stitches a preview now, `+`/`-` move
+the limit by five minutes, `u` removes it, `p` pauses, the arrows (or `j`/`k`) select a row, `f` gives it every
+thread and runs nothing else until you press `f` again (a turn it is in on fewer threads is cut short and started
+again on all of them), `x` skips it, `l`/`L` add or remove a lane. Shape variants have rows of their own
+(`3 x0.6`). When the time is up, focus, pause and skip end for blocks that still have no layout, so the run always
+finishes. Everything also goes to `factory.txt` and each block's
+`log.txt`.
+
+The same controls work without a terminal: write a command into `<out>/control` (`stop`, `stop now`, `stitch`,
+`pause`, `resume`, `limit +600`, `limit -300`, `limit 3600` (seconds from the start), `limit none`, `focus 3`,
+`focus off`, `skip 3`, `unskip 3`, `lanes 2`; `3:1` is block 3's first shape variant), e.g. `echo "limit +600" > out/control`. `<out>/status.json`
+holds what the live view shows, refreshed every second.
 
 Renders show each machine's name and recipe, and mark every input (green) and output (red) with a number on its
 tile, listed underneath with item, rate and tile. Input belts also say which lane the item goes on: "both lanes"
@@ -161,11 +275,19 @@ Unknown keys are an error. Everything except `targets` has a default.
   "sinks": { "mode": "port" },
   "fluids": { "mode": "pipes" },
   "power": { "mode": "set-cover", "pole": "medium-electric-pole", "allow_outside_ring": true },
+  "beacons": { "mode": "lattice", "beacon": "beacon", "modules": ["speed-module-3", "speed-module-3"], "per_machine": 2,
+               "machine_modules": ["productivity-module-3", "productivity-module-3", "productivity-module-3", "productivity-module-3"],
+               "fallback_module": "speed-module-3", "recipes": null, "pitch": null },
   "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true },
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
-  "blocks": { "max_machines": 120, "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
+  "blocks": { "max_machines": 120, "size_by": "weight", "overflow_cost": 1.0, "hard_max": 1.5,
+              "lanes": null, "park_after": 4, "restitch_share": 0.03,
+              "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
               "link_belt_share": 0.9, "split_at_weight": 0.1, "block_time_share": 0.9,
+              "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
+              "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
+              "compact_s": null, "shape_variants": [], "shape_variant_s": null,
               "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3 },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
@@ -182,6 +304,24 @@ Unknown keys are an error. Everything except `targets` has a default.
 - Products and surplus by-products leave through output ports (`outputs` pins their edge; otherwise the
   generator picks one and reports it in `ports.json`). `"sinks": {"mode": "chest"}` puts products into chests
   instead, as in v1.
+- Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
+  (lubricant, or oil leaving the block), a storage tank goes on that oil's pipes with a red wire to the cracking
+  plants, which work only while the tank is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns
+  it off; `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan
+  needs, starve lubricant and fill the petroleum pipes until the refineries stop. The tank reads its own contents,
+  which follow the fill level of the whole pipe network, so the threshold does not depend on pipe length.
+- `beacons` (optional) adds modules and beacons, placed much like electricity poles. `machine_modules` go in every
+  electric machine's own slots; one the recipe refuses (productivity on belts, inserters…) becomes `fallback_module`,
+  or the slot stays empty. Machines of `recipes` (default: every one that takes beacon effects) are planned with
+  `per_machine` beacons of `modules`, using the 2.0 rules: speed × max(0.2, 1 + Σ machine modules + 1.5 · √n · Σ one
+  beacon's modules), productivity from the machine's own modules, so the plan needs fewer machines and less input.
+  Because machine counts are rounded up, many machines need fewer beacons than planned; each needs only enough
+  for its own rate. In `"lattice"` mode (default) rows of beacon spots are kept free before placement, like the
+  pole lattice (every `pitch` tiles, by default room for a row of machines on each side, or one row between two
+  beacon rows when `per_machine` is above 4), and the placer pulls machines next to them; after routing, beacons
+  that serve nobody go and machines still short get beacons on free tiles. `"set-cover"` places them only after
+  routing (rerouting around machines left short, falling back to the lattice). Beacons are powered, the validator
+  counts the beacons in range of every machine, and the blueprint requests the modules into their slots.
 - Fluids are routed in pipes and pipe-to-ground (`"fluids": {"mode": "infinity-pipe"}` puts an infinity pipe on
   every fluid connection instead, `"manual"` leaves the connection tiles free).
 - `box.max_size` caps the box (the side of a square of the box's area): the search starts there and, if it
@@ -201,45 +341,107 @@ Unknown keys are an error. Everything except `targets` has a default.
 - `ports_on_ring` (default on) moves every input and output one tile out of the box, onto the ring around it,
   so ports stand out. `marker_tile` is the floor tile drawn around blocks and reserved areas in the blueprint
   (`"none"` for no tiles, e.g. on a space platform, where concrete cannot be placed).
-- `test_mode` feeds every input from infinity chests or pipes outside the box and empties every output into
-  void chests or drains, for testing in the editor.
+- Every best layout also comes as a **test copy**, `test_output_string.txt`: the same blueprint, unchanged
+  inside the box, with a feed on every port. An item input gets a loader pointing at its belt with an infinity
+  chest of that item behind it, an item output a loader into a void infinity chest, and a fluid port an infinity
+  pipe (a drain for outputs). Each feed runs straight out from its port, so ports side by side all fit. Paste it
+  in the editor (`/editor`; loaders and infinity chests are editor items), add power (an
+  electric-energy-interface), and it runs at once; production statistics (P) show the output rates. A belt
+  carrying two items, one per lane, gets the inserter feeder of `test_mode` instead, where there is room.
+  `test_feeds.txt` lists any port that got no feed.
+- `test_mode` builds the feeds into the search instead: inputs from infinity chests with inserters, outputs into
+  void chests, ports spaced out so every feeder fits. The layout differs from the real one; the test copy above
+  is usually what you want.
 - `tricks` toggles individual techniques (I1–I13, B1–B13, F1, F2, P1, P2, H1); v1 ones are on by default.
 - The old CP-SAT fields (`forbidden_places`, source `force`) are still accepted so old job files load, but do nothing.
 
 ### Big jobs: a factory of blocks
 
 With a `blocks` section, a job with more than `max_machines` machines is built as several blocks connected by
-belts, in one blueprint:
+belts and pipes, in one blueprint:
 
-1. The whole job is planned once, so every rate is exact, then split into blocks of at most `max_machines`
-   machines that trade as little as possible. Machines joined by pipes stay in one block. Items in `split_at`
-   are preferred cut points (plates are a natural choice).
-2. Blocks are ordered upstream first and laid out in one row (up to three blocks) or two (`rows` overrides), so
-   every block touches the outer edge: the top for the first row, the bottom for the second.
-3. Every belt between two blocks is a link with an exact rate (at most 90% of a belt). Each block is generated
-   on its own, with its link ports on the edge facing the block it trades with, and its share of the time
-   budget.
-4. The blocks are placed in their rows with `corridor` tiles between them, the link belts are routed through
-   the corridors, poles cover the whole factory, and the result is validated end to end against the full plan.
-   If the corridor belts do not fit, the corridors widen and it tries again.
-
-   Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block.
-   A block that touches an allowed edge (`"any"`, or the whole side its row is on) uses it directly; otherwise
-   each input or output gets its own belt (or pipe) through the corridors to that edge, `from` and `to`
-   counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.
+1. **Split.** The whole job is planned once, so every rate is exact, then its machines are divided into blocks.
+   `max_machines` is a target, not a cap: machines count by how hard they are to connect (half their belt
+   inserters plus 0.75 per pipe connection, at least 1, so a furnace with one input and one output counts 1 and a
+   many-input assembler 2–3), and a block aims at `max_machines` machines of a typical recipe. It may grow past
+   that at a price (`overflow_cost` ports for 20 % over, growing with the square) but never past `hard_max` times
+   it. Simple blocks such as smelting columns grow, mixed ones stay about as they were, and each block's share of
+   the search time follows its weight. `"size_by": "machines"` keeps the old hard cap of `max_machines`
+   machines. The split pays for what it cuts: every item a block makes more or less of than it uses
+   is a port on that block and a belt (or pipe) through the corridors, so it costs `link_cost` per belt
+   (`fluid_link_cost` per pipe port), plus a little per belt's worth of rate, plus `block_cost` per block.
+   Items in `split_at` cost `split_at_weight` times as much (plates are natural cut points). A greedy merge of
+   same-recipe groups gives a first split; simulated annealing then moves single machines, swaps two, and moves
+   whole recipe groups between blocks. `factory.txt` reports the ports of the split against the greedy one.
+   Machines joined by pipes may end up in different blocks: oil processing no longer has to be one block.
+   Machine counts are rounded up, so most machines have room to spare; a linear program then lets machines of
+   one recipe in different blocks run at different rates (within their crafting speed and planned inserters) so
+   each block makes what it uses, instead of trading slivers like 0.06 cable/s on a belt of their own. The split
+   kept is the one (greedy or annealed) that is cheapest after this; `plan_rebalanced.json` has its rates.
+2. **Plan the floorplan.** The blocks, with shapes estimated from their machines' area, are arranged by
+   simulated annealing over sequence pairs: any arrangement, not just rows. It minimises the factory's area,
+   its distance from the job's `box.aspect` (`aspect_weight`), and the length of the belts between blocks
+   (`wire_weight` per tile, to the factory's edge for inputs and outputs). This plan decides each block's shape
+   and which side of the block each port goes on: towards the block it trades with, or towards the edge the job
+   gives the item. A block that ends up on an allowed edge (`"any"`, or a whole side) takes that input or output
+   straight through it; the others run through the corridors to the edge.
+3. **Blocks.** Every belt between two blocks is a link with an exact rate (at most `link_belt_share` of a belt).
+   With `pass_through`, what one supplier (a block, or the factory edge for raw inputs) sends to several blocks
+   passes through them in a chain: the nearest block keeps its share and passes the rest on to the next, as long
+   as the chain fits one belt and each next block is nearer the chain's end than the supplier. It is off by
+   default: on six science the belts passing through made blocks bigger than the corridor belts they saved.
+   Two items going between the same two blocks that each fit a lane share one belt (`lane_pairs`): the consumer
+   takes them on one input belt, and next to the supplier their belts side-load onto it from either side.
+   Every fluid traded between blocks gets one pipe tree through the corridors joining one port on each block
+   that makes or uses it (and the factory edge, if it enters or leaves there), so any number of blocks can share
+   a fluid. Each block is generated on its own, at its planned aspect. Blocks are searched in turns on `lanes`
+   lanes side by side (default half of `search.threads`, sharing the threads): one layout each first, then a box
+   size at a time from each block's best layout, blocks that set the factory's size getting twice the share, until the time for
+   blocks is up (`block_time_share` of the budget, less repack and merge time; the final factory runs after it)
+   or the run is stopped. A
+   preview factory is stitched as soon as every block has a layout and again whenever their total area has
+   dropped by `restitch_share` (see [watching and steering a factory run](#watching-and-steering-a-factory-run)).
+4. **Floorplan and stitch.** The finished blocks are arranged again with their real sizes and port positions, each
+   block turned in whichever quarter turn packs best (`rotate`; its ports turn with it),
+   keeping free space around each block for the corridors (half a `corridor` plus room for that side's ports;
+   none on a side whose ports leave the factory straight out, which must stay on the factory's edge). The belts
+   and pipes are routed through the corridors. Where routing fails, the block sides near the trouble get more
+   room and it tries again; once it routes, lines of corridor that stayed empty are given back, the blocks are
+   rearranged with the corridors as measured, and single corridor lines are squeezed out one block side at a time
+   while it still routes (for the stitching share of the time budget). This is done from `floorplan_tries`
+   different floorplans and the smallest valid factory wins. Poles cover the whole factory and
+   the result is validated end to end against the full plan. A pipe port right beside another fluid's pipe is
+   left through a pipe-to-ground pair.
 5. Rows and columns that only straight belts, straight pipes or underground spans cross are removed
    (`compact`, on by default; the factory is validated again, and kept as stitched if that ever fails).
-6. With `repack`, every block is searched again at a common height per row (the row's tallest block, and
-   heights that make the factory about square), and each row is kept repacked if the factory gets smaller.
-7. With `merge`, until the time budget runs out, two neighbouring blocks of a row become one block, searched
-   starting from their placements side by side, kept if the factory gets smaller (merged blocks have at most
-   `merge_max_machines`, default twice `max_machines`).
+   Compaction then continues for `compact_s` seconds (default: the stitching share of the budget; `--compact=<s>`
+   on the command line): wherever every longest chain of blocks across the factory can lose a padding line, it
+   does, as long as the corridors still route; when that stalls, the blocks are floorplanned again from where they
+   are with a fresh seed and a lighter price on belt length. Every smaller valid factory is saved on the way.
+   With `shape_variants` (e.g. `[0.6, 1.7]`) each block is also searched at its aspect times those factors, as
+   rows of their own in the same rotation and at the same priority as their block (only first layouts go to the
+   blocks first, so the preview is not held up), and previews and the final floorplan pick the shapes that pack
+   best. `shape_variant_s` caps the search time a variant gets at that priority; after it, the variant is parked
+   (a fifth of the share; no cap when not set, so each shape of a block gets an equal share).
+6. With `repack`, a floorplan of the blocks' real areas with free shapes says which shape each block should have;
+   blocks far from it are searched again at that aspect, and the floorplan then picks, per block, the layout that
+   packs best. Kept if the factory gets smaller.
+7. With `merge`, until the time budget runs out, two neighbouring blocks become one block, searched starting from
+   their placements as they lie in the factory. Pairs that trade with each other or share recipes go first,
+   lightest first, each searched for about one and a half times what its two blocks had. A full compaction takes
+   minutes, so each merge is judged after a short one against the factory after the same short one; merges that
+   win are kept and built on, and the result is compacted fully at the end and kept if it beats the best factory
+   (a merged block weighs at most 2.5 times the target, or has at most `merge_max_machines` machines with
+   `size_by` machines, default twice `max_machines`).
+
+Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block, with
+`from` and `to` counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.
+Reserved areas are placed by the floorplan in their corners. `rows` is ignored now (old job files still load).
 
 Every smaller valid factory is saved as it is found, so stopping the run early keeps the best so far.
 
-The output folder holds the factory (`best_output_string.txt`, `best.png`, `ports.json`, `factory.txt` with the
-split and the links) and each block in `block_<n>/`. Fluids are never piped from one block to another (only between a block and the
-factory's edge); a pipe-joined group larger than `max_machines` stays one block (with a warning).
+The output folder holds the factory (`best_output_string.txt`, its test copy `test_output_string.txt`, `best.png`, `ports.json`, `factory.txt` with the
+split, the links, the pipe trees and every stitching step) and each block in `block_<n>/`.
 
 ### Space Age
 
@@ -335,7 +537,7 @@ narrow, fluids pinned side by side) rather than the box.
 | 1 | `plan` | LP over recipe rates (by-products, recipe choice) → machine instances, terminals, nets and ports |
 | 2 | `place` | Simulated annealing (VPR schedule) on HPWL × q(k), RUDY congestion, pin access, direct-insertion bonus, rotation and mirroring, fluid connection legality |
 | 3 | `route` | Negotiated-congestion routing: belt chains leg by leg with A* over (tile, heading, belt/underground), splitter branches, pipe trees with pipe-to-ground, and a rip-up-and-reroute endgame around the last conflicts |
-| 4 | `power` | Pole set cover and MST wiring (lattice fallback), test-mode harness |
+| 4 | `power` | Beacon lattice and set cover, pole set cover and MST wiring (lattice fallback), test-mode harness |
 | 5 | `search` | Box size search (gentle growth to a first success, then bisection), K seeds per size in parallel, warm starts, anytime outputs, calibration |
 | — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone |
 | — | `emit`, `viz` | Blueprint 2.0 encode/decode, PNG renders |
@@ -367,7 +569,10 @@ a roomy size and records every planner or trial exception, invalid layout or fai
 layouts in seconds. Chemical science at 0.5/s from ore and crude oil (43 machines, oil processing included)
 validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 1/s from ore (110 machines) at
 64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built as a factory of 10 blocks
-at 317 × 137 in 30 minutes (see [More layouts](#more-layouts)).
+at 317 × 137 in 30 minutes, as a factory of 44 blocks of at most 15 machines at 165 × 182 (31 % fewer
+tiles) with the 2D floorplanner, rotation, lane pairs and compaction, and as 28 blocks sized by weight at
+163 × 176 (34 % fewer). Six science from plates went from 182 × 79
+(3 blocks) to 92 × 107 (13 blocks, 32 % fewer tiles). See [More layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
 not shown: Aquilo needs heat pipes to keep machines warm, and the generator does not place them.
@@ -394,7 +599,7 @@ and practically useless:
 ## Not verified in game yet
 
 Some 2.0 facts are marked `VERIFY` in `data/GameConstants.kt` (inserter rates, underground pairing details,
-fluid input side, wire format, Space Age fluid connections, inserter filters). [docs/VERIFY.md](docs/VERIFY.md)
+fluid input side, wire format, Space Age fluid connections, inserter filters, beacon profile and module requests). [docs/VERIFY.md](docs/VERIFY.md)
 has a blueprint for each.
 
 ## More layouts
@@ -456,6 +661,29 @@ little room for the links between blocks.
 Built in game:
 
 ![Six science, 10 blocks, in game](docs/status/six_science_9_blocks/in_game.jpg)
+
+The same job with the floorplanner that arranges blocks in any 2D layout: 44 blocks of at most 15 machines, about
+30 s of search each, belts packed to the limit (two items per corridor belt where they fit a lane each), then 10
+minutes of compaction squeezing corridor lines out and refloorplanning. 165 × 182 = 30,030 tiles, 31 % fewer than
+the 10-block factory above. Block rotation, lane pairs and the multi-block fluid pipes are all in use; pass-through
+chains were tried and left off (31,152 tiles with them).
+
+![Six science from ore, 44 blocks](docs/status/six_science_ore_44_blocks/best.png)
+
+The same job with blocks sized by weight (`max_machines` 15 as a target, see [the split](#big-jobs-a-factory-of-blocks)):
+smelting blocks grow to about 29 furnaces while mixed blocks keep about 15 machines, so 28 blocks instead of 44 and
+133 ports between blocks instead of 159. 163 × 176 = 28,688 tiles, against 30,438 for the 44-block split run with
+the same code and budget (5.7 % smaller). The blocks themselves take 6 % more room (19,402 tiles against 18,258);
+the corridors 24 % less (9,286 against 12,180). Merging neighbouring blocks on top of it (`merge`, 70 minutes)
+found nothing smaller: merged blocks are about 25 % smaller than the box around their two halves, but each merge
+changes the factory by less than floorplanning varies from one try to the next.
+
+![Six science from ore, 28 blocks](docs/status/six_science_ore_28_blocks/best.png)
+
+Six science from plates with blocks of at most 15 machines: 13 blocks, 92 × 107 = 9,844 tiles after 10 minutes of
+compaction, against 14,378 for the 3-block factory at the top of the page.
+
+![Six science from plates, 13 blocks](docs/status/six_science_plates_13_blocks/best.png)
 
 ## License
 

@@ -9,7 +9,6 @@ import data.AssemblingMachineEntity
 import data.Recipe
 import data.RootData
 import data.craftingCategories
-import data.craftingSpeed
 
 /** Resources the base game mines or pumps; they may always be supplied through a port. */
 val BASE_RAW = setOf("iron-ore", "copper-ore", "stone", "coal", "wood", "crude-oil", "water", "uranium-ore", "raw-fish")
@@ -74,7 +73,8 @@ fun productivity(data: RootData, c: RecipeChoice, config: RunConfiguration): Dou
     val e = data.entities[c.machine]
     val base = (e as? AssemblingMachineEntity)?.effectReceiver?.baseEffect?.get("productivity")
         ?: (e as? FurnaceEntity)?.effectReceiver?.baseEffect?.get("productivity") ?: 0.0
-    return minOf(base + (config.research.productivity[c.recipe.name] ?: 0.0), c.recipe.maximumProductivity.toDouble())
+    return minOf(base + (config.research.productivity[c.recipe.name] ?: 0.0) + moduleProductivity(data, config, c.recipe, c.machine),
+        c.recipe.maximumProductivity.toDouble())
 }
 
 /**
@@ -111,7 +111,8 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         // recipe_overrides: only the chosen recipe may make that item.
         if (overrides.any { (item, chosen) -> chosen != r.name && r.products.any { it.name == item } }) return@mapNotNull null
         val m = machines.firstOrNull { r.category in data.craftingCategories(it) } ?: return@mapNotNull null
-        RecipeChoice(r, m, data.craftingSpeed(m, config.quality))
+        // Modules and the planned beacons make the machine faster (see Modules.kt).
+        RecipeChoice(r, m, moduleSpeed(data, config, r, m, plannedBeacons(data, config, r, m)))
     }
 
     val fluids = HashSet<String>()

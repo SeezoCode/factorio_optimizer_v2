@@ -1,6 +1,7 @@
 package data
 
 import geom.Dir
+import geom.Tile
 
 /**
  * Factorio 2.0 (Space Age data set) facts the generator relies on, keyed by entity name so tiers can be
@@ -26,6 +27,11 @@ object GameConstants {
 
     /** Copper wire connector id for poles in the 2.0 "wires" tuple [a, 5, b, 5]. [W2] */
     const val WIRE_POLE_COPPER = 5
+    /** Circuit connector ids of an entity with one connection point: red 1, green 2. [W2] VERIFY (v19) */
+    const val WIRE_RED = 1
+    const val WIRE_GREEN = 2
+    /** Longest red or green wire between a storage tank, a chemical plant or a pole (tile centres). [P] VERIFY (v19) */
+    const val CIRCUIT_WIRE_REACH = 9.0
 
     data class BeltTier(
         val key: String,
@@ -106,6 +112,13 @@ object GameConstants {
     const val INFINITY_CHEST = "infinity-chest"
     const val INFINITY_PIPE = "infinity-pipe"
 
+    /**
+     * 1x2 loaders by belt tier (editor-only in 2.0; the test copy uses them to feed and empty ports at full belt
+     * speed). Blueprint `type` is "output" (container to belt) or "input" (belt to container); the direction is the
+     * way items travel, as for undergrounds. [P] VERIFY (v21)
+     */
+    val LOADERS = mapOf("basic" to "loader", "fast" to "fast-loader", "express" to "express-loader", "turbo" to "turbo-loader")
+
     /** Default size of non-machine entities (recipes.json lists only machines). */
     fun footprint(name: String): Pair<Int, Int> = when {
         POLES[name] != null -> POLES.getValue(name).size to POLES.getValue(name).size
@@ -145,6 +158,29 @@ object GameConstants {
     const val PIPE_TO_GROUND = "pipe-to-ground"
     /** Tiles allowed between two pipe-to-ground ends (max distance 10). [P] VERIFY (v12) */
     const val PIPE_TO_GROUND_GAP = 9
+
+    // ---------------- storage tank ----------------
+    /** The beacon entity name (its size, supply area and effectivity come from recipes.json). */
+    const val BEACON = "beacon"
+    /** Tiles a beacon's supply area reaches beyond its edge (for renders; planning reads recipes.json). */
+    const val BEACON_SUPPLY = 3
+    /**
+     * 2.0 inventory index of module slots in blueprint item requests: beacon 1, assembling machine and furnace 4
+     * (defines.inventory.beacon_modules, assembling_machine_modules, furnace_modules). [P] VERIFY (v20)
+     */
+    const val BEACON_MODULE_INVENTORY = 1
+    const val MACHINE_MODULE_INVENTORY = 4
+    const val STORAGE_TANK = "storage-tank"
+    /** Fluid a storage tank holds; it reads out its contents on a circuit wire. [P] VERIFY (v19) */
+    const val STORAGE_TANK_CAPACITY = 25000.0
+    /**
+     * A storage tank's (3 x 3) fluid connections: tile inside it (from its top-left) and the side it opens to. Facing
+     * north the top-left corner opens north and west and the bottom-right corner south and east; facing east the
+     * other two corners do. It has only those two orientations. [P] VERIFY (v19)
+     */
+    fun storageTankConnections(dir: Dir): List<Pair<Tile, Dir>> =
+        if (dir.axis == 1) listOf(Tile(0, 0) to Dir.N, Tile(0, 0) to Dir.W, Tile(2, 2) to Dir.S, Tile(2, 2) to Dir.E)
+        else listOf(Tile(2, 0) to Dir.N, Tile(2, 0) to Dir.E, Tile(0, 2) to Dir.S, Tile(0, 2) to Dir.W)
 
     // ---------------- machines ----------------
     enum class Flow { INPUT, OUTPUT }

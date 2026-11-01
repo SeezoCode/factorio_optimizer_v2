@@ -1,0 +1,70 @@
+[    0.1s] resume: split of 13 blocks from <run dir>
+[    0.1s] 177 machines in 13 blocks: block 1: 15, block 2: 14, block 3: 12, block 4: 12, block 5: 15, block 6: 13, block 7: 13, block 8: 15, block 9: 15, block 10: 14, block 11: 10, block 12: 14, block 13: 15; 81 ports between blocks and edges (greedy split: 76; 77 with machine rates rebalanced), cost 140.1 (greedy 149.6)
+[    0.1s]   block 1: 9x copper-cable, 6x electronic-circuit; planned at (59,2) 21 x 21
+[    0.1s]   block 2: 11x engine-unit, 2x pipe, 1x iron-gear-wheel; planned at (48,62) 14 x 29
+[    0.1s]   block 3: 4x grenade, 4x military-science-pack, 2x piercing-rounds-magazine, 1x firearm-magazine, 1x stone-wall; planned at (2,57) 26 x 13
+[    0.1s]   block 4: 12x low-density-structure; planned at (16,25) 12 x 28
+[    0.1s]   block 5: 9x advanced-circuit, 4x copper-cable, 2x electronic-circuit; planned at (34,2) 21 x 21
+[    0.1s]   block 6: 9x advanced-circuit, 3x copper-cable, 1x electronic-circuit; planned at (32,60) 12 x 31
+[    0.1s]   block 7: 9x advanced-circuit, 3x copper-cable, 1x electronic-circuit; planned at (51,27) 12 x 31
+[    0.1s]   block 8: 9x plastic-bar, 6x utility-science-pack; planned at (32,27) 15 x 29
+[    0.1s]   block 9: 6x processing-unit, 3x battery, 2x copper-cable, 2x sulfur, 1x electronic-circuit, 1x sulfuric-acid; planned at (3,3) 26 x 17
+[    0.1s]   block 10: 5x logistic-science-pack, 3x advanced-circuit, 2x copper-cable, 1x electronic-circuit, 1x inserter, 1x iron-gear-wheel, 1x transport-belt; planned at (66,62) 14 x 29
+[    0.1s]   block 11: 6x flying-robot-frame, 3x electric-engine-unit, 1x lubricant; planned at (2,25) 10 x 27
+[    0.1s]   block 12: 10x chemical-science-pack, 4x automation-science-pack; planned at (67,27) 13 x 31
+[    0.1s]   block 13: 6x production-science-pack, 4x productivity-module, 2x electric-furnace, 2x rail, 1x iron-stick; planned at (2,74) 26 x 17
+[    0.1s]   block 7 -> block 12: advanced-circuit 1.50/s (1 belt(s))
+[    0.1s]   block 5 -> block 9: advanced-circuit 1.33/s (1 belt(s)), electronic-circuit 1.25/s (1 belt(s))
+[    0.1s]   block 6 -> block 13: advanced-circuit 1.88/s (1 belt(s))
+[    0.1s]   block 10 -> block 13: advanced-circuit 0.63/s (1 belt(s))
+[    0.1s]   block 7 -> block 13: advanced-circuit 0.29/s (1 belt(s))
+[    0.1s]   block 5 -> block 13: advanced-circuit 0.54/s (1 belt(s))
+[    0.1s]   block 9 -> block 11: battery 0.67/s (1 belt(s))
+[    0.1s]   block 9 -> block 5: copper-cable 2.17/s (1 belt(s))
+[    0.1s]   block 7 -> block 5: copper-cable 0.33/s (1 belt(s))
+[    0.1s]   block 10 -> block 6: electronic-circuit 0.25/s (1 belt(s))
+[    0.1s]   block 1 -> block 7: electronic-circuit 1.08/s (1 belt(s))
+[    0.1s]   block 1 -> block 9: electronic-circuit 9.58/s (1 belt(s))
+[    0.1s]   block 1 -> block 11: electronic-circuit 1.67/s (1 belt(s))
+[    0.1s]   block 1 -> block 6: electronic-circuit 1.00/s (1 belt(s))
+[    0.1s]   block 1 -> block 13: electronic-circuit 1.67/s (1 belt(s))
+[    0.1s]   block 2 -> block 12: engine-unit 1.00/s (1 belt(s))
+[    0.1s]   block 2 -> block 11: engine-unit 0.33/s (1 belt(s))
+[    0.1s]   block 11 -> block 8: flying-robot-frame 0.33/s (1 belt(s))
+[    0.1s]   block 10 -> block 12: iron-gear-wheel 1.00/s (1 belt(s))
+[    0.1s]   block 4 -> block 8: low-density-structure 1.00/s (1 belt(s))
+[    0.1s]   block 8 -> block 7: plastic-bar 3.58/s (1 belt(s))
+[    0.1s]   block 8 -> block 4: plastic-bar 5.00/s (1 belt(s))
+[    0.1s]   block 8 -> block 5: plastic-bar 3.75/s (1 belt(s))
+[    0.1s]   block 8 -> block 6: plastic-bar 3.75/s (1 belt(s))
+[    0.1s]   block 8 -> block 10: plastic-bar 1.25/s (1 belt(s))
+[    0.1s]   block 9 -> block 8: processing-unit 0.67/s (1 belt(s))
+[    0.1s]   block 9 -> block 12: sulfur 0.50/s (1 belt(s))
+[    0.1s]   petroleum-gas pipes: block 8 takes 173.3/s, block 9 takes 32.5/s, edge gives 205.8/s
+[    0.1s]   17 inputs and outputs leave their block straight out of the factory, 19 run through the corridors to its edge
+[    0.1s] block 1: 24 x 24, resumed (1 layout(s))
+[    0.1s] block 2: 15 x 30, resumed (1 layout(s))
+[    0.1s] block 3: 25 x 13, resumed (1 layout(s))
+[    0.1s] block 4: 16 x 37, resumed (1 layout(s))
+[    0.1s] block 5: 24 x 24, resumed (1 layout(s))
+[    0.1s] block 6: 14 x 35, resumed (1 layout(s))
+[    0.1s] block 7: 14 x 37, resumed (1 layout(s))
+[    0.1s] block 8: 18 x 35, resumed (1 layout(s))
+[    0.1s] block 9: 27 x 18, resumed (1 layout(s))
+[    0.1s] block 10: 15 x 30, resumed (1 layout(s))
+[    0.1s] block 11: 12 x 31, resumed (1 layout(s))
+[    0.1s] block 12: 16 x 37, resumed (1 layout(s))
+[    0.1s] block 13: 28 x 19, resumed (1 layout(s))
+[    5.1s] factory (floorplan 1/3): routed at 105 x 112
+[   57.5s] factory (floorplan 1/3): squeezed 17 corridor lines out: 92 x 107
+[   60.9s] factory (floorplan 2/3): routed at 104 x 108
+[   63.6s] factory (floorplan 2/3): tighter corridors (104 x 107) did not route
+[  102.8s] factory (floorplan 2/3): squeezed 3 corridor lines out: 99 x 108
+[  105.6s] factory (floorplan 3/3): routed at 100 x 112
+[  105.9s] factory (floorplan 3/3): tighter corridors: 97 x 111
+[  151.2s] factory (floorplan 3/3): squeezed 3 corridor lines out: 96 x 109
+[  151.2s] factory: compacting the smallest floorplan, 92 x 107
+[  272.1s] factory (compacting): 92 x 107 (9844 tiles), saved
+[  605.2s] factory: smallest routed factory 92 x 107 of 27 routed
+[  605.9s] factory: 92 x 107 is not smaller than 92 x 107
+[  605.9s] done: 92 x 107 (9844 tiles)

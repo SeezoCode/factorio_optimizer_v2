@@ -43,7 +43,7 @@ fun placePoles(
     entities.forEach { e -> e.rect.tiles().forEach { occupied += it } }
     fun fits(t: Tile) = (0 until spec.size).all { dy -> (0 until spec.size).all { dx -> Tile(t.x + dx, t.y + dy) !in occupied } }
     val cands = candidates.filter { fits(it) }.distinct()
-    val needs = entities.filter { it.kind == Kind.MACHINE || it.kind == Kind.INSERTER }
+    val needs = entities.filter { it.kind == Kind.MACHINE || it.kind == Kind.INSERTER || it.kind == Kind.BEACON }
 
     val poles = ArrayList<Tile>()
     fixedPoles.forEach { poles += it; markOccupied(it, spec, occupied) }

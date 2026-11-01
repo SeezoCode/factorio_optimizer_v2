@@ -111,3 +111,74 @@ fun buildHarness(
     }
     return Harness(out, tiles, warnings)
 }
+
+/** A layout with test feeds on its ports, and what could not be fed. */
+data class TestCopy(val layout: geom.Layout, val warnings: List<String>)
+
+/**
+ * The finished [layout] as it is, plus a feed on every port for trying it in the editor: an item input gets a
+ * loader pointing at its port belt with an infinity chest of the item behind it, an item output a loader taking
+ * its belt into a void infinity chest, and a fluid port an infinity pipe (a drain for outputs). Each feed runs
+ * straight out from its port, one tile wide, so ports next to each other all fit. A belt carrying two items on
+ * its lanes cannot take a loader (it fills both lanes); it gets the test-mode feeder with inserters instead,
+ * where there is room. Nothing inside the box changes.
+ */
+fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<OutputSpec>, config: RunConfiguration): TestCopy {
+    val w = layout.w; val h = layout.h
+    val loader = GameConstants.LOADERS[config.beltTier] ?: "express-loader"
+    val occupied = HashSet<Tile>()
+    layout.entities.forEach { e -> e.rect.tiles().forEach { occupied += it } }
+    val byTile = HashMap<Tile, PlacedEntity>()
+    layout.entities.forEach { e -> e.rect.tiles().forEach { byTile[it] = e } }
+    val out = ArrayList<PlacedEntity>()
+    val warnings = ArrayList<String>()
+    fun inBox(t: Tile) = t.x in 0 until w && t.y in 0 until h
+    fun free(t: Tile) = !inBox(t) && t !in occupied
+    fun take(e: PlacedEntity) { out += e; e.rect.tiles().forEach { occupied += it } }
+    // Away from the box: the side a port on the ring (or on the edge) is on.
+    fun outward(t: Tile): List<Dir> = listOfNotNull(
+        Dir.W.takeIf { t.x <= 0 }, Dir.E.takeIf { t.x >= w - 1 }, Dir.N.takeIf { t.y <= 0 }, Dir.S.takeIf { t.y >= h - 1 },
+    ).filter { !inBox(t + it) }
+
+    sources.filter { it.fluid }.forEach { s ->
+        val d = outward(s.tile).firstOrNull { free(s.tile + it) }
+        if (d == null) warnings += "no room to feed ${s.item} at ${s.tile}"
+        else (s.tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = s.item)) }
+    }
+    outputs.filter { it.fluid }.forEach { o ->
+        val d = outward(o.tile).firstOrNull { free(o.tile + it) }
+        if (d == null) warnings += "no room to drain ${o.item} at ${o.tile}"
+        else (o.tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = o.item, drain = true)) }
+    }
+    // A loader on the two tiles out from the port, the chest on the third.
+    fun loaderAt(port: Tile, d: Dir, into: Boolean): PlacedEntity? {
+        val a = port + d; val b = port.step(d, 2); val c = port.step(d, 3)
+        if (!free(a) || !free(b) || !free(c)) return null
+        val travel = if (into) d.opposite else d
+        val (lw, lh) = PlacedEntity.defaultSize(loader, Kind.LOADER_OUT, travel)
+        val x = minOf(a.x, b.x); val y = minOf(a.y, b.y)
+        return PlacedEntity(loader, if (into) Kind.LOADER_OUT else Kind.LOADER_IN, x, y, travel, w = lw, h = lh)
+    }
+    val laned = ArrayList<SourceSpec>()
+    sources.filter { !it.fluid }.groupBy { it.tile }.forEach { (tile, group) ->
+        if (group.map { it.item }.distinct().size > 1 || group.any { it.lane >= 0 }) { laned += group; return@forEach }
+        val first = byTile[tile]
+        // Not from the side the port belt heads to (it cannot take items head-on).
+        val d = outward(tile).filter { first?.dir != it }.firstOrNull { loaderAt(tile, it, true) != null }
+        if (d == null) { warnings += "no room to feed ${group[0].item} at $tile"; return@forEach }
+        take(loaderAt(tile, d, true)!!)
+        tile.step(d, 3).let { take(PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, it.x, it.y, item = group[0].item)) }
+    }
+    outputs.filter { !it.fluid }.forEach { o ->
+        val d = byTile[o.tile]?.dir
+        if (d == null || inBox(o.tile + d) || loaderAt(o.tile, d, false) == null) { warnings += "no room to empty ${o.item} at ${o.tile}"; return@forEach }
+        take(loaderAt(o.tile, d, false)!!)
+        o.tile.step(d, 3).let { take(PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, it.x, it.y)) }
+    }
+    if (laned.isNotEmpty()) {
+        val hz = buildHarness(laned, layout.entities + out, w, h, config)
+        out += hz.entities
+        warnings += hz.warnings
+    }
+    return TestCopy(layout.copy(entities = layout.entities + out, label = layout.label + " (test feeds)"), warnings)
+}
