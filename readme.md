@@ -35,11 +35,9 @@ as separate chains between scattered machines.
 | [Red + green science, 0.5/s each](docs/examples/red_green_science) | 10 | 16 × 16 | 5 min | 5 s | [details](docs/examples/red_green_science.json) |
 | [Red + green science, 0.5/s each, two items per belt](docs/examples/red_green_science_shared) | 10 | 15 × 15 | 5 min | 2 min 48 s | [details](docs/examples/red_green_science_shared.json) |
 | [Chemical science 0.5/s from ore and crude oil](docs/examples/chemical_science) | 43 | 36 × 36 | 15 min | 10 min (36 × 36 first at 5 min 20 s) | [details](docs/examples/chemical_science.json) |
-| [Six science 1/s each from plates, as a factory of 3 blocks, inputs west and products east](docs/examples/six_science_factory) | 177 | 182 × 79 | 4 h 57 min | 4 h 57 min | [details](docs/examples/six_science_factory.json) |
 | [Electromagnetic science 1.5/s (Space Age, Fulgora)](docs/examples/electromagnetic_science) (at the bottom of the page) | 36 | 41 × 41 | 15 min | 13 min 35 s (41 × 41 first at 6 min 26 s) | [details](docs/examples/electromagnetic_science.json) |
 | [Metallurgic science 4/s (Space Age, Vulcanus)](docs/examples/metallurgic_science) (at the bottom of the page) | 38 | 46 × 46 | 15 min | 14 min 41 s (46 × 46 first at 5 min 34 s) | [details](docs/examples/metallurgic_science.json) |
 | [Agricultural science 5/s + carbon fiber 5/s (Space Age, Gleba)](docs/examples/gleba_agricultural_carbon_fiber) (at the bottom of the page) | 43 | 50 × 50 | 15 min | 15 min | [details](docs/examples/gleba_agricultural_carbon_fiber.json) |
-| [Six science 1/s each from ore, as a factory of 10 blocks](docs/status/six_science_9_blocks) (at the bottom of the page) | 618 | 317 × 137 | 41 min | 30 min | [details](docs/status/six_science_9_blocks.json) |
 | [Six science 1/s each from plates, 13 blocks of at most 15 machines](docs/status/six_science_plates_13_blocks) | 177 | 92 × 107 | 30 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_plates_13_blocks.json) |
 | [Six science 1/s each from ore, 44 blocks of at most 15 machines](docs/status/six_science_ore_44_blocks) (at the bottom of the page) | 618 | 165 × 182 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_44_blocks.json) |
 | [Six science 1/s each from ore, 28 blocks sized by weight](docs/status/six_science_ore_28_blocks) (at the bottom of the page) | 618 | 163 × 176 | 27 min + 10 min compaction | 10 min of compaction | [details](docs/status/six_science_ore_28_blocks.json) |
@@ -57,33 +55,6 @@ left lane of a belt it shares with an item made inside. In the render, belts are
 dots are poles.*
 
 ![Chemical science, render and in game](docs/examples/chemical_science/side_by_side.png)
-
-The six-science factory's three blocks were searched one after another with belt sharing on, then stitched:
-
-| Block | Machines | Box | Search ran | Best layout found after |
-|-------|---------:|----:|-----------:|------------------------:|
-| 1 | 60 | 57 × 57 | 1 h 40 min | 1 h 37 min |
-| 2 | 57 | 57 × 57 | 1 h 35 min | 1 h 31 min |
-| 3 | 60 | 54 × 54 | 1 h 40 min | 16 min |
-
-All 19 inputs (plates, steel, bricks, stone, coal, and pipes of petroleum gas, heavy oil and water) enter on the
-west edge and run along the corridor under the blocks; the six science packs leave on the east edge. Stitching
-and compaction took under a minute. Repack and merge were off: in earlier runs they never found a smaller
-factory, so the blocks got the whole budget.
-
-The six-science factory; block borders are drawn as floor tiles in the blueprint:
-
-![Six science factory](docs/examples/six_science_factory/best.png)
-
-Built in game:
-
-![Six science factory, in game](docs/examples/six_science_factory/in_game.jpg)
-
-Building it showed a bug: near the utility science assemblers, a few inserters
-dropping onto a belt curve put their items on the wrong lane. On a curve an inserter drops onto the far side of
-the bend, the inside lane when it stands outside the curve, and the router and validator did not model that.
-It is fixed now; this blueprint was generated before the fix (9 of its 206 belt drops land on a curve's other
-lane).
 
 ### In game: 2 science/s for 9 hours
 
@@ -578,11 +549,9 @@ a roomy size and records every planner or trial exception, invalid layout or fai
 [docs/STATUS.md](docs/STATUS.md) maps every milestone acceptance test to the code. T1–T4 produce validated
 layouts in seconds. Chemical science at 0.5/s from ore and crude oil (43 machines, oil processing included)
 validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 1/s from ore (110 machines) at
-64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built as a factory of 10 blocks
-at 317 × 137 in 30 minutes, as a factory of 44 blocks of at most 15 machines at 165 × 182 (31 % fewer
-tiles) with the 2D floorplanner, rotation, lane pairs and compaction, and as 28 blocks sized by weight at
-163 × 176 (34 % fewer). Six science from plates went from 182 × 79
-(3 blocks) to 92 × 107 (13 blocks, 32 % fewer tiles). Six science at 2/s each from ore (1,220 machines) is
+64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built with the 2D floorplanner, rotation, lane pairs
+and compaction as a factory of 44 blocks of at most 15 machines at 165 × 182, and as 28 blocks sized by
+weight at 163 × 176. Six science from plates is 92 × 107 in 13 blocks. Six science at 2/s each from ore (1,220 machines) is
 230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours); at 10/s each with
 productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in 34 blocks. See [More
 layouts](#more-layouts).
@@ -651,34 +620,9 @@ Built in game:
 
 ![Agricultural science and carbon fiber, in game](docs/examples/gleba_agricultural_carbon_fiber/in_game.png)
 
-Six science at 1/s each from ore (618 machines) does not fit one block; as a factory of 10 blocks of at most
-69 machines (10 threads (M5), belt sharing on) it validates at 317 × 137 after 30 minutes. The blocks are dense,
-but 37% of the factory is still space between blocks: the two rows differ in width, and repacking left too
-little room for the links between blocks.
-
-| Block | Machines | Box | Search ran |
-|-------|---------:|----:|-----------:|
-| 1 | 32 | 28 × 28 | 1 min 28 s |
-| 2 | 39 | 32 × 32 | 1 min 46 s |
-| 3 | 69 | 45 × 45 | 3 min 15 s |
-| 4 | 69 | 45 × 45 | 3 min 10 s |
-| 5 | 64 | 55 × 55 | 2 min 57 s |
-| 6 | 69 | 51 × 51 | 3 min 16 s |
-| 7 | 69 | 53 × 53 | 3 min 20 s |
-| 8 | 69 | 53 × 53 | 3 min 11 s |
-| 9 | 69 | 66 × 66 | 4 min 6 s |
-| 10 | 69 | 78 × 78 | 3 min 24 s |
-
-![Six science, 10 blocks](docs/status/six_science_9_blocks/best.png)
-
-Built in game:
-
-![Six science, 10 blocks, in game](docs/status/six_science_9_blocks/in_game.jpg)
-
-The same job with the floorplanner that arranges blocks in any 2D layout: 44 blocks of at most 15 machines, about
+Six science at 1/s each from ore (618 machines), with the floorplanner that arranges blocks in any 2D layout: 44 blocks of at most 15 machines, about
 30 s of search each, belts packed to the limit (two items per corridor belt where they fit a lane each), then 10
-minutes of compaction squeezing corridor lines out and refloorplanning. 165 × 182 = 30,030 tiles, 31 % fewer than
-the 10-block factory above. Block rotation, lane pairs and the multi-block fluid pipes are all in use; pass-through
+minutes of compaction squeezing corridor lines out and refloorplanning. 165 × 182 = 30,030 tiles. Block rotation, lane pairs and the multi-block fluid pipes are all in use; pass-through
 chains were tried and left off (31,152 tiles with them).
 
 ![Six science from ore, 44 blocks](docs/status/six_science_ore_44_blocks/best.png)
@@ -694,7 +638,7 @@ changes the factory by less than floorplanning varies from one try to the next.
 ![Six science from ore, 28 blocks](docs/status/six_science_ore_28_blocks/best.png)
 
 Six science from plates with blocks of at most 15 machines: 13 blocks, 92 × 107 = 9,844 tiles after 10 minutes of
-compaction, against 14,378 for the 3-block factory at the top of the page.
+compaction.
 
 ![Six science from plates, 13 blocks](docs/status/six_science_plates_13_blocks/best.png)
 
