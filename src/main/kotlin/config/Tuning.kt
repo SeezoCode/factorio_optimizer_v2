@@ -186,6 +186,11 @@ data class RouteTuning(
     @SerialName("weave_penalty") val weavePenalty: Double = 1.0,
     /** Extra cost of a splitter that starts a belt branch (B9). */
     @SerialName("splitter_cost") val splitterCost: Double = 2.0,
+    /**
+     * Extra cost of a dead-end splitter pickup (B14) on top of [splitterCost]: a splitter on the chain whose second
+     * half, beside it, leads nowhere, so an inserter can pick from that half.
+     */
+    @SerialName("stub_cost") val stubCost: Double = 0.0,
     /** While visiting producers, extra cost on the access tiles of the same net's consumers. */
     @SerialName("own_consumer_reservation") val ownConsumerReservation: Double = 3.0,
     /** Start producers tried per net and iteration before the net counts as unrouted. */

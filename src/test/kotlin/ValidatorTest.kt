@@ -122,6 +122,36 @@ class ValidatorTest {
     }
 
     @Test
+    fun `an inserter picks from a dead-end splitter half`() {
+        // Iron runs east along y=4; the splitter at x=3 covers (3,4) and (3,5); its south half leads nowhere. The
+        // gear assembler below takes iron from that half; a second assembler picks from the end-of-belt splitter at
+        // x=7, which leads nowhere on both halves.
+        val layout = Layout(12, 11, listOf(
+            belt(0, 4, Dir.E, 1), belt(1, 4, Dir.E, 1), belt(2, 4, Dir.E, 1),
+            e("fast-splitter", 3, 4, Dir.E).copy(net = 1),
+            belt(4, 4, Dir.E, 1), belt(5, 4, Dir.E, 1), belt(6, 4, Dir.E, 1),
+            e("fast-splitter", 7, 4, Dir.E).copy(net = 1),
+            e("assembling-machine-3", 2, 7, recipe = "iron-gear-wheel"),
+            e("fast-inserter", 3, 6, Dir.N),
+            e("fast-inserter", 5, 8, Dir.W), e("steel-chest", 6, 8),
+            e("assembling-machine-3", 7, 0, recipe = "iron-gear-wheel"),
+            e("fast-inserter", 8, 3, Dir.S),     // picks from (8,4), east of the end splitter: nothing there
+            e("fast-inserter", 7, 3, Dir.S),     // picks from (7,4), the end splitter's north half
+            e("fast-inserter", 10, 1, Dir.W), e("steel-chest", 11, 1),
+        ))
+        val gear = MachineSpec("iron-gear-wheel", setOf("iron-plate"), 0.5, 0.5, mapOf("iron-plate" to 1.0))
+        val spec = base.copy(
+            checkRates = true,
+            machines = mapOf(Tile(2, 7) to gear, Tile(7, 0) to gear),
+            sources = listOf(SourceSpec(Tile(0, 4), "iron-plate", 2.0)),
+        )
+        val errors = check("splitter_stub", layout.copy(entities = layout.entities.filter { !(it.x == 8 && it.y == 3) }), spec)
+        assertEquals(emptyList(), errors)
+        // An inserter picking from the empty tile beside the end splitter has nothing to pick from.
+        assertHas(check("splitter_stub_bad", layout, spec), ErrorType.INSERTER_BAD_PICKUP, Tile(8, 3))
+    }
+
+    @Test
     fun `an entrance pairs with the nearest same-tier underground on its axis`() {
         fun ug(x: Int, type: String, net: Int) = e("fast-underground-belt", x, 4, Dir.E, ug = type).copy(net = net)
         val layout = Layout(10, 8, listOf(

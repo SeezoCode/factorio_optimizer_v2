@@ -31,6 +31,8 @@ val DEFAULT_TRICKS: Map<String, Boolean> = buildMap {
     listOf("B1", "B2", "B3", "B4", "B5", "B6").forEach { put(it, true) }
     listOf("B7", "B8", "B10", "B11", "B12", "B13").forEach { put(it, false) }
     listOf("B9", "F1", "F2", "P1", "P2", "H1").forEach { put(it, true) }
+    // B14: dead-end splitter pickups (an inserter takes items off a splitter half that leads nowhere).
+    put("B14", true)
 }
 
 @Serializable
@@ -328,6 +330,13 @@ data class BlocksConfig(
     @SerialName("shape_variants") val shapeVariants: List<Double> = emptyList(),
     /** Search time a shape variant gets at the same share as its block; then it is parked (a fifth of the share). Null: no cap. */
     @SerialName("shape_variant_s") val shapeVariantS: Double? = null,
+    /**
+     * Ready-made layouts for simple blocks (see Templates.kt; e.g. a column of furnaces with two belts down the middle),
+     * offered to the floorplan next to the searched layouts: it picks whichever packs best, so nothing is forced.
+     */
+    val templates: Boolean = true,
+    /** Search share of a block that has a template (it has a layout already, usually smaller than the search finds). */
+    @SerialName("template_share") val templateShare: Double = 0.25,
     /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */
     @SerialName("floorplan_tries") val floorplanTries: Int = 3,
     /** Remove rows and columns that only straight belts and pipes cross from the stitched factory. */

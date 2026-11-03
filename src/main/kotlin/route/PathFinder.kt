@@ -243,6 +243,12 @@ class PathFinder(internal val p: RouteProblem) {
     private val startOpt = IntArray(N) { -1 }
     private val doneState = ArrayList<Int>()
     private val doneOpt = ArrayList<Int>()
+    /** Dead-end splitter stub tile of each done entry (B14), or -1: the goal option picks from that tile. */
+    private val doneStub = ArrayList<Int>()
+    /** Tiles beside an option's belt tile, where a dead-end splitter stub could reach it (B14). */
+    private val stubStamp = IntArray(N)
+    /** Dead-end splitter pickups (B14): a splitter on a straight belt whose second half leads nowhere. */
+    private val stubsOn = config.trick("B14")
     internal val minStep: Float
     internal val hWeight = tun.heuristicWeight.toFloat()
     var expansions = 0L
@@ -530,7 +536,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun searchOnce(n: RNet, starts: List<Start>, final: Boolean, leg1: Boolean, banned: Set<Int>): Int {
         gen++
         heap.clear()
-        doneState.clear(); doneOpt.clear()
+        doneState.clear(); doneOpt.clear(); doneStub.clear()
         var repaired = false
         // Goal tiles and the L1 distance transform for the heuristic.
         goalGen++
@@ -539,7 +545,11 @@ class PathFinder(internal val p: RouteProblem) {
         if (outputLeg) n.outTiles.forEachIndexed { i, t -> goalStamp[t] = goalGen; outDirAt[t] = n.outOut[i]; anyGoal = true }
         else n.terms.forEach { t ->
             if (!claimable(t) || (legTarget >= 0 && t != legTarget)) return@forEach
-            termOpts[t].forEach { o -> if (goalUsable(o, leg1)) { goalStamp[optBelt[o]] = goalGen; anyGoal = true } }
+            termOpts[t].forEach { o ->
+                if (!goalUsable(o, leg1)) return@forEach
+                goalStamp[optBelt[o]] = goalGen; anyGoal = true
+                if (stubsOn && vts[t].role == Role.CONSUMER) for (dd in 0..3) { val x = optBelt[o] + dIdx[dd]; if (x in 0 until N) stubStamp[x] = goalGen }
+            }
         }
         if (!anyGoal) return -1
         // Leg 1: a start option whose inserter tile is a goal's belt tile would void itself on the way.
@@ -567,7 +577,7 @@ class PathFinder(internal val p: RouteProblem) {
             val s = heap.pop()
             if (s >= S) {
                 val di = s - S
-                val bad = validDone(n, doneState[di], doneOpt[di], final, leg1)
+                val bad = validDone(n, doneState[di], doneOpt[di], final, leg1, doneStub[di])
                 if (bad == -1) return di
                 if (bad >= 0 && forbidStamp[bad] != forbidGen) { forbidStamp[bad] = forbidGen; repaired = true }
                 continue
@@ -583,7 +593,7 @@ class PathFinder(internal val p: RouteProblem) {
 
             // Output leg: a belt on a port tile facing out of the box.
             if (outputLeg && kind == BELT && goalStamp[t] == goalGen && par[s] != -1 && s !in banned && (outDirAt[t] < 0 || outDirAt[t] == d)) {
-                doneState += s; doneOpt += -1
+                doneState += s; doneOpt += -1; doneStub += -1
                 heap.push(gS + deadEndCost(t + dIdx[d], d), S + doneState.size - 1)
             }
             // Goal: a belt on an option's belt tile (not the very start state).
@@ -604,10 +614,14 @@ class PathFinder(internal val p: RouteProblem) {
                         if (!placeable(t2) || t2 == ins || !canContinue(t, d, t2)) continue
                         0f
                     }
-                    doneState += s; doneOpt += o
+                    doneState += s; doneOpt += o; doneStub += -1
                     heap.push(gS + insCost(ins, optLong[o]) + extra, S + doneState.size - 1)
                 }
             }
+            // Goal through a dead-end splitter stub (B14): this belt becomes a splitter whose other half, beside
+            // it, leads nowhere; a consumer's inserter picks from that half. Items must enter from behind.
+            if (stubsOn && !outputLeg && kind == BELT && stubStamp[t] == goalGen && par[s] != -1 && s !in banned &&
+                ((par[s] ushr 1) and 3) == d) stubGoals(n, s, t, d, gS, final, leg1)
 
             // Belt step (B1).
             val q = t + dIdx[d]
@@ -644,6 +658,44 @@ class PathFinder(internal val p: RouteProblem) {
             }
         }
         return if (repaired) REPAIR else -1
+    }
+
+    /**
+     * Goals reached through a dead-end splitter stub (B14) beside belt [t], which heads [d] (state [s], cost so far
+     * [gS]): the splitter's second half goes on a free tile beside [t], its output leads nowhere, and a consumer's
+     * inserter picks from it. The trunk half keeps the chain going straight on (or ends it, on the final leg: a
+     * splitter at the end of a belt, picked from on both halves).
+     */
+    private fun stubGoals(n: RNet, s: Int, t: Int, d: Int, gS: Float, final: Boolean, leg1: Boolean) {
+        val t2 = t + dIdx[d]
+        for (side in intArrayOf((d + 1) and 3, (d + 3) and 3)) {
+            val b = t + dIdx[side]
+            if (b !in 0 until N || !placeable(b) || !dims.inBox(dims.x(b), dims.y(b))) continue
+            val front = b + dIdx[d]; val back = b - dIdx[d]
+            // The stub's front stays a dead end, and nothing of this chain may feed its back.
+            if (front in 0 until N && (ownBeltStamp[front] == stamp || front == t2)) continue
+            if (back in 0 until N && ownBeltStamp[back] == stamp && ownDir[back] == d) continue
+            // Anything belt-like behind the stub would feed foreign items into the splitter.
+            val foreign = if (back in 0 until N && occBelt[back] > 0) tun.deadEndConflict.toFloat() * 10 else 0f
+            val half = beltCost(b, deadEndsTaken(b, AK_SPLITTER, d)) + tun.splitterCost.toFloat() + tun.stubCost.toFloat() + foreign +
+                (if (front in 0 until N) deadEndCost(front, d) else 0f)
+            for (k in atBeltStart[b] until atBeltStart[b + 1]) {
+                val o = atBeltList[k]
+                val term = optTerm[o]
+                if (vts[term].role != Role.CONSUMER || termNet[term] != n.idx || !claimable(term) || (legTarget >= 0 && term != legTarget)) continue
+                val ins = optIns[o]
+                if (!goalUsable(o, leg1) || ins == t || ins == t2 || ins == front) continue
+                val extra: Float = if (final) {
+                    if (t2 in 0 until N && ownBeltStamp[t2] == stamp) continue
+                    deadEndCost(t2, d)
+                } else {
+                    if (!placeable(t2) || !canContinue(t, d, t2)) continue
+                    0f
+                }
+                doneState += s; doneOpt += o; doneStub += b
+                heap.push(gS + insCost(ins, optLong[o]) + half + extra, S + doneState.size - 1)
+            }
+        }
     }
 
     /** A goal option is usable if its inserter tile is free of this net and, in leg 1, not a start tile. */
@@ -714,7 +766,7 @@ class PathFinder(internal val p: RouteProblem) {
      * the inserter tiles it claims, or end pointing back into itself. Returns -1 if valid, else a path
      * state to forbid before searching again (-2 if there is none to blame).
      */
-    private fun validDone(n: RNet, s: Int, o: Int, final: Boolean, leg1: Boolean): Int {
+    private fun validDone(n: RNet, s: Int, o: Int, final: Boolean, leg1: Boolean, stub: Int = -1): Int {
         pathGen++
         val states = pathStates(s)
         // Later legs start on the previous head (already committed) or on a new branch tile (not yet).
@@ -756,6 +808,12 @@ class PathFinder(internal val p: RouteProblem) {
         val t2 = (last ushr 3) + dIdx[(last ushr 1) and 3]
         if (pathStamp[t2] == pathGen) return pathFirst[t2]
         if (!final && t2 == ins) return -2
+        if (stub >= 0) {
+            // The stub and the dead end in front of it must stay off this leg's own path.
+            if (pathStamp[stub] == pathGen) return pathFirst[stub]
+            val front = stub + dIdx[(last ushr 1) and 3]
+            if (front in 0 until N && pathStamp[front] == pathGen) return pathFirst[front]
+        }
         return -1
     }
 
@@ -825,7 +883,7 @@ class PathFinder(internal val p: RouteProblem) {
     }
 
     /** Commits a found leg: belts, undergrounds, the goal option and options the path passed on the way. */
-    private fun commitLeg(n: RNet, r: Routed, s: Int, goalOpt: Int, leg1: Boolean) {
+    private fun commitLeg(n: RNet, r: Routed, s: Int, goalOpt: Int, leg1: Boolean, stub: Int = -1) {
         val states = pathStates(s)
         // 1. Occupy every path tile first, so no claim below can take a tile the belt runs over.
         for ((i, st) in states.withIndex()) {
@@ -853,6 +911,14 @@ class PathFinder(internal val p: RouteProblem) {
         }
         val last = states.last()
         val next = (last ushr 3) + dIdx[(last ushr 1) and 3]   // where the chain continues (or dead-ends)
+        if (stub >= 0) {
+            // Dead-end splitter (B14): the head belt becomes a splitter; its second half leads nowhere.
+            val hd = (last ushr 1) and 3
+            r.splitters += intArrayOf(last ushr 3, stub, hd)
+            occupy(r, stub, true); ownDir[stub] = hd; accept(stub, AK_SPLITTER, hd, 1)
+            val front = stub + dIdx[hd]
+            if (front in 0 until N) { addDeadEnd(r, front, hd); if (ownStamp[front] != stamp) { ownStamp[front] = stamp; r.reserved += front } }
+        }
         // Passing claims skip an inserter tile another net holds when the terminal has a free option further on.
         val lastFree = HashMap<Int, Int>()
         for ((i, st) in states.withIndex()) {
@@ -879,10 +945,24 @@ class PathFinder(internal val p: RouteProblem) {
                 val o = atBeltList[k]
                 val term = optTerm[o]
                 if (termNet[term] != n.idx || !claimable(term) || !laneOk(o, d, into)) continue
+                // Nothing drops onto the splitter a stub turns the head into.
+                if (stub >= 0 && i == states.size - 1 && vts[term].role != Role.CONSUMER) continue
                 val ins = optIns[o]
                 if (ownStamp[ins] == stamp || allowNet[ins] == -2 || ins == next) continue
                 if (occTile[ins] > 0 && (lastFree[term] ?: -1) >= i) continue
                 claim(r, o, d, into)
+            }
+        }
+        // More consumers may pick from the stub's half.
+        if (stub >= 0) {
+            val hd = (last ushr 1) and 3
+            for (k in atBeltStart[stub] until atBeltStart[stub + 1]) {
+                val o = atBeltList[k]
+                val term = optTerm[o]
+                if (o == goalOpt || vts[term].role != Role.CONSUMER || termNet[term] != n.idx || !claimable(term)) continue
+                val ins = optIns[o]
+                if (ownStamp[ins] == stamp || allowNet[ins] == -2 || ins == next || occTile[ins] > 0) continue
+                claim(r, o, hd, hd)
             }
         }
     }
@@ -1011,7 +1091,7 @@ class PathFinder(internal val p: RouteProblem) {
             // A leg that starts on a branch leaves the old head as a leaf.
             var first = s; while (par[first] != -1) first = par[first]
             val branched = !leg1 && (first ushr 3) != (head ushr 3)
-            commitLeg(n, r, s, doneOpt[found], leg1)
+            commitLeg(n, r, s, doneOpt[found], leg1, doneStub[found])
             if (branched) {
                 val hd = (head ushr 1) and 3
                 val t2 = (head ushr 3) + dIdx[hd]

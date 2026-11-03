@@ -53,6 +53,7 @@ class RouterFuzzTest {
         var failures = 0
         var woven = 0
         var shared = 0
+        var splitters = 0
         val edges = listOf("west", "north", "east", "south", "any")
         while (instances < 200) {
             val targets = (1..rnd.nextInt(1, 4)).map { ConfigTarget(items[rnd.nextInt(items.size)], 0.1 + rnd.nextDouble() * 1.2) }
@@ -68,6 +69,7 @@ class RouterFuzzTest {
             if (r.result.success) {
                 successes++
                 woven += r.result.entities.count { it.kind == geom.Kind.UG_IN && it.name == "express-underground-belt" }
+                splitters += r.result.entities.count { it.kind == geom.Kind.SPLITTER }
                 shared += r.result.log.count { it.startsWith("shared belt") }
                 if (r.errors.isNotEmpty()) {
                     RouteSupport.routeAndValidate("fuzz_fail_$instances", config, plan, placement, RouteTuning(maxIterations = 30), render = true)
@@ -78,7 +80,7 @@ class RouterFuzzTest {
                 assertTrue(r.errors.isEmpty(), "instance $instances reported success but fails validation: ${r.errors}")
             } else failures++
         }
-        println("fuzz: $successes routed, $failures reported failure out of $instances; $woven woven underground pairs, $shared shared belts")
+        println("fuzz: $successes routed, $failures reported failure out of $instances; $woven woven underground pairs, $shared shared belts, $splitters splitters")
         assertTrue(successes >= instances / 3, "only $successes of $instances routed")
     }
 
