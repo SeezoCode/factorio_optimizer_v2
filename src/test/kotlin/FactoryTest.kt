@@ -133,6 +133,25 @@ class FactoryTest {
     }
 
     @Test
+    fun `smelting blocks are offered as furnace columns and the factory uses them`() {
+        val config = config.RunConfiguration(
+            targets = listOf(config.ConfigTarget("electronic-circuit", 3.0)),
+            sources = listOf(ConfigSource("iron-ore", edge = "west"), ConfigSource("copper-ore", edge = "west")),
+            outputs = listOf(ConfigSource("electronic-circuit", edge = "east")),
+            blocks = BlocksConfig(maxMachines = 8, splitAt = listOf("iron-plate", "copper-plate")),
+            search = SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7),
+        )
+        val plan = buildPlan(TestData.data, config)
+        val out = File("build/factory/circuits_from_ore")
+        out.deleteRecursively()
+        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
+        assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+        val log = File(out, "factory.txt").readText()
+        assertTrue(Regex("block \\d+: template \\d+ x \\d+").containsMatchIn(log), log)
+        assertTrue(f.blockLayouts.any { r -> r.notes.any { it.startsWith("template") } }, "no template in the final factory")
+    }
+
+    @Test
     fun `a resumed run keeps the saved split and refines the saved blocks`() {
         val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))

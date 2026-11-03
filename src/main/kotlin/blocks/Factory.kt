@@ -182,6 +182,13 @@ fun runFactory(
     val jobs = bps.map { Job(it.index, 0, 1.0) } +
         bps.flatMap { bp -> cfg.shapeVariants.mapIndexed { i, f -> Job(bp.index, i + 1, f) } }
     fun baseAspect(b: Int) = loaded[b].firstOrNull()?.let { it.w.toDouble() / it.h } ?: split.geometry.boxes[b].let { it.w.toDouble() / it.h }
+    // Ready-made layouts for simple blocks (a column of furnaces...), offered next to whatever the search finds.
+    val templates = bps.map { bp ->
+        if (!cfg.templates) emptyList() else runCatching {
+            Templates.layouts(data, blockConfig(1e7, baseAspect(bp.index)), bp.plan)
+        }.getOrElse { e -> say("block ${bp.index + 1}: template failed with $e"); emptyList() }
+            .also { ts -> if (ts.isNotEmpty()) say("block ${bp.index + 1}: template ${ts.joinToString(", ") { "${it.w} x ${it.h}" }} (${ts[0].notes.firstOrNull() ?: ""})") }
+    }
     val engine = BlockEngine(
         bps = bps,
         jobs = jobs,
@@ -207,6 +214,8 @@ fun runFactory(
             r?.first?.takeIf { it.success }?.let { f -> Triple(f.blockRects, f.layout.w, f.layout.h) }
         },
         corridor = cfg.corridor,
+        extras = templates,
+        extraShare = cfg.templateShare,
     )
     engine.onBetter = { b, ls -> saveBlock(out, b, ls) }
     engineRef = engine

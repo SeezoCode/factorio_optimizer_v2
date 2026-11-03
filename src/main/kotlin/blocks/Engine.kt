@@ -160,6 +160,10 @@ class BlockEngine(
     /** Stitches the factory from the layouts each block has (its own, then its shape variants'); block boxes and size, or null. */
     private val stitch: (List<List<TrialResult>>) -> Triple<List<Rect>, Int, Int>?,
     private val corridor: Int,
+    /** Per block: ready-made layouts (templates, see Templates.kt), offered next to what the search finds. */
+    private val extras: List<List<TrialResult>> = emptyList(),
+    /** Search share of a block that has a template (its template already counts as a layout). */
+    private val extraShare: Double = 1.0,
 ) {
     private val n = bps.size
     private val m = jobs.size
@@ -200,12 +204,20 @@ class BlockEngine(
     }
 
     private fun jobBest(j: Int): TrialResult? = searches[j]?.best ?: initial[j]
-    /** Block [b]'s own best layout. */
-    fun best(b: Int): TrialResult? = jobBest(b)
-    /** Every layout block [b] has: its own, then each shape variant's (the block's own standing in for a variant without one). */
+    private fun extrasOf(b: Int): List<TrialResult> = extras.getOrNull(b) ?: emptyList()
+    /** Block [b]'s best layout: its search's, or a template of it when that is smaller (or the search has none yet). */
+    fun best(b: Int): TrialResult? = (listOfNotNull(jobBest(b)) + extrasOf(b)).minByOrNull { it.area }
+    /** Block [b]'s best layout is a template. */
+    private fun templated(b: Int): Boolean = best(b)?.let { r -> extrasOf(b).any { it === r } } == true
+    /**
+     * Every layout block [b] has: its best, then each shape variant's (the best standing in for a variant without
+     * one), then its search's own and its templates when they are not the best already.
+     */
     fun layouts(b: Int): List<TrialResult> {
         val own = best(b) ?: return emptyList()
-        return listOf(own) + jobs.indices.filter { jobs[it].block == b && jobs[it].variant > 0 }.map { jobBest(it) ?: own }
+        val vs = jobs.indices.filter { jobs[it].block == b && jobs[it].variant > 0 }.map { jobBest(it) ?: own }
+        val more = (listOfNotNull(jobBest(b)) + extrasOf(b)).filter { r -> r !== own && vs.none { it === r } }
+        return listOf(own) + vs + more
     }
     private fun jobOf(block: Int, variant: Int) = jobs.indexOfFirst { it.block == block && it.variant == variant }.takeIf { it >= 0 }
     private fun label(j: Int) = jobs[j].let { if (it.variant == 0) "block ${it.block + 1}" else "block ${it.block + 1} x${"%.2f".format(it.factor)}" }
@@ -259,6 +271,7 @@ class BlockEngine(
     private fun stateOf(j: Int): String = when {
         skipped[j] -> "skipped"
         focus == j -> "focus"
+        jobs[j].variant == 0 && jobBest(j) == null && templated(jobs[j].block) -> "template"
         jobBest(j) == null -> "first"
         searches[j]?.done == true -> "done"
         parked(j) -> "parked"
@@ -278,7 +291,7 @@ class BlockEngine(
         stitching = stitchingNow, lanes = lanes, threads = threads,
         blocks = jobs.indices.map { j ->
             val job = jobs[j]
-            val r = jobBest(j)
+            val r = if (job.variant == 0) best(job.block) else jobBest(j)
             BlockStatus(job.block + 1, bps[job.block].globalIds.size, weights[job.block], running[j], r?.w ?: 0, r?.h ?: 0,
                 firstSize[j]?.first ?: 0, firstSize[j]?.second ?: 0, searches[j]?.steps ?: 0, searches[j]?.stalls ?: 0,
                 if (betterAt[j] < 0) -1.0 else (System.currentTimeMillis() - betterAt[j]) / 1000.0, spent(j) / 1000.0,
@@ -297,9 +310,11 @@ class BlockEngine(
         val f = focus
         if (f != null && !firstLayoutsOverdue()) return f.takeIf { running[it] == 0 && !skipped[it] && searches[it]?.done != true }
         val free = (0 until m).filter { running[it] == 0 && !skipped[it] && searches[it]?.done != true }
-        free.firstOrNull { jobs[it].variant == 0 && jobBest(it) == null }?.let { return it }
-        free.firstOrNull { jobBest(it) == null }?.let { return it }
-        fun weight(j: Int) = (if (jobs[j].block in critical) 2.0 else 1.0) * (if (parked(j)) 0.2 else 1.0)
+        // A block with a template has a layout already: it goes after blocks that have none.
+        free.firstOrNull { jobs[it].variant == 0 && best(jobs[it].block) == null }?.let { return it }
+        free.firstOrNull { jobBest(it) == null && extrasOf(jobs[it].block).isEmpty() }?.let { return it }
+        fun weight(j: Int) = (if (jobs[j].block in critical) 2.0 else 1.0) * (if (parked(j)) 0.2 else 1.0) *
+            (if (extrasOf(jobs[j].block).isNotEmpty()) extraShare else 1.0)
         return free.minWithOrNull(compareBy<Int>({ spent(it) / weight(it) }, { searches[it]?.steps ?: 0 }))
     }
 
@@ -355,7 +370,7 @@ class BlockEngine(
                 if (!paused && !stopping && (!timeUp() || !allFirst)) {
                     val laneCount = if (focus != null) 1 else lanes
                     while (active.size < laneCount || (focus != null && focus !in active.keys && running[focus!!] == 0)) {
-                        val j = synchronized(lock) { next() }?.takeIf { !timeUp() || (jobs[it].variant == 0 && jobBest(it) == null) } ?: break
+                        val j = synchronized(lock) { next() }?.takeIf { !timeUp() || (jobs[it].variant == 0 && best(jobs[it].block) == null) } ?: break
                         val t = if (focus == j) threads else max(1, threads / laneCount + if (active.size < threads % laneCount) 1 else 0)
                         running[j] = t
                         active[j] = pool.submit { turn(j, t) }
@@ -392,7 +407,7 @@ class BlockEngine(
         val job = jobs[j]
         val s = searches[j] ?: searchOf(job, initial[j]) { line -> blockPrinter(job, line) }.also { searches[j] = it }
         // A block without a layout yet may run past the limit until it has one.
-        s.extendTo(if (s.best == null && job.variant == 0) max(limit, System.currentTimeMillis() + 120_000) else limit)
+        s.extendTo(if (best(job.block) == null && job.variant == 0) max(limit, System.currentTimeMillis() + 120_000) else limit)
         val before = s.best
         val start = System.currentTimeMillis()
         turnStart[j] = start
