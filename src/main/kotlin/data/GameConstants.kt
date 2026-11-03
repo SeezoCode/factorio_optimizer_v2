@@ -133,6 +133,18 @@ object GameConstants {
      */
     const val FLUID_INPUT_ON_FACING_SIDE = true
 
+    /**
+     * A belt heading [feed] that runs into the side of an underground end facing [ug] passes only one of its lanes
+     * (0 left, 1 right of [feed]): the one on the end's open half, away from the hood. An entrance's hood covers
+     * its front half (towards the tunnel), so the lane on its back half passes: a belt heading north into the side
+     * of an east-facing entrance passes its left (west) lane, seen in game. An exit's hood covers its back half,
+     * so the lane on its front half passes. [G] entrance; [P] exit VERIFY (v4)
+     */
+    fun ugSideFeedPasses(feed: geom.Dir, ug: geom.Dir, exit: Boolean): Int {
+        val open = if (exit) ug else ug.opposite
+        return if (feed.ccw == open) 0 else 1
+    }
+
     /** Lane an inserter drops onto when it stands in line with the belt (0 left, 1 right). [P] VERIFY (v2) */
     const val PARALLEL_DROP_LANE = 1
 

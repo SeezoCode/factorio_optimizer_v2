@@ -67,15 +67,27 @@ object VerifyKit {
             )),
         ),
         Case(
-            "v4-sideload-underground", "Sideloading into an underground entrance keeps one lane",
-            "Items arrive from the side onto the entrance at x=3. Note which lane comes out at the exit.",
-            Layout(10, 4, listOf(
-                e("infinity-chest", 3, 3, item = "iron-plate"), e("inserter", 3, 2, Dir.S),
-                e("transport-belt", 3, 1, Dir.N),
+            "v4-sideload-underground", "A belt run into the side of an underground end passes one lane",
+            "Top: a belt heading north (copper on its west lane, iron on its east lane) runs into the side of an " +
+                "east-facing entrance: expected only copper (the lane on the entrance's open back half) comes out at x=7, " +
+                "iron backs up (seen in game). Bottom: the same into the side of an exit at (4,6): expected only iron " +
+                "(the lane on the exit's open front half) joins the belt at x=5. Note which items pass in each row.",
+            Layout(10, 10, listOf(
+                // Entrance fed from the side.
+                e("infinity-chest", 1, 2, item = "iron-plate"), e("inserter", 2, 2, Dir.W),
+                e("infinity-chest", 5, 1, item = "copper-plate"), e("inserter", 4, 1, Dir.E),
+                e("transport-belt", 3, 3, Dir.N), e("transport-belt", 3, 2, Dir.N), e("transport-belt", 3, 1, Dir.N),
                 e("underground-belt", 3, 0, Dir.E, ug = "input"),
                 e("underground-belt", 6, 0, Dir.E, ug = "output"),
                 e("transport-belt", 7, 0, Dir.E), e("transport-belt", 8, 0, Dir.E),
-                pole(5, 2),
+                // Exit fed from the side; the main line through it carries nothing.
+                e("transport-belt", 0, 6, Dir.E), e("underground-belt", 1, 6, Dir.E, ug = "input"),
+                e("underground-belt", 4, 6, Dir.E, ug = "output"),
+                e("transport-belt", 5, 6, Dir.E), e("transport-belt", 6, 6, Dir.E),
+                e("transport-belt", 4, 9, Dir.N), e("transport-belt", 4, 8, Dir.N), e("transport-belt", 4, 7, Dir.N),
+                e("infinity-chest", 2, 8, item = "iron-plate"), e("inserter", 3, 8, Dir.W),
+                e("infinity-chest", 6, 7, item = "copper-plate"), e("inserter", 5, 7, Dir.E),
+                pole(1, 4), pole(7, 4),
             )),
         ),
         Case(

@@ -16,7 +16,7 @@ Regenerate the strings with:
 | `v1-inserter-direction.txt` | An inserter's blueprint direction points at its pickup side | Plates move from the infinity chest into the steel chest | ☐ |
 | `v2-inserter-lanes.txt` | Which lane an inserter drops on (perpendicular, parallel away, parallel toward, curve) | Note the lane in each row | ☐ |
 | `v3-underground-pairing.txt` | Pairing when an opposite-facing pair of the same tier sits inside another pair's span | Do plates reach the chest at the right? | ☐ |
-| `v4-sideload-underground.txt` | Sideloading into an underground entrance | Which lane comes out of the exit | ☐ |
+| `v4-sideload-underground.txt` | A belt run into the side of an underground end passes only the lane on its open half | Top row: only copper passes the entrance; bottom row: only iron passes the exit | ☑ entrance (seen in game); ☐ exit |
 | `v5-poles-without-wires.txt` | Poles in a blueprint without a `wires` array | Are the two poles connected after building? (The generator always writes wires.) | ☐ |
 | `v6-infinity-settings.txt` | `infinity_settings` format for pipes and chests | Pipe set to sulfuric acid, chest to iron plates | ☐ |
 | `v7-underground-directions.txt` | Underground `type` and direction in all four directions | Items come out of every exit | ☐ |

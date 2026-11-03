@@ -20,7 +20,7 @@ enum class ErrorType {
     UG_UNPAIRED,
     UNREACHABLE, STARVED, MISSING_INPUT, MISSING_SINK,
     INSERTER_BAD_PICKUP, INSERTER_BAD_DROP, INSERTER_WRONG_ITEM, INSERTER_RATE,
-    BELT_OVER_CAPACITY,
+    BELT_OVER_CAPACITY, LANE_BLOCKED,
     UNPOWERED, POLES_DISCONNECTED, WIRE_TOO_LONG,
     FLUID_MISSING, FLUID_BLOCKED, FLUID_MIX, FLUID_STUCK, FLUID_LEAK,
     OUTPUT_MISSING,
@@ -241,8 +241,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 next[i]?.forEach { n ->
                     val (toL, toR) = laneInto(ents[i], ents[n], this)
                     val t = lanes(laneItems, n)
-                    val a = t[toL].addAll(src[0])
-                    val b = t[toR].addAll(src[1])
+                    val a = toL >= 0 && t[toL].addAll(src[0])
+                    val b = toR >= 0 && t[toR].addAll(src[1])
                     if (a || b) queue += n
                 }
             }
@@ -322,7 +322,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         return when (src.kind) {
             Kind.MACHINE -> machineInfo(src)?.let { mi -> ins.item ?: mi.product }
             Kind.INFINITY_CHEST, Kind.CHEST -> src.item
-            Kind.BELT -> belts?.itemOn(p)
+            Kind.BELT, Kind.SPLITTER -> belts?.itemOn(p)
             else -> null
         }
     }
@@ -339,7 +339,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         ents.filter { it.kind == Kind.INSERTER }.forEach { ins ->
             val pick = entityAt(ins.pickupTile)
             val drop = entityAt(ins.dropTile)
-            val okPick = pick != null && pick.kind in setOf(Kind.BELT, Kind.MACHINE, Kind.CHEST, Kind.INFINITY_CHEST)
+            // A splitter is a pickup too: the dead-end splitter trick takes items off a splitter half whose output
+            // leads nowhere (B14).
+            val okPick = pick != null && pick.kind in setOf(Kind.BELT, Kind.SPLITTER, Kind.MACHINE, Kind.CHEST, Kind.INFINITY_CHEST)
             val okDrop = drop != null && drop.kind in setOf(Kind.BELT, Kind.MACHINE, Kind.CHEST, Kind.INFINITY_CHEST)
             if (!okPick) err(ErrorType.INSERTER_BAD_PICKUP, ins.tile, "${ins.name} picks from ${pick?.name ?: "nothing"} at ${ins.pickupTile}")
             if (!okDrop) err(ErrorType.INSERTER_BAD_DROP, ins.tile, "${ins.name} drops into ${drop?.name ?: "nothing"} at ${ins.dropTile}")
@@ -360,7 +362,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             when (drop.kind) {
                 Kind.MACHINE -> {
                     val info = machineInfo(drop) ?: return@forEach
-                    if (pick.kind == Kind.BELT) {
+                    if (pick.kind == Kind.BELT || pick.kind == Kind.SPLITTER) {
                         val onBelt = belts.items[pickIdx] ?: emptySet()
                         if (onBelt.isNotEmpty() && onBelt.none { it in info.ingredients }) {
                             err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} feeds ${drop.recipe} from a belt of ${onBelt.sorted()}")
@@ -382,7 +384,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         ents.forEach { ins ->
             if (ins.kind != Kind.INSERTER) return@forEach
             val p = indexAt(ins.pickupTile) ?: return@forEach
-            if (ents[p].kind == Kind.BELT && belts.items[p].isNullOrEmpty()) {
+            if ((ents[p].kind == Kind.BELT || ents[p].kind == Kind.SPLITTER) && belts.items[p].isNullOrEmpty()) {
                 err(ErrorType.UNREACHABLE, ins.pickupTile, "${ins.name} picks from a belt no item reaches")
             }
         }
@@ -393,7 +395,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         val inserters = ents.indices.filter { ents[it].kind == Kind.INSERTER }
         fun pickIdx(i: Int) = indexAt(ents[i].pickupTile)
         fun dropIdx(i: Int) = indexAt(ents[i].dropTile)
-        fun fromBelt(i: Int) = pickIdx(i)?.let { ents[it].kind == Kind.BELT } == true
+        fun fromBelt(i: Int) = pickIdx(i)?.let { ents[it].kind == Kind.BELT || ents[it].kind == Kind.SPLITTER } == true
         fun cap(i: Int) = spec.inserterRate(ents[i].name, fromBelt(i))
 
         val machines = ents.indices.filter { ents[it].kind == Kind.MACHINE }
@@ -530,7 +532,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         fun demandBelow(i: Int, item: String, depth: Int = 0): Double = belowItem[i to item] ?: run {
             val here = est[i]?.get(item) ?: 0.0
             belowItem[i to item] = here
-            val v = here + if (depth > 4000) 0.0 else (succs[i] ?: emptyList()).sumOf { demandBelow(it, item, depth + 1) }
+            val v = here + if (depth > 4000) 0.0 else (succs[i] ?: emptyList()).filter { passes(i, it, item, belts) }.sumOf { demandBelow(it, item, depth + 1) }
             belowItem[i to item] = v; v
         }
         val indeg = HashMap<Int, Int>()
@@ -587,9 +589,15 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             outs.forEachIndexed { k, n ->
                 val (toL, toR) = laneInto(e, ents[n], belts)
                 val fl = l * shareL[k]; val fr = r * shareR[k]
-                // toL / toR: where this node's left and right lanes land on the successor (0 = left, 1 = right).
-                if (toL == 0) inL.merge(n, fl, Double::plus) else inR.merge(n, fl, Double::plus)
-                if (toR == 0) inL.merge(n, fr, Double::plus) else inR.merge(n, fr, Double::plus)
+                // toL / toR: where this node's left and right lanes land on the successor (0 = left, 1 = right,
+                // -1 = blocked by an underground's hood: those items stop there and back up).
+                if ((toL < 0 && fl > 1e-6) || (toR < 0 && fr > 1e-6)) {
+                    val lane = if (toL < 0) 0 else 1
+                    val what = belts.laneItems[i]?.get(lane)?.sorted() ?: emptyList<String>()
+                    err(ErrorType.LANE_BLOCKED, ents[n].tile, "${fmt(if (toL < 0) fl else fr)}/s of $what arrive on the lane an underground's hood blocks (side feed)")
+                }
+                if (toL == 0) inL.merge(n, fl, Double::plus) else if (toL == 1) inR.merge(n, fl, Double::plus)
+                if (toR == 0) inL.merge(n, fr, Double::plus) else if (toR == 1) inR.merge(n, fr, Double::plus)
                 indeg[n] = (indeg[n] ?: 1) - 1
                 if (indeg[n] == 0) queue += n
             }
@@ -621,8 +629,10 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     }
 
     /**
-     * Where [e]'s left and right lanes land on successor [f]: kept for a straight feed, a curve, an
-     * underground or a splitter; both onto the near lane for a sideload.
+     * Where [e]'s left and right lanes land on successor [f] (0 left, 1 right, -1 blocked): kept for a straight
+     * feed, a curve, an underground or a splitter; both onto the near lane for a sideload. Fed from the side, an
+     * underground end takes only the lane on its open half ([GameConstants.ugSideFeedPasses]); the other lane is
+     * blocked and backs up.
      */
     private fun laneInto(e: PlacedEntity, f: PlacedEntity, belts: BeltGraph): Pair<Int, Int> {
         if (e.kind == Kind.UG_IN || f.kind == Kind.SPLITTER || e.dir == f.dir) return 0 to 1
@@ -633,7 +643,19 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         }
         // Sideload: arriving from the belt's left side (moving towards its right) lands on its left lane.
         val near = if (e.dir == f.dir.cw) 0 else 1
+        if ((f.kind == Kind.UG_IN || f.kind == Kind.UG_OUT) && e.dir.axis != f.dir.axis) {
+            val pass = GameConstants.ugSideFeedPasses(e.dir, f.dir, exit = f.kind == Kind.UG_OUT)
+            return if (pass == 0) near to -1 else -1 to near
+        }
         return near to near
+    }
+
+    /** Whether some of [item] on belt-family [i] can move on to its successor [n] (not only on a blocked lane). */
+    private fun passes(i: Int, n: Int, item: String, belts: BeltGraph): Boolean {
+        val (a, b) = laneInto(ents[i], ents[n], belts)
+        if (a >= 0 && b >= 0) return true
+        val mask = belts.lanesWith(i, item)
+        return mask == 0 || (mask and 1 != 0 && a >= 0) || (mask and 2 != 0 && b >= 0)
     }
 
     /**
@@ -659,11 +681,15 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         spec.sources.filter { !it.fluid }.forEach { s -> indexAt(s.tile)?.takeIf { ents[it].kind.beltFamily }?.let { fixed += Triple(it, s.item, s.rate) } }
         beltRate.forEach { (ins, r) -> if (r > 0) dropBelt(ins)?.let { b -> carriedByInserter(ents[ins])?.let { fixed += Triple(b, it, r) } } }
 
-        val reach = HashMap<Int, Set<Int>>()
-        fun downstream(b: Int): Set<Int> = reach.getOrPut(b) {
+        val reach = HashMap<Pair<Int, String?>, Set<Int>>()
+        /** Belts [item] dropped on [b] can reach (not through a lane an underground's hood blocks). */
+        fun downstream(b: Int, item: String?): Set<Int> = reach.getOrPut(b to item) {
             val seen = hashSetOf(b)
             val q = ArrayDeque(listOf(b))
-            while (q.isNotEmpty()) { val u = q.removeFirst(); belts.next[u]?.forEach { if (seen.add(it)) q += it } }
+            while (q.isNotEmpty()) {
+                val u = q.removeFirst()
+                belts.next[u]?.forEach { if ((item == null || passes(u, it, item, belts)) && seen.add(it)) q += it }
+            }
             seen
         }
         val insList = producers.flatMap { m -> toBelt.getValue(m).map { m to it } }
@@ -682,7 +708,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         }
         outputs.forEachIndexed { j, (_, r, _) -> sinkEdge[draws.size + j] = g.edge(oBase + j, 1, r) }
         fun connect(from: Int, b: Int, item: String?) {
-            val down = downstream(b)
+            val down = downstream(b, item)
             pickNodes.forEachIndexed { k, (ins, it2) ->
                 if (it2 == item && indexAt(ents[ins].pickupTile)?.let { it in down } == true) g.edge(from, kBase + 2 * k, Double.MAX_VALUE)
             }
@@ -724,7 +750,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         val p = indexAt(ents[ins].pickupTile) ?: return false
         val src = ents[p]
         return when (src.kind) {
-            Kind.BELT -> belts.items[p]?.contains(item) == true
+            Kind.BELT, Kind.SPLITTER -> belts.items[p]?.contains(item) == true
             Kind.MACHINE -> machineOutput(ins) == item
             Kind.CHEST, Kind.INFINITY_CHEST -> src.item == item
             else -> false

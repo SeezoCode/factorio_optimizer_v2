@@ -91,6 +91,37 @@ class ValidatorTest {
     }
 
     @Test
+    fun `a belt fed into the side of an underground entrance passes only the lane on its open half`() {
+        // A belt heading north runs into the side of an east-facing entrance at (1,1): only its left (west) lane
+        // gets in, onto the entrance's right (south) lane; the exit at (4,1) leads out of the box at the east edge.
+        fun layout() = Layout(6, 4, listOf(
+            belt(1, 3, Dir.N, 1), belt(1, 2, Dir.N, 1),
+            e("fast-underground-belt", 1, 1, Dir.E, ug = "input").copy(net = 1),
+            e("fast-underground-belt", 4, 1, Dir.E, ug = "output").copy(net = 1),
+            belt(5, 1, Dir.E, 1),
+        ))
+        val rates = base.copy(checkRates = true)
+        fun spec(item: String, lane: Int) = rates.copy(
+            sources = listOf(SourceSpec(Tile(1, 3), item, 1.0, lane = lane)),
+            outputs = listOf(validate.OutputSpec(Tile(5, 1), item, 1.0)),
+        )
+        // The left lane passes.
+        assertEquals(emptyList(), check("ug_side_left_lane", layout(), spec("iron-plate", 0)))
+        // The right lane is blocked by the hood: nothing arrives, and the blocked lane is reported.
+        val blocked = check("ug_side_right_lane", layout(), spec("copper-plate", 1))
+        assertHas(blocked, ErrorType.OUTPUT_MISSING, Tile(5, 1))
+        assertHas(blocked, ErrorType.LANE_BLOCKED, Tile(1, 1))
+        // Both lanes: iron on the left passes, copper on the right does not.
+        val both = rates.copy(
+            sources = listOf(SourceSpec(Tile(1, 3), "iron-plate", 1.0, lane = 0), SourceSpec(Tile(1, 3), "copper-plate", 1.0, lane = 1)),
+            outputs = listOf(validate.OutputSpec(Tile(5, 1), "iron-plate", 1.0)),
+        )
+        val errs = check("ug_side_both_lanes", layout(), both)
+        assertTrue(errs.none { it.type == ErrorType.CONTAMINATION }, "$errs")
+        assertHas(errs, ErrorType.LANE_BLOCKED, Tile(1, 1))
+    }
+
+    @Test
     fun `an entrance pairs with the nearest same-tier underground on its axis`() {
         fun ug(x: Int, type: String, net: Int) = e("fast-underground-belt", x, 4, Dir.E, ug = type).copy(net = net)
         val layout = Layout(10, 8, listOf(
