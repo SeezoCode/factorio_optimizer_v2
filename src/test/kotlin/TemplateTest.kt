@@ -71,6 +71,27 @@ class TemplateTest {
         assertTrue(ts.all { t -> t.outputs.any { it.item == "copper-ore" } })
     }
 
+    /** [base] with one more port of [item] on [edge] taking [rate] of what its first port of that item carries. */
+    private fun withSplitPort(base: plan.ProductionPlan, item: String, output: Boolean, edge: String, rate: Double): plan.ProductionPlan {
+        val first = base.ports.first { it.item == item && it.output == output }
+        val extra = Port(base.ports.size, item, listOf(ConfigSource(item, edge = edge)), output = output)
+        val t = Terminal(base.terminals.size, if (output) Role.OUTPUT else Role.SOURCE, item, rate, 1, port = extra.id)
+        val terminals = base.terminals.map { if (it.port == first.id) it.copy(rate = it.rate - rate) else it } + t
+        return base.copy(ports = base.ports + extra, terminals = terminals,
+            nets = base.nets.map { if (it.item == item) it.copy(terminals = it.terminals + t.id) else it })
+    }
+
+    @Test
+    fun `two product ports leave through a splitter, two input ports join through one`() {
+        val config = job("iron-plate", 12.5, "iron-ore", "west", "north")
+        val base = buildPlan(TestData.data, config)
+        val twoOut = withSplitPort(base, "iron-plate", true, "east", 5.0)
+        assertTrue(checkAll("iron_two_out", config, twoOut).all { t -> t.layout!!.entities.any { it.kind == Kind.SPLITTER } })
+        val twoIn = withSplitPort(base, "iron-ore", false, "south", 6.0)
+        checkAll("iron_two_in", config, twoIn)
+        checkAll("iron_two_in_two_out", config, withSplitPort(twoIn, "iron-plate", true, "east", 5.0))
+    }
+
     @Test
     fun `gears come from an assembler column too, once inserters keep up`() {
         // An assembler 3 makes 2.5 gears/s from 5 plates/s: no inserter takes that from a belt without research.

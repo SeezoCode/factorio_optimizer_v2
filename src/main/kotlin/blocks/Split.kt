@@ -118,9 +118,11 @@ private fun centreDistance(a: Rect, b: Rect): Double =
 fun splitPlan(
     input: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L,
     aspect: Double = 1.0, reserved: List<ReservedArea> = emptyList(),
+    /** Recipes kept in blocks of their own (machine columns, see Templates.kt). */
+    pure: Set<String> = emptySet(),
 ): Split {
     val warnings = ArrayList<String>()
-    val part = partitionPlan(input, cfg, beltThroughput, seed)
+    val part = partitionPlan(input, cfg, beltThroughput, seed, pure)
     // Each candidate split with its machine rates rebalanced (see [rebalance]); the cheapest after that wins.
     val depth = machineDepth(input)
     data class Candidate(val blocks: List<List<Int>>, val blockOf: IntArray, val plan: ProductionPlan, val ports: Int, val cost: Double)
@@ -128,7 +130,7 @@ fun splitPlan(
         val bl = c.map { it.sorted() }.sortedBy { ms -> ms.map { depth[it] }.average() }
         val bo = IntArray(input.machines.size).also { a -> bl.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
         val p = rebalance(input, bl)
-        val model = PartitionModel(p, cfg, beltThroughput)
+        val model = PartitionModel(p, cfg, beltThroughput, pure)
         Candidate(bl, bo, p, model.ports(bo, bl.size), model.cost(bo, bl.size))
     }.minBy { it.cost }
     val blocks = chosen.blocks

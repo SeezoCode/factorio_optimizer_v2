@@ -133,6 +133,27 @@ class FactoryTest {
     }
 
     @Test
+    fun `with templates the split keeps furnaces in blocks of their own`() {
+        val config = config.RunConfiguration(
+            targets = listOf(config.ConfigTarget("electronic-circuit", 6.0), config.ConfigTarget("iron-gear-wheel", 2.0)),
+            sources = listOf(ConfigSource("iron-ore", edge = "west"), ConfigSource("copper-ore", edge = "west")),
+            blocks = BlocksConfig(maxMachines = 20),
+        )
+        val plan = buildPlan(TestData.data, config)
+        val pure = blocks.Templates.columnRecipes(plan, config)
+        // Furnaces fit a column; assembler 3s making cable and gears outrun long-handed inserters, so they mix freely.
+        assertEquals(setOf("iron-plate", "copper-plate"), pure)
+        val split = splitPlan(plan, config.blocks!!, 30.0, pure = pure)
+        split.blocks.forEach { ms ->
+            val recipes = ms.map { split.plan.machines[it].recipe }.toSet()
+            assertTrue(recipes.size == 1 || recipes.none { it in pure }, "a block mixes $recipes")
+        }
+        // Without templates the same job mixes them (merging saves a block).
+        val mixed = splitPlan(plan, config.blocks!!.copy(templates = false), 30.0)
+        assertTrue(mixed.blocks.any { ms -> ms.map { mixed.plan.machines[it].recipe }.toSet().let { it.size > 1 && it.any { r -> r in pure } } })
+    }
+
+    @Test
     fun `smelting blocks are offered as furnace columns and the factory uses them`() {
         val config = config.RunConfiguration(
             targets = listOf(config.ConfigTarget("electronic-circuit", 3.0)),
