@@ -76,6 +76,8 @@ object Templates {
         val inputs: List<Int>, val outputs: List<Int>, val pass: Int?,
         val shortIn: String, val shortOut: String,
         val belt: String, val underground: String, val splitter: String, val maxGap: Int,
+        /** Items/s one lane of the tier holds. */
+        val laneCap: Double,
     )
 
     private val SIDES = setOf("north", "east", "south", "west")
@@ -113,7 +115,7 @@ object Templates {
         if (inserterRate(LONG, config, true) < maxIn - 1e-9 || inserterRate(LONG, config, false) < maxOut - 1e-9) return no("long-handed inserters too slow (${"%.2f".format(maxIn)}/s in, ${"%.2f".format(maxOut)}/s out)")
 
         val spec = ColumnSpec(m0.machine, m0.recipe, ingredient, product, ins.map { it.id }, prodOut.map { it.id }, passOut.firstOrNull()?.id,
-            shortIn, shortOut, tier.belt, tier.underground, tier.splitter, tier.maxUndergroundGap)
+            shortIn, shortOut, tier.belt, tier.underground, tier.splitter, tier.maxUndergroundGap, tier.throughput / 2)
         val sides = plan.ports.associate { it.id to Dir.fromName(it.specs[0].edge!!) }
         val found = ArrayList<TrialResult>()
         for (q in 0..3) {
@@ -136,8 +138,8 @@ object Templates {
         for (bypass in listOf(false, true)) {
             for ((hTop, hBot) in headers) {
                 if (best != null && hTop + hBot > best.h - 3 * ((plan.machines.size + 1) / 2)) break
-                for (xa in intArrayOf(4, 5)) for (bDir in arrayOf(Dir.N, Dir.S)) {
-                    val r = tryColumn(data, config, plan, s, sides, hTop, hBot, xa, bDir, bypass) ?: continue
+                for (xa in intArrayOf(4, 5)) for (bDir in arrayOf(Dir.N, Dir.S)) for (jk in if (s.inputs.size >= 2) 0..1 else 0..0) {
+                    val r = tryColumn(data, config, plan, s, sides, hTop, hBot, xa, bDir, bypass, jk) ?: continue
                     if (best == null || r.score < best.score) best = r
                 }
             }
@@ -152,6 +154,8 @@ object Templates {
     private fun tryColumn(
         data: RootData, config: RunConfiguration, plan: ProductionPlan, s: ColumnSpec, sides: Map<Int, Dir>,
         hTop: Int, hBot: Int, xa: Int, bDir: Dir, bypass: Boolean = false,
+        /** Rows between the input junction and A's head (straight belts). */
+        jk: Int = 0,
     ): TrialResult? {
         val t0 = System.currentTimeMillis()
         val n = plan.machines.size
@@ -192,6 +196,14 @@ object Templates {
             put(PlacedEntity(s.belt, Kind.BELT, xb, y, bDir, net = netOf[s.product]))
         }
         val aHead = Tile(xa, core0)
+        // Two or more inputs: the first two join on the belt just above A's head, one sideloaded from each side, so each
+        // lands on a lane of its own whatever lanes it came on (a splitter would keep a lopsided input's lanes, and one
+        // lane could overflow). Further inputs merge into theirs through splitters.
+        val junction = if (s.inputs.size >= 2) Tile(xa, core0 - 1 - jk) else null
+        if (junction != null) {
+            if (hTop < 1 + jk) return null
+            for (y in junction.y until core0) put(PlacedEntity(s.belt, Kind.BELT, xa, y, Dir.S, net = netOf[s.ingredient]))
+        }
         val bExit = if (bDir == Dir.N) Tile(xb, core0 - 1) else Tile(xb, core1)
         val aTail = Tile(xa, core1)
         // Pole slots: the third tile of each three in the inserter columns.
@@ -212,9 +224,11 @@ object Templates {
         // before B's first belt (a belt there would feed B).
         val reserved0 = HashSet<Tile>()
         if (s.pass == null) reserved0 += aTail
-        reserved0 += if (bDir == Dir.N) Tile(xb, core1) else Tile(xb, core0 - 1)
+        // A belt there may run past, but not point into B (it would feed it).
+        val noHeading = mapOf(if (bDir == Dir.N) Tile(xb, core1) to Dir.N else Tile(xb, core0 - 1) to Dir.S)
 
         // Routing state, reset for each order of the connections.
+        fun portRate(p: Int) = plan.terminals.filter { it.port == p }.sumOf { it.rate }
         val used = HashSet<Tile>()
         val reserved = HashSet<Tile>()
         /** Tiles inside some underground pair's span (ends included), per axis: no other pair on that axis may touch them. */
@@ -241,7 +255,7 @@ object Templates {
         fun path(starts: List<Step>, done: (Step) -> Boolean): List<Step>? {
             val prev = HashMap<Step, Step?>()
             val queue = ArrayDeque<Step>()
-            starts.forEach { st -> if (st !in prev) { prev[st] = null; queue += st } }
+            starts.filter { noHeading[it.tile] != it.dir }.forEach { st -> if (st !in prev) { prev[st] = null; queue += st } }
             while (queue.isNotEmpty()) {
                 val cur = queue.removeFirst()
                 if (done(cur)) {
@@ -255,14 +269,14 @@ object Templates {
                 val nexts = ArrayList<Step>()
                 // After an underground exit the next belt keeps going straight (a turn right after one is unverified).
                 val turns = if (cur.ugFrom != null) listOf(cur.dir) else listOf(cur.dir, cur.dir.cw, cur.dir.ccw)
-                turns.forEach { nexts += Step(nt, it) }
+                turns.filter { noHeading[nt] != it }.forEach { nexts += Step(nt, it) }
                 val axis = cur.dir.axis
                 if (nt !in spans[axis]) for (j in 2..s.maxGap + 1) {
                     val e = nt.step(cur.dir, j)
                     if (!inBox(e)) break
                     val between = (1 until j).map { nt.step(cur.dir, it) }
                     if (between.any { it in ugEnds[axis] }) break
-                    if (free(e) && e !in spans[axis]) nexts += Step(e, cur.dir, nt)
+                    if (free(e) && e !in spans[axis] && noHeading[e] != cur.dir) nexts += Step(e, cur.dir, nt)
                 }
                 nexts.forEach { st -> if (st !in prev) { prev[st] = cur; queue += st } }
             }
@@ -300,6 +314,14 @@ object Templates {
         fun routeIn(port: Int): Routed? {
             val d = sides.getValue(port)
             val starts = ringTiles(d).filter { it !in used && it !in occ }.map { Step(it, d.opposite) }
+            val joined = trees[s.ingredient]?.size ?: 0
+            if (junction != null && joined < 2) {
+                // Onto the junction from a side the other input has not taken, carrying at most a lane's worth.
+                if (portRate(port) > s.laneCap * 0.98) return null
+                val taken = trees[s.ingredient]?.firstOrNull()?.steps?.last()?.dir
+                val p = path(starts) { st -> st.tile + st.dir == junction && (st.dir == Dir.E || st.dir == Dir.W) && st.dir != taken } ?: return null
+                return Routed(p, p.first().tile)
+            }
             val merges = if (trees[s.ingredient].isNullOrEmpty()) emptyList() else splitSpots(s.ingredient, merge = true)
             val byHalf = merges.associateBy { it.second }
             val p = path(starts) { st ->
@@ -367,7 +389,6 @@ object Templates {
         // Connections: inputs first (the first joins A, the rest merge into it), then outputs (the first leaves B's end,
         // the rest branch off), the pass-through last from A's end; a few orders of each group.
         data class Conn(val input: Boolean, val port: Int, val item: String)
-        fun portRate(p: Int) = plan.terminals.filter { it.port == p }.sumOf { it.rate }
         val ins = s.inputs.sortedByDescending { portRate(it) }.map { Conn(true, it, s.ingredient) }
         val outs = s.outputs.sortedByDescending { portRate(it) }.map { Conn(false, it, s.product) }
         val pass = listOfNotNull(s.pass?.let { Conn(false, it, s.ingredient) })
