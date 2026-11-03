@@ -1022,7 +1022,9 @@ fun stitchRoute(
     // Tiles a block belt points into from inside (chain ends at the block edge) must not get a corridor belt, nor
     // tiles a block's inserter reaches out to.
     val startTiles = starts.values.map { it.first }.toSet()
-    val pointedAt = entities.filter { it.kind.beltFamily }.mapNotNull { it.outputTile }.filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
+    val pointedAt = (entities.filter { it.kind.beltFamily }.mapNotNull { it.outputTile } +
+        entities.filter { it.kind == Kind.SPLITTER }.flatMap { sp -> sp.rect.tiles().map { it + sp.dir } })
+        .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
     val reached = entities.filter { it.kind == Kind.INSERTER }.flatMap { listOf(it.pickupTile, it.dropTile) }.filter { it !in blockTiles }
     val stitchConfig = config.copy(blocks = null, laneSharing = false)
     // Everything the blocks put outside their boxes (ring ports) is in the way too.

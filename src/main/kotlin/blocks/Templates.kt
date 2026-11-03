@@ -285,8 +285,10 @@ object Templates {
                     if (!behind || !ahead) continue
                     for (side in listOf(b.dir.cw, b.dir.ccw)) {
                         val h = b.tile + side
-                        // A merge's other output leads nowhere; nothing feeds a branch's half from behind.
-                        if (free(h) && (if (merge) noBelt(h + b.dir) else noBelt(h + b.dir.opposite))) out += Triple(b.tile, h, b.dir)
+                        // A merge's other output leads nowhere, inside the box (outside it, a belt between blocks
+                        // could stand there); nothing feeds a branch's half from behind.
+                        val keep = if (merge) h + b.dir else h + b.dir.opposite
+                        if (free(h) && inBox(keep) && noBelt(keep)) out += Triple(b.tile, h, b.dir)
                     }
                 }
             }
