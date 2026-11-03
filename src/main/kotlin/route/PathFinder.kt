@@ -187,6 +187,8 @@ class PathFinder(internal val p: RouteProblem) {
         val ugTier = ArrayList<Int>()
         val chans = ArrayList<Int>()      // tier * 2N + axis * N + tile
         val claims = ArrayList<Int>()     // option ids
+        /** Per claim, the tile kept free beside its inserter for a heat pipe (Aquilo), or -1. */
+        val heatSlots = ArrayList<Int>()
         /** Where the chain's leaves point (the final head, and heads left behind by branches): tile * 4 + dir. */
         val deadEnds = ArrayList<Int>()
         /** Splitters inserted for branches: [trunk tile, branch tile, direction]. */
@@ -249,6 +251,24 @@ class PathFinder(internal val p: RouteProblem) {
     private val stubStamp = IntArray(N)
     /** Dead-end splitter pickups (B14): a splitter on a straight belt whose second half leads nowhere. */
     private val stubsOn = config.trick("B14")
+    /** Aquilo: each inserter keeps a tile beside it for a heat pipe; belts and inserters there are conflicts. */
+    private val heatOn = config.heat.mode != "off"
+    private val occHeat = IntArray(N)
+
+    /**
+     * The tile kept free beside option [o]'s inserter for a heat pipe: one of the two beside it across its swing (or,
+     * for a long-handed one, the tile it reaches over), not a machine or obstacle; one another inserter already keeps
+     * is shared, else the least used. -1 without heating or when none is possible.
+     */
+    private fun heatSlotFor(o: Int): Int {
+        if (!heatOn) return -1
+        val ins = optIns[o]
+        val d = options[o].insDir
+        val cands = ArrayList<Int>()
+        for (side in listOf(d.cw, d.ccw)) { val t = ins + dIdx[side.ordinal]; if (t in 0 until N && allowNet[t] != -2) cands += t }
+        if (optLong[o]) { val t = (ins + optBelt[o]) / 2; if (t in 0 until N && allowNet[t] != -2) cands += t }
+        return cands.minByOrNull { t -> (if (occHeat[t] > 0) -10 else 0) + occTile[t] * 3 + (if (occBelt[t] > 0) 1 else 0) } ?: -1
+    }
     internal val minStep: Float
     internal val hWeight = tun.heuristicWeight.toFloat()
     var expansions = 0L
@@ -429,11 +449,11 @@ class PathFinder(internal val p: RouteProblem) {
 
     /** Cost of a belt-family entity on [q] that would take items from [deadTaken] chain ends pointing into it. */
     private fun beltCost(q: Int, deadTaken: Int = deadEndAt[q]): Float =
-        (tun.beltBase.toFloat() + hist[q]) * (1f + pFac * (occTile[q] + deadTaken)) +
+        (tun.beltBase.toFloat() + hist[q]) * (1f + pFac * (occTile[q] + deadTaken + occHeat[q])) +
             (if (pinCount[q] > 0) tun.pinReservation.toFloat() else 0f) + bias[q]
 
     private fun insCost(q: Int, long: Boolean): Float =
-        ((if (long) tun.longInserterBase else tun.inserterBase).toFloat() + hist[q]) * (1f + pFac * occTile[q])
+        ((if (long) tun.longInserterBase else tun.inserterBase).toFloat() + hist[q]) * (1f + pFac * (occTile[q] + occHeat[q]))
 
     private fun chestCost(q: Int): Float = (tun.chestBase.toFloat() + hist[q]) * (1f + pFac * occTile[q])
 
@@ -832,6 +852,7 @@ class PathFinder(internal val p: RouteProblem) {
 
     private fun claim(r: Routed, o: Int, d: Int, into: Int = d) {
         r.claims += o
+        r.heatSlots += heatSlotFor(o).also { if (it >= 0) occHeat[it]++ }
         occupy(r, optIns[o], false)
         val v = optTerm[o]
         need[v]--
@@ -850,6 +871,7 @@ class PathFinder(internal val p: RouteProblem) {
         r.ugIn.forEach { e -> val t = e shr 2; occTile[t]--; occBelt[t]--; accept(t, AK_UG_IN, e and 3, -1) }
         r.ugOut.forEach { e -> val t = e shr 2; occTile[t]--; occBelt[t]--; accept(t, AK_UG_OUT, e and 3, -1) }
         r.claims.forEach { o -> occTile[optIns[o]]-- }
+        r.heatSlots.forEach { if (it >= 0) occHeat[it]-- }
         r.chans.forEach { occChan[it]-- }
         r.splitters.forEach { sp -> occTile[sp[1]]--; occBelt[sp[1]]--; accept(sp[1], AK_SPLITTER, sp[2], -1) }
         r.deadEnds.forEach { removeDeadEnd(it) }
@@ -863,6 +885,7 @@ class PathFinder(internal val p: RouteProblem) {
         r.ugIn.forEach { e -> val t = e shr 2; occTile[t]++; occBelt[t]++; accept(t, AK_UG_IN, e and 3, 1) }
         r.ugOut.forEach { e -> val t = e shr 2; occTile[t]++; occBelt[t]++; accept(t, AK_UG_OUT, e and 3, 1) }
         r.claims.forEach { o -> occTile[optIns[o]]++ }
+        r.heatSlots.forEach { if (it >= 0) occHeat[it]++ }
         r.chans.forEach { occChan[it]++ }
         r.splitters.forEach { sp -> occTile[sp[1]]++; occBelt[sp[1]]++; accept(sp[1], AK_SPLITTER, sp[2], 1) }
         r.deadEnds.forEach { e -> deadEndDir[e]++; deadEndAt[e shr 2]++ }
@@ -1156,6 +1179,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun undoLeg(r: Routed, belts: Int, ugIn: Int, ugOut: Int, chans: Int, claims: Int, tiles: Int) {
         while (r.claims.size > claims) {
             val o = r.claims.removeAt(r.claims.size - 1)
+            r.heatSlots.removeAt(r.heatSlots.size - 1).let { if (it >= 0) occHeat[it]-- }
             val v = optTerm[o]
             need[v]++
             surplus[vts[v].slot] -= if (vts[v].role == Role.PRODUCER) share(v) else -share(v)
@@ -1248,7 +1272,7 @@ class PathFinder(internal val p: RouteProblem) {
 
     // ---- iteration loop ----
     internal fun overuseAt(t: Int): Int =
-        max(0, occTile[t] - 1) + deadEndConflicts(t) + (pipes?.adjacencyOveruse(t) ?: 0)
+        max(0, occTile[t] - 1) + deadEndConflicts(t) + (pipes?.adjacencyOveruse(t) ?: 0) + (if (occHeat[t] > 0) occTile[t] else 0)
 
     private fun totalOveruse(): Int {
         var o = 0

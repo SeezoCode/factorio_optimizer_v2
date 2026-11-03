@@ -239,6 +239,17 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
                 g.color = Color(230, 90, 200)
                 g.fillRect(sx(e.x + 0.15), sy(e.y + 0.15), (px * 0.7).toInt(), (px * 0.7).toInt())
             }
+            Kind.HEAT_PIPE -> {
+                // A heat pipe: an orange tile with a bar towards each neighbouring heat pipe.
+                g.color = Color(235, 120, 40)
+                g.fillRect(sx(e.x + 0.3), sy(e.y + 0.3), (px * 0.4).toInt(), (px * 0.4).toInt())
+                g.stroke = BasicStroke((px / 5f).coerceAtLeast(2f))
+                Dir.entries.forEach { d ->
+                    if (layout.entities.any { it.kind == Kind.HEAT_PIPE && it.x == e.x + d.dx && it.y == e.y + d.dy }) {
+                        g.drawLine(sx(cx), sy(cy), sx(cx + d.dx * 0.5), sy(cy + d.dy * 0.5))
+                    }
+                }
+            }
             Kind.LOADER_IN, Kind.LOADER_OUT -> {
                 g.color = Color(120, 120, 120)
                 g.fillRect(sx(e.x + 0.1), sy(e.y + 0.1), ((e.w - 0.2) * px).toInt(), ((e.h - 0.2) * px).toInt())

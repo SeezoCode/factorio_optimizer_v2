@@ -34,6 +34,8 @@ Regenerate the strings with:
 | `v20-beacons.txt` | Beacon supply area (3 tiles beyond its edge), the 2.0 profile 1/√n with effectivity 1.5, module item requests (inventory 1 beacon, 4 machine) | Machine speeds 2.375, 3.15 and 0.5, productivity +40 %, every slot filled | ☐ |
 | `v19-cracking-on-surplus.txt` | Storage tank connections, red wire ids, a crafting machine's circuit condition (`control_behavior`), wire reach | The tank fills and the plant runs; with the heavy oil pipe at 40 % the plant stops | ☐ |
 | `v21-loaders.txt` | Loader `type` (output: chest to belt, input: belt to chest) and direction (travel direction, as for undergrounds), used by test copies | Plates reach all four steel chests | ☐ |
+| `v22-recycler-output.txt` | A recycler puts its results straight onto a belt in front of its output end; which tile and lane | Plates and cable appear on the belt above it without an inserter; note the tile and lane | ☑ drops onto a belt (seen in game); ☐ tile and lane |
+| `v23-aquilo-heating.txt` | On Aquilo, entities touching a heat pipe along an edge stay warm, corners do not count; whether poles freeze | The belt at (8,1) freezes, the rest under and beside the pipe run; note the two poles | ☑ edge rule (seen in game); ☐ poles |
 
 Also from the plan's list:
 

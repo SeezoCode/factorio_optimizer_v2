@@ -25,6 +25,7 @@ enum class ErrorType {
     FLUID_MISSING, FLUID_BLOCKED, FLUID_MIX, FLUID_STUCK, FLUID_LEAK,
     OUTPUT_MISSING,
     BEACON_SHORT,
+    COLD, HEAT_DISCONNECTED,
 }
 
 data class ValidationError(val type: ErrorType, val tile: Tile, val message: String) {
@@ -87,7 +88,12 @@ data class ValidationSpec(
     val recipeInfo: (String) -> MachineSpec? = { null },
     /** The job's beacon when machines need some ([MachineSpec.beaconNeed]). */
     val beacon: plan.BeaconSpec? = null,
+    /** Aquilo heating: everything that freezes must touch a heat pipe joined to a heat port; null: no heating. */
+    val heat: HeatSpec? = null,
 )
+
+/** Heat ports (heat pipe tiles where heat comes in) and whether poles freeze too. */
+data class HeatSpec(val ports: Set<Tile>, val poles: Boolean = false)
 
 /**
  * Re-derives belts, items, rates, power and fluids from the entity list alone, so a router bug cannot
@@ -112,6 +118,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         checkPower()
         checkBeacons()
         checkFluids()
+        checkHeat()
         return errors.distinct()
     }
 
@@ -764,6 +771,24 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             Kind.MACHINE -> machineOutput(ins) == item
             Kind.CHEST, Kind.INFINITY_CHEST -> src.item == item
             else -> false
+        }
+    }
+
+    // ---- heat (Aquilo) ----
+    /** Heat pipes join the ports through heat pipes (edge to edge); everything that freezes touches one along an edge. */
+    private fun checkHeat() {
+        val hs = spec.heat ?: return
+        val pipeTiles = ents.filter { it.kind == Kind.HEAT_PIPE }.map { it.tile }.toSet()
+        val warm = HashSet<Tile>()
+        val queue = ArrayDeque(hs.ports.filter { it in pipeTiles })
+        warm += queue
+        while (queue.isNotEmpty()) {
+            val t = queue.removeFirst()
+            Dir.entries.forEach { d -> val n = t + d; if (n in pipeTiles && warm.add(n)) queue += n }
+        }
+        pipeTiles.filter { it !in warm }.forEach { err(ErrorType.HEAT_DISCONNECTED, it, "heat pipe not joined to a heat port") }
+        ents.filter { power.needsHeat(it, hs.poles) }.forEach { e ->
+            if (power.edgeNeighbours(e).none { it in warm }) err(ErrorType.COLD, e.tile, "${e.name} touches no heat pipe joined to the heat port")
         }
     }
 

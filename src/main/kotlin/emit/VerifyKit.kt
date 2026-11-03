@@ -283,6 +283,39 @@ object VerifyKit {
         ),
     )
 
+    /** v22 and v23: recycler output and Aquilo heating (added with recyclers and heat pipes). */
+    val spaceAgeCases: List<Case> = listOf(
+        Case(
+            "v22-recycler-output", "A recycler puts its results onto a belt in front of its output end",
+            "A recycler (facing north, 2 x 4) is fed electronic circuits from the west. A belt runs east along the row " +
+                "just north of it. Expected: iron plates and copper cable appear on that belt without any inserter (seen " +
+                "in game). Note which of the two tiles above the recycler they land on, and which lane.",
+            Layout(8, 6, listOf(
+                e("infinity-chest", 0, 2, item = "electronic-circuit"), e("inserter", 1, 2, Dir.W),
+                e("recycler", 2, 1),
+                e("transport-belt", 1, 0, Dir.E), e("transport-belt", 2, 0, Dir.E), e("transport-belt", 3, 0, Dir.E),
+                e("transport-belt", 4, 0, Dir.E), e("transport-belt", 5, 0, Dir.E),
+                pole(4, 2),
+            )),
+        ),
+        Case(
+            "v23-aquilo-heating", "On Aquilo, what touches a heat pipe edge-on stays warm",
+            "Build on Aquilo (editor). The heat interface (set it to 500 C) feeds a heat pipe running east along y=2. " +
+                "Expected warm: the belt and inserter at (1,1) and (2,1), the assembler under the pipe (seen in game). " +
+                "Expected frozen: the belt at (8,1), which touches the pipe only at a corner. Check: does the medium " +
+                "pole at (4,1), touching the pipe, and the one at (9,4), touching nothing, freeze?",
+            Layout(11, 7, listOf(
+                PlacedEntity("heat-interface", geom.Kind.HEAT_PIPE, 0, 2),
+                e("heat-pipe", 1, 2), e("heat-pipe", 2, 2), e("heat-pipe", 3, 2), e("heat-pipe", 4, 2), e("heat-pipe", 5, 2),
+                e("heat-pipe", 6, 2), e("heat-pipe", 7, 2),
+                e("transport-belt", 1, 1, Dir.E), e("inserter", 2, 1, Dir.N),
+                e("assembling-machine-2", 1, 3, recipe = "iron-gear-wheel"),
+                e("transport-belt", 8, 1, Dir.E),
+                pole(4, 1), pole(9, 4),
+            )),
+        ),
+    )
+
     /** Layouts one below the other, a tile apart. */
     private fun stack(vararg parts: Layout): Layout {
         val list = ArrayList<PlacedEntity>()
@@ -447,7 +480,7 @@ object VerifyKit {
     /** Writes one blueprint string per case, plus the hand-written T1 layout. */
     fun write(dir: File) {
         dir.mkdirs()
-        cases.forEach { c -> File(dir, "${c.id}.txt").writeText(c.layout.copy(label = c.title).toBlueprintString()) }
+        (cases + spaceAgeCases).forEach { c -> File(dir, "${c.id}.txt").writeText(c.layout.copy(label = c.title).toBlueprintString()) }
         File(dir, "t1-hand.txt").writeText(t1Hand.toBlueprintString())
     }
 }

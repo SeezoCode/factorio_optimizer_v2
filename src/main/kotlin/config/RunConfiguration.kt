@@ -72,6 +72,8 @@ data class RunConfiguration(
     val research: ResearchConfig = ResearchConfig(),
     /** Recycling recipes (recyclers): off by default; see [RecyclingConfig]. */
     val recycling: RecyclingConfig = RecyclingConfig(),
+    /** Aquilo heating with heat pipes: off by default; see [HeatConfig]. */
+    val heat: HeatConfig = HeatConfig(),
     val tricks: Map<String, Boolean> = emptyMap(),
 
     val box: BoxConfig = BoxConfig(),
@@ -131,6 +133,9 @@ data class RunConfiguration(
         inserters.allowed.forEach { GameConstants.inserter(it) }
         require(research.inserterCapacity in 0..7) { "research.inserter_capacity must be 0..7" }
         require(recycling.mode in setOf("off", "void", "full")) { "recycling.mode must be 'off', 'void' or 'full'" }
+        require(heat.mode in setOf("off", "pipes")) { "heat.mode must be 'off' or 'pipes'" }
+        require(heat.edge in setOf("any", "north", "east", "south", "west")) { "heat.edge must be north, east, south, west or any" }
+        require(heat.mode == "off" || blocks == null) { "heat pipes are not supported in a factory of blocks yet" }
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
         GameConstants.pole(power.pole)
         box.startSize?.let { require(it >= 3) { "box.start_size must be at least 3" } }
@@ -232,6 +237,23 @@ data class ConfigSource(
 data class InserterConfig(
     val allowed: List<String> = listOf("inserter", "long-handed-inserter", "fast-inserter"),
     @SerialName("belt_pickup_derate") val beltPickupDerate: Double = 0.7,
+)
+
+/**
+ * Aquilo heating. With mode "pipes" every entity that freezes (everything but chests and, unless [poles], electric
+ * poles) must share an edge with a heat pipe, and every heat pipe must join the heat port on [edge] (one tile
+ * outside the box, like an item port) through other heat pipes. Heat pipes are laid after routing on free tiles
+ * (see power/Heat.kt); where belts wall an area off, the layout is routed again with room kept around what stayed
+ * cold. Heat comes in through the ports (at most [ports], listed in the run's notes): bring it from your reactors or
+ * heating towers.
+ */
+@Serializable
+data class HeatConfig(
+    val mode: String = "off",
+    val edge: String = "any",
+    val poles: Boolean = false,
+    /** Most heat ports (each a heat pipe on the ring where you bring heat in): more reach areas belts wall off. */
+    val ports: Int = 4,
 )
 
 /**

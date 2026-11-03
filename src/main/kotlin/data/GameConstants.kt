@@ -110,6 +110,8 @@ object GameConstants {
     )
 
     const val INFINITY_CHEST = "infinity-chest"
+    /** Aquilo: heat pipes warm whatever shares an edge with them (see power/Heat.kt). */
+    const val HEAT_PIPE = "heat-pipe"
     const val INFINITY_PIPE = "infinity-pipe"
 
     /**

@@ -162,6 +162,14 @@ fun runTrial(
     /** Keep beacon spots free before placement (beacons.mode lattice, or set-cover falling back). */
     beaconLatticeOn: Boolean = config.beacons?.mode == "lattice",
 ): TrialResult {
+    // Aquilo: everything needs a heat pipe beside it, so machines keep more room around them and belts keep off the
+    // tiles around machines (where inserters stand and heat pipes go between them).
+    val given = tuning
+    @Suppress("NAME_SHADOWING")
+    val tuning = if (config.heat.mode == "off") given else given.copy(
+        place = given.place.copy(accessDemand = given.place.accessDemand * 2),
+        route = given.route.copy(pinReservation = given.route.pinReservation * 4),
+    )
     val t0 = System.currentTimeMillis()
     val notes = ArrayList<String>()
     val latticeTiles = if (lattice) poleLattice(w, h, config.power.pole) else emptyList()
@@ -269,7 +277,9 @@ fun runTrial(
 
     // Harness (test mode) and power, with up to two warm reroutes that keep tiles free near unpowered entities.
     var bias = HashMap<Tile, Double>()
-    for (attempt in 0..2) {
+    // Power and beacons get two reroutes; heating (Aquilo) up to four.
+    val attempts = if (config.heat.mode == "off") 2 else 4
+    for (attempt in 0..attempts) {
         val ringed = if (config.portsOnRing) ringPorts(result.entities, result.sources, result.outputs, w, h, GameConstants.beltTier(config.beltTier).belt)
             else RingedPorts(result.entities, result.sources, result.outputs)
         // Crackers work only on what other machines leave of their oil (a tank and red wires, see addSurplusControl).
@@ -299,19 +309,35 @@ fun runTrial(
             }
             if (!beaconLatticeOn) {
                 notes += "beacons by set cover failed; falling back to the beacon lattice"
-                return runTrial(data, plan, config, tuning, w, h, seed, placement, annealer.lastT0, deadline, lattice, debugDir, beaconLatticeOn = true)
+                return runTrial(data, plan, config, given, w, h, seed, placement, annealer.lastT0, deadline, lattice, debugDir, beaconLatticeOn = true)
             }
         }
-        val entities = ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList())
+        val built = ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList())
+        // Aquilo: heat pipes beside everything that freezes, joined to the heat port (see power/Heat.kt); where some
+        // stay cold, reroute keeping room around them, as for unpowered entities. Before the poles, which do not
+        // freeze (unless heat.poles: then after them, so they are heated too).
+        val heatFirst = config.heat.mode != "off" && !config.heat.poles
+        fun heatOf(es: List<PlacedEntity>) = power.placeHeatPipes(es, w, h, heatPortTiles(config.heat.edge, w, h), config.heat.poles, maxPorts = config.heat.ports)
+        val heat0 = if (heatFirst) heatOf(built) else null
+        if (heat0 != null && !heat0.ok && attempt < attempts) {
+            notes += "heat attempt $attempt: ${heat0.cold.size} entities cold"
+            heat0.cold.forEach { u -> for (dy in -2..2) for (dx in -2..2) bias.merge(Tile(u.x + dx, u.y + dy), 1.0, Double::plus) }
+            val again = route(RouteProblem(plan, config, tuning.route, placement, obstacles, tileBias = bias, warmHistory = result.rawHistory))
+            if (again.success) result = again
+            continue
+        }
+        // Crossings may have turned belt runs into underground hops (same list order, so wire indices hold).
+        val entities = heat0?.entities ?: built
+        val heatPipes0 = heat0?.pipes ?: emptyList()
         val sources = if (config.testMode) emptyList() else ringed.sources
         val (poles, wires, ok, uncovered) = when (config.power.mode) {
             "none" -> Quad(emptyList(), emptyList(), true, emptyList())
             else -> if (lattice) {
-                val ps = placePoles(entities, emptyList(), config.power.pole, fixedPoles = latticeTiles)
+                val ps = placePoles(entities + heatPipes0, emptyList(), config.power.pole, fixedPoles = latticeTiles)
                 Quad(ps.poles, ps.wires, ps.ok, ps.uncovered.map { it.tile })
             } else {
                 val extra = outside.flatMap { t -> (-2..2).flatMap { dy -> (-2..2).map { dx -> Tile(t.x + dx, t.y + dy) } } }
-                val ps = placePoles(entities, poleCandidates(w, h, config.power.allowOutsideRing, extra).filter { it !in reservedTiles }, config.power.pole)
+                val ps = placePoles(entities + heatPipes0, poleCandidates(w, h, config.power.allowOutsideRing, extra).filter { it !in reservedTiles }, config.power.pole)
                 Quad(ps.poles, ps.wires, ps.ok, ps.uncovered.map { it.tile })
             }
         }
@@ -324,17 +350,28 @@ fun runTrial(
         }
         if (!ok && config.power.mode == "set-cover" && !lattice) {
             notes += "set cover failed twice; falling back to the pole lattice"
-            return runTrial(data, plan, config, tuning, w, h, seed, placement, annealer.lastT0, deadline, lattice = true, debugDir = debugDir, beaconLatticeOn = beaconLatticeOn)
+            return runTrial(data, plan, config, given, w, h, seed, placement, annealer.lastT0, deadline, lattice = true, debugDir = debugDir, beaconLatticeOn = beaconLatticeOn)
         }
+        val heat1 = if (config.heat.mode != "off" && !heatFirst) heatOf(entities + poles) else null
+        if (heat1 != null && !heat1.ok && attempt < attempts) {
+            notes += "heat attempt $attempt: ${heat1.cold.size} entities cold"
+            heat1.cold.forEach { u -> for (dy in -2..2) for (dx in -2..2) bias.merge(Tile(u.x + dx, u.y + dy), 1.0, Double::plus) }
+            val again = route(RouteProblem(plan, config, tuning.route, placement, obstacles, tileBias = bias, warmHistory = result.rawHistory))
+            if (again.success) result = again
+            continue
+        }
+        val heat = heat0 ?: heat1
         val offset = entities.size
-        val all = entities + poles
+        val all = (heat1?.entities ?: (entities + poles)) + heatPipes0 + (heat1?.pipes ?: emptyList())
         val marks = if (config.markerTile == "none") emptyList() else config.reservedRects(w, h).flatMap { borderTiles(it, config.markerTile) }
         val layout = Layout(w, h, all, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer ${w}x$h seed $seed", marks, ctl.circuitWires)
         // Outside the box: harness, poles in the ring, and ring ports (in test mode the inputs are fed, not listed).
         val outsideAllowed = outside + poles.flatMap { it.rect.tiles() }.filter { it.x !in 0 until w || it.y !in 0 until h } +
-            ringed.sources.map { it.tile }
+            ringed.sources.map { it.tile } + (heat?.ports ?: emptyList()) + (heat?.pipes?.map { it.tile }?.filter { it.x !in 0 until w || it.y !in 0 until h } ?: emptyList())
         val spec = validationSpec(data, plan, config, placement, sources, requirePower = config.power.mode != "none", outsideAllowed = outsideAllowed,
-            outputs = ringed.outputs)
+            outputs = ringed.outputs).copy(heat = heat?.let { validate.HeatSpec(it.ports.toSet(), config.heat.poles) })
+        if (heat != null && !heat.ok) notes += "heat: ${heat.cold.size} entities stay cold"
+        if (heat != null) notes += "heat ports at ${heat.ports}"
         // A port that must be one belt (a link between blocks of a factory) is one belt: its other end is one belt.
         val split = (ringed.sources.map { it.port to it.tile } + ringed.outputs.map { it.port to it.tile })
             .filter { (p, _) -> p >= 0 && plan.ports[p].single }.groupBy({ it.first }, { it.second })
@@ -449,4 +486,17 @@ fun legalize(p: Placement, model: PlaceModel): Placement {
     }
     model.clear()
     return Placement(model.w, model.h, out.sortedBy { it.id })
+}
+
+/** Ring tiles a heat port may take on [edge] ("any": every side) of a [w] x [h] box. */
+fun heatPortTiles(edge: String, w: Int, h: Int): List<Tile> {
+    val sides = if (edge == "any") listOf("north", "east", "south", "west") else listOf(edge)
+    return sides.flatMap { side ->
+        when (side) {
+            "north" -> (0 until w).map { Tile(it, -1) }
+            "south" -> (0 until w).map { Tile(it, h) }
+            "west" -> (0 until h).map { Tile(-1, it) }
+            else -> (0 until h).map { Tile(w, it) }
+        }
+    }
 }
