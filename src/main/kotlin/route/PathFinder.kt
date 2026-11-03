@@ -260,6 +260,11 @@ class PathFinder(internal val p: RouteProblem) {
         for (y in 0 until H) for (x in 0 until W) allowNet[dims.idx(x, y)] = -1
         val machineRects = placement.machines.map { placement.rect(plan, it) }
         machineRects.forEach { r -> r.tiles().forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 } }
+        // A recycler puts its results onto a belt in front of its output end: nothing goes there.
+        placement.machines.forEach { m ->
+            if (plan.machines[m.id].machine != "recycler") return@forEach
+            GameConstants.recyclerOutputTiles(placement.rect(plan, m), m.rot).forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }
+        }
         // Used fluid connection tiles hold a pipe end; belts never go there.
         placement.machines.forEach { m -> placement.connections(plan, m).filter { it.fluid != null }.forEach { c -> if (dims.inFull(c.tile.x, c.tile.y)) allowNet[dims.idx(c.tile)] = -2 } }
         p.obstacles.forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }
@@ -1557,7 +1562,9 @@ class PathFinder(internal val p: RouteProblem) {
                 val opt = options[o]
                 val v = vts[optTerm[o]]
                 val name = chooseInserter(v.rate / v.k, fromBelt = v.role == Role.CONSUMER, long = opt.long)
-                val item = if (v.role == Role.CONSUMER) null else filterFor(v.machine, v.base.item)
+                // A recycler takes whatever it is given: its inserters are filtered to what it should recycle.
+                val item = if (v.role == Role.CONSUMER) v.base.item.takeIf { v.machine != null && plan.machines[v.machine!!].machine == "recycler" }
+                    else filterFor(v.machine, v.base.item)
                 out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId)
             }
         }

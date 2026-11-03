@@ -13,8 +13,24 @@ import data.craftingCategories
 /** Resources the base game mines or pumps; they may always be supplied through a port. */
 val BASE_RAW = setOf("iron-ore", "copper-ore", "stone", "coal", "wood", "crude-oil", "water", "uranium-ore", "raw-fish")
 
-/** Categories no base crafting machine should take even if listed (placeholders, recycling). */
-private val EXCLUDED_CATEGORIES = setOf("parameters", "recycling", "recycling-or-hand-crafting")
+/** Categories no base crafting machine should take even if listed (placeholders; recycling unless the job asks). */
+private val EXCLUDED_CATEGORIES = setOf("parameters")
+private val RECYCLING_CATEGORIES = setOf("recycling", "recycling-or-hand-crafting")
+
+/** A recycling recipe that turns an item into a quarter of itself (the way recyclers destroy items). */
+fun selfRecycling(r: Recipe): Boolean =
+    r.category in RECYCLING_CATEGORIES && r.ingredients.size == 1 && r.products.size == 1 && r.products[0].name == r.ingredients[0].name
+
+/** Whether the job's [config.RecyclingConfig] allows recycling recipe [r] (true for any other recipe). */
+fun recyclingAllowed(r: Recipe, config: RunConfiguration): Boolean {
+    if (r.category !in RECYCLING_CATEGORIES) return true
+    val rc = config.recycling
+    return when (rc.mode) {
+        "off" -> false
+        "void" -> selfRecycling(r) && r.ingredients[0].name in rc.voidItems
+        else -> if (selfRecycling(r)) r.ingredients[0].name in rc.voidItems else true
+    }
+}
 private val EXCLUDED_SUBGROUPS = setOf("fill-barrel", "empty-barrel")
 
 /** A recipe the planner may use, with the machine that will craft it. */
@@ -36,7 +52,8 @@ data class LpResult(
 
 /** The machines a job may use, in preference order (first machine able to craft a category wins). */
 fun effectiveMachines(config: RunConfiguration): List<String> =
-    config.machines ?: (listOf(config.machine) + listOf("electric-furnace", "chemical-plant", "oil-refinery", "centrifuge"))
+    (config.machines ?: (listOf(config.machine) + listOf("electric-furnace", "chemical-plant", "oil-refinery", "centrifuge")))
+        .let { if (config.recycling.mode != "off" && "recycler" !in it) it + "recycler" else it }
         .distinct()
 
 /**
@@ -103,6 +120,7 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
 
     val choices = data.recipes.values.mapNotNull { r ->
         if (r.category in EXCLUDED_CATEGORIES || r.subgroup in EXCLUDED_SUBGROUPS || r.name in config.forbiddenRecipes) return@mapNotNull null
+        if (!recyclingAllowed(r, config)) return@mapNotNull null
         if (categoryFilter != null && r.category !in categoryFilter) return@mapNotNull null
         if (r.products.isEmpty()) return@mapNotNull null
         // Items the job supplies are not made inside the block.
@@ -143,7 +161,9 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     val makeable = choices.flatMap { c -> c.recipe.products.map { it.name } }.toSet()
     val supplyAllowed = items.filter { it in sourced || (it in raw && !(it in targets && it in makeable)) }.toSet()
     val s = supplyAllowed.associateWith { solver.makeNumVar(0.0, inf, "s_$it") }
-    val out = items.associateWith { solver.makeNumVar(0.0, inf, "o_$it") }
+    // Items the job voids by recycling may not leave the block (unless they are targets): their surplus is destroyed.
+    val voided = if (config.recycling.mode == "off") emptySet() else config.recycling.voidItems.toSet()
+    val out = items.associateWith { solver.makeNumVar(0.0, if (it in voided && it !in targets) 0.0 else inf, "o_$it") }
     items.forEach { item ->
         val t = targets[item] ?: 0.0
         val row = solver.makeConstraint(t, t, "bal_$item")

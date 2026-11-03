@@ -264,6 +264,13 @@ object GameConstants {
         "biochamber" to (3 to 3), "crusher" to (2 to 3), "recycler" to (2 to 4),
     )
 
+    /**
+     * Tiles just beyond the end a recycler faces ([dir], its blueprint direction): it puts its results straight onto
+     * a belt or into a container there (seen in game), so nothing of that kind may stand there unless meant to take
+     * them. Both tiles of that end, to be safe about which one it drops on. [G]; exact tile and lane [P] VERIFY (v22)
+     */
+    fun recyclerOutputTiles(r: geom.Rect, dir: geom.Dir): List<Tile> = r.sideTiles(dir, 1)
+
     /** Machines whose blueprint entity carries a recipe (furnaces and the recycler pick theirs from their input). */
     fun takesRecipe(name: String) = !name.endsWith("furnace") && name != "recycler"
 

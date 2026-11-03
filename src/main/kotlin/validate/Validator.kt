@@ -139,6 +139,12 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     private fun checkMachines() {
         ents.filter { it.kind == Kind.MACHINE }.forEach { m ->
             if (m.recipe == null || machineInfo(m) == null) err(ErrorType.UNKNOWN_RECIPE, m.tile, "machine without a known recipe (${m.recipe})")
+            // A recycler would put its results onto a belt or into a container in front of its output end.
+            if (m.name == "recycler") GameConstants.recyclerOutputTiles(m.rect, m.dir).forEach { t ->
+                entityAt(t)?.takeIf { it.kind.beltFamily || it.kind == Kind.CHEST || it.kind == Kind.INFINITY_CHEST }?.let {
+                    err(ErrorType.UNSUPPORTED, t, "the recycler at ${m.tile} would drop its results onto ${it.name}")
+                }
+            }
         }
     }
 
@@ -366,6 +372,10 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                         val onBelt = belts.items[pickIdx] ?: emptySet()
                         if (onBelt.isNotEmpty() && onBelt.none { it in info.ingredients }) {
                             err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} feeds ${drop.recipe} from a belt of ${onBelt.sorted()}")
+                        }
+                        // A recycler takes any item: from a belt of several, its inserter must be filtered.
+                        if (drop.name == "recycler" && onBelt.any { it !in info.ingredients } && (ins.item == null || ins.item !in info.ingredients)) {
+                            err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} feeds a recycler from a belt of ${onBelt.sorted()} without a filter")
                         }
                     } else if (item != null && item !in info.ingredients) {
                         err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} moves $item into ${drop.recipe}, which does not use it")

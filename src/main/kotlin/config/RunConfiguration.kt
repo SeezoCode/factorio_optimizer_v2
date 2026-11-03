@@ -70,6 +70,8 @@ data class RunConfiguration(
     @SerialName("lane_sharing") val laneSharing: Boolean = false,
     val inserters: InserterConfig = InserterConfig(),
     val research: ResearchConfig = ResearchConfig(),
+    /** Recycling recipes (recyclers): off by default; see [RecyclingConfig]. */
+    val recycling: RecyclingConfig = RecyclingConfig(),
     val tricks: Map<String, Boolean> = emptyMap(),
 
     val box: BoxConfig = BoxConfig(),
@@ -128,6 +130,7 @@ data class RunConfiguration(
         if (weaveTier != "auto" && weaveTier != "none") { require(weaveTier != beltTier) { "weave_tier must differ from belt_tier" }; GameConstants.beltTier(weaveTier) }
         inserters.allowed.forEach { GameConstants.inserter(it) }
         require(research.inserterCapacity in 0..7) { "research.inserter_capacity must be 0..7" }
+        require(recycling.mode in setOf("off", "void", "full")) { "recycling.mode must be 'off', 'void' or 'full'" }
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
         GameConstants.pole(power.pole)
         box.startSize?.let { require(it >= 3) { "box.start_size must be at least 3" } }
@@ -229,6 +232,19 @@ data class ConfigSource(
 data class InserterConfig(
     val allowed: List<String> = listOf("inserter", "long-handed-inserter", "fast-inserter"),
     @SerialName("belt_pickup_derate") val beltPickupDerate: Double = 0.7,
+)
+
+/**
+ * Recyclers. "off" (default): the planner never recycles. "void": only items in [voidItems] are recycled, into a
+ * quarter of themselves (a recycler fed its own output destroys the item), and they may not leave the block: what is
+ * left over of them is destroyed instead. "full": every recycling recipe (scrap on Fulgora, taking items back apart
+ * into a quarter of their ingredients) plus the voiding of [voidItems]. Nothing else is ever destroyed, so a
+ * surplus not listed still leaves through an output port. The recycler joins the job's machines when needed.
+ */
+@Serializable
+data class RecyclingConfig(
+    val mode: String = "off",
+    @SerialName("void_items") val voidItems: List<String> = emptyList(),
 )
 
 /** Research that changes rates. Inserter capacity 0..7 sets hand sizes (normal 1-3, bulk 2-12). */
