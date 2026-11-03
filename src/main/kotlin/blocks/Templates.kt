@@ -239,8 +239,10 @@ object Templates {
          * behind (B's or A's end) and whether its last step runs straight on into one (A's head); splitters go across
          * straight belts of these (branches and merges).
          */
-        class Tree(val steps: List<Step>, val fedBehind: Boolean, val goesOn: Boolean)
+        class Tree(val steps: List<Step>, val fedBehind: Boolean, val goesOn: Boolean, val side: Int)
         val trees = HashMap<String, MutableList<Tree>>()
+        /** What reaches each side of the input junction (it all goes onto one lane of A), the inputs merged in included. */
+        val sideLoad = DoubleArray(2)
         val coreBelts = (core0 until core1).flatMap { y -> listOf(Tile(xa, y), Tile(xb, y)) }.toSet()
         /** Nothing belt-like stands or will stand on [t] (an inserter or machine there is fine). */
         fun noBelt(t: Tile) = t !in used && t !in coreBelts && (inBox(t) || sideOfRing(t) == null || t !in used)
@@ -308,7 +310,8 @@ object Templates {
             }
             return out
         }
-        class Routed(val steps: List<Step>, val port: Tile, val split: Split? = null)
+        /** [side]: the junction side an input reaches (merged into an input that reaches it, too), -1 for none. */
+        class Routed(val steps: List<Step>, val port: Tile, val split: Split? = null, val side: Int = -1, val rate: Double = 0.0)
         // An input: from the ring on its side, straight in, to a belt heading south into A's head, or into the free
         // half of a splitter across the belt of an input already routed (a merge; its other output leads nowhere).
         fun routeIn(port: Int): Routed? {
@@ -320,9 +323,13 @@ object Templates {
                 if (portRate(port) > s.laneCap * 0.98) return null
                 val taken = trees[s.ingredient]?.firstOrNull()?.steps?.last()?.dir
                 val p = path(starts) { st -> st.tile + st.dir == junction && (st.dir == Dir.E || st.dir == Dir.W) && st.dir != taken } ?: return null
-                return Routed(p, p.first().tile)
+                return Routed(p, p.first().tile, side = joined, rate = portRate(port))
             }
+            /** The junction side a belt of the ingredient already routed leads to (-1 without a junction). */
+            fun sideOf(t: Tile) = trees[s.ingredient]?.firstOrNull { tr -> tr.steps.any { it.tile == t } }?.side ?: -1
+            // A merge adds to its side's lane: it stays within a lane's worth there.
             val merges = if (trees[s.ingredient].isNullOrEmpty()) emptyList() else splitSpots(s.ingredient, merge = true)
+                .filter { (t, _, _) -> sideOf(t).let { it < 0 || sideLoad[it] + portRate(port) <= s.laneCap * 0.98 } }
             val byHalf = merges.associateBy { it.second }
             val p = path(starts) { st ->
                 val nt = st.tile + st.dir
@@ -333,7 +340,7 @@ object Templates {
             val split = if (trees[s.ingredient].isNullOrEmpty()) null else byHalf.getValue(last.tile + last.dir).let { (t, h, d2) -> Split(t, h, d2, s.ingredient) }
             // The merge's other output must lead nowhere: not onto this path.
             if (split != null && p.any { it.tile == split.half + split.dir || it.ugFrom == split.half + split.dir }) return null
-            return Routed(p, p.first().tile, split)
+            return Routed(p, p.first().tile, split, side = split?.let { sideOf(it.trunk) } ?: -1, rate = portRate(port))
         }
         // An output: a belt pushed into from [from] heading [heading] (B's end, A's end), or a branch off a splitter
         // across a straight belt of the item already routed, to a belt on the ring of its side heading out.
@@ -376,7 +383,8 @@ object Templates {
             val heading = if (first.tile == aTail) Dir.S else bDir
             trees.getOrPut(item) { ArrayList() } += Tree(r.steps,
                 fedBehind = fromEnd && first.dir == heading,
-                goesOn = r.split == null && r.steps.last().let { it.tile + it.dir == aHead })
+                goesOn = r.split == null && r.steps.last().let { it.tile + it.dir == aHead }, side = r.side)
+            if (r.side >= 0) sideLoad[r.side] += r.rate
             r.split?.let { sp ->
                 splits += sp
                 used += sp.half
@@ -396,7 +404,7 @@ object Templates {
         val orders = rotations(ins).flatMap { a -> rotations(outs).flatMap { b -> listOf(a + b + pass, b + a + pass, pass + a + b) } }.distinct().take(24)
         for (order in orders) {
             used.clear(); reserved.clear(); reserved += reserved0; spans.forEach { it.clear() }; ugEnds.forEach { it.clear() }
-            trees.clear(); splits.clear()
+            trees.clear(); splits.clear(); sideLoad.fill(0.0)
             val got = HashMap<Conn, Routed>()
             var ok = true
             for (c in order) {

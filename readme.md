@@ -459,9 +459,11 @@ It needs long-handed inserters fast enough for the machines (furnaces are; an as
 not without inserter research), and does not take beacons yet.
 
 Six science at 1/s each from ore, 28 blocks sized by weight (`docs/status/six_science_ore_28_blocks.json`, 1600 s
-plus 600 s of compaction, 2 threads each, same machine): **27,722 tiles with templates against 29,928 without**
-(7.4 % smaller), with an early version that gave a column to 7 of the 14 smelting blocks (the others had more ports
-than it took then; it now takes any number). `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
+plus 600 s of compaction, 2 threads each, same machine): **26,970 tiles with templates against 29,928 without**
+(9.9 % smaller; an early version that gave a column to 7 of the 14 smelting blocks made 27,722). Some factories the
+search tried were rejected for an iron lane over capacity in front of a steel column (the whole-factory check put more
+on one side of its input junction than the block's plan does); the result is valid, but that is search time lost and
+is being looked into. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
 `TEMPLATE_JOB=<job>`) says why a block got none; `TEMPLATE_DEBUG=1` traces the header search.
 
 ### Space Age
