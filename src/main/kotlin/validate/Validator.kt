@@ -333,7 +333,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         val p = indexAt(ins.pickupTile) ?: return null
         val src = ents[p]
         return when (src.kind) {
-            Kind.MACHINE -> machineInfo(src)?.let { mi -> ins.item ?: mi.product }
+            Kind.MACHINE -> machineInfo(src)?.let { mi -> takes(ins, mi) }
             Kind.INFINITY_CHEST, Kind.CHEST -> src.item
             Kind.BELT, Kind.SPLITTER -> belts?.itemOn(p)
             else -> null
@@ -344,8 +344,15 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     private fun machineOutput(ins: Int): String? {
         val p = indexAt(ents[ins].pickupTile) ?: return null
         if (ents[p].kind != Kind.MACHINE) return null
-        return machineInfo(ents[p])?.let { ents[ins].item ?: it.product }
+        return machineInfo(ents[p])?.let { takes(ents[ins], it) }
     }
+
+    /**
+     * The one product [ins] takes out of a machine of [mi]: its filter; with a blacklist the one product it leaves in
+     * (a group of items leaving on a mixed belt counts as one); else the machine's product.
+     */
+    private fun takes(ins: PlacedEntity, mi: MachineSpec): String =
+        ins.item ?: ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl }.singleOrNull() } ?: mi.product
 
     // ---- 5. inserter ends ----
     private fun checkInserterEnds() {
@@ -360,7 +367,10 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             if (!okDrop) err(ErrorType.INSERTER_BAD_DROP, ins.tile, "${ins.name} drops into ${drop?.name ?: "nothing"} at ${ins.dropTile}")
             // Out of a machine with several products, an unfiltered inserter takes all of them.
             if (pick?.kind == Kind.MACHINE) machineInfo(pick)?.let { mi ->
-                if (ins.item == null && mi.multiProduct) err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} takes every product of ${pick.recipe} (${mi.outputs.keys.sorted()}); it needs a filter")
+                val left = ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl } }
+                if (ins.item == null && mi.multiProduct && (left == null || left.size != 1)) {
+                    err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} takes ${(left ?: mi.outputs.keys).sorted()} out of ${pick.recipe}; it needs a filter that leaves one")
+                }
                 if (ins.item != null && ins.item !in mi.outputs) err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} is filtered to ${ins.item}, which ${pick.recipe} does not make")
             }
         }

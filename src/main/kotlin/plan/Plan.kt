@@ -108,6 +108,11 @@ data class ProductionPlan(
     val warnings: List<String>,
     /** Leaving the block per second: targets plus surplus by-products. */
     val outputs: Map<String, Double> = emptyMap(),
+    /**
+     * Items that leave on a mixed belt (sushi), each to the name of its belt ("mixed-1"...): that name is the item of the
+     * belt's port, net and terminals; machines making them put them all on it with one inserter.
+     */
+    val mixed: Map<String, String> = emptyMap(),
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -143,6 +148,20 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     val warnings = mutableListOf<String>()
     val warn: (String) -> Unit = { warnings += it; println("WARNING: $it") }
     val lp = solveRates(data, config, tuning.planner, warn)
+    // Mixed outputs: surplus items no recipe of the plan uses leave together on one belt per group.
+    val used = lp.crafts.keys.flatMap { c -> c.recipe.ingredients.map { it.name } }.toSet()
+    val mixed = LinkedHashMap<String, String>()
+    config.mixedOutputs.forEachIndexed { k, g ->
+        g.items.forEach { item ->
+            when {
+                (lp.output[item] ?: 0.0) <= 1e-9 -> {}
+                item in lp.targets -> warn("mixed output: $item is a target; it leaves on a belt of its own")
+                item in used -> warn("mixed output: $item is also used inside the block; it leaves on a belt of its own")
+                item in lp.fluids -> warn("mixed output: $item is a fluid; it leaves through a pipe")
+                else -> mixed[item] = "mixed-${k + 1}"
+            }
+        }
+    }
     val beltTier = GameConstants.beltTier(config.beltTier)
     fun isFluid(name: String) = name in lp.fluids
 
@@ -162,7 +181,9 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val productsPer = productsPerCraft(data, c, config)
         val demandPer = r.ingredients.filter { !it.isFluid }.groupBy { it.name }.mapValues { (_, ings) -> ings.sumOf { it.amount } }
             .let { if (fuel > 0) it + (fuelItem!! to (it[fuelItem] ?: 0.0) + fuel) else it }
-        val itemOut = productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
+        val itemOut0 = productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
+        // Products that go on one mixed belt leave through one inserter (count them as one).
+        val itemOut = itemOut0.entries.groupBy { mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }
         fun inserters(n: Int) = demandPer.values.sumOf { inserterCount(x * it / n, pickRate0) } + itemOut.values.sumOf { inserterCount(x * it / n, dropRate0) }
         val room = maxOf(demandPer.size + itemOut.size,
             (tuning.planner.accessShare * (2 * (e.width + e.height) - fluidIngredients.size - fluidProducts.size)).toInt())
@@ -210,9 +231,13 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item))
     }
     val portMode = config.sinks.mode == "port"
-    lp.output.keys.sorted().filter { portMode || isFluid(it) }.forEach { item ->
+    lp.output.keys.sorted().filter { (portMode || isFluid(it)) && it !in mixed }.forEach { item ->
         val specs = config.outputs.filter { it.name == item }
         ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item), output = true)
+    }
+    mixed.values.distinct().forEach { name ->
+        val k = name.removePrefix("mixed-").toInt() - 1
+        ports += Port(ports.size, name, listOf(ConfigSource(name, edge = config.mixedOutputs[k].edge)), output = true)
     }
     config.sources.map { it.name }.distinct().filter { it !in lp.supply }.forEach {
         warn("source '$it' is configured but not an input of this job")
@@ -228,6 +253,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         Terminal(terminals.size, role, item, rate, k, machine, port, isFluid(item)).also { terminals += it }
 
     val items = (machines.flatMap { it.products.keys } + machines.flatMap { it.demand.keys + it.fluidDemand.keys } + lp.supply.keys).distinct()
+        .filter { it !in mixed }
     items.forEach { item ->
         val fluid = isFluid(item)
         val producers = machines.filter { (it.products[item] ?: 0.0) > 1e-12 }
@@ -264,6 +290,19 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         }
     }
 
+    // Each mixed belt: every machine making some of its items puts them all on it; it ends at its port.
+    mixed.values.distinct().forEach { name ->
+        val netTerminals = mutableListOf<Terminal>()
+        machines.forEach { m ->
+            val made = m.products.filterKeys { mixed[it] == name }.values.sum()
+            if (made > 1e-9) netTerminals += addTerminal(Role.PRODUCER, name, made, inserterCount(made, dropRate), machine = m.id)
+        }
+        val total = mixed.filterValues { it == name }.keys.sumOf { lp.output[it] ?: 0.0 }
+        netTerminals += addTerminal(Role.OUTPUT, name, total, 1, port = ports.first { it.item == name }.id)
+        val belts = maxOf(1, ceil(total / (tuning.net.beltUtilisation * beltTier.throughput) - 1e-9).toInt())
+        nets += Net(nets.size, name, total, netTerminals.map { it.id }, belts)
+    }
+
     return ProductionPlan(
         machines = machines,
         ports = ports,
@@ -275,5 +314,6 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         beltTier = config.beltTier,
         warnings = warnings,
         outputs = lp.output,
+        mixed = mixed,
     )
 }

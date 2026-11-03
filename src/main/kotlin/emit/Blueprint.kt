@@ -121,8 +121,14 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
                 else -> null
             },
             // Filters leave out the quality, so they match an item of any quality.
-            useFilters = if (e.kind == Kind.INSERTER && e.item != null) true else null,
-            filters = if ((e.kind == Kind.CHEST || e.kind == Kind.INSERTER) && e.item != null) listOf(BpItemFilter(1, e.item)) else null,
+            useFilters = if (e.kind == Kind.INSERTER && (e.item != null || e.blacklist != null)) true else null,
+            filters = when {
+                (e.kind == Kind.CHEST || e.kind == Kind.INSERTER) && e.item != null -> listOf(BpItemFilter(1, e.item))
+                e.kind == Kind.INSERTER && e.blacklist != null -> e.blacklist.mapIndexed { i, it -> BpItemFilter(i + 1, it) }
+                else -> null
+            },
+            // A blacklist filter: takes everything but the listed items. VERIFY (v24)
+            filterMode = if (e.kind == Kind.INSERTER && e.item == null && e.blacklist != null) "blacklist" else null,
             items = e.modules?.takeIf { it.isNotEmpty() }?.let { ms ->
                 val inv = if (e.kind == Kind.BEACON) GameConstants.BEACON_MODULE_INVENTORY else GameConstants.MACHINE_MODULE_INVENTORY
                 buildJsonArray {
@@ -187,6 +193,7 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
             fluid = if (kind == Kind.INFINITY_PIPE) b.infinitySettings?.get("name")?.jsonPrimitive?.content else null,
             drain = kind == Kind.INFINITY_PIPE && b.infinitySettings?.get("mode")?.jsonPrimitive?.content == "exactly" &&
                 b.infinitySettings["percentage"]?.jsonPrimitive?.content?.toDoubleOrNull() == 0.0,
+            blacklist = if (kind == Kind.INSERTER && b.useFilters == true && b.filterMode == "blacklist") b.filters?.map { it.name } else null,
             mirror = b.mirror == true,
             w = ew,
             h = eh,

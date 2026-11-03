@@ -74,6 +74,8 @@ data class RunConfiguration(
     val recycling: RecyclingConfig = RecyclingConfig(),
     /** Aquilo heating with heat pipes: off by default; see [HeatConfig]. */
     val heat: HeatConfig = HeatConfig(),
+    /** Surplus items that leave together on one belt (a sushi belt), see [MixedOutput]. */
+    @SerialName("mixed_outputs") val mixedOutputs: List<MixedOutput> = emptyList(),
     val tricks: Map<String, Boolean> = emptyMap(),
 
     val box: BoxConfig = BoxConfig(),
@@ -136,6 +138,8 @@ data class RunConfiguration(
         require(heat.mode in setOf("off", "pipes")) { "heat.mode must be 'off' or 'pipes'" }
         require(heat.edge in setOf("any", "north", "east", "south", "west")) { "heat.edge must be north, east, south, west or any" }
         require(heat.mode == "off" || blocks == null) { "heat pipes are not supported in a factory of blocks yet" }
+        require(mixedOutputs.isEmpty() || blocks == null) { "mixed outputs are not supported in a factory of blocks yet" }
+        mixedOutputs.flatMap { it.items }.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.let { require(it.isEmpty()) { "items in more than one mixed output: $it" } }
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
         GameConstants.pole(power.pole)
         box.startSize?.let { require(it >= 3) { "box.start_size must be at least 3" } }
@@ -238,6 +242,16 @@ data class InserterConfig(
     val allowed: List<String> = listOf("inserter", "long-handed-inserter", "fast-inserter"),
     @SerialName("belt_pickup_derate") val beltPickupDerate: Double = 0.7,
 )
+
+/**
+ * Items that leave the block together on one belt (a sushi belt), each lane carrying any of them, instead of a belt
+ * each: Fulgora's recyclers make a dozen products, and what the block does not use leaves this way. Only surplus
+ * items no machine of the block uses go on it; each machine making some of them puts all of those on the belt with
+ * one inserter (filtered to leave out its other products), and the belt ends at an output port on [edge]. Whatever
+ * takes the belt must take all of it, or the machines feeding it stop.
+ */
+@Serializable
+data class MixedOutput(val items: List<String>, val edge: String = "any")
 
 /**
  * Aquilo heating. With mode "pipes" every entity that freezes (everything but chests and, unless [poles], electric

@@ -35,6 +35,8 @@ data class PlacedEntity(
     val circuit: CircuitCondition? = null,
     /** Machines and beacons: modules in their slots, in slot order (blueprint item requests). */
     val modules: List<String>? = null,
+    /** Inserters: a blacklist filter, takes everything but these (null: none; [item] is a whitelist of one). */
+    val blacklist: List<String>? = null,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)

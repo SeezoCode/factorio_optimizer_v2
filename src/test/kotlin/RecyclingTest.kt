@@ -3,6 +3,8 @@ import config.ConfigTarget
 import config.RecyclingConfig
 import config.RunConfiguration
 import config.Tuning
+import emit.toBlueprint
+import emit.toLayout
 import geom.Kind
 import geom.Rect
 import plan.buildPlan
@@ -66,6 +68,40 @@ class RecyclingTest {
         // Left over: solid fuel leaves as an item. (The planner also turns holmium ore and stone into holmium solution
         // and ice into water, since a fluid leaving costs it less than items: it takes those costs literally.)
         assertTrue("solid-fuel" in plan.outputs, "${plan.outputs}")
+    }
+
+    @Test
+    fun `scrap leftovers leave together on one mixed belt`() {
+        val leftovers = listOf("solid-fuel", "concrete", "ice", "steel-plate", "battery", "stone", "advanced-circuit", "copper-cable",
+            "processing-unit", "low-density-structure", "holmium-ore", "iron-plate", "copper-plate", "iron-gear-wheel")
+        val job = RunConfiguration(
+            targets = listOf(ConfigTarget("iron-gear-wheel", 0.5)),
+            machines = listOf("recycler"),
+            rawResources = emptyList(),
+            sources = listOf(ConfigSource("scrap", edge = "west")),
+            outputs = listOf(ConfigSource("iron-gear-wheel", edge = "east")),
+            recycling = RecyclingConfig("full"),
+            mixedOutputs = listOf(config.MixedOutput(leftovers, edge = "south")),
+        )
+        val plan = buildPlan(data, job)
+        // Gears are the target: they keep their own belt; the rest share one.
+        assertTrue("iron-gear-wheel" !in plan.mixed, "${plan.mixed}")
+        assertTrue(plan.mixed.keys.containsAll(listOf("solid-fuel", "holmium-ore", "stone")), "${plan.mixed}")
+        assertEquals(1, plan.ports.count { it.item == "mixed-1" && it.output })
+        assertTrue(plan.ports.none { it.output && it.item in plan.mixed })
+        val r = (1L..6L).asSequence().map { runTrial(data, plan, job, Tuning.defaults(), 16, 16, it) }.firstOrNull { it.success }
+        assertTrue(r != null, "no seed routed")
+        val layout = r.layout!!
+        renderLayout(layout, File("build/renders/recycling/scrap_mixed.png"), RenderOptions(title = "scrap mixed ${r.w}x${r.h}", ports = viz.portLabels(r.sources, r.outputs)))
+        // A scrap recycler: a gear inserter (whitelist) and one taking everything else onto the mixed belt (a blacklist
+        // of gears and of whatever else the plan takes further apart).
+        val ins = layout.entities.filter { it.kind == Kind.INSERTER }
+        assertTrue(ins.any { it.item == "iron-gear-wheel" })
+        val mixedOut = ins.filter { it.blacklist?.contains("iron-gear-wheel") == true }
+        assertTrue(mixedOut.isNotEmpty(), "${ins.map { it.item to it.blacklist }}")
+        // The blacklist survives a blueprint round trip.
+        val back = emit.decodeBlueprint(emit.encodeBlueprint(layout.toBlueprint()))
+        assertTrue(back.toLayout(layout.w, layout.h).entities.any { it.blacklist == mixedOut[0].blacklist })
     }
 
     @Test

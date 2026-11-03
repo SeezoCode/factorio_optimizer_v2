@@ -253,6 +253,8 @@ class PathFinder(internal val p: RouteProblem) {
     private val stubsOn = config.trick("B14")
     /** Aquilo: each inserter keeps a tile beside it for a heat pipe; belts and inserters there are conflicts. */
     private val heatOn = config.heat.mode != "off"
+    /** Names of the plan's mixed belts (sushi): their producers' inserters take every product that goes there. */
+    private val mixedNames = plan.mixed.values.toSet()
     private val occHeat = IntArray(N)
 
     /**
@@ -1587,9 +1589,12 @@ class PathFinder(internal val p: RouteProblem) {
                 val v = vts[optTerm[o]]
                 val name = chooseInserter(v.rate / v.k, fromBelt = v.role == Role.CONSUMER, long = opt.long)
                 // A recycler takes whatever it is given: its inserters are filtered to what it should recycle.
+                val mixedOut = v.role == Role.PRODUCER && v.base.item in mixedNames
                 val item = if (v.role == Role.CONSUMER) v.base.item.takeIf { v.machine != null && plan.machines[v.machine!!].machine == "recycler" }
-                    else filterFor(v.machine, v.base.item)
-                out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId)
+                    else if (mixedOut) null else filterFor(v.machine, v.base.item)
+                // Onto a mixed belt: one inserter takes every product that goes there, the machine's others left out.
+                val blacklist = if (!mixedOut) null else plan.machines[v.machine!!].itemProducts.keys.filter { plan.mixed[it] != v.base.item }.sorted().ifEmpty { null }
+                out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId, blacklist = blacklist)
             }
         }
         pipes?.let { out += it.entities() }

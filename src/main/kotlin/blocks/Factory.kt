@@ -586,6 +586,13 @@ fun assembleFactory(
         val f = finishFactory(data, config, plan, s)
         if (f.success) return f to st
         say("$what: ${f.layout.w} x ${f.layout.h} has ${f.errors.size} validation errors: ${f.errors.take(5)}")
+        // FACTORY_INVALID_DIR=<dir>: a render of each factory that failed validation, for finding out why.
+        System.getenv("FACTORY_INVALID_DIR")?.let { d ->
+            runCatching {
+                viz.renderLayout(f.layout, File(d, "${what.replace(' ', '_')}_${f.layout.w}x${f.layout.h}_${System.currentTimeMillis() % 100000}.png"),
+                    viz.RenderOptions(px = 12, errors = f.errors, title = "$what ${f.layout.w}x${f.layout.h} blocks ${f.blockRects}"))
+            }
+        }
         last = f to st
     }
     return last

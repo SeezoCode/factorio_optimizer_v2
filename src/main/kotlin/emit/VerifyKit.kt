@@ -299,6 +299,20 @@ object VerifyKit {
             )),
         ),
         Case(
+            "v24-blacklist-filter", "A blacklist-filtered inserter takes everything but the listed items",
+            "A recycler takes electronic circuits and returns iron plates and copper cable. Its top output inserter has a " +
+                "blacklist filter of iron plates (filter mode blacklist), the bottom one a whitelist of iron plates. " +
+                "Expected: the top chest gets only copper cable, the bottom one only iron plates. If the top chest gets " +
+                "iron plates, the blacklist format in Blueprint.kt (filter_mode) is wrong.",
+            Layout(6, 5, listOf(
+                e("infinity-chest", 0, 1, item = "electronic-circuit"), e("inserter", 1, 1, Dir.W),
+                e("recycler", 2, 0),
+                PlacedEntity("fast-inserter", geom.Kind.INSERTER, 4, 0, Dir.W, blacklist = listOf("iron-plate")), e("steel-chest", 5, 0),
+                e("fast-inserter", 4, 3, Dir.W, item = "iron-plate"), e("steel-chest", 5, 3),
+                pole(4, 1),
+            )),
+        ),
+        Case(
             "v23-aquilo-heating", "On Aquilo, what touches a heat pipe edge-on stays warm",
             "Build on Aquilo (editor). The heat interface (set it to 500 C) feeds a heat pipe running east along y=2. " +
                 "Expected warm: the belt and inserter at (1,1) and (2,1), the assembler under the pipe (seen in game). " +

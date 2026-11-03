@@ -13,9 +13,10 @@ is written as a blueprint string. Jobs too big for one block are built as a [fac
 blocks](#big-jobs-a-factory-of-blocks).
 
 **Space Age (experimental):** foundries, electromagnetic plants and biochambers work, with their built-in
-productivity, research productivity and space-platform jobs (see [Space Age](#space-age)). Others only partly:
-crushers only on space platforms, cryogenic plants without Aquilo's heating (heat pipes are not modelled), and
-recyclers not at all (the planner never uses recycling recipes). Gleba layouts are the hardest to route, since
+productivity, research productivity and space-platform jobs (see [Space Age](#space-age)). Recyclers work when a
+job asks for them ([recycling](#recyclers-and-mixed-belts)), and leftovers can leave together on one mixed (sushi)
+belt; Aquilo's heating is laid with heat pipes ([heat](#aquilo-heat-pipes), experimental: dense blocks often leave
+an inserter no tile can heat). Crushers work only on space platforms. Gleba layouts are the hardest to route, since
 every biochamber also needs a nutrient belt, and spoilage is not modelled.
 
 ## Examples
@@ -269,10 +270,14 @@ Unknown keys are an error. Everything except `targets` has a default.
               "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
               "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
               "compact_s": null, "shape_variants": [], "shape_variant_s": null,
-              "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3 },
+              "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3,
+              "templates": true, "template_share": 0.25 },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
   "marker_tile": "hazard-concrete-left",
+  "recycling": { "mode": "off", "void_items": [] },
+  "mixed_outputs": [{ "items": ["solid-fuel", "stone", "ice"], "edge": "south" }],
+  "heat": { "mode": "off", "edge": "any", "poles": false, "ports": 4 },
   "tuning": { "route": { "p_mult": 1.1 }, "place": { "beta2": 1.0 } }
 }
 ```
@@ -333,7 +338,13 @@ Unknown keys are an error. Everything except `targets` has a default.
 - `test_mode` builds the feeds into the search instead: inputs from infinity chests with inserters, outputs into
   void chests, ports spaced out so every feeder fits. The layout differs from the real one; the test copy above
   is usually what you want.
-- `tricks` toggles individual techniques (I1–I13, B1–B13, F1, F2, P1, P2, H1); v1 ones are on by default.
+- `tricks` toggles individual techniques (I1–I13, B1–B14, F1, F2, P1, P2, H1); v1 ones are on by default. B14, on by
+  default, is the dead-end splitter pickup: a splitter on a belt whose second half leads nowhere, so an inserter
+  beside the belt picks from that half (or a splitter at the end of a belt, picked from on both halves, up to five
+  inserters). It lets a chain serve a consumer without running past its access tile; `route.stub_cost` prices it on
+  top of `route.splitter_cost`. On chemical science at 37 x 37 it routed 2 of 6 seeds against 0 of 6 without it, at
+  38 x 38 6 of 6 against 3 of 6.
+- `recycling`, `mixed_outputs` and `heat`: see [Space Age](#space-age).
 - The old CP-SAT fields (`forbidden_places`, source `force`) are still accepted so old job files load, but do nothing.
 
 ### Big jobs: a factory of blocks
@@ -415,6 +426,12 @@ belts and pipes, in one blueprint:
    (a merged block weighs at most 2.5 times the target, or has at most `merge_max_machines` machines with
    `size_by` machines, default twice `max_machines`).
 
+8. **Templates.** With `templates` (on by default) a block of one recipe of 3x3 machines with one solid ingredient
+   and one product (smelting, mostly) is also offered as a ready-made column, next to whatever the search finds; the
+   floorplan picks the layout that packs best, so nothing is forced (see [Templates](#templates-ready-made-columns)).
+   The split keeps such recipes in blocks of their own, and their search gets `template_share` of its share of the
+   time, since the template is a layout already.
+
 Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block, with
 `from` and `to` counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.
 Reserved areas are placed by the floorplan in their corners. `rows` is ignored now (old job files still load).
@@ -424,13 +441,35 @@ Every smaller valid factory is saved as it is found, so stopping the run early k
 The output folder holds the factory (`best_output_string.txt`, its test copy `test_output_string.txt`, `best.png`, `ports.json`, `factory.txt` with the
 split, the links, the pipe trees and every stitching step) and each block in `block_<n>/`.
 
+#### Templates: ready-made columns
+
+```
+|machine|in, out, pole|A|B|in, out, pole|machine|
+```
+
+Two machines per three rows: belt A carries the ingredient down the middle, belt B the product. On each side one
+inserter stands next to the belt it serves and a long-handed one reaches across to the other (left: short from A,
+long onto B; right: long from A, short onto B), and the third tile is free for a pole. Twenty electric furnaces take
+30 x 10 = 300 tiles, against 441–484 for the searched smelting blocks of the 2/s factory. Short headers above and
+below the column run the port belts to whichever sides the block's ports are on (a small belt search, undergrounds
+included); more product ports branch off the first one's belt through splitters, more input ports merge into it the
+same way, what A does not use may pass on to an output port, and when ports sit on both ends of the column a bypass
+lane along it (one tile wider) carries a belt past the machines. Every template is validated before it is offered.
+It needs long-handed inserters fast enough for the machines (furnaces are; an assembler 3 making cable or gears is
+not without inserter research), and does not take beacons yet.
+
+Six science at 1/s each from ore, 28 blocks sized by weight (`docs/status/six_science_ore_28_blocks.json`, 1600 s
+plus 600 s of compaction, 2 threads each, same machine): **27,722 tiles with templates against 29,928 without**
+(7.4 % smaller), with an early version that gave a column to 7 of the 14 smelting blocks (the others had more ports
+than it took then; it now takes any number). `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
+`TEMPLATE_JOB=<job>`) says why a block got none; `TEMPLATE_DEBUG=1` traces the header search.
+
 ### Space Age
 
 The foundry, electromagnetic plant and biochamber are supported (their sizes and fluid connections come from
 the 2.0 game data). The crusher works on space platforms only. The cryogenic plant is placed like any other
-machine, but Aquilo's heating is not modelled. The recycler is not supported: recycling recipes are left out
-of the plan, so Fulgora jobs list what recyclers would deliver as raw resources instead. List them in
-`machines`, in the order you prefer them for recipes several machines can make. The planner counts their
+machine; Aquilo's heating comes from [heat pipes](#aquilo-heat-pipes). List them in `machines`, in the order you
+prefer them for recipes several machines can make. The planner counts their
 built-in productivity, a biochamber burns nutrients like a furnace burns coal, and a machine with several
 products (asteroid crushing returns part of its chunk) gets one filtered output inserter per product.
 
@@ -451,6 +490,50 @@ There is no special mode for space platforms; the normal options describe one:
   "power": { "pole": "medium-electric-pole" }
 }
 ```
+
+#### Recyclers and mixed belts
+
+`recycling.mode` is `"off"` by default: the plan never recycles. `"void"` allows only an item recycled into a quarter
+of itself, for the items listed in `recycling.void_items`, which may then not leave the block: recyclers fed their
+own output destroy what is left over of them (nothing else is ever destroyed). `"full"` adds every recycling recipe
+(scrap on Fulgora, or taking items back apart into a quarter of their ingredients) to that. The recycler joins the
+machines when needed. A recycler puts its results straight onto a belt or container in front of its output end
+(seen in game), so the router keeps those tiles free and results leave through inserters; a recycler takes any item
+it is given, so its input inserters are filtered.
+
+`mixed_outputs` (a sushi belt): the listed surplus items leave together on one belt instead of a belt each, at an
+output port named `mixed-1` (`mixed-2`...) on `edge`. Each machine making some of them puts them all on it with one
+inserter, with a blacklist filter that leaves its other products in (Fulgora's scrap recycler makes twelve products;
+twelve filtered inserters do not fit around it). Only items no machine of the block uses go on it, and not targets.
+Whatever takes the belt must take everything on it, or the machines feeding it stop. Inside the block nothing picks
+from a mixed belt, so it cannot jam: the validator treats the group as one item.
+
+```json
+{
+  "targets": [{ "name": "iron-gear-wheel", "amount": 0.5 }],
+  "machines": ["recycler"], "raw_resources": [],
+  "sources": [{ "name": "scrap", "edge": "west" }],
+  "recycling": { "mode": "full" },
+  "mixed_outputs": [{ "items": ["solid-fuel", "concrete", "ice", "steel-plate", "battery", "stone", "holmium-ore"], "edge": "south" }]
+}
+```
+
+#### Aquilo: heat pipes
+
+With `"heat": {"mode": "pipes"}` everything that freezes (all but chests, test feeds and, unless `heat.poles`,
+electric poles) must share an edge with a heat pipe joined to a heat port; touching only at a corner does not count.
+Heat pipes are laid after routing: a tree grown from a port on the ring around the box (on `heat.edge`) over free
+tiles and the ring itself. Heat pipes have no underground, so where a belt line would wall an area off, a run may
+cross it where five belts go straight with nothing touching the middle three, which become an underground hop with
+the heat pipe on the freed tile; an area still walled off may get its own port (at most `heat.ports`; all are in the
+notes and the blueprint, bring heat to each). Heat goes in before the poles. In heat mode the router keeps a tile
+beside each inserter for a heat pipe, placement keeps more room around machines and belts keep off machine
+perimeters; where something stays cold the trial reroutes with room kept around it, up to four times, and a box
+that still fails is retried bigger. A single gear assembler heats at 10 x 10; denser blocks (three cable inserters
+side by side feeding circuits) often leave an inserter no tile around can heat, and need a bigger box. Not in
+factories of blocks yet.
+
+#### Space platforms
 
 `raw_resources: []` keeps ore from simply entering, so the crushers make it (here advanced crushing, the only
 platform source of copper); `sources` are where the chunks
@@ -542,7 +625,9 @@ runs single trials and prints why routing fails (`DIAG_ITEM=<item>` lists the pl
 parallel for parameter sweeps (see [docs/TUNING.md](docs/TUNING.md)); `JobFuzzTest` (`FUZZ=<minutes>`, with
 `FUZZ_THREADS`, `FUZZ_SEED`, `FUZZ_OUT`) makes random jobs (base game, Space Age, space platform), builds each at
 a roomy size and records every planner or trial exception, invalid layout or failed blueprint round trip in
-`results.tsv`, saving the job for `DiagTest`. Run them with `--rerun -i`.
+`results.tsv`, saving the job for `DiagTest`; `TemplateDiagTest` (see [Templates](#templates-ready-made-columns)).
+Run them with `--rerun -i`. A factory run with `FACTORY_INVALID_DIR=<dir>` set renders every stitched factory that
+fails validation there (it is skipped for the next smallest).
 
 ## Status
 
@@ -578,10 +663,17 @@ and practically useless:
 - **Fulgora plastic.** Electromagnetic science needs superconductors, superconductors need plastic, plastic
   needs coal, and Fulgora has none: no plan at all until plastic (from recycling) was allowed in.
 
+- **Fulgora leftovers.** With recycling on, scrap made gears as asked, and the planner then turned holmium ore and
+  stone into holmium solution and ice into water in chemical plants (a fluid leaving costs it less than an item), and
+  with only recyclers allowed it took batteries, concrete and circuits back apart, a quarter at a time, to shrink
+  what leaves. List what may leave in `mixed_outputs`, or keep the machines (and `forbidden_recipes`) to what you
+  want built.
+
 ## Not verified in game yet
 
 Some 2.0 facts are marked `VERIFY` in `data/GameConstants.kt` (inserter rates, underground pairing details,
-fluid input side, wire format, Space Age fluid connections, inserter filters, beacon profile and module requests). [docs/VERIFY.md](docs/VERIFY.md)
+fluid input side, wire format, Space Age fluid connections, inserter filters, beacon profile and module requests,
+which tile and lane a recycler drops on, whether poles freeze on Aquilo, blacklist filters). [docs/VERIFY.md](docs/VERIFY.md)
 has a blueprint for each.
 
 ## More layouts

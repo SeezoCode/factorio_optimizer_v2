@@ -61,8 +61,9 @@ fun validationSpec(
     val machines = placement.machines.associate { pm ->
         val inst = plan.machines[pm.id]
         val info = recipeInfo(inst.recipe)!!
-        // Inserters move only item products; fluids leave through pipes.
-        val items = inst.itemProducts
+        // Inserters move only item products; fluids leave through pipes. Products that leave on a mixed belt count as
+        // one product, the belt's name: one inserter takes them all.
+        val items = inst.itemProducts.entries.groupBy { plan.mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }
         Tile(pm.x, pm.y) to MachineSpec(
             product = items.maxByOrNull { it.value }?.key ?: inst.product,
             // Fuel counts as an ingredient (coal for stone furnaces, nutrients for biochambers).
