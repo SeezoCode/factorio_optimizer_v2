@@ -36,11 +36,13 @@ import validate.validate
  * and a long-handed one reaches the other belt across it: on the left a short inserter takes from A and a long one
  * puts on B, on the right a long one takes from A and a short one puts on B (or mirrored, B left of A). The third
  * tile of each three is free for a pole. Short headers above and below the column run the port belts to whichever
- * sides of the block the ports are on (a small belt search, undergrounds included); two input ports join A through
- * a splitter, two product ports leave B through one, and what is left of A can leave as a pass-through output.
+ * sides of the block the ports are on (a small belt search, undergrounds included); more input ports merge into the
+ * first one's belt through splitters, more product ports branch off the first one's through splitters, and what is
+ * left of A can leave as a pass-through output.
  */
 object Templates {
     private const val LONG = "long-handed-inserter"
+    private val DEBUG = System.getenv("TEMPLATE_DEBUG") != null
 
     /** A machine a machine column can hold: 3 x 3, one solid ingredient, one item product, no fluids or beacons. */
     fun columnMachine(m: plan.MachineInstance): Boolean =
@@ -70,7 +72,7 @@ object Templates {
 
     private class ColumnSpec(
         val machine: String, val recipe: String, val ingredient: String, val product: String,
-        /** Input ports of the ingredient (one or two), product output ports (one or two), a pass-through port. */
+        /** Input ports of the ingredient, product output ports, a pass-through port (or none). */
         val inputs: List<Int>, val outputs: List<Int>, val pass: Int?,
         val shortIn: String, val shortOut: String,
         val belt: String, val underground: String, val splitter: String, val maxGap: Int,
@@ -93,10 +95,10 @@ object Templates {
         if (plan.ports.any { it.fluid || it.pairWith >= 0 || it.specs.size != 1 || it.specs[0].edge !in SIDES }) return no("ports other than one item per edge")
         val ins = plan.ports.filter { !it.output }
         val outs = plan.ports.filter { it.output }
-        if (ins.size !in 1..2 || ins.any { it.item != ingredient }) return no("not one or two input ports of $ingredient")
+        if (ins.isEmpty() || ins.any { it.item != ingredient }) return no("input ports other than of $ingredient")
         val prodOut = outs.filter { it.item == product }
         val passOut = outs.filter { it.item == ingredient }
-        if (prodOut.size !in 1..2 || passOut.size > 1 || outs.size != prodOut.size + passOut.size) return no("output ports other than one or two of $product (and one of $ingredient passing on)")
+        if (prodOut.isEmpty() || passOut.size > 1 || outs.size != prodOut.size + passOut.size) return no("output ports other than of $product (and one of $ingredient passing on)")
         val tier = GameConstants.beltTier(config.beltTier)
         fun portRate(p: Int) = plan.terminals.filter { it.port == p }.sumOf { it.rate }
         if (ins.sumOf { portRate(it.id) } > tier.throughput + 1e-9) return no("input over one belt")
@@ -128,13 +130,18 @@ object Templates {
     /** One upright column with the ports on [sides]: the smallest over belt orders, directions of B and header heights. */
     private fun buildColumn(data: RootData, config: RunConfiguration, plan: ProductionPlan, s: ColumnSpec, sides: Map<Int, Dir>): TrialResult? {
         var best: TrialResult? = null
-        val headers = (0..3).flatMap { a -> (0..3).map { b -> a to b } }.sortedBy { it.first + it.second }
-        for ((hTop, hBot) in headers) {
-            if (best != null && hTop + hBot > best.h - 3 * ((plan.machines.size + 1) / 2)) break
-            for (xa in intArrayOf(4, 5)) for (bDir in arrayOf(Dir.N, Dir.S)) {
-                val r = tryColumn(data, config, plan, s, sides, hTop, hBot, xa, bDir) ?: continue
-                if (best == null || r.score < best.score) best = r
+        val headers = (0..4).flatMap { a -> (0..4).map { b -> a to b } }.sortedBy { it.first + it.second }
+        // A bypass lane along the column (one tile wider) only when the ports cannot be reached without one: it lets
+        // belts reach ports at the column's other end.
+        for (bypass in listOf(false, true)) {
+            for ((hTop, hBot) in headers) {
+                if (best != null && hTop + hBot > best.h - 3 * ((plan.machines.size + 1) / 2)) break
+                for (xa in intArrayOf(4, 5)) for (bDir in arrayOf(Dir.N, Dir.S)) {
+                    val r = tryColumn(data, config, plan, s, sides, hTop, hBot, xa, bDir, bypass) ?: continue
+                    if (best == null || r.score < best.score) best = r
+                }
             }
+            if (best != null) break
         }
         return best
     }
@@ -144,22 +151,17 @@ object Templates {
 
     private fun tryColumn(
         data: RootData, config: RunConfiguration, plan: ProductionPlan, s: ColumnSpec, sides: Map<Int, Dir>,
-        hTop: Int, hBot: Int, xa: Int, bDir: Dir,
+        hTop: Int, hBot: Int, xa: Int, bDir: Dir, bypass: Boolean = false,
     ): TrialResult? {
         val t0 = System.currentTimeMillis()
         val n = plan.machines.size
         val units = (n + 1) / 2
-        val W = 10
+        val W = if (bypass) 11 else 10
         val core0 = hTop
         val core1 = hTop + 3 * units   // first row below the column
         val H = core1 + hBot
         val xb = 9 - xa
         val away = xb - xa             // from A towards B: +1 or -1
-        val twoIn = s.inputs.size == 2
-        val twoOut = s.outputs.size == 2
-        // Splitters sit in the header row next to the column: they need that row.
-        if (twoIn && hTop < 1) return null
-        if (twoOut && (if (bDir == Dir.N) hTop < 1 else hBot < 1)) return null
         val netOf = plan.nets.associate { it.item to it.id }
         val ents = ArrayList<PlacedEntity>()
         val occ = HashSet<Tile>()
@@ -189,20 +191,8 @@ object Templates {
             put(PlacedEntity(s.belt, Kind.BELT, xa, y, Dir.S, net = netOf[s.ingredient]))
             put(PlacedEntity(s.belt, Kind.BELT, xb, y, bDir, net = netOf[s.product]))
         }
-        // Splitters: two inputs join A at its head; two product outputs leave B's end.
-        val aEntries: List<Tile>     // tiles a south-heading input belt feeds (one per input port)
-        if (twoIn) {
-            val xa2 = xa - away
-            put(PlacedEntity(s.splitter, Kind.SPLITTER, minOf(xa, xa2), core0 - 1, Dir.S, net = netOf[s.ingredient]))
-            aEntries = listOf(Tile(xa, core0 - 1), Tile(xa2, core0 - 1))
-        } else aEntries = listOf(Tile(xa, core0))
-        val bStarts: List<Tile>      // where product belts start (pushed into from behind, heading bDir)
-        if (twoOut) {
-            val xb2 = xb + away
-            val y = if (bDir == Dir.N) core0 - 1 else core1
-            put(PlacedEntity(s.splitter, Kind.SPLITTER, minOf(xb, xb2), y, bDir, net = netOf[s.product]))
-            bStarts = listOf(Tile(xb, y) + bDir, Tile(xb2, y) + bDir)
-        } else bStarts = listOf(if (bDir == Dir.N) Tile(xb, core0 - 1) else Tile(xb, core1))
+        val aHead = Tile(xa, core0)
+        val bExit = if (bDir == Dir.N) Tile(xb, core0 - 1) else Tile(xb, core1)
         val aTail = Tile(xa, core1)
         // Pole slots: the third tile of each three in the inserter columns.
         val poleSlots = (0 until units).flatMap { k -> listOf(Tile(3, core0 + 3 * k + 2), Tile(6, core0 + 3 * k + 2)) }
@@ -212,16 +202,36 @@ object Templates {
             t.x in 0 until W && t.y == -1 -> Dir.N; t.x in 0 until W && t.y == H -> Dir.S
             t.y in 0 until H && t.x == -1 -> Dir.W; t.y in 0 until H && t.x == W -> Dir.E; else -> null
         }
+        fun ringTiles(d: Dir): List<Tile> = when (d) {
+            Dir.N -> (0 until W).map { Tile(it, -1) }
+            Dir.S -> (0 until W).map { Tile(it, H) }
+            Dir.W -> (0 until H).map { Tile(-1, it) }
+            Dir.E -> (0 until H).map { Tile(W, it) }
+        }
         // Tiles nothing may use: below A's end when nothing passes on (leftovers would spill there), and the tile
         // before B's first belt (a belt there would feed B).
-        val reserved = HashSet<Tile>()
-        if (s.pass == null) reserved += aTail
-        reserved += if (bDir == Dir.N) Tile(xb, core1) else Tile(xb, core0 - 1)
+        val reserved0 = HashSet<Tile>()
+        if (s.pass == null) reserved0 += aTail
+        reserved0 += if (bDir == Dir.N) Tile(xb, core1) else Tile(xb, core0 - 1)
 
+        // Routing state, reset for each order of the connections.
         val used = HashSet<Tile>()
+        val reserved = HashSet<Tile>()
         /** Tiles inside some underground pair's span (ends included), per axis: no other pair on that axis may touch them. */
         val spans = arrayOf(HashSet<Tile>(), HashSet<Tile>())
         val ugEnds = arrayOf(HashSet<Tile>(), HashSet<Tile>())
+        /**
+         * Belts routed so far per item, in path order, each path with whether a straight belt feeds its first step from
+         * behind (B's or A's end) and whether its last step runs straight on into one (A's head); splitters go across
+         * straight belts of these (branches and merges).
+         */
+        class Tree(val steps: List<Step>, val fedBehind: Boolean, val goesOn: Boolean)
+        val trees = HashMap<String, MutableList<Tree>>()
+        val coreBelts = (core0 until core1).flatMap { y -> listOf(Tile(xa, y), Tile(xb, y)) }.toSet()
+        /** Nothing belt-like stands or will stand on [t] (an inserter or machine there is fine). */
+        fun noBelt(t: Tile) = t !in used && t !in coreBelts && (inBox(t) || sideOfRing(t) == null || t !in used)
+        class Split(val trunk: Tile, val half: Tile, val dir: Dir, val item: String)
+        val splits = ArrayList<Split>()
         fun free(t: Tile) = inBox(t) && t !in occ && t !in used && t !in reserved
 
         /**
@@ -258,78 +268,145 @@ object Templates {
             }
             return null
         }
-        fun ringTiles(d: Dir): List<Tile> = when (d) {
-            Dir.N -> (0 until W).map { Tile(it, -1) }
-            Dir.S -> (0 until W).map { Tile(it, H) }
-            Dir.W -> (0 until H).map { Tile(-1, it) }
-            Dir.E -> (0 until H).map { Tile(W, it) }
+        /**
+         * Straight belts of [item]'s paths a splitter could go across: fed from behind, going on straight ahead, with a
+         * free tile beside it for the splitter's other half. Returns (trunk, other half, heading).
+         */
+        fun splitSpots(item: String, merge: Boolean): List<Triple<Tile, Tile, Dir>> {
+            val out = ArrayList<Triple<Tile, Tile, Dir>>()
+            val split = splits.flatMap { listOf(it.trunk, it.half) }.toSet()
+            trees[item]?.forEach { tr ->
+                val p = tr.steps
+                for (i in p.indices) {
+                    val b = p[i]
+                    if (b.ugFrom != null || !inBox(b.tile) || b.tile in split) continue
+                    val behind = if (i > 0) p[i - 1].let { a -> a.dir == b.dir && a.tile + a.dir == b.tile } else tr.fedBehind
+                    val ahead = if (i < p.size - 1) p[i + 1].let { c -> c.dir == b.dir && c.ugFrom == null && b.tile + b.dir == c.tile } else tr.goesOn
+                    if (!behind || !ahead) continue
+                    for (side in listOf(b.dir.cw, b.dir.ccw)) {
+                        val h = b.tile + side
+                        // A merge's other output leads nowhere; nothing feeds a branch's half from behind.
+                        if (free(h) && (if (merge) noBelt(h + b.dir) else noBelt(h + b.dir.opposite))) out += Triple(b.tile, h, b.dir)
+                    }
+                }
+            }
+            return out
         }
-        class Routed(val steps: List<Step>, val port: Tile)
-        // An input: from the ring on its side, straight in, to a belt heading south into [entry].
-        fun routeIn(port: Int, entry: Tile): Routed? {
+        class Routed(val steps: List<Step>, val port: Tile, val split: Split? = null)
+        // An input: from the ring on its side, straight in, to a belt heading south into A's head, or into the free
+        // half of a splitter across the belt of an input already routed (a merge; its other output leads nowhere).
+        fun routeIn(port: Int): Routed? {
             val d = sides.getValue(port)
             val starts = ringTiles(d).filter { it !in used && it !in occ }.map { Step(it, d.opposite) }
-            // The ring tile is the port: its belt points straight in; the first box tile must be free.
-            val p = path(starts) { st -> st.tile + st.dir == entry && st.dir == Dir.S } ?: return null
-            return Routed(p, p.first().tile)
+            val merges = if (trees[s.ingredient].isNullOrEmpty()) emptyList() else splitSpots(s.ingredient, merge = true)
+            val byHalf = merges.associateBy { it.second }
+            val p = path(starts) { st ->
+                val nt = st.tile + st.dir
+                if (trees[s.ingredient].isNullOrEmpty()) nt == aHead && st.dir == Dir.S
+                else byHalf[nt]?.let { (_, _, h) -> st.dir == h } == true
+            } ?: return null
+            val last = p.last()
+            val split = if (trees[s.ingredient].isNullOrEmpty()) null else byHalf.getValue(last.tile + last.dir).let { (t, h, d2) -> Split(t, h, d2, s.ingredient) }
+            // The merge's other output must lead nowhere: not onto this path.
+            if (split != null && p.any { it.tile == split.half + split.dir || it.ugFrom == split.half + split.dir }) return null
+            return Routed(p, p.first().tile, split)
         }
-        // An output: a belt on [from] (pushed into heading [heading]), to a belt on the ring of its side heading out.
-        fun routeOut(port: Int, from: Tile, heading: Dir): Routed? {
+        // An output: a belt pushed into from [from] heading [heading] (B's end, A's end), or a branch off a splitter
+        // across a straight belt of the item already routed, to a belt on the ring of its side heading out.
+        fun routeOut(port: Int, item: String, from: Tile?, heading: Dir): Routed? {
             val d = sides.getValue(port)
-            if (!inBox(from)) {
+            if (from != null && !inBox(from)) {
                 // The belt end already reaches the ring: it is the port if it is on the right side.
                 if (sideOfRing(from) != d || heading != d || from in used) return null
                 return Routed(listOf(Step(from, d)), from)
             }
-            if (!free(from)) return null
-            val starts = listOf(heading, heading.cw, heading.ccw).map { Step(from, it) }
+            val branches = if (from == null) splitSpots(item, merge = false) else emptyList()
+            // A branch whose half points straight out of the box on the port's side is the port itself.
+            if (from == null) branches.firstOrNull { (_, half, h) -> val st = half + h; h == d && sideOfRing(st) == d && st !in used && st !in occ }?.let { (t, half, h) ->
+                return Routed(listOf(Step(half + h, d)), half + h, Split(t, half, h, item))
+            }
+            val starts = if (from != null) {
+                if (!free(from)) return null
+                listOf(heading, heading.cw, heading.ccw).map { Step(from, it) }
+            } else branches.flatMap { (_, half, h) -> val st = half + h; if (free(st)) listOf(h, h.cw, h.ccw).map { Step(st, it) } else emptyList() }
             val p = path(starts) { st -> val nt = st.tile + st.dir; sideOfRing(nt) == d && st.dir == d && nt !in used && nt !in occ } ?: return null
             val portTile = p.last().tile + d
-            return Routed(p + Step(portTile, d), portTile)
+            val split = if (from != null) null else branches.first { (_, half, h) -> half + h == p.first().tile }.let { (t, h, d2) -> Split(t, h, d2, item) }
+            // Nothing of this path may feed the branch's half from behind.
+            if (split != null && p.any { it.tile == split.half + split.dir.opposite || it.ugFrom == split.half + split.dir.opposite }) return null
+            return Routed(p + Step(portTile, d), portTile, split)
         }
-        fun book(r: Routed) = r.steps.forEach { st ->
-            used += st.tile
-            st.ugFrom?.let { a ->
-                used += a
-                val axis = st.dir.axis
-                var c = a
-                while (true) { spans[axis] += c; if (c == st.tile) break; c += st.dir }
-                ugEnds[axis] += a; ugEnds[axis] += st.tile
+        fun book(r: Routed, item: String) {
+            r.steps.forEach { st ->
+                used += st.tile
+                st.ugFrom?.let { a ->
+                    used += a
+                    val axis = st.dir.axis
+                    var c = a
+                    while (true) { spans[axis] += c; if (c == st.tile) break; c += st.dir }
+                    ugEnds[axis] += a; ugEnds[axis] += st.tile
+                }
+            }
+            val first = r.steps.first()
+            val fromEnd = r.split == null && (first.tile == bExit || first.tile == aTail)
+            val heading = if (first.tile == aTail) Dir.S else bDir
+            trees.getOrPut(item) { ArrayList() } += Tree(r.steps,
+                fedBehind = fromEnd && first.dir == heading,
+                goesOn = r.split == null && r.steps.last().let { it.tile + it.dir == aHead })
+            r.split?.let { sp ->
+                splits += sp
+                used += sp.half
+                // A merge's free half leads nowhere: nothing may stand in front of it; nothing may feed a branch's half.
+                val keep = if (r.steps.last().tile + r.steps.last().dir == sp.half) sp.half + sp.dir else sp.half + sp.dir.opposite
+                if (inBox(keep) && keep !in occ) reserved += keep
             }
         }
 
-        // Connections: (kind, port, from or entry tile).
-        data class Conn(val input: Boolean, val port: Int, val tile: Tile, val heading: Dir)
-        val conns = s.inputs.mapIndexed { i, p -> Conn(true, p, aEntries[i], Dir.S) } +
-            s.outputs.mapIndexed { i, p -> Conn(false, p, bStarts[i], bDir) } +
-            listOfNotNull(s.pass?.let { Conn(false, it, aTail, Dir.S) })
-        val orders = permutations(conns.indices.toList()).take(24)
+        // Connections: inputs first (the first joins A, the rest merge into it), then outputs (the first leaves B's end,
+        // the rest branch off), the pass-through last from A's end; a few orders of each group.
+        data class Conn(val input: Boolean, val port: Int, val item: String)
+        fun portRate(p: Int) = plan.terminals.filter { it.port == p }.sumOf { it.rate }
+        val ins = s.inputs.sortedByDescending { portRate(it) }.map { Conn(true, it, s.ingredient) }
+        val outs = s.outputs.sortedByDescending { portRate(it) }.map { Conn(false, it, s.product) }
+        val pass = listOfNotNull(s.pass?.let { Conn(false, it, s.ingredient) })
+        fun rotations(xs: List<Conn>) = if (xs.size <= 1) listOf(xs) else xs.indices.map { i -> xs.drop(i) + xs.take(i) }
+        val orders = rotations(ins).flatMap { a -> rotations(outs).flatMap { b -> listOf(a + b + pass, b + a + pass, pass + a + b) } }.distinct().take(24)
         for (order in orders) {
-            used.clear(); spans.forEach { it.clear() }; ugEnds.forEach { it.clear() }
-            val got = arrayOfNulls<Routed>(conns.size)
+            used.clear(); reserved.clear(); reserved += reserved0; spans.forEach { it.clear() }; ugEnds.forEach { it.clear() }
+            trees.clear(); splits.clear()
+            val got = HashMap<Conn, Routed>()
             var ok = true
-            for (i in order) {
-                val c = conns[i]
-                val r = (if (c.input) routeIn(c.port, c.tile) else routeOut(c.port, c.tile, c.heading)) ?: run { ok = false; null } ?: break
-                book(r)
-                got[i] = r
+            for (c in order) {
+                val r = when {
+                    c.input -> routeIn(c.port)
+                    c.port == s.pass -> routeOut(c.port, c.item, aTail, Dir.S)
+                    trees[s.product].isNullOrEmpty() -> routeOut(c.port, c.item, bExit, bDir)
+                    else -> routeOut(c.port, c.item, null, bDir)
+                }
+                if (r == null) { ok = false; if (DEBUG) println("  ${W}x$H top $hTop bot $hBot xa $xa b $bDir: ${if (c.input) "in" else "out"} ${c.item} port ${c.port} (${sides[c.port]}) fails after ${got.size}"); break }
+                book(r, c.item)
+                got[c] = r
             }
             if (!ok) continue
             val all = ArrayList(ents)
-            conns.forEachIndexed { i, c ->
-                val item = if (c.input || c.port == s.pass) s.ingredient else s.product
-                got[i]!!.steps.forEach { st ->
-                    if (st.ugFrom != null) {
-                        all += PlacedEntity(s.underground, Kind.UG_IN, st.ugFrom.x, st.ugFrom.y, st.dir, net = netOf[item])
-                        all += PlacedEntity(s.underground, Kind.UG_OUT, st.tile.x, st.tile.y, st.dir, net = netOf[item])
-                    } else all += PlacedEntity(s.belt, Kind.BELT, st.tile.x, st.tile.y, st.dir, net = netOf[item])
+            val trunks = splits.associateBy { it.trunk }
+            got.forEach { (c, r) ->
+                r.steps.forEach { st ->
+                    when {
+                        st.ugFrom != null -> {
+                            all += PlacedEntity(s.underground, Kind.UG_IN, st.ugFrom.x, st.ugFrom.y, st.dir, net = netOf[c.item])
+                            all += PlacedEntity(s.underground, Kind.UG_OUT, st.tile.x, st.tile.y, st.dir, net = netOf[c.item])
+                        }
+                        st.tile in trunks -> {}   // a splitter stands there
+                        else -> all += PlacedEntity(s.belt, Kind.BELT, st.tile.x, st.tile.y, st.dir, net = netOf[c.item])
+                    }
                 }
             }
-            fun portRate(p: Int) = plan.terminals.filter { it.port == p }.sumOf { it.rate }
-            val sources = conns.indices.filter { conns[it].input }.map { i -> SourceSpec(got[i]!!.port, s.ingredient, portRate(conns[i].port), port = conns[i].port) }
-            val outputs = conns.indices.filter { !conns[it].input }.map { i ->
-                OutputSpec(got[i]!!.port, if (conns[i].port == s.pass) s.ingredient else s.product, portRate(conns[i].port), port = conns[i].port)
+            splits.forEach { sp ->
+                all += PlacedEntity(s.splitter, Kind.SPLITTER, minOf(sp.trunk.x, sp.half.x), minOf(sp.trunk.y, sp.half.y), sp.dir, net = netOf[sp.item])
             }
+            val sources = got.filter { it.key.input }.map { (c, r) -> SourceSpec(r.port, s.ingredient, portRate(c.port), port = c.port) }
+            val outputs = got.filter { !it.key.input }.map { (c, r) -> OutputSpec(r.port, c.item, portRate(c.port), port = c.port) }
             // Poles on the free slots (and free header tiles if those are not enough).
             val taken = all.flatMap { it.rect.tiles() }.toSet()
             val headerFree = (0 until H).flatMap { y -> (0 until W).map { x -> Tile(x, y) } }.filter { (it.y < core0 || it.y >= core1) && it !in taken }
@@ -345,9 +422,11 @@ object Templates {
             val outside = (sources.map { it.tile } + outputs.map { it.tile }).toSet()
             val vspec = validationSpec(data, plan, config, placement, sources, requirePower = config.power.mode != "none",
                 outsideAllowed = outside, outputs = outputs)
-            if (validate(layout, vspec).isNotEmpty()) continue
+            val errs = validate(layout, vspec)
+            if (DEBUG && errs.isNotEmpty()) println("  ${W}x$H top $hTop bot $hBot xa $xa b $bDir: invalid ${errs.take(3)}")
+            if (errs.isNotEmpty()) continue
             return TrialResult(true, W, H, 0L, layout, placement, emptyList(), null, score(layout, config), "ok", 0.0,
-                System.currentTimeMillis() - t0, listOf("template: machine column of $n ${s.machine} (${s.recipe}), headers $hTop/$hBot"),
+                System.currentTimeMillis() - t0, listOf("template: machine column of $n ${s.machine} (${s.recipe}), headers $hTop/$hBot" + if (bypass) ", bypass lane" else ""),
                 sources, outputs)
         }
         return null

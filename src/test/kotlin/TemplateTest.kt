@@ -90,6 +90,20 @@ class TemplateTest {
         val twoIn = withSplitPort(base, "iron-ore", false, "south", 6.0)
         checkAll("iron_two_in", config, twoIn)
         checkAll("iron_two_in_two_out", config, withSplitPort(twoIn, "iron-plate", true, "east", 5.0))
+        // Plates to three blocks: ore from the west, plates out east and north.
+        val three0 = job("iron-plate", 18.0, "iron-ore", "west", "east")
+        var many = buildPlan(TestData.data, three0)
+        listOf("north" to 3.0, "east" to 2.5).forEach { (e, r) -> many = withSplitPort(many, "iron-plate", true, e, r) }
+        checkAll("iron_three_out", three0, many)
+        // Three input ports on one side, three outputs on two others (a steel block fed by three smelting blocks).
+        val steel = job("steel-plate", 2.5, "iron-plate", "east", "west")
+        var three = buildPlan(TestData.data, steel)
+        listOf("east" to 4.0, "east" to 3.0).forEach { (e, r) -> three = withSplitPort(three, "iron-plate", false, e, r) }
+        listOf("south" to 0.8, "west" to 0.5).forEach { (e, r) -> three = withSplitPort(three, "steel-plate", true, e, r) }
+        checkAll("steel_three_in", steel, three)
+        // Ports on both ends of the column: a bypass lane along it carries belts past the machines.
+        val ends = withSplitPort(withSplitPort(base, "iron-plate", true, "south", 2.0), "iron-plate", true, "north", 1.0)
+        checkAll("iron_both_ends", config, ends)
     }
 
     @Test
