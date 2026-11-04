@@ -28,20 +28,23 @@ class HeatTest {
         // Denser blocks (three cable inserters side by side feeding circuits) often leave an inserter that no tile
         // around can heat: report how it goes, the search tries more seeds and boxes.
         heated("t2", listOf(16, 20), required = false)
+        // With rows of heat pipe every seven rows laid first (machines off them, belts under them) it heats.
+        heated("t2", listOf(20, 22, 24), lattice = 7)
     }
 
-    private fun heated(job: String, sizes: List<Int>, required: Boolean = true) {
-        val config = TestData.job(job).copy(heat = HeatConfig(mode = "pipes"))
+    private fun heated(job: String, sizes: List<Int>, required: Boolean = true, lattice: Int? = null) {
+        val config = TestData.job(job).copy(heat = HeatConfig(mode = "pipes", lattice = lattice))
         val plan = buildPlan(TestData.data, config)
         val tries = ArrayList<search.TrialResult>()
         val r = sizes.asSequence().flatMap { size -> (1L..6L).asSequence().map { runTrial(TestData.data, plan, config, Tuning.defaults(), size, size, it).also { t -> tries += t } } }.firstOrNull { it.success }
-        println("$job heated: ${r?.let { "${it.w} x ${it.h} after ${tries.size} trials" } ?: "none"}; cold left per trial ${tries.map { t -> t.errors.count { it.type == ErrorType.COLD } }}")
-        if (!required && r == null) return
-        val size = sizes.last()
+        println("$job lattice $lattice heated: ${r?.let { "${it.w} x ${it.h} after ${tries.size} trials" } ?: "none"}; cold left per trial ${tries.map { t -> t.errors.count { it.type == ErrorType.COLD } }}")
         if (r == null) tries.forEachIndexed { i, t ->
-            println("seed ${i + 1}: ${t.stage} ${t.notes.filter { "heat" in it }} ${t.errors.take(3)}")
+            println("seed ${i + 1}: ${t.stage} ${t.notes.filter { "heat" in it }} ${t.errors.take(3)}" +
+                (t.route?.let { r -> " overuse ${r.overuse} failed ${r.failedNets} conflicts ${r.conflicts.take(5)} ${r.log.takeLast(2)}" } ?: ""))
             t.layout?.let { renderLayout(it, File("build/renders/heat/${job}_fail_${i + 1}.png"), RenderOptions(errors = t.errors, title = "seed ${i + 1}")) }
         }
+        if (!required && r == null) return
+        val size = sizes.last()
         assertTrue(r != null, "$job: no seed kept everything warm at $size x $size")
         val layout = r.layout!!
         renderLayout(layout, File("build/renders/heat/${job}_heated.png"), RenderOptions(title = "$job heated ${r.w}x${r.h}", ports = viz.portLabels(r.sources, r.outputs)))

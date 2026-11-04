@@ -896,6 +896,31 @@ fun stitchRoute(
         starts[l.id]?.let { (t, d) -> starts[l.id] = (dive(l, t, d) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot leave its port")) to d }
         ends[l.id]?.let { (t, d) -> ends[l.id] = (dive(l, t, d.opposite) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot reach its port")) to d }
     }
+    // A shared output port: splitters right outside it give each of its links a belt of its own (two or three).
+    val otherEnds = (starts.filterKeys { k -> sharedStarts.none { k in it } }.values + ends.values).map { it.first }.toSet()
+    for (g in sharedStarts) {
+        val (s0, d) = starts.getValue(g[0])
+        val item = split.links[g[0]].item
+        fun open(t: Tile) = free(t) && t !in otherEnds
+        // Nothing may push into a splitter half from behind but the port belt.
+        fun quietBehind(t: Tile) = byTile[t + d.opposite]?.let { e -> !(e.kind.beltFamily && e.outputTile == t) } ?: true
+        fun splitter(a: Tile, b: Tile) = PlacedEntity(GameConstants.beltTier(config.beltTier).splitter, Kind.SPLITTER, minOf(a.x, b.x), minOf(a.y, b.y), d, net = netOfItem[item])
+        val outs = run {
+            for (side in listOf(d.cw, d.ccw)) {
+                val half = s0 + side
+                if (!open(s0) || !open(half) || !quietBehind(half)) continue
+                val a = s0 + d; val b = half + d
+                if (g.size == 2) { if (open(a) && open(b)) return@run listOf(splitter(s0, half)) to listOf(a, b) else continue }
+                // Three: a second splitter on the first's straight output, its other half on the far side.
+                val half2 = a + side.opposite
+                val a2 = a + d; val b2 = half2 + d
+                if (listOf(a, half2, b, a2, b2).all { open(it) } && quietBehind(half2)) return@run listOf(splitter(s0, half), splitter(a, half2)) to listOf(a2, b2, b)
+            }
+            null
+        } ?: return StitchAttempt(null, listOf(s0), "no room for the splitters of a shared $item output")
+        outs.first.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
+        g.forEachIndexed { i, id -> starts[id] = outs.second[i] to d }
+    }
 
     // The belts and pipes through the corridors.
     val ports = ArrayList<Port>(); val terminals = ArrayList<Terminal>(); val nets = ArrayList<Net>()
@@ -1009,19 +1034,7 @@ fun stitchRoute(
         nets += Net(nets.size, left.item, rate, listOf(t1.id, t2.id), 1)
         paired += left.id; paired += right.id
     }
-    // A shared output port: one source, an output at each consumer; the router branches the belt with splitters.
-    val inGroup = HashSet<Int>()
-    sharedStarts.forEach { g ->
-        val ls = g.map { split.links[it] }
-        val p1 = starts.getValue(ls[0].id).let { (s, sd) -> fixedPort(ls[0], s, sd.opposite, false) }
-        val rate = ls.sumOf { it.rate }
-        val src = terminal(Role.SOURCE, ls[0], rate, p1)
-        val outs = ls.map { l -> terminal(Role.OUTPUT, l, l.rate, ends.getValue(l.id).let { (e, ed) -> fixedPort(l, e, ed, true) }) }
-        linksOfNet[nets.size] = ls
-        nets += Net(nets.size, ls[0].item, rate, listOf(src.id) + outs.map { it.id }, 1)
-        inGroup += g
-    }
-    corridorLinks.filter { !it.hub && it.id !in paired && it.id !in inGroup }.forEach { l ->
+    corridorLinks.filter { !it.hub && it.id !in paired }.forEach { l ->
         val p1 = if (l.from < 0) edgePort(l, false) else starts.getValue(l.id).let { (s, sd) -> fixedPort(l, s, sd.opposite, false) }
         val p2 = if (l.to < 0) edgePort(l, true) else ends.getValue(l.id).let { (e, ed) -> fixedPort(l, e, ed, true) }
         val t1 = terminal(Role.SOURCE, l, l.rate, p1); val t2 = terminal(Role.OUTPUT, l, l.rate, p2)

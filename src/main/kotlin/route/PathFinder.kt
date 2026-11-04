@@ -256,6 +256,8 @@ class PathFinder(internal val p: RouteProblem) {
     /** Names of the plan's mixed belts (sushi): their producers' inserters take every product that goes there. */
     private val mixedNames = plan.mixed.values.toSet()
     private val occHeat = IntArray(N)
+    /** Heat lattice rows (heat pipes laid first): an inserter beside one needs no slot of its own. */
+    private val heatRow = BooleanArray(N).also { a -> power.heatLatticeTiles(config, W, H).forEach { if (dims.inFull(it.x, it.y)) a[dims.idx(it)] = true } }
 
     /**
      * The tile kept free beside option [o]'s inserter for a heat pipe: one of the two beside it across its swing (or,
@@ -266,6 +268,8 @@ class PathFinder(internal val p: RouteProblem) {
         if (!heatOn) return -1
         val ins = optIns[o]
         val d = options[o].insDir
+        // Beside a lattice row it is heated already.
+        if ((0..3).any { k -> (ins + dIdx[k]).let { it in 0 until N && heatRow[it] } }) return -1
         val cands = ArrayList<Int>()
         for (side in listOf(d.cw, d.ccw)) { val t = ins + dIdx[side.ordinal]; if (t in 0 until N && allowNet[t] != -2) cands += t }
         if (optLong[o]) { val t = (ins + optBelt[o]) / 2; if (t in 0 until N && allowNet[t] != -2) cands += t }
@@ -453,6 +457,25 @@ class PathFinder(internal val p: RouteProblem) {
     private fun beltCost(q: Int, deadTaken: Int = deadEndAt[q]): Float =
         (tun.beltBase.toFloat() + hist[q]) * (1f + pFac * (occTile[q] + deadTaken + occHeat[q])) +
             (if (pinCount[q] > 0) tun.pinReservation.toFloat() else 0f) + bias[q]
+
+    /** Taken for heating: off the grid, a machine or obstacle, or used. */
+    private fun walled(t: Int): Boolean = t !in 0 until N || allowNet[t] == -2 || occTile[t] > 0
+
+    /**
+     * Aquilo: a belt on [q] heading [nd] with both side tiles taken can only be heated at its ends; one beside it whose
+     * other side is taken loses its last side tile. Without heating, 0.
+     */
+    private fun heatWall(q: Int, nd: Int): Float {
+        if (!heatOn) return 0f
+        val l = (nd + 3) % 4; val r = (nd + 1) % 4
+        var c = if (walled(q + dIdx[l]) && walled(q + dIdx[r])) heatWallCost else 0f
+        for (side in intArrayOf(l, r)) {
+            val n = q + dIdx[side]
+            if (n in 0 until N && occBelt[n] > 0 && walled(n + dIdx[side])) c += heatWallCost / 2
+        }
+        return c
+    }
+    private val heatWallCost = tun.heatWallCost.toFloat()
 
     private fun insCost(q: Int, long: Boolean): Float =
         ((if (long) tun.longInserterBase else tun.inserterBase).toFloat() + hist[q]) * (1f + pFac * (occTile[q] + occHeat[q]))
@@ -657,7 +680,7 @@ class PathFinder(internal val p: RouteProblem) {
             for (nd in 0..3) {
                 if (nd == (d + 2) % 4) continue
                 if (kind == UG_EXIT && nd != d && !tun.turnAfterUgExit) continue
-                relax(st(q, nd, BELT), s, gS + beltCost(q, deadEndsTaken(q, AK_BELT, nd)) + resQ + (if (nd != d) tun.turnPenalty.toFloat() else 0f))
+                relax(st(q, nd, BELT), s, gS + beltCost(q, deadEndsTaken(q, AK_BELT, nd)) + resQ + (if (nd != d) tun.turnPenalty.toFloat() else 0f) + heatWall(q, nd))
             }
 
             // Underground (B2, B3): entrance on q facing d, exit j tiles further.

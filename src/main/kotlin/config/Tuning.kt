@@ -191,6 +191,11 @@ data class RouteTuning(
      * half, beside it, leads nowhere, so an inserter can pick from that half.
      */
     @SerialName("stub_cost") val stubCost: Double = 0.0,
+    /**
+     * Aquilo (heat on): extra cost of a belt whose two side tiles are both taken (no heat pipe could touch it but at
+     * its ends), and half of it for a belt that takes the last free side tile of a belt beside it.
+     */
+    @SerialName("heat_wall_cost") val heatWallCost: Double = 3.0,
     /** While visiting producers, extra cost on the access tiles of the same net's consumers. */
     @SerialName("own_consumer_reservation") val ownConsumerReservation: Double = 3.0,
     /** Start producers tried per net and iteration before the net counts as unrouted. */

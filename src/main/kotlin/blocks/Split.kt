@@ -366,14 +366,15 @@ fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning, shared
 
 /**
  * Belt links leaving block [b] that share one output port: those to other blocks of one item on one side, packed into
- * groups of at most a belt's worth (largest first). The corridors branch them off one belt with splitters.
+ * groups of two or three of at most a belt's worth (largest first). Splitters right outside the port give each its
+ * own belt.
  */
 fun sharedOutputs(full: ProductionPlan, links: List<Link>, b: Int, tuning: Tuning): List<List<Link>> {
     val cap = tuning.net.beltUtilisation * data.GameConstants.beltTier(full.beltTier, full.beltStack).throughput
     return links.filter { it.from == b && it.inner && !it.fluid && it.pair < 0 }.groupBy { it.item to it.fromSide }.values.flatMap { ls ->
         val groups = ArrayList<MutableList<Link>>()
         ls.sortedByDescending { it.rate }.forEach { l ->
-            groups.firstOrNull { g -> g.sumOf { it.rate } + l.rate <= cap + 1e-9 }?.add(l) ?: groups.add(mutableListOf(l))
+            groups.firstOrNull { g -> g.size < 3 && g.sumOf { it.rate } + l.rate <= cap + 1e-9 }?.add(l) ?: groups.add(mutableListOf(l))
         }
         groups
     }.filter { it.size > 1 }

@@ -546,10 +546,14 @@ cross it where five belts go straight with nothing touching the middle three, wh
 the heat pipe on the freed tile; an area still walled off may get its own port (at most `heat.ports`; all are in the
 notes and the blueprint, bring heat to each). Heat goes in before the poles. In heat mode the router keeps a tile
 beside each inserter for a heat pipe, placement keeps more room around machines and belts keep off machine
-perimeters; where something stays cold the trial reroutes with room kept around it, up to four times, and a box
-that still fails is retried bigger. A single gear assembler heats at 10 x 10; denser blocks (three cable inserters
-side by side feeding circuits) often leave an inserter no tile around can heat, and need a bigger box. Not in
-factories of blocks yet.
+perimeters; a belt whose two side tiles are both taken costs the router more (`heat_wall_cost`), since a heat pipe
+could reach it only at its ends. Where something stays cold the trial reroutes with room kept around it, up to four
+times, and a box that still fails is retried bigger. A single gear assembler heats at 10 x 10. Denser blocks (three
+cable inserters side by side feeding circuits, T2) used to leave a few things cold at any size; `heat.lattice: 7`
+lays a row of heat pipe across the box every seven rows before placement, as Aquilo builds do: machines stay off
+the rows, belts pass under them, inserters beside one need no tile of their own, and the tree joins each row whole.
+T2 heats with it at 22 x 22 (every eight rows: 24 x 24; every five or six, too little room is left to route). Not
+in factories of blocks yet.
 
 #### Space platforms
 
@@ -660,8 +664,8 @@ productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in
 layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
-not shown: Aquilo heat pipes are placed ([Aquilo: heat pipes](#aquilo-heat-pipes)) but still experimental, dense
-blocks often leaving an inserter no free tile reaches.
+not shown: Aquilo heat pipes are placed ([Aquilo: heat pipes](#aquilo-heat-pipes)), dense blocks with a heat
+lattice, but not yet in factories of blocks.
 
 ## When the planner outsmarts you
 

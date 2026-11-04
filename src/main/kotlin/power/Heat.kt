@@ -43,6 +43,13 @@ fun needsHeat(e: PlacedEntity, poles: Boolean): Boolean = when (e.kind) {
     else -> true
 }
 
+/** Tiles of the heat lattice ([config.HeatConfig.lattice]): every pitch-th row of the box, none without heating. */
+fun heatLatticeTiles(config: config.RunConfiguration, w: Int, h: Int): Set<Tile> {
+    val p = config.heat.lattice ?: return emptySet()
+    if (config.heat.mode == "off") return emptySet()
+    return (p - 1 until h - 1 step p).flatMap { y -> (0 until w).map { Tile(it, y) } }.toSet()
+}
+
 /** Tiles sharing an edge with [e]'s footprint, outside it. */
 fun edgeNeighbours(e: PlacedEntity): List<Tile> {
     val r = e.rect
@@ -60,6 +67,8 @@ fun placeHeatPipes(
     entities: List<PlacedEntity>, w: Int, h: Int, portTiles: List<Tile>, poles: Boolean, ring: Boolean = true,
     /** Most heat ports the network may use: more join areas a single tree cannot reach (belts and ports wall them off). */
     maxPorts: Int = 1,
+    /** Tiles that are heat pipes whatever else (a lattice laid first): each of their runs joins the network as a whole. */
+    seeds: Set<Tile> = emptySet(),
 ): HeatResult {
     val ents = entities.toMutableList()
     val at = HashMap<Tile, Int>()
@@ -143,9 +152,17 @@ fun placeHeatPipes(
     val ports = arrayListOf(port)
     val portSet = portTiles.toHashSet()
 
+    // Seed runs (the lattice): joined whole once a run reaches one of their tiles.
+    val seedFree = seeds.filter { free(it) }.toHashSet()
+    fun addSeedRun(t0: Tile) {
+        val q = ArrayDeque(listOf(t0)); val seen = hashSetOf(t0)
+        while (q.isNotEmpty()) { val t = q.removeFirst(); add(t); Dir.entries.forEach { d -> val n = t + d; if (n in seedFree && seen.add(n)) q += n } }
+    }
+    seedFree.filter { s -> s in tree || Dir.entries.any { (s + it) in tree } }.forEach { if (it !in tree) addSeedRun(it) }
     while (true) {
         val coldTargets = HashSet<Tile>()
         needs.indices.filter { !warm[it] }.forEach { i -> edgeNeighbours(needs[i]).filter { free(it) || crossable(it) }.forEach { coldTargets += it } }
+        seedFree.filter { it !in tree }.forEach { coldTargets += it }
         if (coldTargets.isEmpty()) break
         // Cheapest run from the whole tree over free tiles (1) and crossable belts (CROSS_COST) to a tile beside
         // something cold.
@@ -180,6 +197,7 @@ fun placeHeatPipes(
         path.forEach { t -> if (!free(t)) { if (crossable(t)) cross(t) else ok = false } }
         if (!ok) break
         path.forEach { t -> add(t) }
+        path.filter { it in seedFree }.forEach { addSeedRun(it) }
     }
 
     // Prune leaves that warm nothing only they warm.
@@ -187,7 +205,7 @@ fun placeHeatPipes(
     while (pruned) {
         pruned = false
         for (t in tree.toList()) {
-            if (t in ports || t in crossings) continue
+            if (t in ports || t in crossings || t in seedFree) continue
             val degree = Dir.entries.count { (t + it) in tree }
             if (degree > 1) continue
             val warms = beside[t] ?: emptyList()

@@ -177,7 +177,9 @@ fun runTrial(
     val latticeTiles = if (lattice) poleLattice(w, h, config.power.pole) else emptyList()
     val poleSize = GameConstants.pole(config.power.pole).size
     val latticeCover = latticeTiles.flatMap { t -> (0 until poleSize).flatMap { dy -> (0 until poleSize).map { dx -> Tile(t.x + dx, t.y + dy) } } }
-    val static = staticObstacles(config, plan, w, h) + latticeCover
+    // Aquilo heat lattice: rows of heat pipe laid first; machines and belts keep off them (belts pass under).
+    val heatRows = power.heatLatticeTiles(config, w, h)
+    val static = staticObstacles(config, plan, w, h) + latticeCover + heatRows
     // Beacons: spots kept free like the pole lattice, machines pulled next to them (see Beacons.kt).
     val bspec = beaconSpec(data, config)?.takeIf { plan.machines.any { it.beacons > 0 } }
     val beaconSpots = if (bspec != null && beaconLatticeOn) beaconLattice(w, h, bspec, plan, config.beacons!!.perMachine, config.beacons.pitch, static) else emptyList()
@@ -319,7 +321,7 @@ fun runTrial(
         // stay cold, reroute keeping room around them, as for unpowered entities. Before the poles, which do not
         // freeze (unless heat.poles: then after them, so they are heated too).
         val heatFirst = config.heat.mode != "off" && !config.heat.poles
-        fun heatOf(es: List<PlacedEntity>) = power.placeHeatPipes(es, w, h, heatPortTiles(config.heat.edge, w, h), config.heat.poles, maxPorts = config.heat.ports)
+        fun heatOf(es: List<PlacedEntity>) = power.placeHeatPipes(es, w, h, heatPortTiles(config.heat.edge, w, h), config.heat.poles, maxPorts = config.heat.ports, seeds = heatRows)
         val heat0 = if (heatFirst) heatOf(built) else null
         if (heat0 != null && !heat0.ok && attempt < attempts) {
             notes += "heat attempt $attempt: ${heat0.cold.size} entities cold"

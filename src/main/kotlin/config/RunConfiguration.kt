@@ -144,6 +144,7 @@ data class RunConfiguration(
         require(heat.mode in setOf("off", "pipes")) { "heat.mode must be 'off' or 'pipes'" }
         require(heat.edge in setOf("any", "north", "east", "south", "west")) { "heat.edge must be north, east, south, west or any" }
         require(heat.mode == "off" || blocks == null) { "heat pipes are not supported in a factory of blocks yet" }
+        heat.lattice?.let { require(it >= 4) { "heat.lattice must be at least 4" } }
         require(mixedOutputs.isEmpty() || blocks == null) { "mixed outputs are not supported in a factory of blocks yet" }
         mixedOutputs.flatMap { it.items }.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.let { require(it.isEmpty()) { "items in more than one mixed output: $it" } }
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
@@ -275,6 +276,11 @@ data class HeatConfig(
     val poles: Boolean = false,
     /** Most heat ports (each a heat pipe on the ring where you bring heat in): more reach areas belts wall off. */
     val ports: Int = 4,
+    /**
+     * Rows of heat pipe across the box every this many rows (null: none), laid before placement as on Aquilo: machines
+     * stay off them, belts pass under them, and everything else branches off them, so belts wall off less.
+     */
+    val lattice: Int? = null,
 )
 
 /**
@@ -395,8 +401,8 @@ data class BlocksConfig(
      */
     val templates: Boolean = true,
     /**
-     * Links of one item leaving a block on one side for other blocks share one output port (up to a belt's worth): the
-     * corridors branch them off one belt with splitters (trunk routing), and the block has fewer ports to reach.
+     * Links of one item leaving a block on one side for other blocks share one output port (two or three, up to a belt's
+     * worth): splitters right outside it give each link its own belt, and the block has fewer ports to reach.
      */
     @SerialName("shared_outputs") val sharedOutputs: Boolean = false,
     /** Search share of a block that has a template (it has a layout already, usually smaller than the search finds). */
