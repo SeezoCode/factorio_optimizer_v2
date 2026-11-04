@@ -608,6 +608,19 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             fun shares(lane: Int): List<Double> {
                 if (outs.size == 1) return listOf(1.0)
                 val item = belts.laneItems[i]?.get(lane)?.singleOrNull()
+                // What the max flow sends through here to consumers below each side (a consumer below both counts
+                // half on each): where several supplies feed the same consumers, demand below would count them on
+                // every side that reaches them, and send one supply more than the consumers take of it.
+                if (item != null) {
+                    val via = DoubleArray(outs.size)
+                    routes.forEach { r ->
+                        if (r.item != item || i !in reachOf(r.from, item)) return@forEach
+                        val sides = outs.indices.filter { k -> passes(i, outs[k], item, belts) && r.to in reachOf(outs[k], item) }
+                        sides.forEach { k -> via[k] += r.flow / sides.size }
+                    }
+                    val sum = via.sum()
+                    if (sum > 1e-9) return via.map { it / sum }
+                }
                 val wants = outs.map { if (item != null) demandBelow(it, item) else demandBelow(it) }
                 val sum = wants.sum()
                 return wants.map { if (sum > 1e-12) it / sum else 1.0 / outs.size }
@@ -694,6 +707,13 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
      * take directly. Fixed supplies (ports, harness chests) join as sources at their rate. Each producer
      * inserter's belt rate is the flow through it; what the flow cannot meet shows up as starvation.
      */
+    /** A max-flow route: [flow] items/s of [item] dropped on belt [from] taken at belt [to] (a pickup or an output port). */
+    private class Route(val from: Int, val to: Int, val item: String, val edge: Int, var flow: Double = 0.0)
+    /** The routes [allocateProducers] found that carry anything. */
+    private var routes: List<Route> = emptyList()
+    /** Belts an item dropped on a belt can reach (set by [allocateProducers]). */
+    private var reachOf: (Int, String?) -> Set<Int> = { b, _ -> setOf(b) }
+
     private fun allocateProducers(
         belts: BeltGraph, beltRate: HashMap<Int, Double>, beltOut: Map<Pair<Int, String>, Double>, toBelt: Map<Pair<Int, String>, List<Int>>,
         cap: (Int) -> Double,
@@ -734,12 +754,14 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             sinkEdge[j] = g.edge(dBase + j, 1, q)
         }
         outputs.forEachIndexed { j, (_, r, _) -> sinkEdge[draws.size + j] = g.edge(oBase + j, 1, r) }
+        val allRoutes = ArrayList<Route>()
         fun connect(from: Int, b: Int, item: String?) {
             val down = downstream(b, item)
             pickNodes.forEachIndexed { k, (ins, it2) ->
-                if (it2 == item && indexAt(ents[ins].pickupTile)?.let { it in down } == true) g.edge(from, kBase + 2 * k, Double.MAX_VALUE)
+                val p = indexAt(ents[ins].pickupTile)
+                if (it2 == item && p != null && p in down) allRoutes += Route(b, p, item, g.edge(from, kBase + 2 * k, Double.MAX_VALUE))
             }
-            outputs.forEachIndexed { j, (it2, _, ob) -> if (it2 == item && ob in down) g.edge(from, oBase + j, Double.MAX_VALUE) }
+            outputs.forEachIndexed { j, (it2, _, ob) -> if (it2 == item && ob in down) allRoutes += Route(b, ob, item, g.edge(from, oBase + j, Double.MAX_VALUE)) }
         }
         producers.forEachIndexed { k, m -> g.edge(0, pBase + k, beltOut.getValue(m)) }
         val insEdge = insList.mapIndexed { k, (m, ins) ->
@@ -750,6 +772,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         fixed.forEachIndexed { k, (b, item, r) -> g.edge(0, fBase + k, r); connect(fBase + k, b, item) }
         g.run(0, 1)
         insList.forEachIndexed { k, (_, ins) -> beltRate[ins] = g.flowOn(insEdge[k]) }
+        allRoutes.forEach { it.flow = g.flowOn(it.edge) }
+        routes = allRoutes.filter { it.flow > 1e-9 }
+        reachOf = { b, item -> downstream(b, item) }
         // What each draw (then each output) misses.
         return DoubleArray(sinkEdge.size) { j -> (if (j < draws.size) draws[j].second else outputs[j - draws.size].second) - g.flowOn(sinkEdge[j]) }
     }

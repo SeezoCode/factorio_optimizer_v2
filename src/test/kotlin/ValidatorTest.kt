@@ -267,6 +267,28 @@ class ValidatorTest {
     }
 
     @Test
+    fun `a splitter sends a supply where the flow takes it, not by all the demand below each side`() {
+        // A (10/s) splits: 3/s leave on top, the rest side-loads onto C's left lane; B (7/s) side-loads onto its right
+        // lane; 14/s leave along C. A sends C 7/s (B gives the other 7), within a yellow lane's 7.5/s. Split by the
+        // demand below each side (3 against 14), A would send C 8.2/s, over a lane.
+        fun yb(x: Int, y: Int, d: Dir) = e("transport-belt", x, y, d).copy(net = 1)
+        val layout = Layout(8, 7, listOf(
+            yb(0, 0, Dir.E), yb(1, 0, Dir.E), e("splitter", 2, 0, Dir.E).copy(net = 1),
+            yb(3, 0, Dir.E), yb(4, 0, Dir.E), yb(5, 0, Dir.E), yb(6, 0, Dir.E), yb(7, 0, Dir.E),
+            yb(3, 1, Dir.E), yb(4, 1, Dir.S), yb(4, 2, Dir.S),
+            yb(4, 3, Dir.E), yb(5, 3, Dir.E), yb(6, 3, Dir.E), yb(7, 3, Dir.E),
+            yb(4, 5, Dir.N), yb(4, 4, Dir.N),
+        ))
+        val spec = base.copy(checkRates = true,
+            sources = listOf(SourceSpec(Tile(0, 0), "iron-plate", 10.0), SourceSpec(Tile(4, 5), "iron-plate", 7.0)),
+            outputs = listOf(validate.OutputSpec(Tile(7, 0), "iron-plate", 3.0), validate.OutputSpec(Tile(7, 3), "iron-plate", 14.0)))
+        assertEquals(emptyList(), check("splitter_by_flow", layout, spec))
+        // B gives only 5/s: A must send C 9/s, more than its left lane takes.
+        val short = spec.copy(sources = listOf(SourceSpec(Tile(0, 0), "iron-plate", 12.0), SourceSpec(Tile(4, 5), "iron-plate", 5.0)))
+        assertHas(check("splitter_by_flow_over", layout, short), ErrorType.BELT_OVER_CAPACITY, Tile(4, 3))
+    }
+
+    @Test
     fun `one lane overflows when every producer drops from the same side`() {
         fun basic(x: Int) = e("transport-belt", x, 2, Dir.E).copy(net = 1)
         val belts = (0..6).map { basic(it) }

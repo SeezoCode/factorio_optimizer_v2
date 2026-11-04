@@ -120,6 +120,25 @@ class TemplateTest {
     }
 
     @Test
+    fun `beaconed furnaces get a column with beacons along both sides`() {
+        for ((inEdge, outEdge) in listOf("west" to "east", "north" to "south")) {
+            // Beaconed furnaces take 1.67 ore/s each: inserters keep up with capacity research.
+            val config = job("iron-plate", 24.0, "iron-ore", inEdge, outEdge).copy(research = ResearchConfig(inserterCapacity = 7),
+                beacons = config.BeaconConfig(machineModules = listOf("productivity-module-3", "productivity-module-3")))
+            val plan = buildPlan(TestData.data, config)
+            assertTrue(plan.machines.all { it.beacons == 2 }, "${plan.machines.map { it.beacons }}")
+            val ts = checkAll("iron_beacons_${inEdge}_$outEdge", config, plan)
+            ts.forEach { t ->
+                val l = t.layout!!
+                // Three tiles of beacons outside each column of machines: 16 wide (17 with a bypass lane).
+                assertTrue(minOf(t.w, t.h) in 16..17, "${t.w} x ${t.h}")
+                assertTrue(l.entities.count { it.kind == Kind.BEACON } >= plan.machines.size / 2)
+                assertTrue(l.entities.filter { it.kind == Kind.MACHINE }.all { it.modules == listOf("productivity-module-3", "productivity-module-3") })
+            }
+        }
+    }
+
+    @Test
     fun `mixed blocks get no template`() {
         val plan = buildPlan(TestData.data, TestData.job("t3"))
         val notes = ArrayList<String>()

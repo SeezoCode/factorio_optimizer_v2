@@ -453,17 +453,21 @@ long onto B; right: long from A, short onto B), and the third tile is free for a
 30 x 10 = 300 tiles, against 441–484 for the searched smelting blocks of the 2/s factory. Short headers above and
 below the column run the port belts to whichever sides the block's ports are on (a small belt search, undergrounds
 included); more product ports branch off the first one's belt through splitters, more input ports merge into it the
-same way, what A does not use may pass on to an output port, and when ports sit on both ends of the column a bypass
-lane along it (one tile wider) carries a belt past the machines. Every template is validated before it is offered.
-It needs long-handed inserters fast enough for the machines (furnaces are; an assembler 3 making cable or gears is
-not without inserter research), and does not take beacons yet.
+same way (the first two join from opposite sides onto a lane each, and a merge only joins a side while it stays
+within a lane), what A does not use may pass on to an output port, and when ports sit on both ends of the column a
+bypass lane along it (one tile wider) carries a belt past the machines. Every template is validated before it is
+offered. It needs long-handed inserters fast enough for the machines (furnaces are; an assembler 3 making cable or
+gears is not without inserter research). Machines planned with beacons get a column of beacons outside each column
+of machines (16 wide): units of beacon, pole row, beacon, placed so every machine has the beacons its rate needs
+(with the default two per machine, 2–4 each), the machines with their own modules.
 
 Six science at 1/s each from ore, 28 blocks sized by weight (`docs/status/six_science_ore_28_blocks.json`, 1600 s
 plus 600 s of compaction, 2 threads each, same machine): **26,970 tiles with templates against 29,928 without**
-(9.9 % smaller; an early version that gave a column to 7 of the 14 smelting blocks made 27,722). Some factories the
-search tried were rejected for an iron lane over capacity in front of a steel column (the whole-factory check put more
-on one side of its input junction than the block's plan does); the result is valid, but that is search time lost and
-is being looked into. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
+(9.9 % smaller; an early version that gave a column to 7 of the 14 smelting blocks made 27,722). That run rejected
+20 factories for an iron lane over capacity in front of a steel column fed by three smelting blocks: the validator
+split each upstream splitter by all the demand reachable below each side, which counted the steel column's whole draw
+behind every one of its three inputs. It now splits by what the max flow sends through to the consumers below each
+side. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
 `TEMPLATE_JOB=<job>`) says why a block got none; `TEMPLATE_DEBUG=1` traces the header search.
 
 ### Space Age
@@ -644,7 +648,8 @@ productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in
 layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
-not shown: Aquilo needs heat pipes to keep machines warm, and the generator does not place them.
+not shown: Aquilo heat pipes are placed ([Aquilo: heat pipes](#aquilo-heat-pipes)) but still experimental, dense
+blocks often leaving an inserter no free tile reaches.
 
 ## When the planner outsmarts you
 
@@ -670,6 +675,22 @@ and practically useless:
   with only recyclers allowed it took batteries, concrete and circuits back apart, a quarter at a time, to shrink
   what leaves. List what may leave in `mixed_outputs`, or keep the machines (and `forbidden_recipes`) to what you
   want built.
+
+## Considered and left out
+
+- **One assembler switching between two recipes** (circuit-set recipe) where two recipes each use less than half a
+  machine. In the six-science plan only seven solid assembler recipes have a last machine under half used (pipe
+  0.07, piercing rounds 0.20, grenades 0.20, transport belts 0.22, electric furnaces 0.33, robot frames 0.33,
+  inserters 0.40): pairing them saves 3–4 assemblers, 60–100 tiles of about 27,000, and only where both end up in
+  the same block. A recipe change also leaves the old ingredients in the machine's trash slots, which its output
+  inserter then puts on the product belt. Not worth it for space.
+- **Ingredients in recipe ratio on one lane** (sushi feeding a column of one recipe, so a science pack's three
+  ingredients take one lane instead of three). Science blocks would shrink by about a third, a few percent of the
+  factory. On a dead-end lane it is not safe: once the lane backs up, gaps open at the feed at the rate the
+  machines consume, and the merge's priority decides which item fills them, not the recipe, so the mix drifts until
+  every machine waits for an item stuck behind the others. Done safely it is a loop with one inserter per item
+  allowed to add only while the loop holds fewer than N of it (belts read their contents into a circuit); that needs
+  loops in the validator and an in-game check first.
 
 ## Not verified in game yet
 

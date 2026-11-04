@@ -11,8 +11,13 @@ import geom.Tile
 import place.PlacedMachine
 import place.Placement
 import plan.ProductionPlan
+import plan.BeaconSpec
 import plan.Role
+import plan.beaconNeed
+import plan.beaconSpec
+import plan.inBeaconRange
 import plan.inserterRate
+import plan.machineModules
 import power.placePoles
 import search.TrialResult
 import search.score
@@ -44,10 +49,10 @@ object Templates {
     private const val LONG = "long-handed-inserter"
     private val DEBUG = System.getenv("TEMPLATE_DEBUG") != null
 
-    /** A machine a machine column can hold: 3 x 3, one solid ingredient, one item product, no fluids or beacons. */
+    /** A machine a machine column can hold: 3 x 3, one solid ingredient, one item product, no fluids. */
     fun columnMachine(m: plan.MachineInstance): Boolean =
         m.w == 3 && m.h == 3 && m.needsFluid == null && m.fluidDemand.isEmpty() && m.fluidIn.isEmpty() && m.fluidOut.isEmpty() &&
-            m.demand.size == 1 && m.itemProducts.size == 1 && m.demand.keys.single() != m.itemProducts.keys.single() && m.beacons == 0
+            m.demand.size == 1 && m.itemProducts.size == 1 && m.demand.keys.single() != m.itemProducts.keys.single()
 
     /**
      * Recipes of [plan] whose machines a machine column can hold with the inserters [config] allows (furnaces, mostly;
@@ -78,6 +83,8 @@ object Templates {
         val belt: String, val underground: String, val splitter: String, val maxGap: Int,
         /** Items/s one lane of the tier holds. */
         val laneCap: Double,
+        /** Beacons each machine needs in range (0: none), the beacon, and the modules in the machines' own slots. */
+        val need: Int = 0, val beacon: BeaconSpec? = null, val modules: List<String>? = null,
     )
 
     private val SIDES = setOf("north", "east", "south", "west")
@@ -114,8 +121,12 @@ object Templates {
         if (LONG !in config.inserters.allowed) return no("long-handed inserters not allowed")
         if (inserterRate(LONG, config, true) < maxIn - 1e-9 || inserterRate(LONG, config, false) < maxOut - 1e-9) return no("long-handed inserters too slow (${"%.2f".format(maxIn)}/s in, ${"%.2f".format(maxOut)}/s out)")
 
+        // Beacons: a column of them along each side, outside the machines.
+        val need = ms.maxOf { beaconNeed(it.crafts, it.beaconCrafts) }
+        val beacon = if (need > 0) beaconSpec(data, config) ?: return no("$need beacon(s) per machine but no beacon") else null
+        val modules = if (config.beacons == null) null else data.recipes[m0.recipe]?.let { machineModules(data, config, it, m0.machine) }?.takeIf { it.isNotEmpty() }
         val spec = ColumnSpec(m0.machine, m0.recipe, ingredient, product, ins.map { it.id }, prodOut.map { it.id }, passOut.firstOrNull()?.id,
-            shortIn, shortOut, tier.belt, tier.underground, tier.splitter, tier.maxUndergroundGap, tier.throughput / 2)
+            shortIn, shortOut, tier.belt, tier.underground, tier.splitter, tier.maxUndergroundGap, tier.throughput / 2, need, beacon, modules)
         val sides = plan.ports.associate { it.id to Dir.fromName(it.specs[0].edge!!) }
         val found = ArrayList<TrialResult>()
         for (q in 0..3) {
@@ -127,6 +138,33 @@ object Templates {
         if (found.isEmpty()) return no("no header fits the port sides")
         // Keep the smallest of each shape (upright or lying).
         return found.groupBy { it.w to it.h }.map { (_, rs) -> rs.minBy { it.score } }.sortedBy { it.area }
+    }
+
+    /**
+     * Beacon rows beside a column of [rows] core rows (machines every three rows from row 0): beacon start rows and
+     * the rows between two beacons where a pole stands (every beacon touches one), so that every machine has [need]
+     * beacons in range, or null. Units stacked from a few first rows: beacon, pole row, beacon (or beacon, pole row),
+     * and one more beacon with its pole row where the rest has room; also mirrored, from the bottom. The fewest beacons.
+     */
+    private fun beaconRows(rows: Int, b: BeaconSpec, need: Int): Pair<List<Int>, List<Int>>? {
+        val sz = b.size
+        fun enough(starts: List<Int>) = (0 until rows / 3).all { k -> starts.count { inBeaconRange(b, 0, it, sz, 3 * k, 3, 3) } >= need }
+        val found = ArrayList<Pair<List<Int>, List<Int>>>()
+        for (pair in listOf(true, false)) for (off in 0..2 * sz) for (flip in listOf(false, true)) {
+            val starts = ArrayList<Int>(); val gaps = ArrayList<Int>()
+            val unit = if (pair) 2 * sz + 1 else sz + 1
+            var r = off
+            while (r + unit <= rows) {
+                starts += r; gaps += r + sz
+                if (pair) starts += r + sz + 1
+                r += unit
+            }
+            if (r + sz + 1 <= rows) { starts += r; gaps += r + sz }
+            val s2 = if (flip) starts.map { rows - sz - it } else starts
+            val g2 = if (flip) gaps.map { rows - 1 - it } else gaps
+            if (s2.isNotEmpty() && enough(s2)) found += s2.sorted() to g2.sorted()
+        }
+        return found.minByOrNull { it.first.size }
     }
 
     /** One upright column with the ports on [sides]: the smallest over belt orders, directions of B and header heights. */
@@ -153,35 +191,39 @@ object Templates {
 
     private fun tryColumn(
         data: RootData, config: RunConfiguration, plan: ProductionPlan, s: ColumnSpec, sides: Map<Int, Dir>,
-        hTop: Int, hBot: Int, xa: Int, bDir: Dir, bypass: Boolean = false,
+        hTop: Int, hBot: Int, xa0: Int, bDir: Dir, bypass: Boolean = false,
         /** Rows between the input junction and A's head (straight belts). */
         jk: Int = 0,
     ): TrialResult? {
         val t0 = System.currentTimeMillis()
         val n = plan.machines.size
         val units = (n + 1) / 2
-        val W = if (bypass) 11 else 10
+        // With beacons a column of them stands outside each column of machines: everything else moves right by o.
+        val o = s.beacon?.size ?: 0
+        val beaconRows = if (s.beacon == null) null else beaconRows(3 * units, s.beacon, s.need) ?: return null
+        val W = (if (bypass) 11 else 10) + 2 * o
         val core0 = hTop
         val core1 = hTop + 3 * units   // first row below the column
         val H = core1 + hBot
-        val xb = 9 - xa
+        val xa = xa0 + o
+        val xb = 9 - xa0 + o
         val away = xb - xa             // from A towards B: +1 or -1
         val netOf = plan.nets.associate { it.item to it.id }
         val ents = ArrayList<PlacedEntity>()
         val occ = HashSet<Tile>()
         fun put(e: PlacedEntity) { ents += e; occ += e.rect.tiles() }
         val machines = ArrayList<PlacedMachine>()
-        val left = xa == 4   // A left of B: the left side takes from A with a short inserter
+        val left = xa0 == 4   // A left of B: the left side takes from A with a short inserter
         for (k in 0 until units) {
             val y0 = core0 + 3 * k
             for (side in 0..1) {
                 val id = 2 * k + side
                 if (id >= n) continue
                 val m = plan.machines[id]
-                val mx = if (side == 0) 0 else 7
-                put(PlacedEntity(m.machine, Kind.MACHINE, mx, y0, Dir.N, m.recipe, w = 3, h = 3))
+                val mx = o + if (side == 0) 0 else 7
+                put(PlacedEntity(m.machine, Kind.MACHINE, mx, y0, Dir.N, m.recipe, w = 3, h = 3, modules = s.modules))
                 machines += PlacedMachine(id, mx, y0, Dir.N, false)
-                val ix = if (side == 0) 3 else 6
+                val ix = o + if (side == 0) 3 else 6
                 // The short one of the two inserters stands next to the belt it serves.
                 val inShort = (side == 0) == left
                 val toward = if (side == 0) Dir.E else Dir.W   // from the machine towards the belts
@@ -207,7 +249,16 @@ object Templates {
         val bExit = if (bDir == Dir.N) Tile(xb, core0 - 1) else Tile(xb, core1)
         val aTail = Tile(xa, core1)
         // Pole slots: the third tile of each three in the inserter columns.
-        val poleSlots = (0 until units).flatMap { k -> listOf(Tile(3, core0 + 3 * k + 2), Tile(6, core0 + 3 * k + 2)) }
+        val poleSlots = ArrayList((0 until units).flatMap { k -> listOf(Tile(o + 3, core0 + 3 * k + 2), Tile(o + 6, core0 + 3 * k + 2)) })
+        // Beacons beside the machines, a pole in the row between two (the middle of the beacon column).
+        val beaconArea = HashSet<Tile>()
+        if (s.beacon != null && beaconRows != null) {
+            for (bx in intArrayOf(0, o + 10)) {
+                for (y in core0 until core1) for (x in bx until bx + o) beaconArea += Tile(x, y)
+                beaconRows.first.forEach { r -> put(PlacedEntity(s.beacon.name, Kind.BEACON, bx, core0 + r, w = o, h = o, modules = s.beacon.modules)) }
+                beaconRows.second.forEach { r -> poleSlots += Tile(bx + o / 2, core0 + r) }
+            }
+        }
 
         fun inBox(t: Tile) = t.x in 0 until W && t.y in 0 until H
         fun sideOfRing(t: Tile): Dir? = when {
@@ -224,6 +275,8 @@ object Templates {
         // before B's first belt (a belt there would feed B).
         val reserved0 = HashSet<Tile>()
         if (s.pass == null) reserved0 += aTail
+        // The beacon columns' gaps hold their poles: no belt runs there.
+        reserved0 += beaconArea.filter { it !in occ }
         // A belt there may run past, but not point into B (it would feed it).
         val noHeading = mapOf(if (bDir == Dir.N) Tile(xb, core1) to Dir.N else Tile(xb, core0 - 1) to Dir.S)
 
