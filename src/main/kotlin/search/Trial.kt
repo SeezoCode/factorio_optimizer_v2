@@ -93,6 +93,7 @@ fun validationSpec(
         recipeInfo = recipeInfo,
         beacon = beaconSpec(data, config),
         beltStack = config.beltStackSize,
+        spoilage = config.spoilage.mode == "drain",
     )
 }
 
@@ -316,7 +317,18 @@ fun runTrial(
                 return runTrial(data, plan, config, given, w, h, seed, placement, annealer.lastT0, deadline, lattice, debugDir, beaconLatticeOn = true)
             }
         }
-        val built = ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList())
+        // Gleba: a drain (filter inserter into a chest) at every belt end where spoilage could collect; where one has no
+        // room, reroute keeping room there, as for unpowered entities.
+        val drains = if (config.spoilage.mode != "drain") null else route.placeDrains(
+            ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList()), plan, config, w, h, obstacles + reservedTiles + outside)
+        if (drains != null && !drains.ok && attempt < attempts) {
+            notes += "spoilage attempt $attempt: ${drains.stuck.size} belt end(s) without room for a drain"
+            drains.stuck.forEach { u -> for (dy in -2..2) for (dx in -2..2) bias.merge(Tile(u.x + dx, u.y + dy), 1.0, Double::plus) }
+            val again = route(RouteProblem(plan, config, tuning.route, placement, obstacles, tileBias = bias, warmHistory = result.rawHistory))
+            if (again.success) result = again
+            continue
+        }
+        val built = ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList()) + (drains?.drains ?: emptyList())
         // Aquilo: heat pipes beside everything that freezes, joined to the heat port (see power/Heat.kt); where some
         // stay cold, reroute keeping room around them, as for unpowered entities. Before the poles, which do not
         // freeze (unless heat.poles: then after them, so they are heated too).

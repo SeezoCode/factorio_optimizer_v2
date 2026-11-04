@@ -250,7 +250,7 @@ class PathFinder(internal val p: RouteProblem) {
     /** Tiles beside an option's belt tile, where a dead-end splitter stub could reach it (B14). */
     private val stubStamp = IntArray(N)
     /** Dead-end splitter pickups (B14): a splitter on a straight belt whose second half leads nowhere. */
-    private val stubsOn = config.trick("B14")
+    private val stubsOn = config.trick("B14") && config.spoilage.mode == "off"   // a stub holds what spoils there
     /** Aquilo: each inserter keeps a tile beside it for a heat pipe; belts and inserters there are conflicts. */
     private val heatOn = config.heat.mode != "off"
     /** Names of the plan's mixed belts (sushi): their producers' inserters take every product that goes there. */
@@ -1619,6 +1619,15 @@ class PathFinder(internal val p: RouteProblem) {
                     else if (mixedOut) null else filterFor(v.machine, v.base.item)
                 // Onto a mixed belt: one inserter takes every product that goes there, the machine's others left out.
                 val blacklist = if (!mixedOut) null else plan.machines[v.machine!!].itemProducts.keys.filter { plan.mixed[it] != v.base.item }.sorted().ifEmpty { null }
+                // Spoilage: out of a machine of several products that holds something spoiling, an inserter leaves the
+                // other products in (a blacklist) and so takes its own and the spoilage.
+                val spoilOut = blacklist == null && item != null && v.role == Role.PRODUCER && config.spoilage.mode == "drain" &&
+                    v.machine != null && spoilProne(plan.machines[v.machine!!])
+                if (spoilOut) {
+                    val others = plan.machines[v.machine!!].itemProducts.keys.filter { it != item }.sorted()
+                    out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, net = n.planId, blacklist = others)
+                    return@forEach
+                }
                 out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId, blacklist = blacklist)
             }
         }

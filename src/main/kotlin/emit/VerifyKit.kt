@@ -313,6 +313,30 @@ object VerifyKit {
             )),
         ),
         Case(
+            "v26-spoilage", "Where spoilage goes: out of a machine through its output inserter, off a belt end by a filter",
+            "Build on Gleba (or anywhere in the editor). Two biochambers make nutrients from yumako mash, fed mash from the " +
+                "west and nutrients for fuel. Let them fill, then pick up the two mash infinity chests and speed time up " +
+                "(/c game.speed = 20; mash spoils in 3 minutes). Expected: the top biochamber's output inserter (no filter) " +
+                "takes the spoiled mash out with the nutrients into its chest; the middle one's, filtered to nutrients, leaves " +
+                "the spoilage in and the machine stops. On the belt at the bottom, mash that spoils rides to the end, where " +
+                "the filter inserter takes the spoilage into the chest below. Note where spoiled fuel goes (fuel slot, result " +
+                "or trash), and that yumako mash spoils into spoilage in 3 minutes (GameConstants.SPOILS).",
+            Layout(9, 13, listOf(
+                e("infinity-chest", 0, 0, item = "yumako-mash"), e("inserter", 1, 0, Dir.W),
+                e("infinity-chest", 0, 2, item = "nutrients"), e("inserter", 1, 2, Dir.W),
+                e("biochamber", 2, 0, recipe = "nutrients-from-yumako-mash"),
+                e("inserter", 5, 1, Dir.W), e("steel-chest", 6, 1),
+                e("infinity-chest", 0, 4, item = "yumako-mash"), e("inserter", 1, 4, Dir.W),
+                e("infinity-chest", 0, 6, item = "nutrients"), e("inserter", 1, 6, Dir.W),
+                e("biochamber", 2, 4, recipe = "nutrients-from-yumako-mash"),
+                e("fast-inserter", 5, 5, Dir.W, item = "nutrients"), e("steel-chest", 6, 5),
+                e("infinity-chest", 0, 9, item = "yumako-mash"), e("inserter", 0, 10, Dir.N),
+                *(0..5).map { e("transport-belt", it, 11, Dir.E) }.toTypedArray(),
+                e("fast-inserter", 6, 11, Dir.W, item = "spoilage"), e("steel-chest", 7, 11),
+                pole(5, 3), pole(5, 8), pole(4, 10),
+            )),
+        ),
+        Case(
             "v25-belt-stacking", "A stack inserter drops items on a belt in stacks, other inserters one at a time",
             "Research transport belt capacity 1 and 2 and inserter capacity (editor: research everything). The stack " +
                 "inserter at (0,1) drops iron plates onto the turbo belt along y=2, the fast inserter at (0,5) onto the one " +

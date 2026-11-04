@@ -64,6 +64,8 @@ data class RunConfiguration(
      * lane carries this many times its items; items dropped by any other inserter take a whole slot each.
      */
     @SerialName("belt_stack_size") val beltStackSize: Int = 1,
+    /** Gleba spoilage: where items that spoil leave what they spoil into (see [SpoilageConfig]). */
+    val spoilage: SpoilageConfig = SpoilageConfig(),
     /**
      * Second underground tier for weaving (B5): undergrounds of different tiers do not pair, so one can pass
      * under a line the other already uses. "auto" (the next tier up, or fast under express), "none", or a tier.
@@ -148,6 +150,8 @@ data class RunConfiguration(
         mixedOutputs.flatMap { it.items }.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.let { require(it.isEmpty()) { "items in more than one mixed output: $it" } }
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
         require(beltStackSize in 1..GameConstants.MAX_BELT_STACK) { "belt_stack_size must be 1..${GameConstants.MAX_BELT_STACK}" }
+        require(spoilage.mode in setOf("off", "drain")) { "spoilage.mode must be 'off' or 'drain'" }
+        require(spoilage.chest in GameConstants.CHESTS) { "Unknown chest '${spoilage.chest}'" }
         GameConstants.pole(power.pole)
         box.startSize?.let { require(it >= 3) { "box.start_size must be at least 3" } }
         box.maxSize?.let { require(it >= 3) { "box.max_size must be at least 3" } }
@@ -427,6 +431,18 @@ data class BlocksConfig(
     val merge: Boolean = false,
     @SerialName("merge_share") val mergeShare: Double = 0.3,
     @SerialName("merge_max_machines") val mergeMaxMachines: Int? = null,
+)
+
+/**
+ * Gleba spoilage. "off" (default): spoilage is not modelled. "drain": what spoils on a belt rides to its end, where a
+ * filter inserter takes it into a [chest]; a machine whose ingredients, fuel or products spoil hands its output to a
+ * belt through an inserter that takes the spoilage too (never straight into another machine, which would not take
+ * it), and no dead-end splitter stub holds a spoiling item.
+ */
+@Serializable
+data class SpoilageConfig(
+    val mode: String = "off",
+    val chest: String = "steel-chest",
 )
 
 @Serializable

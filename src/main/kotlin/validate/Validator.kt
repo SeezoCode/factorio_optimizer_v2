@@ -26,6 +26,7 @@ enum class ErrorType {
     OUTPUT_MISSING,
     BEACON_SHORT,
     COLD, HEAT_DISCONNECTED,
+    SPOILAGE_STUCK, SPOILAGE_CLOGS,
 }
 
 data class ValidationError(val type: ErrorType, val tile: Tile, val message: String) {
@@ -95,6 +96,11 @@ data class ValidationSpec(
      * one slot of a lane; anything another inserter drops takes a slot per item.
      */
     val beltStack: Int = 1,
+    /**
+     * Gleba spoilage: every belt end where spoilage could collect has a drain (a filter inserter into a chest), and a
+     * machine holding something that spoils has an inserter able to take the spoilage out.
+     */
+    val spoilage: Boolean = false,
 )
 
 /** Heat ports (heat pipe tiles where heat comes in) and whether poles freeze too. */
@@ -124,6 +130,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         checkBeacons()
         checkFluids()
         checkHeat()
+        if (spec.spoilage) checkSpoilage(belts)
         return errors.distinct()
     }
 
@@ -403,7 +410,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                         err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} moves $item into ${drop.recipe}, which does not use it")
                     }
                 }
-                Kind.CHEST -> if (pick.kind != Kind.MACHINE) err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "chest is fed from ${pick.name}, not a machine")
+                Kind.CHEST -> if (pick.kind != Kind.MACHINE && !isDrain(ins)) err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "chest is fed from ${pick.name}, not a machine")
                 else -> {}
             }
         }
@@ -416,7 +423,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         ents.forEach { ins ->
             if (ins.kind != Kind.INSERTER) return@forEach
             val p = indexAt(ins.pickupTile) ?: return@forEach
-            if ((ents[p].kind == Kind.BELT || ents[p].kind == Kind.SPLITTER) && belts.items[p].isNullOrEmpty()) {
+            if ((ents[p].kind == Kind.BELT || ents[p].kind == Kind.SPLITTER) && belts.items[p].isNullOrEmpty() && !isDrain(ins)) {
                 err(ErrorType.UNREACHABLE, ins.pickupTile, "${ins.name} picks from a belt no item reaches")
             }
         }
@@ -825,6 +832,61 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             Kind.MACHINE -> machineOutput(ins) == item
             Kind.CHEST, Kind.INFINITY_CHEST -> src.item == item
             else -> false
+        }
+    }
+
+    // ---- spoilage (Gleba) ----
+    private val spoilResults: Set<String> = GameConstants.SPOILS.values.mapNotNull { it.first }.toSet()
+
+    /** Whether [ins] takes [item] (no filter, a whitelist of it, or a blacklist without it). */
+    private fun lets(ins: PlacedEntity, item: String): Boolean =
+        if (ins.item != null) ins.item == item else ins.blacklist?.contains(item) != true
+
+    /** A spoilage drain: from a belt into a chest, filtered to a spoil result or leaving listed items behind. */
+    private fun isDrain(ins: PlacedEntity): Boolean {
+        if (!spec.spoilage || ins.kind != Kind.INSERTER) return false
+        val pick = entityAt(ins.pickupTile) ?: return false
+        val drop = entityAt(ins.dropTile) ?: return false
+        return pick.kind.beltFamily && drop.kind == Kind.CHEST && (ins.item in spoilResults || ins.blacklist != null)
+    }
+
+    /**
+     * What spoils rides to the end of its belt as what it spoils into: every belt that may carry such an item, or that
+     * a machine holding something that spoils puts its output on, needs at each dead end a drain letting that through;
+     * such a machine needs an inserter onto a belt or into a chest that takes its spoilage out.
+     */
+    private fun checkSpoilage(belts: BeltGraph) {
+        val prone = HashMap<Int, Set<String>>()   // machine index -> what spoils into what there
+        ents.forEachIndexed { i, m ->
+            if (m.kind != Kind.MACHINE) return@forEachIndexed
+            val mi = machineInfo(m) ?: return@forEachIndexed
+            val rs = (mi.ingredients + mi.outputs.keys + mi.demand.keys).mapNotNull { GameConstants.spoilResult(it) }.toSet()
+            if (rs.isNotEmpty()) prone[i] = rs
+        }
+        val carry = HashMap<Int, MutableSet<String>>()   // belt index -> spoil results it may carry
+        belts.items.forEach { (b, items) -> items.mapNotNull { GameConstants.spoilResult(it) }.forEach { carry.getOrPut(b) { HashSet() } += it } }
+        prone.forEach { (m, rs) ->
+            val outlets = ents.filter { it.kind == Kind.INSERTER && indexAt(it.pickupTile) == m }.filter { ins ->
+                val d = entityAt(ins.dropTile)
+                d != null && (d.kind.beltFamily || d.kind == Kind.CHEST) && rs.all { lets(ins, it) }
+            }
+            if (outlets.isEmpty()) err(ErrorType.SPOILAGE_CLOGS, ents[m].tile, "${ents[m].recipe} holds what spoils into ${rs.sorted()} and no inserter onto a belt or into a chest takes it out")
+            outlets.forEach { ins -> indexAt(ins.dropTile)?.takeIf { ents[it].kind.beltFamily }?.let { carry.getOrPut(it) { HashSet() } += rs } }
+        }
+        // Downstream, belt by belt.
+        val queue = ArrayDeque(carry.keys)
+        while (queue.isNotEmpty()) {
+            val b = queue.removeFirst()
+            belts.next[b]?.forEach { n -> if (carry.getOrPut(n) { HashSet() }.addAll(carry.getValue(b))) queue += n }
+        }
+        val box = Rect(0, 0, layout.w, layout.h)
+        val drainsAt = ents.filter { isDrain(it) }.groupBy { indexAt(it.pickupTile) }
+        carry.forEach { (b, rs) ->
+            val e = ents[b]
+            if (e.kind == Kind.UG_IN || !belts.next[b].isNullOrEmpty()) return@forEach
+            if (e.outputTile?.let { it in box } == false) return@forEach   // leaves the box: a port
+            val left = rs.filter { r -> drainsAt[b]?.none { lets(it, r) } != false }
+            if (left.isNotEmpty()) err(ErrorType.SPOILAGE_STUCK, e.tile, "$left would collect at this belt end: no drain takes it")
         }
     }
 

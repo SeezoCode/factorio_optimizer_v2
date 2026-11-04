@@ -118,6 +118,25 @@ object GameConstants {
         "infinity-chest",
     )
 
+    /**
+     * Space Age: items that spoil, with what they spoil into (null: it hatches into an enemy, nothing to remove) and in
+     * how many seconds. Not in recipes.json. [W] VERIFY (v26)
+     */
+    val SPOILS: Map<String, Pair<String?, Int>> = mapOf(
+        "yumako" to ("spoilage" to 3600), "jellynut" to ("spoilage" to 3600),
+        "yumako-mash" to ("spoilage" to 180), "jelly" to ("spoilage" to 240),
+        "bioflux" to ("spoilage" to 7200), "nutrients" to ("spoilage" to 300),
+        "agricultural-science-pack" to ("spoilage" to 3600), "raw-fish" to ("spoilage" to 7200),
+        "iron-bacteria" to ("iron-ore" to 60), "copper-bacteria" to ("copper-ore" to 60),
+        "pentapod-egg" to (null to 900), "biter-egg" to (null to 1800),
+    )
+
+    /** Whether [item] spoils. */
+    fun spoils(item: String): Boolean = item in SPOILS
+
+    /** What [item] spoils into, or null (it does not spoil, or it hatches). */
+    fun spoilResult(item: String): String? = SPOILS[item]?.first
+
     const val INFINITY_CHEST = "infinity-chest"
     /** Aquilo: heat pipes warm whatever shares an edge with them (see power/Heat.kt). */
     const val HEAT_PIPE = "heat-pipe"

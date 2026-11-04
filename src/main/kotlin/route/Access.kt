@@ -89,8 +89,11 @@ fun assignDirectInsertion(
     val rectOf = placement.machines.associate { it.id to placement.rect(plan, it) }
     val producerRate = HashMap<Int, Double>()   // terminal id -> spare
     val consumerNeed = HashMap<Int, Double>()
+    val spoilDrain = config.spoilage.mode == "drain"
     plan.terminals.forEach { t ->
         if (t.fluid) return@forEach
+        // A machine holding something that spoils hands its spoilage out with its products: not into another machine.
+        if (spoilDrain && t.machine != null && spoilProne(plan.machines[t.machine])) return@forEach
         when (t.role) {
             Role.PRODUCER -> producerRate[t.id] = t.rate
             Role.CONSUMER -> consumerNeed[t.id] = t.rate
@@ -105,8 +108,8 @@ fun assignDirectInsertion(
         val cap get() = tiles.size * (if (long) longRate else normalRate)
     }
     val cands = mutableListOf<Cand>()
-    val producers = plan.terminals.filter { it.role == Role.PRODUCER && !it.fluid }
-    val consumers = plan.terminals.filter { it.role == Role.CONSUMER && it.machine != null && !it.fluid }
+    val producers = plan.terminals.filter { it.role == Role.PRODUCER && !it.fluid && it.id in producerRate }
+    val consumers = plan.terminals.filter { it.role == Role.CONSUMER && it.machine != null && !it.fluid && it.id in consumerNeed }
     for (p in producers) for (c in consumers) {
         if (p.item != c.item || p.machine == c.machine) continue
         val a = rectOf.getValue(p.machine!!)
