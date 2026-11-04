@@ -896,33 +896,65 @@ fun stitchRoute(
         starts[l.id]?.let { (t, d) -> starts[l.id] = (dive(l, t, d) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot leave its port")) to d }
         ends[l.id]?.let { (t, d) -> ends[l.id] = (dive(l, t, d.opposite) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot reach its port")) to d }
     }
-    // A shared output port: splitters right outside it give each of its links a belt of its own (two or three).
+    // A shared output port: splitters near it give each of its links a belt of its own (two or three), reached by a
+    // short belt from the port (the nearest spot with room, found by a small search).
     val otherEnds = (starts.filterKeys { k -> sharedStarts.none { k in it } }.values + ends.values).map { it.first }.toSet()
-    // Tiles another group needs: the first tile outside each shared port, and the outputs handed out so far.
+    // Tiles another group needs: the first tile outside each shared port, and what was handed out so far.
     val claimed = sharedStarts.map { starts.getValue(it[0]).first }.toMutableSet()
+    val tier = GameConstants.beltTier(config.beltTier)
     for (g in sharedStarts) {
-        val (s0, d) = starts.getValue(g[0])
+        val (s0, d0) = starts.getValue(g[0])
         val item = split.links[g[0]].item
+        val net = netOfItem[item]
         fun open(t: Tile) = free(t) && t !in otherEnds && (t == s0 || t !in claimed)
-        // Nothing may push into a splitter half from behind but the port belt.
-        fun quietBehind(t: Tile) = byTile[t + d.opposite]?.let { e -> !(e.kind.beltFamily && e.outputTile == t) } ?: true
-        fun splitter(a: Tile, b: Tile) = PlacedEntity(GameConstants.beltTier(config.beltTier).splitter, Kind.SPLITTER, minOf(a.x, b.x), minOf(a.y, b.y), d, net = netOfItem[item])
-        val outs = run {
-            for (side in listOf(d.cw, d.ccw)) {
-                val half = s0 + side
-                if (!open(s0) || !open(half) || !quietBehind(half)) continue
-                val a = s0 + d; val b = half + d
-                if (g.size == 2) { if (open(a) && open(b)) return@run listOf(splitter(s0, half)) to listOf(a, b) else continue }
-                // Three: a second splitter on the first's straight output, its other half on the far side.
+        // Nothing may push into [t] but [from] (the belt or splitter meant to feed it).
+        fun quiet(t: Tile, from: Tile?) = Dir.entries.none { dd -> val u = t + dd; u != from && byTile[u]?.let { e -> e.kind.beltFamily && (e.outputTile == t || (e.kind == Kind.SPLITTER && e.rect.tiles().any { it + e.dir == t })) } == true }
+        fun splitter(a: Tile, b: Tile, h: Dir) = PlacedEntity(tier.splitter, Kind.SPLITTER, minOf(a.x, b.x), minOf(a.y, b.y), h, net = net)
+        /** Splitters with their trunk half on [p] heading [h] (fed from [from]), and the start tiles they hand out. */
+        fun tree(p: Tile, h: Dir, from: Tile?, used: Set<Tile>): Pair<List<PlacedEntity>, List<Tile>>? {
+            fun ok(t: Tile) = open(t) && t !in used
+            for (side in listOf(h.cw, h.ccw)) {
+                val half = p + side
+                if (!ok(p) || !ok(half) || !quiet(half, null) || !quiet(p, from)) continue
+                val a = p + h; val b = half + h
+                if (g.size == 2) { if (ok(a) && ok(b)) return listOf(splitter(p, half, h)) to listOf(a, b) else continue }
                 val half2 = a + side.opposite
-                val a2 = a + d; val b2 = half2 + d
-                if (listOf(a, half2, b, a2, b2).all { open(it) } && quietBehind(half2)) return@run listOf(splitter(s0, half), splitter(a, half2)) to listOf(a2, b2, b)
+                val a2 = a + h; val b2 = half2 + h
+                if (listOf(a, half2, b, a2, b2).all { ok(it) } && quiet(half2, null)) return listOf(splitter(p, half, h), splitter(a, half2, h)) to listOf(a2, b2, b)
             }
-            null
-        } ?: return StitchAttempt(null, listOf(s0), "no room for the splitters of a shared $item output")
-        outs.first.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
-        g.forEachIndexed { i, id -> starts[id] = outs.second[i] to d }
-        claimed += outs.second
+            return null
+        }
+        // Breadth first over short belt paths from the port: each step a belt heading on, straight or turning.
+        data class St(val t: Tile, val h: Dir)
+        val prev = HashMap<St, St?>()
+        val queue = ArrayDeque(listOf(St(s0, d0))); prev[St(s0, d0)] = null
+        var found: Triple<St, List<PlacedEntity>, List<Tile>>? = null
+        while (queue.isNotEmpty() && found == null) {
+            val cur = queue.removeFirst()
+            val path = generateSequence(cur) { prev[it] }.toList()
+            if (path.size > 10) continue
+            val pathTiles = path.map { it.t }.toSet()
+            val from = prev[cur]?.t ?: (s0 + d0.opposite)
+            tree(cur.t, cur.h, from, pathTiles - cur.t)?.let { (es, ts) -> found = Triple(cur, es, ts) }
+            if (found != null) break
+            for (nh in listOf(cur.h, cur.h.cw, cur.h.ccw)) {
+                val n = St(cur.t + nh, nh)
+                // The belt on cur heads nh into n; only it may feed n.
+                if (n in prev || n.t in pathTiles || !open(n.t) || !quiet(n.t, cur.t)) continue
+                prev[n] = cur; queue += n
+            }
+        }
+        val (end, es, ts) = found ?: return StitchAttempt(null, listOf(s0), "no room for the splitters of a shared $item output")
+        // The belts on the way: each heads to the next tile (the last into the splitter).
+        val path = generateSequence(end) { prev[it] }.toList().reversed()
+        for (i in 0 until path.size - 1) {
+            val t = path[i].t
+            val e = PlacedEntity(tier.belt, Kind.BELT, t.x, t.y, path[i + 1].h, net = net)
+            entities += e; byTile[t] = e; claimed += t
+        }
+        es.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e; claimed += it } }
+        g.forEachIndexed { i, id -> starts[id] = ts[i] to end.h }
+        claimed += ts
     }
 
     // The belts and pipes through the corridors.
