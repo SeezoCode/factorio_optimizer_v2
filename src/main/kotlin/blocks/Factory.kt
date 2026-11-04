@@ -898,10 +898,12 @@ fun stitchRoute(
     }
     // A shared output port: splitters right outside it give each of its links a belt of its own (two or three).
     val otherEnds = (starts.filterKeys { k -> sharedStarts.none { k in it } }.values + ends.values).map { it.first }.toSet()
+    // Tiles another group needs: the first tile outside each shared port, and the outputs handed out so far.
+    val claimed = sharedStarts.map { starts.getValue(it[0]).first }.toMutableSet()
     for (g in sharedStarts) {
         val (s0, d) = starts.getValue(g[0])
         val item = split.links[g[0]].item
-        fun open(t: Tile) = free(t) && t !in otherEnds
+        fun open(t: Tile) = free(t) && t !in otherEnds && (t == s0 || t !in claimed)
         // Nothing may push into a splitter half from behind but the port belt.
         fun quietBehind(t: Tile) = byTile[t + d.opposite]?.let { e -> !(e.kind.beltFamily && e.outputTile == t) } ?: true
         fun splitter(a: Tile, b: Tile) = PlacedEntity(GameConstants.beltTier(config.beltTier).splitter, Kind.SPLITTER, minOf(a.x, b.x), minOf(a.y, b.y), d, net = netOfItem[item])
@@ -920,6 +922,7 @@ fun stitchRoute(
         } ?: return StitchAttempt(null, listOf(s0), "no room for the splitters of a shared $item output")
         outs.first.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
         g.forEachIndexed { i, id -> starts[id] = outs.second[i] to d }
+        claimed += outs.second
     }
 
     // The belts and pipes through the corridors.

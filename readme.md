@@ -271,7 +271,7 @@ Unknown keys are an error. Everything except `targets` has a default.
               "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
               "compact_s": null, "shape_variants": [], "shape_variant_s": null,
               "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3,
-              "templates": true, "template_share": 0.25 },
+              "templates": true, "template_share": 0.25, "shared_outputs": false },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
   "marker_tile": "hazard-concrete-left",
