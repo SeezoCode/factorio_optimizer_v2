@@ -435,6 +435,11 @@ belts and pipes, in one blueprint:
    floorplan picks the layout that packs best, so nothing is forced (see [Templates](#templates-ready-made-columns)).
    The split keeps such recipes in blocks of their own, and their search gets `template_share` of its share of the
    time, since the template is a layout already.
+9. **Shared outputs (experimental, off).** With `shared_outputs` the links of one item leaving a block on one side
+   share one output port (two or three links, up to a belt's worth): the block has fewer ports to reach, and in the
+   corridors a short belt from the port leads to splitters that give each link its own belt. Small factories route
+   and validate with it (`FactoryTest`); on six science (28 blocks) it found no valid factory yet: the splitters and
+   their belt sit where the corridors are narrowest and wall off a consumer's port. Kept for further work.
 
 Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block, with
 `from` and `to` counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.
@@ -466,12 +471,13 @@ of machines (16 wide): units of beacon, pole row, beacon, placed so every machin
 (with the default two per machine, 2–4 each), the machines with their own modules.
 
 Six science at 1/s each from ore, 28 blocks sized by weight (`docs/status/six_science_ore_28_blocks.json`, 1600 s
-plus 600 s of compaction, 2 threads each, same machine): **26,970 tiles with templates against 29,928 without**
-(9.9 % smaller; an early version that gave a column to 7 of the 14 smelting blocks made 27,722). That run rejected
-20 factories for an iron lane over capacity in front of a steel column fed by three smelting blocks: the validator
-split each upstream splitter by all the demand reachable below each side, which counted the steel column's whole draw
-behind every one of its three inputs. It now splits by what the max flow sends through to the consumers below each
-side. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
+plus 600 s of compaction, 2 threads each, same machine): **26,544 and 26,712 tiles in two runs with templates
+against 29,928 without** (about 11 % smaller; an early version that gave a column to 7 of the 14 smelting blocks made
+27,722, and one before the validator fix below 26,970). That 26,970 run rejected 20 factories for an iron lane over
+capacity in front of a steel column fed by three smelting blocks: the validator split each upstream splitter by all
+the demand reachable below each side, which counted the steel column's whole draw behind every one of its three
+inputs. It now splits by what the max flow sends through to the consumers below each side, and the two runs since
+rejected none. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
 `TEMPLATE_JOB=<job>`) says why a block got none; `TEMPLATE_DEBUG=1` traces the header search.
 
 ### Space Age
