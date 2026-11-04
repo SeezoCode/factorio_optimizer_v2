@@ -121,7 +121,7 @@ fun runFactory(
     plan.write(File(out, "plan_rebalanced.json").path)
     split.warnings.forEach { say("WARNING: $it") }
     sayPlan(split, plan, ::say)
-    var bps = split.blocks.indices.map { blockPlan(plan, split, it, tuning) }
+    var bps = split.blocks.indices.map { blockPlan(plan, split, it, tuning, cfg.sharedOutputs) }
     val later = (if (cfg.repack) cfg.repackShare else 0.0) + (if (cfg.merge) cfg.mergeShare else 0.0)
     fun blockConfig(budget: Double, aspect: Double, startSize: Int? = null) = config.copy(
         blocks = null, testMode = false, reserved = emptyList(), forbiddenTiles = emptyList(),
@@ -304,7 +304,7 @@ fun runFactory(
             }, split.warnings, split.geometry, split.plan, split.partition, split.ports)
             val merged = mergeBlocks(turnedSplit, l, r)
             val m = min(l, r)
-            val bp = blockPlan(plan, merged, m, tuning)
+            val bp = blockPlan(plan, merged, m, tuning, cfg.sharedOutputs)
             // The two placements as they lie in the factory, in the box around both.
             val ul = boxes[l]; val ur = boxes[r]
             val ux = min(ul.x, ur.x); val uy = min(ul.y, ur.y)
@@ -328,7 +328,7 @@ fun runFactory(
             val gone = max(l, r)
             val newVariants = variants.filterIndexed { i, _ -> i != gone }.map { it.toMutableList() }.toMutableList()
             newVariants[m] = mutableListOf(res)
-            val newBps = merged.blocks.indices.map { i -> if (i == m) bp else blockPlan(plan, merged, i, tuning) }
+            val newBps = merged.blocks.indices.map { i -> if (i == m) bp else blockPlan(plan, merged, i, tuning, cfg.sharedOutputs) }
             val cand = assemble(merged, newBps, newVariants, st.without(gone), "merged ${l + 1}+${r + 1}", squeezeCap = quick)?.takeIf { it.first.success }
             if (cand != null && area(cand.first) < area(f)) {
                 say("merge blocks ${l + 1} and ${r + 1}: kept, ${cand.first.layout.w} x ${cand.first.layout.h} against ${f.layout.w} x ${f.layout.h} at the same stage")
@@ -468,9 +468,9 @@ private fun floorplanInput(
         val shapes = if (soft) softShapes(variants[b][0].area.toDouble()) else bs.map { sh ->
             val r = sh.layout
             val pins = HashMap<Int, Tile>()
-            val lp = bps!![b].linkOfPort
-            r.sources.forEach { s -> lp[s.port]?.let { pins[it] = s.tile } }
-            r.outputs.forEach { o -> lp[o.port]?.let { pins[it] = o.tile } }
+            val lp = bps!![b].linksOfPort
+            r.sources.forEach { s -> lp[s.port]?.forEach { pins[it] = s.tile } }
+            r.outputs.forEach { o -> lp[o.port]?.forEach { pins[it] = o.tile } }
             FpShape(r.w, r.h, pins, sh.rot)
         }
         layouts += bs
@@ -822,13 +822,16 @@ fun stitchRoute(
     // factory straight out must lie on its ring, on the side the job allows.
     val starts = HashMap<Int, Pair<Tile, Dir>>()
     val ends = HashMap<Int, Pair<Tile, Dir>>()
+    /** Groups of links leaving by one shared output port. */
+    val sharedStarts = ArrayList<List<Int>>()
     val sources = ArrayList<SourceSpec>()
     val outputs = ArrayList<OutputSpec>()
     // (On the ring, or on the box's own edge row: fluid ports start with a pipe-to-ground there.)
     fun outsideOnSide(t: Tile, side: String?) = when (side) { "N" -> t.y <= 0; "S" -> t.y >= H - 1; "W" -> t.x <= 0; "E" -> t.x >= W - 1; else -> false }
     for (b in 0 until k) {
         results[b].outputs.forEach { o ->
-            val l = split.links[bps[b].linkOfPort[o.port] ?: return@forEach]
+            val group = bps[b].linksOfPort[o.port] ?: return@forEach
+            val l = split.links[group[0]]
             val t = Tile(o.tile.x + ox[b], o.tile.y + oy[b])
             if (!l.throughCorridor) {
                 if (!outsideOnSide(t, side(l.fromSide, b)?.name)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} output is not on the factory's edge")
@@ -836,7 +839,9 @@ fun stitchRoute(
             }
             // A pipe port joins on the side the block was searched with it (a corner tile alone does not say which).
             val d = if (o.fluid) side(l.fromSide, b)!! else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
-            starts[l.id] = (t + d) to d
+            // Links sharing the port all start there (one belt, branching in the corridors).
+            group.forEach { starts[it] = (t + d) to d }
+            if (group.size > 1) sharedStarts += group
         }
         results[b].sources.forEach { s ->
             val l = split.links[bps[b].linkOfPort[s.port] ?: return@forEach]
@@ -1004,7 +1009,19 @@ fun stitchRoute(
         nets += Net(nets.size, left.item, rate, listOf(t1.id, t2.id), 1)
         paired += left.id; paired += right.id
     }
-    corridorLinks.filter { !it.hub && it.id !in paired }.forEach { l ->
+    // A shared output port: one source, an output at each consumer; the router branches the belt with splitters.
+    val inGroup = HashSet<Int>()
+    sharedStarts.forEach { g ->
+        val ls = g.map { split.links[it] }
+        val p1 = starts.getValue(ls[0].id).let { (s, sd) -> fixedPort(ls[0], s, sd.opposite, false) }
+        val rate = ls.sumOf { it.rate }
+        val src = terminal(Role.SOURCE, ls[0], rate, p1)
+        val outs = ls.map { l -> terminal(Role.OUTPUT, l, l.rate, ends.getValue(l.id).let { (e, ed) -> fixedPort(l, e, ed, true) }) }
+        linksOfNet[nets.size] = ls
+        nets += Net(nets.size, ls[0].item, rate, listOf(src.id) + outs.map { it.id }, 1)
+        inGroup += g
+    }
+    corridorLinks.filter { !it.hub && it.id !in paired && it.id !in inGroup }.forEach { l ->
         val p1 = if (l.from < 0) edgePort(l, false) else starts.getValue(l.id).let { (s, sd) -> fixedPort(l, s, sd.opposite, false) }
         val p2 = if (l.to < 0) edgePort(l, true) else ends.getValue(l.id).let { (e, ed) -> fixedPort(l, e, ed, true) }
         val t1 = terminal(Role.SOURCE, l, l.rate, p1); val t2 = terminal(Role.OUTPUT, l, l.rate, p2)

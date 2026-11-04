@@ -352,12 +352,34 @@ private fun pairLanes(links: List<Link>, laneCap: Double): List<Link> {
 }
 
 /** One block as a plan of its own: local machine ids, a port per link, and which link each port serves. */
-class BlockPlan(val index: Int, val plan: ProductionPlan, val globalIds: List<Int>, val linkOfPort: Map<Int, Int>)
+class BlockPlan(
+    val index: Int, val plan: ProductionPlan, val globalIds: List<Int>,
+    /** The link of each port (of a shared output port, its first link). */
+    val linkOfPort: Map<Int, Int>,
+    /** Every link of each port: more than one where links share an output port ([blockPlan]'s shared). */
+    val linksOfPort: Map<Int, List<Int>> = linkOfPort.mapValues { listOf(it.value) },
+)
 
 /** The plan of block [b]: its machines, their terminals, and an input or output port per link it is part of. */
-fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning): BlockPlan = blockPlan(full, split.blocks[b], split.links, b, tuning)
+fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning, shared: Boolean = false): BlockPlan =
+    blockPlan(full, split.blocks[b], split.links, b, tuning, shared)
 
-fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, tuning: Tuning): BlockPlan {
+/**
+ * Belt links leaving block [b] that share one output port: those to other blocks of one item on one side, packed into
+ * groups of at most a belt's worth (largest first). The corridors branch them off one belt with splitters.
+ */
+fun sharedOutputs(full: ProductionPlan, links: List<Link>, b: Int, tuning: Tuning): List<List<Link>> {
+    val cap = tuning.net.beltUtilisation * data.GameConstants.beltTier(full.beltTier, full.beltStack).throughput
+    return links.filter { it.from == b && it.inner && !it.fluid && it.pair < 0 }.groupBy { it.item to it.fromSide }.values.flatMap { ls ->
+        val groups = ArrayList<MutableList<Link>>()
+        ls.sortedByDescending { it.rate }.forEach { l ->
+            groups.firstOrNull { g -> g.sumOf { it.rate } + l.rate <= cap + 1e-9 }?.add(l) ?: groups.add(mutableListOf(l))
+        }
+        groups
+    }.filter { it.size > 1 }
+}
+
+fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, tuning: Tuning, shared: Boolean = false): BlockPlan {
     val local = ids.withIndex().associate { (i, g) -> g to i }
     val machines = ids.map { full.machines[it].copy(id = local.getValue(it)) }
     val terminals = ArrayList<Terminal>()
@@ -366,16 +388,21 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     }
     val ports = ArrayList<Port>()
     val linkOfPort = HashMap<Int, Int>()
+    val linksOfPort = HashMap<Int, List<Int>>()
     val portOfLink = HashMap<Int, Int>()
+    val groupOf = (if (shared) sharedOutputs(full, links, b, tuning) else emptyList()).flatMap { g -> g.map { it.id to g } }.toMap()
     links.filter { it.from == b || it.to == b }.forEach { l ->
+        if (l.id in portOfLink) return@forEach
         val out = l.from == b
         val side = l.side(b) ?: error("link ${l.id} has no side on block $b")
         val edge = when (side) { "N" -> "north"; "E" -> "east"; "S" -> "south"; else -> "west" }
         val port = Port(ports.size, l.item, listOf(ConfigSource(l.item, edge = edge)), fluid = l.fluid, output = out, single = l.throughCorridor)
         ports += port
+        val group = groupOf[l.id] ?: listOf(l)
         linkOfPort[port.id] = l.id
-        portOfLink[l.id] = port.id
-        terminals += Terminal(terminals.size, if (out) Role.OUTPUT else Role.SOURCE, l.item, l.rate, 1, port = port.id, fluid = l.fluid)
+        linksOfPort[port.id] = group.map { it.id }
+        group.forEach { portOfLink[it.id] = port.id }
+        terminals += Terminal(terminals.size, if (out) Role.OUTPUT else Role.SOURCE, l.item, group.sumOf { it.rate }, 1, port = port.id, fluid = l.fluid)
     }
     // Input ports of a lane pair know each other.
     ports.replaceAll { p ->
@@ -396,6 +423,6 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     val inputs = mine.filter { it.to == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
     val outputs = mine.filter { it.from == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
     val plan = ProductionPlan(machines, ports, terminals, nets, inputs, inputs.filterKeys { k -> mine.any { it.item == k && it.fluid } },
-        emptyMap(), full.beltTier, emptyList(), outputs)
-    return BlockPlan(b, plan, ids, linkOfPort)
+        emptyMap(), full.beltTier, emptyList(), outputs, beltStack = full.beltStack)
+    return BlockPlan(b, plan, ids, linkOfPort, linksOfPort)
 }

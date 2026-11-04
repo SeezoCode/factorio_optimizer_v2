@@ -394,6 +394,11 @@ data class BlocksConfig(
      * offered to the floorplan next to the searched layouts: it picks whichever packs best, so nothing is forced.
      */
     val templates: Boolean = true,
+    /**
+     * Links of one item leaving a block on one side for other blocks share one output port (up to a belt's worth): the
+     * corridors branch them off one belt with splitters (trunk routing), and the block has fewer ports to reach.
+     */
+    @SerialName("shared_outputs") val sharedOutputs: Boolean = false,
     /** Search share of a block that has a template (it has a layout already, usually smaller than the search finds). */
     @SerialName("template_share") val templateShare: Double = 0.25,
     /** Floorplans tried when stitching (each from another seed); the smallest valid factory wins. */

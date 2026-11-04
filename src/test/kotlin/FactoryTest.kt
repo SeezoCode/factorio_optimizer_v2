@@ -173,6 +173,31 @@ class FactoryTest {
     }
 
     @Test
+    fun `links of one item leaving a block share one output port and branch off in the corridors`() {
+        val config = config.RunConfiguration(
+            targets = listOf(config.ConfigTarget("automation-science-pack", 1.0), config.ConfigTarget("logistic-science-pack", 1.0)),
+            sources = listOf(ConfigSource("iron-ore", edge = "west"), ConfigSource("copper-ore", edge = "west")),
+            outputs = listOf(ConfigSource("automation-science-pack", edge = "east"), ConfigSource("logistic-science-pack", edge = "east")),
+            blocks = BlocksConfig(maxMachines = 6, sizeBy = "machines", sharedOutputs = true),
+            search = SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7),
+        )
+        val plan = buildPlan(TestData.data, config)
+        val split = splitPlan(plan, config.blocks!!, 30.0)
+        val groups = split.blocks.indices.flatMap { blocks.sharedOutputs(split.plan, split.links, it, Tuning.defaults()) }
+        assertTrue(groups.isNotEmpty(), "no block sends one item to two others: ${split.links.map { "${it.from}->${it.to} ${it.item}" }}")
+        // The producer has one port for the group.
+        val g = groups[0]
+        val b = g[0].from
+        val shared = blocks.blockPlan(split.plan, split, b, Tuning.defaults(), shared = true)
+        val apart = blocks.blockPlan(split.plan, split, b, Tuning.defaults())
+        assertEquals(apart.plan.ports.size - (g.size - 1), shared.plan.ports.size)
+        val out = File("build/factory/shared_outputs")
+        out.deleteRecursively()
+        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
+        assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+    }
+
+    @Test
     fun `a resumed run keeps the saved split and refines the saved blocks`() {
         val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
