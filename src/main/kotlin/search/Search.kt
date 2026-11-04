@@ -188,12 +188,12 @@ class Search(
 
     private fun writeBest(t: TrialResult, n: Int) {
         val l = t.layout!!.copy(label = "factorio-optimizer ${t.w}x${t.h}")
-        val bp = l.toBlueprintString(config.quality)
+        val bp = l.toBlueprintString(config.buildQuality())
         out.mkdirs()
         File(out, "best_output_string.txt").writeText(bp)
-        File(out, "best_blueprint.json").writeText(l.toBlueprint(config.quality).toJson())
+        File(out, "best_blueprint.json").writeText(l.toBlueprint(config.buildQuality()).toJson())
         if (!config.testMode) power.testCopy(l, t.sources, t.outputs, config).let { tc ->
-            File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.quality))
+            File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.buildQuality()))
             File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
         }
         File(out, "ports.json").writeText(prettyJson.encodeToString(JsonObject.serializer(), portManifest(t)))

@@ -15,9 +15,11 @@ blocks](#big-jobs-a-factory-of-blocks).
 **Space Age (experimental):** foundries, electromagnetic plants and biochambers work, with their built-in
 productivity, research productivity and space-platform jobs (see [Space Age](#space-age)). Recyclers work when a
 job asks for them ([recycling](#recyclers-and-mixed-belts)), and leftovers can leave together on one mixed (sushi)
-belt; Aquilo's heating is laid with heat pipes ([heat](#aquilo-heat-pipes), experimental: dense blocks often leave
-an inserter no tile can heat). Crushers work only on space platforms. Gleba layouts are the hardest to route, since
-every biochamber also needs a nutrient belt, and spoilage is not modelled.
+belt; Aquilo's heating is laid with heat pipes ([heat](#aquilo-heat-pipes), dense blocks with a heat lattice,
+factories of blocks too). Crushers work only on space platforms. Gleba layouts are the hardest to route, since
+every biochamber also needs a nutrient belt; spoilage can be drained ([spoilage](#gleba-spoilage), opt-in).
+Machines, beacons and modules can be of any quality, and items of a better quality can be made with quality modules
+and recyclers ([quality production](#quality-production), opt-in).
 
 ## Examples
 
@@ -259,7 +261,8 @@ Unknown keys are an error. Everything except `targets` has a default.
   "power": { "mode": "set-cover", "pole": "medium-electric-pole", "allow_outside_ring": true },
   "beacons": { "mode": "lattice", "beacon": "beacon", "modules": ["speed-module-3", "speed-module-3"], "per_machine": 2,
                "machine_modules": ["productivity-module-3", "productivity-module-3", "productivity-module-3", "productivity-module-3"],
-               "fallback_module": "speed-module-3", "recipes": null, "pitch": null },
+               "fallback_module": "speed-module-3", "recipes": null, "pitch": null,
+               "quality": "normal", "module_quality": "normal" },
   "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true },
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
@@ -308,6 +311,11 @@ Unknown keys are an error. Everything except `targets` has a default.
   that serve nobody go and machines still short get beacons on free tiles. `"set-cover"` places them only after
   routing (rerouting around machines left short, falling back to the lattice). Beacons are powered, the validator
   counts the beacons in range of every machine, and the blueprint requests the modules into their slots.
+- **Quality of the buildings.** `quality` is the crafting machines' quality (a legendary assembler 3 crafts at
+  3.125), `beacons.quality` the beacons' (distribution effectivity 1.5 + 0.2 a level, 2.5 legendary) and
+  `beacons.module_quality` every module's (bonuses × (1 + 0.3 · level), ×2.5 legendary; penalties as they are).
+  The plan counts machines with them, and the blueprint asks for machines, beacons and modules of that quality;
+  machines still craft normal items (recipe quality normal). The module rule is marked VERIFY (v27).
 - Fluids are routed in pipes and pipe-to-ground (`"fluids": {"mode": "infinity-pipe"}` puts an infinity pipe on
   every fluid connection instead, `"manual"` leaves the connection tiles free).
 - `box.max_size` caps the box (the side of a square of the box's area): the search starts there and, if it
@@ -320,6 +328,10 @@ Unknown keys are an error. Everything except `targets` has a default.
   stack inserter and items coming in are taken as stacked, so a belt carries that many times its items (a lane
   is counted in slots: a stack takes one, an item another inserter dropped takes one alone). See
   [Belt stacking](#belt-stacking).
+- `spoilage.mode` (Gleba, "off" or "drain", default off) drains what spoils at belt ends and keeps machines from
+  clogging with it; see [Gleba: spoilage](#gleba-spoilage).
+- `quality_production` makes items of a better quality (targets like `"iron-gear-wheel@legendary"`), with quality
+  modules and recyclers; see [Quality production](#quality-production).
 - `research.inserter_capacity` (0–7) sets inserter hand sizes; `machines` picks one machine per recipe category.
 - `research.productivity` adds research productivity per recipe on top of the machine's own (+50% in a foundry,
   electromagnetic plant or biochamber), capped at the recipe's maximum. Rates and machine counts follow from it.
@@ -506,6 +518,45 @@ There is no special mode for space platforms; the normal options describe one:
   "power": { "pole": "medium-electric-pole" }
 }
 ```
+
+#### Quality production
+
+With `"quality_production": {}` targets may name a quality, `"iron-gear-wheel@legendary"` (normal keeps the plain
+name), and so may `outputs`. Every machine making what they need takes `modules` (four quality modules 3 by default,
+of `module_quality`), so a craft comes out one tier better with its quality chance and each further tier with 10 %
+of that, the 2.0 way: four normal quality modules 3 give 10 %, so of a machine's gears 90 % are normal, 9 %
+uncommon, 0.9 % rare. Items of each quality are items of their own to the planner, the router and the validator
+("iron-plate@rare"), and every recipe in the targets' chain gets a variant per quality that takes ingredients of
+that quality. With `recycle` (default) recyclers with `recycler_modules` take what is not wanted back to a quarter of
+its ingredients, of that quality or better, and the planner loops items through them to climb. What leaves and is
+not a target (the other qualities) shares one mixed belt on `leftovers`; such leftovers leave almost free in the
+plan, or it would sooner turn them into something else. The blueprint sets each machine's recipe and recipe
+quality, and filters inserters by quality (only that quality).
+
+For 0.01 gears/s from normal plates (`QualityTest`): rare gears take 2.22 plates/s without recycling, 1.47 with
+(3 assemblers and a recycler); legendary gears 200 plates/s and 50 assemblers without, 43.6 plates/s, 15 assemblers
+and 3 recyclers with. A block of 0.2 uncommon gears/s routes and validates at 14 x 14, an inserter taking only the
+uncommon gears to the port. The quality chance of a module effect (0.25 is 2.5 %) is marked VERIFY (v28). Not in a
+factory of blocks yet (the mixed leftovers belt is single-block).
+
+#### Gleba: spoilage
+
+With `"spoilage": {"mode": "drain"}` what spoils is drained instead of being left to jam belts and machines. Items
+that spoil (fruit, mash, jelly, bioflux, nutrients, agricultural science, fish; bacteria spoil into ore; eggs hatch)
+are not in recipes.json, so their spoil results and times are in `GameConstants.SPOILS`, marked VERIFY (v26):
+
+- At every dead end of a belt that may carry something spoiling (its own item, or what a machine holding something
+  that spoils puts on it), a filter inserter takes the spoil result into a chest (`spoilage.chest`, steel by default).
+  A dead end with no room for one makes the trial reroute with room kept there.
+- A machine whose ingredients, fuel (a biochamber's nutrients) or products spoil hands its output to a belt through
+  an inserter that takes the spoilage too: unfiltered, or, out of a machine with several products, a blacklist of the
+  other products. It never hands straight to another machine (which would not take the spoilage), and no dead-end
+  splitter stub holds a spoiling item.
+- The validator checks both: `SPOILAGE_STUCK` at a belt end where spoilage would collect, `SPOILAGE_CLOGS` at a
+  machine nothing can empty of it.
+
+A block making 2 nutrients/s from yumako routes with a drain at the end of the yumako and mash belts at 16 x 16
+(`SpoilageTest`). Chests fill in the end; empty them, or replace them with a heating tower or recycler of your own.
 
 #### Belt stacking
 
@@ -724,9 +775,6 @@ and practically useless:
 - **The underground side feed as a lane filter in the router.** The validator models it (only the lane on the
   entrance's open half gets in, the other backs up), so a hand-made one checks out, but the router does not build
   one: lane pairs already put two items on one belt at a sideload junction.
-- **Spoilage and quality (not yet).** Spoilage needs every belt that carries a spoilable item to end where
-  spoilage can leave (a filter to a chest or a burner), and first an in-game check of where an ingredient that
-  spoils inside a machine goes. Quality splits every item into five tiers that need sorting.
 
 ## Not verified in game yet
 

@@ -15,7 +15,7 @@ val BASE_RAW = setOf("iron-ore", "copper-ore", "stone", "coal", "wood", "crude-o
 
 /** Categories no base crafting machine should take even if listed (placeholders; recycling unless the job asks). */
 private val EXCLUDED_CATEGORIES = setOf("parameters")
-private val RECYCLING_CATEGORIES = setOf("recycling", "recycling-or-hand-crafting")
+internal val RECYCLING_CATEGORIES = setOf("recycling", "recycling-or-hand-crafting")
 
 /** A recycling recipe that turns an item into a quarter of itself (the way recyclers destroy items). */
 fun selfRecycling(r: Recipe): Boolean =
@@ -24,6 +24,8 @@ fun selfRecycling(r: Recipe): Boolean =
 /** Whether the job's [config.RecyclingConfig] allows recycling recipe [r] (true for any other recipe). */
 fun recyclingAllowed(r: Recipe, config: RunConfiguration): Boolean {
     if (r.category !in RECYCLING_CATEGORIES) return true
+    // Quality production climbs by recycling what is not wanted.
+    if (config.qualityProduction?.recycle == true && !selfRecycling(r)) return true
     val rc = config.recycling
     return when (rc.mode) {
         "off" -> false
@@ -53,7 +55,7 @@ data class LpResult(
 /** The machines a job may use, in preference order (first machine able to craft a category wins). */
 fun effectiveMachines(config: RunConfiguration): List<String> =
     (config.machines ?: (listOf(config.machine) + listOf("electric-furnace", "chemical-plant", "oil-refinery", "centrifuge")))
-        .let { if (config.recycling.mode != "off" && "recycler" !in it) it + "recycler" else it }
+        .let { if ((config.recycling.mode != "off" || config.qualityProduction?.recycle == true) && "recycler" !in it) it + "recycler" else it }
         .distinct()
 
 /**
@@ -90,7 +92,8 @@ fun productivity(data: RootData, c: RecipeChoice, config: RunConfiguration): Dou
     val e = data.entities[c.machine]
     val base = (e as? AssemblingMachineEntity)?.effectReceiver?.baseEffect?.get("productivity")
         ?: (e as? FurnaceEntity)?.effectReceiver?.baseEffect?.get("productivity") ?: 0.0
-    return minOf(base + (config.research.productivity[c.recipe.name] ?: 0.0) + moduleProductivity(data, config, c.recipe, c.machine),
+    val researched = config.research.productivity[emit.splitQuality(c.recipe.name).first] ?: 0.0
+    return minOf(base + researched + moduleProductivity(data, config, c.recipe, c.machine),
         c.recipe.maximumProductivity.toDouble())
 }
 
@@ -177,7 +180,12 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         obj.setCoefficient(x.getValue(c), c.machineTime * e.width * e.height / 9.0)
     }
     s.forEach { (item, v) -> obj.setCoefficient(v, if (item in fluids) tun.supplyCostFluid else tun.supplyCostItem) }
-    out.forEach { (item, v) -> if (item !in targets) obj.setCoefficient(v, if (item in fluids) tun.surplusCostFluid else tun.surplusCostItem) }
+    // Items the job lets leave on a mixed belt (quality production's other qualities among them) leave almost free:
+    // otherwise the planner would rather turn them into something else that leaves in smaller numbers.
+    val mayLeave = config.mixedOutputs.flatMap { it.items }.toSet()
+    out.forEach { (item, v) ->
+        if (item !in targets) obj.setCoefficient(v, (if (item in fluids) tun.surplusCostFluid else tun.surplusCostItem) * (if (item in mayLeave) 0.01 else 1.0))
+    }
     obj.setMinimization()
     val status = solver.solve()
     if (status != MPSolver.ResultStatus.OPTIMAL && status != MPSolver.ResultStatus.FEASIBLE) {

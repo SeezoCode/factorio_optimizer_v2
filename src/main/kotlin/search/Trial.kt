@@ -290,7 +290,7 @@ fun runTrial(
         // Crackers work only on what other machines leave of their oil (a tank and red wires, see addSurplusControl).
         val ctl0 = route.addSurplusControl(ringed.entities, plan, config, w, h, listOf(geom.Rect(0, 0, w, h)))
         // Modules in the machines' own slots (same order, so circuit wire indices stay valid).
-        val ctl = if (config.beacons == null) ctl0 else route.SurplusControl(ctl0.entities.map { e ->
+        val ctl = if (config.beacons == null && config.qualityProduction == null) ctl0 else route.SurplusControl(ctl0.entities.map { e ->
             val r = e.recipe?.let { data.recipes[it] }
             if (e.kind == Kind.MACHINE && r != null) e.copy(modules = machineModules(data, config, r, e.name).takeIf { it.isNotEmpty() }) else e
         }, ctl0.circuitWires, ctl0.notes)

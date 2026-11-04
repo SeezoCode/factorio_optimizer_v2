@@ -15,7 +15,7 @@ object VerifyKit {
 
     private fun pole(x: Int, y: Int) = e("medium-electric-pole", x, y)
 
-    data class Case(val id: String, val title: String, val check: String, val layout: Layout)
+    data class Case(val id: String, val title: String, val check: String, val layout: Layout, val quality: BuildQuality = BuildQuality())
 
     val cases: List<Case> = listOf(
         Case(
@@ -313,6 +313,41 @@ object VerifyKit {
             )),
         ),
         Case(
+            "v28-quality-chance", "Quality modules: chance of a better product, and the tiers above it",
+            "Research quality. The assembler makes gears from normal plates with four quality modules 3 (normal). Expected " +
+                "in its tooltip: quality +10% (an effect of 0.25 in recipes.json is 2.5 %, plan/Quality.kt qualityChance), " +
+                "speed -20%. Let it run a while (/c game.speed = 20): of its gears about 90 % come out normal, 9 % uncommon, " +
+                "0.9 % rare (each tier beyond the first at 10 % of the one below). Its output inserter, filtered to " +
+                "uncommon gears only, fills the right chest with them alone; the unfiltered one below takes the rest. The " +
+                "recycler (four quality modules 3) turns the normal gears fed to it into iron plates, now and then uncommon ones.",
+            Layout(12, 8, listOf(
+                e("infinity-chest", 0, 1, item = "iron-plate"), e("inserter", 1, 1, Dir.W),
+                e("assembling-machine-3", 2, 0, recipe = "iron-gear-wheel").copy(modules = List(4) { "quality-module-3" }),
+                e("fast-inserter", 5, 0, Dir.W, item = "iron-gear-wheel@uncommon"), e("steel-chest", 6, 0),
+                e("fast-inserter", 5, 2, Dir.W), e("steel-chest", 6, 2),
+                e("infinity-chest", 7, 5, item = "iron-gear-wheel"), e("inserter", 8, 5, Dir.W),
+                e("recycler", 9, 4).copy(modules = List(4) { "quality-module-3" }),
+                pole(5, 1), pole(8, 3),
+            )),
+        ),
+        Case(
+            "v27-quality-buildings", "Legendary machines, beacons and modules: speed, productivity and beacon effectivity",
+            "Research quality and place it with legendary machines, beacons and modules (the blueprint asks for them). " +
+                "The left assembler makes gears with four legendary productivity modules 3; the right one with none, two " +
+                "legendary beacons of two legendary speed modules 3 each reaching it. Expected in the tooltips: left " +
+                "productivity +100% (4 x 10% x 2.5), speed 3.125 x (1 - 4 x 15%) = 1.25; right speed 3.125 x (1 + 2.5 x " +
+                "sqrt 2 x 2 x 125%) (beacon effectivity 1.5 + 5 x 0.2, module bonus x2.5, penalties as they are). The " +
+                "machines craft normal gears from normal plates (recipe quality normal).",
+            Layout(12, 7, listOf(
+                e("assembling-machine-3", 0, 0, recipe = "iron-gear-wheel").copy(modules = List(4) { "productivity-module-3" }),
+                e("assembling-machine-3", 5, 0, recipe = "iron-gear-wheel"),
+                PlacedEntity("beacon", geom.Kind.BEACON, 8, 0, w = 3, h = 3, modules = List(2) { "speed-module-3" }),
+                PlacedEntity("beacon", geom.Kind.BEACON, 8, 3, w = 3, h = 3, modules = List(2) { "speed-module-3" }),
+                pole(4, 1), pole(11, 3),
+            )),
+            BuildQuality(machines = "legendary", beacons = "legendary", modules = "legendary"),
+        ),
+        Case(
             "v26-spoilage", "Where spoilage goes: out of a machine through its output inserter, off a belt end by a filter",
             "Build on Gleba (or anywhere in the editor). Two biochambers make nutrients from yumako mash, fed mash from the " +
                 "west and nutrients for fuel. Let them fill, then pick up the two mash infinity chests and speed time up " +
@@ -533,7 +568,7 @@ object VerifyKit {
     /** Writes one blueprint string per case, plus the hand-written T1 layout. */
     fun write(dir: File) {
         dir.mkdirs()
-        (cases + spaceAgeCases).forEach { c -> File(dir, "${c.id}.txt").writeText(c.layout.copy(label = c.title).toBlueprintString()) }
+        (cases + spaceAgeCases).forEach { c -> File(dir, "${c.id}.txt").writeText(c.layout.copy(label = c.title).toBlueprintString(c.quality)) }
         File(dir, "t1-hand.txt").writeText(t1Hand.toBlueprintString())
     }
 }

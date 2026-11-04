@@ -826,6 +826,8 @@ fun stitchRoute(
     val ends = HashMap<Int, Pair<Tile, Dir>>()
     /** Groups of links leaving by one shared output port. */
     val sharedStarts = ArrayList<List<Int>>()
+    /** Edge links whose port did not end up on its edge: they run through the corridors to it. */
+    val detoured = HashSet<Int>()
     val sources = ArrayList<SourceSpec>()
     val outputs = ArrayList<OutputSpec>()
     // (On the ring, or on the box's own edge row: fluid ports start with a pipe-to-ground there.)
@@ -836,8 +838,11 @@ fun stitchRoute(
             val l = split.links[group[0]]
             val t = Tile(o.tile.x + ox[b], o.tile.y + oy[b])
             if (!l.throughCorridor) {
-                if (!outsideOnSide(t, side(l.fromSide, b)?.name)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} output is not on the factory's edge")
-                outputs += o.copy(tile = t, port = -1); return@forEach
+                if (outsideOnSide(t, side(l.fromSide, b)?.name)) { outputs += o.copy(tile = t, port = -1); return@forEach }
+                // Not on its edge (a block that must touch two opposite edges is narrower than the factory, so it
+                // slid off one): its belt runs through the corridors to that edge instead.
+                if (o.fluid) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} output is not on the factory's edge")
+                detoured += l.id
             }
             // A pipe port joins on the side the block was searched with it (a corner tile alone does not say which).
             val d = if (o.fluid) side(l.fromSide, b)!! else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
@@ -849,14 +854,15 @@ fun stitchRoute(
             val l = split.links[bps[b].linkOfPort[s.port] ?: return@forEach]
             val t = Tile(s.tile.x + ox[b], s.tile.y + oy[b])
             if (!l.throughCorridor) {
-                if (!outsideOnSide(t, side(l.toSide, b)?.name)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} input is not on the factory's edge")
-                sources += s.copy(tile = t, port = -1); return@forEach
+                if (outsideOnSide(t, side(l.toSide, b)?.name)) { sources += s.copy(tile = t, port = -1); return@forEach }
+                if (s.fluid) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} input is not on the factory's edge")
+                detoured += l.id
             }
             val out = side(l.toSide, b) ?: sideOf(s.tile, results[b].w, results[b].h)
             ends[l.id] = (t + out) to out.opposite
         }
     }
-    val corridorLinks = split.links.filter { it.throughCorridor }
+    val corridorLinks = split.links.filter { it.throughCorridor || it.id in detoured }
     if (corridorLinks.any { (it.from >= 0 && it.id !in starts) || (it.to >= 0 && it.id !in ends) }) return StitchAttempt(null, emptyList(), "a block port is missing")
 
     // A pipe link whose first tile outside its port touches another fluid's pipe (ports of two fluids side by side)
@@ -1203,10 +1209,10 @@ private fun sideOf(t: Tile, w: Int, h: Int): Dir = when {
 
 private fun writeFactory(f: Factory, out: File, config: RunConfiguration) {
     val l = f.layout
-    File(out, "best_output_string.txt").writeText(l.toBlueprintString(config.quality))
-    File(out, "best_blueprint.json").writeText(l.toBlueprint(config.quality).toJson())
+    File(out, "best_output_string.txt").writeText(l.toBlueprintString(config.buildQuality()))
+    File(out, "best_blueprint.json").writeText(l.toBlueprint(config.buildQuality()).toJson())
     if (!config.testMode) power.testCopy(l, f.sources, f.outputs, config).let { tc ->
-        File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.quality))
+        File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.buildQuality()))
         File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
     }
     renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}"))

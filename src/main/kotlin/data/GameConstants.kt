@@ -131,6 +131,15 @@ object GameConstants {
         "pentapod-egg" to (null to 900), "biter-egg" to (null to 1800),
     )
 
+    /** Quality tiers, lowest first. */
+    val QUALITIES = listOf("normal", "uncommon", "rare", "epic", "legendary")
+
+    /**
+     * A module's bonuses (not its penalties) times this at a quality [level] (legendary is level 5: x2.5). Not in
+     * recipes.json. [W] VERIFY (v27)
+     */
+    fun moduleBonusMultiplier(level: Int): Double = 1.0 + 0.3 * level
+
     /** Whether [item] spoils. */
     fun spoils(item: String): Boolean = item in SPOILS
 

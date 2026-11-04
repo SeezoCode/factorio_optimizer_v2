@@ -38,6 +38,9 @@ Regenerate the strings with:
 | `v23-aquilo-heating.txt` | On Aquilo, entities touching a heat pipe along an edge stay warm, corners do not count; whether poles freeze | The belt at (8,1) freezes, the rest under and beside the pipe run; note the two poles | ☑ edge rule (seen in game); ☐ poles |
 | `v24-blacklist-filter.txt` | Inserter blacklist filters in blueprints (mixed belts take every product but the listed ones) | Top chest only copper cable, bottom only iron plates | ☐ |
 | `v25-belt-stacking.txt` | Belt stacking: stack inserters drop stacks of 4 (fully researched), other inserters single items; the stack inserter's hand size | Top belt in stacks of 4, bottom single; note the hand size | ☐ |
+| `v26-spoilage.txt` | Spoilage: an unfiltered output inserter takes spoiled ingredients out of a machine, a filtered one leaves them (the machine stops); a filter inserter clears a belt end; spoil times (`GameConstants.SPOILS`) | Top chest gets spoilage too, middle biochamber stops, bottom chest gets the belt's spoilage; note spoiled fuel | ☐ |
+| `v27-quality-buildings.txt` | Quality of buildings: a module's bonuses x(1 + 0.3 x level), its penalties unchanged (`GameConstants.moduleBonusMultiplier`); beacon effectivity 1.5 + 0.2 a level; entity and module quality in blueprints | Tooltips as listed in the check | ☐ |
+| `v28-quality-chance.txt` | Quality modules: an effect of 0.25 is +2.5 % (`qualityChance`), each tier beyond the first at 10 % of the one below; quality-filtered inserters; a recycler with quality modules | Tooltip quality +10 %; about 90/9/0.9 % normal/uncommon/rare gears; the filtered chest only uncommon | ☐ |
 
 Also from the plan's list:
 

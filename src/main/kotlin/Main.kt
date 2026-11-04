@@ -63,16 +63,17 @@ fun main(args: Array<String>) {
     val loaded = flags["config"]?.let { RunConfiguration.load(it) }
         ?: resume?.let { blocks.savedJob(java.io.File(it)) ?: fail("--resume: no saved run in $it (no resume/job.json there)") }
         ?: RunConfiguration.load("config.json")
-    val config = (flags["engine"]?.let { loaded.copy(engine = it).also { c -> c.validate() } } ?: loaded).let { c ->
+    val config0 = (flags["engine"]?.let { loaded.copy(engine = it).also { c -> c.validate() } } ?: loaded).let { c ->
         flags["compact"]?.let { s -> c.copy(blocks = c.blocks?.copy(compactS = s.toDouble())) } ?: c
     }
     // tuning.json on the classpath holds the measured defaults; the job's tuning section overrides them.
-    val tuning = (flags["tuning"]?.let { Tuning.load(it) } ?: Tuning.defaults()).withOverrides(config.tuning)
+    val tuning = (flags["tuning"]?.let { Tuning.load(it) } ?: Tuning.defaults()).withOverrides(config0.tuning)
     if (flags.containsKey("print-tuning")) {
         println(tuning.toJson())
         return
     }
-    val data = loadRootData()
+    // Quality production: items and recipes of every quality the targets need (see plan/Quality.kt).
+    val (data, config) = plan.withQualityProduction(loadRootData(), config0)
 
     val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
     val out = resume ?: flags["out"] ?: "src/main/resources/solves/$stamp - sa"

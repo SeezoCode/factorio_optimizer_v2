@@ -126,7 +126,7 @@ object Templates {
         // Beacons: a column of them along each side, outside the machines.
         val need = ms.maxOf { beaconNeed(it.crafts, it.beaconCrafts) }
         val beacon = if (need > 0) beaconSpec(data, config) ?: return no("$need beacon(s) per machine but no beacon") else null
-        val modules = if (config.beacons == null) null else data.recipes[m0.recipe]?.let { machineModules(data, config, it, m0.machine) }?.takeIf { it.isNotEmpty() }
+        val modules = if (config.beacons == null && config.qualityProduction == null) null else data.recipes[m0.recipe]?.let { machineModules(data, config, it, m0.machine) }?.takeIf { it.isNotEmpty() }
         val spec = ColumnSpec(m0.machine, m0.recipe, ingredient, product, ins.map { it.id }, prodOut.map { it.id }, passOut.firstOrNull()?.id,
             shortIn, shortOut, tier.belt, tier.underground, tier.splitter, tier.maxUndergroundGap, tier.throughput / 2, need, beacon, modules)
         val sides = plan.ports.associate { it.id to Dir.fromName(it.specs[0].edge!!) }

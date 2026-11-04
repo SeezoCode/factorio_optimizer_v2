@@ -64,6 +64,8 @@ data class RunConfiguration(
      * lane carries this many times its items; items dropped by any other inserter take a whole slot each.
      */
     @SerialName("belt_stack_size") val beltStackSize: Int = 1,
+    /** Making items of a better quality (see [QualityProductionConfig]); null: everything normal. */
+    @SerialName("quality_production") val qualityProduction: QualityProductionConfig? = null,
     /** Gleba spoilage: where items that spoil leave what they spoil into (see [SpoilageConfig]). */
     val spoilage: SpoilageConfig = SpoilageConfig(),
     /**
@@ -123,6 +125,12 @@ data class RunConfiguration(
 ) {
     fun trick(id: String): Boolean = tricks[id] ?: DEFAULT_TRICKS[id] ?: error("Unknown trick '$id'")
 
+    /** Quality of the machines, beacons and modules a blueprint of this job places ([quality] is the machines'). */
+    fun buildQuality() = emit.BuildQuality(quality, beacons?.quality ?: "normal", moduleQuality())
+
+    /** Quality of every module the job places. */
+    fun moduleQuality(): String = qualityProduction?.moduleQuality ?: beacons?.moduleQuality ?: "normal"
+
     /** The underground tier used for weaving, or null when weaving is off. */
     fun weave(): GameConstants.BeltTier? = when {
         !trick("B5") || weaveTier == "none" -> null
@@ -151,6 +159,13 @@ data class RunConfiguration(
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
         require(beltStackSize in 1..GameConstants.MAX_BELT_STACK) { "belt_stack_size must be 1..${GameConstants.MAX_BELT_STACK}" }
         require(spoilage.mode in setOf("off", "drain")) { "spoilage.mode must be 'off' or 'drain'" }
+        qualityProduction?.let { qp ->
+            require(blocks == null) { "quality_production is not supported in a factory of blocks yet" }
+            require(qp.leftovers in setOf("north", "east", "south", "west", "any")) { "quality_production.leftovers must be an edge" }
+        }
+        (listOf(quality) + listOfNotNull(beacons?.quality, beacons?.moduleQuality, qualityProduction?.moduleQuality)).forEach {
+            require(it in GameConstants.QUALITIES) { "Unknown quality '$it' (known: ${GameConstants.QUALITIES})" }
+        }
         require(spoilage.chest in GameConstants.CHESTS) { "Unknown chest '${spoilage.chest}'" }
         GameConstants.pole(power.pole)
         box.startSize?.let { require(it >= 3) { "box.start_size must be at least 3" } }
@@ -445,6 +460,22 @@ data class SpoilageConfig(
     val chest: String = "steel-chest",
 )
 
+/**
+ * Quality production: targets may name a quality ("iron-gear-wheel@legendary"). Every machine making what they need
+ * takes [modules] (quality modules), so its products come out of that quality or better by chance; with [recycle],
+ * recyclers with [recyclerModules] take what is not wanted back to ingredients of the same quality or better, and the
+ * planner loops items through them to climb. What leaves and is not a target (the other qualities) shares one mixed
+ * belt on [leftovers]. See plan/Quality.kt.
+ */
+@Serializable
+data class QualityProductionConfig(
+    val modules: List<String> = List(4) { "quality-module-3" },
+    val recycle: Boolean = true,
+    @SerialName("recycler_modules") val recyclerModules: List<String> = List(4) { "quality-module-3" },
+    @SerialName("module_quality") val moduleQuality: String = "normal",
+    val leftovers: String = "east",
+)
+
 @Serializable
 data class SinkConfig(
     /** "port": products leave on a belt (or pipe) at the box edge; "chest": an inserter into a chest per producer. */
@@ -489,6 +520,10 @@ data class BeaconConfig(
     val beacon: String = "beacon",
     val modules: List<String> = listOf("speed-module-3", "speed-module-3"),
     @SerialName("per_machine") val perMachine: Int = 2,
+    /** Quality of the beacons: a better one passes on more (distribution effectivity +0.2 a level). */
+    val quality: String = "normal",
+    /** Quality of every module, in machines and beacons: a better one has larger bonuses, the same penalties. */
+    @SerialName("module_quality") val moduleQuality: String = "normal",
     @SerialName("machine_modules") val machineModules: List<String> = emptyList(),
     @SerialName("fallback_module") val fallbackModule: String? = null,
     val recipes: List<String>? = null,
