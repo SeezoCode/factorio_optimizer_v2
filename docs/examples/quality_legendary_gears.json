@@ -1,0 +1,35 @@
+{
+  "targets": [
+    {
+      "name": "iron-gear-wheel@legendary",
+      "amount": 0.01
+    }
+  ],
+  "machines": [
+    "assembling-machine-3"
+  ],
+  "raw_resources": [
+    "iron-plate"
+  ],
+  "sources": [
+    {
+      "name": "iron-plate",
+      "edge": "west"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "iron-gear-wheel@legendary",
+      "edge": "east"
+    }
+  ],
+  "quality_production": {
+    "recycle": true,
+    "leftovers": "south"
+  },
+  "search": {
+    "time_budget_s": 1200,
+    "threads": 2,
+    "verbose": false
+  }
+}

@@ -284,8 +284,8 @@ fun runTrial(
 
     // Harness (test mode) and power, with up to two warm reroutes that keep tiles free near unpowered entities.
     var bias = HashMap<Tile, Double>()
-    // Power and beacons get two reroutes; heating (Aquilo) up to four.
-    val attempts = if (config.heat.mode == "off") 2 else 4
+    // Power and beacons get two reroutes; heating (Aquilo) and spoilage drains (Gleba) up to four.
+    val attempts = if (config.heat.mode == "off" && config.spoilage.mode == "off") 2 else 4
     for (attempt in 0..attempts) {
         val ringed = if (config.portsOnRing) ringPorts(result.entities, result.sources, result.outputs, w, h, GameConstants.beltTier(config.beltTier).belt)
             else RingedPorts(result.entities, result.sources, result.outputs)
@@ -322,7 +322,8 @@ fun runTrial(
         // Gleba: a drain (filter inserter into a chest) at every belt end where spoilage could collect; where one has no
         // room, reroute keeping room there, as for unpowered entities.
         val drains = if (config.spoilage.mode != "drain") null else route.placeDrains(
-            ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList()), plan, config, w, h, obstacles + reservedTiles + outside)
+            ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList()), config, w, h, obstacles + reservedTiles + outside,
+            validationSpec(data, plan, config, placement, if (config.testMode) emptyList() else ringed.sources, requirePower = false, outputs = ringed.outputs))
         if (drains != null && !drains.ok && attempt < attempts) {
             notes += "spoilage attempt $attempt: ${drains.stuck.size} belt end(s) without room for a drain"
             drains.stuck.forEach { u -> for (dy in -2..2) for (dx in -2..2) bias.merge(Tile(u.x + dx, u.y + dy), 1.0, Double::plus) }

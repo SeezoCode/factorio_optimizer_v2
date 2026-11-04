@@ -886,8 +886,18 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             if (e.kind == Kind.UG_IN || !belts.next[b].isNullOrEmpty()) return@forEach
             if (e.outputTile?.let { it in box } == false) return@forEach   // leaves the box: a port
             val left = rs.filter { r -> drainsAt[b]?.none { lets(it, r) } != false }
-            if (left.isNotEmpty()) err(ErrorType.SPOILAGE_STUCK, e.tile, "$left would collect at this belt end: no drain takes it")
+            if (left.isNotEmpty()) {
+                stuck += StuckEnd(b, left.sorted(), belts.items[b]?.toSet() ?: emptySet())
+                err(ErrorType.SPOILAGE_STUCK, e.tile, "$left would collect at this belt end: no drain takes it")
+            }
         }
+    }
+    private val stuck = ArrayList<StuckEnd>()
+
+    /** The belt ends where spoilage would collect without a drain, as a full validation finds them. */
+    fun spoilageEnds(): List<StuckEnd> {
+        run()
+        return stuck
     }
 
     // ---- heat (Aquilo) ----
@@ -1098,6 +1108,12 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
 }
 
 fun validate(layout: Layout, spec: ValidationSpec): List<ValidationError> = Validator(layout, spec).run()
+
+/** A belt end where spoilage would collect: the belt's entity index, the spoil results left there, the items on it. */
+class StuckEnd(val belt: Int, val results: List<String>, val items: Set<String>)
+
+/** Gleba: the belt ends of [layout] where spoilage would collect without a drain (the validator's own reading). */
+fun spoilageEnds(layout: Layout, spec: ValidationSpec): List<StuckEnd> = Validator(layout, spec.copy(spoilage = true)).spoilageEnds()
 
 /** Recipe facts for machines that have no [MachineSpec] (item checks only, no rates). */
 fun recipeInfoFrom(data: RootData): (String) -> MachineSpec? = { name ->

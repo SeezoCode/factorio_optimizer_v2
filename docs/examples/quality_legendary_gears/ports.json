@@ -1,0 +1,58 @@
+{
+    "box": {
+        "w": 41,
+        "h": 41
+    },
+    "inputs": [
+        {
+            "item": "iron-plate",
+            "rate": 15.84509114338639,
+            "fluid": false,
+            "x": -1,
+            "y": 36,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 15.84509114338639,
+            "fluid": false,
+            "x": -1,
+            "y": 20,
+            "edge": "west"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 11.883818357539793,
+            "fluid": false,
+            "x": -1,
+            "y": 0,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "iron-gear-wheel@legendary",
+            "rate": 0.005,
+            "fluid": false,
+            "x": 41,
+            "y": 0,
+            "edge": "east"
+        },
+        {
+            "item": "iron-gear-wheel@legendary",
+            "rate": 0.005,
+            "fluid": false,
+            "x": 41,
+            "y": 6,
+            "edge": "east"
+        },
+        {
+            "item": "mixed-1",
+            "rate": 19.60830028994066,
+            "fluid": false,
+            "x": 0,
+            "y": 41,
+            "edge": "west"
+        }
+    ]
+}

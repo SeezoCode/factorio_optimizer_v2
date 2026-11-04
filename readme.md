@@ -538,9 +538,14 @@ For 0.01 gears/s from normal plates (`QualityTest`): rare gears take 2.22 plates
 and 3 recyclers with. A block of 0.2 uncommon gears/s routes and validates at 14 x 14, an inserter taking only the
 uncommon gears to the port. The quality chance of a module effect (0.25 is 2.5 %) is marked VERIFY (v28). In a
 factory of blocks each block hands its leftovers to the edge: straight out on `leftovers` where the block touches
-it, else through the corridors to the nearest edge (mixed belts of two blocks are not merged). Legendary gears with
-recycling (18 machines, most with five products) came within 3 conflicts of routing as one block at 40 x 40 in
-4 minutes.
+it, else through the corridors to the nearest edge (mixed belts of two blocks are not merged).
+
+Legendary gears at 0.01/s with recycling ([job](docs/examples/quality_legendary_gears.json)) route as one block at
+41 x 41 in 20 minutes: 11 assemblers make gears of every quality from normal plates, three recyclers take the
+uncommon, rare and epic ones back to plates of that quality or better, four assemblers (one per quality, legendary
+plates included) make gears from those, and the legendary gears leave east; the normal gears (19.6/s) and the rest leave on the mixed belt at the bottom left.
+
+![Legendary gears with recycling](docs/examples/quality_legendary_gears/best.png)
 
 #### Gleba: spoilage
 
@@ -548,9 +553,10 @@ With `"spoilage": {"mode": "drain"}` what spoils is drained instead of being lef
 that spoil (fruit, mash, jelly, bioflux, nutrients, agricultural science, fish; bacteria spoil into ore; eggs hatch)
 are not in recipes.json, so their spoil results and times are in `GameConstants.SPOILS`, marked VERIFY (v26):
 
-- At every dead end of a belt that may carry something spoiling (its own item, or what a machine holding something
-  that spoils puts on it), a filter inserter takes the spoil result into a chest (`spoilage.chest`, steel by default).
-  A dead end with no room for one makes the trial reroute with room kept there.
+- At every dead end of a belt that may carry something spoiling (its own item, a lane-shared one, or what a machine
+  holding something that spoils puts on it; the validator says which), a filter inserter takes the spoil result into
+  a chest (`spoilage.chest`, steel by default). Where there is no room beside the end, the belt runs on a few tiles to
+  where there is; where that fails too, the trial reroutes with room kept there (up to four times).
 - A machine whose ingredients, fuel (a biochamber's nutrients) or products spoil hands its output to a belt through
   an inserter that takes the spoilage too: unfiltered, or, out of a machine with several products, a blacklist of the
   other products. It never hands straight to another machine (which would not take the spoilage), and no dead-end
@@ -559,7 +565,8 @@ are not in recipes.json, so their spoil results and times are in `GameConstants.
   machine nothing can empty of it.
 
 A block making 2 nutrients/s from yumako routes with a drain at the end of the yumako and mash belts at 16 x 16
-(`SpoilageTest`). Chests fill in the end; empty them, or replace them with a heating tower or recycler of your own.
+(`SpoilageTest`). The Gleba example below (agricultural science and carbon fiber at 5/s each, 43 machines) with
+drains: 66 x 66 after 10 minutes on 4 threads, against 50 x 50 without them after 15 minutes on 10. Chests fill in the end; empty them, or replace them with a heating tower or recycler of your own.
 
 #### Belt stacking
 
