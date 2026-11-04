@@ -58,6 +58,25 @@ class HeatTest {
     }
 
     @Test
+    fun `a factory of blocks is heated as one network, its corridors included`() {
+        val config = TestData.job("t3").copy(heat = HeatConfig(mode = "pipes", lattice = 7),
+            blocks = config.BlocksConfig(maxMachines = 5, sizeBy = "machines"),
+            search = config.SearchConfig(timeBudgetS = 90.0, seedsPerSize = 2, threads = 4, seed = 7))
+        val plan = buildPlan(TestData.data, config)
+        val out = File("build/factory/heated_t3")
+        out.deleteRecursively()
+        val f = blocks.runFactory(TestData.data, config, Tuning.defaults(), plan, out)
+        assertTrue(f != null && f.success, "${f?.errors?.take(5)} ${f?.notes}")
+        val layout = f.layout
+        val pipes = layout.entities.filter { it.kind == Kind.HEAT_PIPE }.map { it.tile }.toSet()
+        // Everything that freezes touches a pipe (the validator also checked every pipe reaches a port), corridor
+        // belts as much as the blocks' own.
+        layout.entities.filter { needsHeat(it, false) }.forEach { e -> assertTrue(edgeNeighbours(e).any { it in pipes }, "${e.name} at ${e.tile} is cold") }
+        val inBlocks = f.blockRects.flatMap { it.tiles() }.toSet()
+        assertTrue(layout.entities.any { it.kind.beltFamily && it.tile !in inBlocks }, "no corridor belt")
+    }
+
+    @Test
     fun `the validator finds cold entities, diagonal touches and pipes cut off from the port`() {
         fun e(name: String, x: Int, y: Int, d: Dir = Dir.N) = Fixtures.e(name, x, y, d)
         val spec = ValidationSpec(recipeInfo = recipeInfoFrom(TestData.data), requirePower = false, checkRates = false, heat = HeatSpec(setOf(Tile(0, -1))))

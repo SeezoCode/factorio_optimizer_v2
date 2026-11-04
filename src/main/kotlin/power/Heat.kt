@@ -72,7 +72,9 @@ fun placeHeatPipes(
 ): HeatResult {
     val ents = entities.toMutableList()
     val at = HashMap<Tile, Int>()
-    ents.forEachIndexed { i, e -> e.rect.tiles().forEach { at[it] = i } }
+    // Heat pipes already laid (a block's own network, in a factory of blocks) join the tree like seeds.
+    val laid = ents.filter { it.kind == Kind.HEAT_PIPE }.map { it.tile }.toSet()
+    ents.forEachIndexed { i, e -> if (e.kind != Kind.HEAT_PIPE) e.rect.tiles().forEach { at[it] = i } }
     fun inBox(t: Tile) = t.x in 0 until w && t.y in 0 until h
     // Heat pipes may also run on the ring around the box: a loop around the block reaches its edges and ports.
     fun onRing(t: Tile) = !inBox(t) && t.x in -1..w && t.y in -1..h
@@ -153,7 +155,7 @@ fun placeHeatPipes(
     val portSet = portTiles.toHashSet()
 
     // Seed runs (the lattice): joined whole once a run reaches one of their tiles.
-    val seedFree = seeds.filter { free(it) }.toHashSet()
+    val seedFree = (seeds + laid).filter { free(it) }.toHashSet()
     fun addSeedRun(t0: Tile) {
         val q = ArrayDeque(listOf(t0)); val seen = hashSetOf(t0)
         while (q.isNotEmpty()) { val t = q.removeFirst(); add(t); Dir.entries.forEach { d -> val n = t + d; if (n in seedFree && seen.add(n)) q += n } }
@@ -217,6 +219,6 @@ fun placeHeatPipes(
     // Underground ends made by crossings need heat like the belts they replaced (same tiles, so the same neighbours);
     // a belt that became a heat pipe needs none.
     val cold = needs.indices.filter { !warmNow[it] && needs[it].tile !in crossings }.map { needs[it] }
-    val pipes = tree.filter { it !in crossings }.map { PlacedEntity(GameConstants.HEAT_PIPE, Kind.HEAT_PIPE, it.x, it.y) }
+    val pipes = tree.filter { it !in crossings && it !in laid }.map { PlacedEntity(GameConstants.HEAT_PIPE, Kind.HEAT_PIPE, it.x, it.y) }
     return HeatResult(cold.isEmpty(), ents, pipes, ports, cold)
 }

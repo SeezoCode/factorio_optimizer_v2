@@ -129,6 +129,8 @@ fun runFactory(
         fluids = config.fluids.copy(surplusOnly = emptyMap()),
         box = config.box.copy(aspect = aspect, startSize = startSize, maxSize = null, fixedHeight = null, fixedWidth = null),
         search = config.search.copy(timeBudgetS = budget),
+        // Aquilo: a block takes heat from any side; the factory's heat network joins its pipes (see finishFactory).
+        heat = config.heat.copy(edge = "any"),
     )
 
     val weights = machineWeights(plan, cfg)
@@ -1098,7 +1100,8 @@ fun stitchRoute(
         entities.filter { it.kind == Kind.SPLITTER }.flatMap { sp -> sp.rect.tiles().map { it + sp.dir } })
         .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
     val reached = entities.filter { it.kind == Kind.INSERTER }.flatMap { listOf(it.pickupTile, it.dropTile) }.filter { it !in blockTiles }
-    val stitchConfig = config.copy(blocks = null, laneSharing = false)
+    // (Heat stays on, so corridor belts keep a side free for a heat pipe, but the blocks' lattice is theirs alone.)
+    val stitchConfig = config.copy(blocks = null, laneSharing = false, heat = config.heat.copy(lattice = null))
     // Everything the blocks put outside their boxes (ring ports) is in the way too.
     val entityTiles = entities.flatMap { it.rect.tiles() }
     // A corridor pipe beside a block's pipe or machine would join it: keep those tiles free, except where a link ends.
@@ -1139,8 +1142,14 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         val ctl = route.addSurplusControl(ents, plan, config, w, h, rects)
         notes += ctl.notes
         val harness = if (config.testMode) buildHarness(srcs, ctl.entities, w, h, config, outs) else null
-        val all = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }
+        var all: List<PlacedEntity> = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }
         harness?.warnings?.let { notes += it }
+        // Aquilo: one heat network over the whole factory, joining every block's own pipes and heating the corridors
+        // (before the poles, unless heat.poles: then after them, so they are heated too).
+        fun heatOf(es: List<PlacedEntity>) = power.placeHeatPipes(es, w, h, search.heatPortTiles(config.heat.edge, w, h), config.heat.poles, maxPorts = config.heat.ports)
+            .also { r -> if (!r.ok) notes += "heat: ${r.cold.size} entities stay cold"; notes += "heat ports at ${r.ports}" }
+        var heat: power.HeatResult? = null
+        if (config.heat.mode != "off" && !config.heat.poles) { heat = heatOf(all); all = heat.entities + heat.pipes }
         var poles = emptyList<PlacedEntity>()
         var wires = emptyList<Pair<Int, Int>>()
         val keepFree = reserved.flatMap { it.tiles() }.toSet()
@@ -1150,14 +1159,22 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
             if (!ps.ok) notes += "power: ${ps.uncovered.size} entities not covered"
             poles = ps.poles; wires = ps.wires
         }
+        if (config.heat.mode != "off" && config.heat.poles) {
+            // Heat pipes go after the poles here; crossings keep every index, so the pole wires hold.
+            val withPoles = all + poles
+            heat = heatOf(withPoles)
+            all = heat.entities.take(all.size); poles = heat.entities.drop(all.size) + heat.pipes
+        }
         val offset = all.size
         // Block borders as floor tiles, so each block shows in the game.
         val marks = if (config.markerTile == "none") emptyList() else (rects + reserved).flatMap { geom.borderTiles(it, config.markerTile) }
         val layout = Layout(w, h, all + poles, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer factory ${w}x$h", marks, ctl.circuitWires)
         val outside = (harness?.tiles ?: emptySet()) + poles.flatMap { it.rect.tiles() }.filter { it.x !in 0 until w || it.y !in 0 until h } +
-            srcs.map { it.tile }   // ring ports (in test mode the harness feeds them instead of listing them)
+            srcs.map { it.tile } +   // ring ports (in test mode the harness feeds them instead of listing them)
+            (heat?.let { r -> r.ports + (r.entities + r.pipes).filter { it.kind == Kind.HEAT_PIPE }.map { it.tile }.filter { it.x !in 0 until w || it.y !in 0 until h } } ?: emptyList())
         val spec = validationSpec(data, plan, config, Placement(w, h, mach), if (config.testMode) emptyList() else srcs,
             requirePower = config.power.mode != "none", outsideAllowed = outside.toSet(), outputs = outs)
+            .copy(heat = heat?.let { validate.HeatSpec(it.ports.toSet(), config.heat.poles) })
         val errors = validate(layout, spec)
         return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects, s.layouts, s.rot)
     }

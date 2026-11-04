@@ -143,7 +143,6 @@ data class RunConfiguration(
         require(recycling.mode in setOf("off", "void", "full")) { "recycling.mode must be 'off', 'void' or 'full'" }
         require(heat.mode in setOf("off", "pipes")) { "heat.mode must be 'off' or 'pipes'" }
         require(heat.edge in setOf("any", "north", "east", "south", "west")) { "heat.edge must be north, east, south, west or any" }
-        require(heat.mode == "off" || blocks == null) { "heat pipes are not supported in a factory of blocks yet" }
         heat.lattice?.let { require(it >= 4) { "heat.lattice must be at least 4" } }
         require(mixedOutputs.isEmpty() || blocks == null) { "mixed outputs are not supported in a factory of blocks yet" }
         mixedOutputs.flatMap { it.items }.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.let { require(it.isEmpty()) { "items in more than one mixed output: $it" } }

@@ -59,7 +59,7 @@ object Templates {
      * fast assemblers outrun long-handed inserters): blocks of only these get a column, so the split keeps them apart.
      */
     fun columnRecipes(plan: ProductionPlan, config: RunConfiguration): Set<String> {
-        if (LONG !in config.inserters.allowed || !config.portsOnRing) return emptySet()
+        if (LONG !in config.inserters.allowed || !config.portsOnRing || config.heat.mode != "off") return emptySet()
         val shortOnes = config.inserters.allowed.filter { it != LONG }
         return plan.machines.groupBy { it.recipe }.filter { (_, ms) ->
             ms.all(::columnMachine) && ms.map { it.machine }.distinct().size == 1 && run {
@@ -98,6 +98,8 @@ object Templates {
         if (ms.any { it.recipe != m0.recipe || it.machine != m0.machine }) return no("more than one recipe")
         if (ms.any { !columnMachine(it) }) return no("${m0.machine} (${m0.recipe}) is not a 3 x 3 machine with one ingredient and one product")
         if (!config.portsOnRing) return no("ports_on_ring is off")
+        // Its inserters sit between machines and belts with no tile a heat pipe could take.
+        if (config.heat.mode != "off") return no("heating (Aquilo)")
         if (plan.terminals.any { it.role == Role.SINK }) return no("sink chests")
         val ingredient = m0.demand.keys.single()
         val product = m0.itemProducts.keys.single()
