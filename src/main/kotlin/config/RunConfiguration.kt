@@ -154,13 +154,11 @@ data class RunConfiguration(
         require(heat.mode in setOf("off", "pipes")) { "heat.mode must be 'off' or 'pipes'" }
         require(heat.edge in setOf("any", "north", "east", "south", "west")) { "heat.edge must be north, east, south, west or any" }
         heat.lattice?.let { require(it >= 4) { "heat.lattice must be at least 4" } }
-        require(mixedOutputs.isEmpty() || blocks == null) { "mixed outputs are not supported in a factory of blocks yet" }
         mixedOutputs.flatMap { it.items }.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.let { require(it.isEmpty()) { "items in more than one mixed output: $it" } }
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
         require(beltStackSize in 1..GameConstants.MAX_BELT_STACK) { "belt_stack_size must be 1..${GameConstants.MAX_BELT_STACK}" }
         require(spoilage.mode in setOf("off", "drain")) { "spoilage.mode must be 'off' or 'drain'" }
         qualityProduction?.let { qp ->
-            require(blocks == null) { "quality_production is not supported in a factory of blocks yet" }
             require(qp.leftovers in setOf("north", "east", "south", "west", "any")) { "quality_production.leftovers must be an edge" }
         }
         (listOf(quality) + listOfNotNull(beacons?.quality, beacons?.moduleQuality, qualityProduction?.moduleQuality)).forEach {

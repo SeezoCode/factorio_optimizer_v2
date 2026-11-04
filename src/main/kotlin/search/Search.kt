@@ -393,6 +393,8 @@ fun portManifest(t: TrialResult): JsonObject {
         putJsonArray("outputs") {
             (t.outputs.ifEmpty { r?.outputs ?: emptyList() }).forEach { o -> addJsonObject { put("item", o.item); put("rate", o.rate); put("fluid", o.fluid); put("x", o.tile.x); put("y", o.tile.y); put("edge", edge(o.tile.x, o.tile.y)) } }
         }
+        // Aquilo: where heat must be brought in (heat pipe tiles on the ring).
+        if (t.heatPorts.isNotEmpty()) putJsonArray("heat_ports") { t.heatPorts.forEach { p -> addJsonObject { put("x", p.x); put("y", p.y); put("edge", edge(p.x, p.y)) } } }
     }
 }
 

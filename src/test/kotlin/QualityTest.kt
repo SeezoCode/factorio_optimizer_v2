@@ -111,6 +111,22 @@ class QualityTest {
     }
 
     @Test
+    fun `quality production works in a factory of blocks, each block's leftovers on the mixed belt`() {
+        val job = gears("iron-gear-wheel@uncommon", 0.5, recycle = false).copy(
+            blocks = config.BlocksConfig(maxMachines = 2, sizeBy = "machines"),
+            search = config.SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7))
+        val (d, c) = withQualityProduction(data, job)
+        val plan = buildPlan(d, c)
+        assertTrue(plan.machines.size > 2)
+        val out = File("build/factory/quality_uncommon_gears")
+        out.deleteRecursively()
+        val f = blocks.runFactory(d, c, Tuning.defaults(), plan, out)
+        assertTrue(f != null && f.success, "${f?.errors?.take(5)} ${f?.notes}")
+        // Every block's leftovers leave on the edge, mixed.
+        assertTrue(f.outputs.any { it.item.startsWith("mixed") }, "${f.outputs.map { it.item }}")
+    }
+
+    @Test
     fun `a blueprint gives machines, beacons and modules their quality, and recipes and filters theirs`() {
         val layout = Layout(10, 6, listOf(
             e("assembling-machine-3", 0, 0, recipe = "iron-gear-wheel").copy(modules = prod4),

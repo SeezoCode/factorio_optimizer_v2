@@ -1,0 +1,81 @@
+{
+    "box": {
+        "w": 29,
+        "h": 35
+    },
+    "inputs": [
+        {
+            "item": "ice",
+            "rate": 0.9000000000000001,
+            "fluid": false,
+            "x": -1,
+            "y": 15,
+            "edge": "west"
+        },
+        {
+            "item": "lithium-plate",
+            "rate": 0.30000000000000004,
+            "fluid": false,
+            "x": -1,
+            "y": 11,
+            "edge": "west"
+        },
+        {
+            "item": "ice",
+            "rate": 0.5999999999999999,
+            "fluid": false,
+            "x": 0,
+            "y": 33,
+            "edge": "west"
+        },
+        {
+            "item": "lithium-plate",
+            "rate": 0.19999999999999996,
+            "fluid": false,
+            "x": 0,
+            "y": 34,
+            "edge": "south"
+        },
+        {
+            "item": "fluoroketone-cold",
+            "rate": 3.0,
+            "fluid": true,
+            "x": 0,
+            "y": 24,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "cryogenic-science-pack",
+            "rate": 0.30000000000000004,
+            "fluid": false,
+            "x": 29,
+            "y": 4,
+            "edge": "east"
+        },
+        {
+            "item": "cryogenic-science-pack",
+            "rate": 0.19999999999999996,
+            "fluid": false,
+            "x": 29,
+            "y": 28,
+            "edge": "east"
+        },
+        {
+            "item": "fluoroketone-hot",
+            "rate": 1.5,
+            "fluid": true,
+            "x": 28,
+            "y": 21,
+            "edge": "east"
+        }
+    ],
+    "heat_ports": [
+        {
+            "x": 29,
+            "y": 22,
+            "edge": "east"
+        }
+    ]
+}

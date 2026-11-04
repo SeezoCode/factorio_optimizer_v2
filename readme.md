@@ -536,8 +536,11 @@ quality, and filters inserters by quality (only that quality).
 For 0.01 gears/s from normal plates (`QualityTest`): rare gears take 2.22 plates/s without recycling, 1.47 with
 (3 assemblers and a recycler); legendary gears 200 plates/s and 50 assemblers without, 43.6 plates/s, 15 assemblers
 and 3 recyclers with. A block of 0.2 uncommon gears/s routes and validates at 14 x 14, an inserter taking only the
-uncommon gears to the port. The quality chance of a module effect (0.25 is 2.5 %) is marked VERIFY (v28). Not in a
-factory of blocks yet (the mixed leftovers belt is single-block).
+uncommon gears to the port. The quality chance of a module effect (0.25 is 2.5 %) is marked VERIFY (v28). In a
+factory of blocks each block hands its leftovers to the edge: straight out on `leftovers` where the block touches
+it, else through the corridors to the nearest edge (mixed belts of two blocks are not merged). Legendary gears with
+recycling (18 machines, most with five products) came within 3 conflicts of routing as one block at 40 x 40 in
+4 minutes.
 
 #### Gleba: spoilage
 
@@ -615,7 +618,7 @@ In a factory of blocks each block is searched heated (its heat from any side, wi
 are off, as a column's inserters leave no tile for a pipe), the corridor router keeps a side of each belt free where
 it can, and after compaction one heat network is laid over the whole factory from ports on `heat.edge`: it joins
 every block's own pipes as they are and heats the corridors, crossing belt lines where it must. T3 as two blocks
-heats at 31 x 31 (`HeatTest`).
+heats at 31 x 31 (`HeatTest`). `ports.json` lists the heat ports (`heat_ports`), where heat must be brought in.
 
 #### Space platforms
 
@@ -726,8 +729,7 @@ productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in
 layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
-not shown yet: Aquilo heat pipes are placed ([Aquilo: heat pipes](#aquilo-heat-pipes)), dense blocks with a heat
-lattice, factories of blocks with one network over all of them.
+in [More layouts](#more-layouts), heated ([Aquilo: heat pipes](#aquilo-heat-pipes)) as a factory of two blocks.
 
 ## When the planner outsmarts you
 
@@ -784,6 +786,14 @@ which tile and lane a recycler drops on, whether poles freeze on Aquilo, blackli
 has a blueprint for each.
 
 ## More layouts
+
+Cryogenic science at 0.5/s (Space Age, Aquilo), heated: five cryogenic plants in two blocks fed ice, lithium plates
+and cold fluoroketone, hot fluoroketone leaving. Each block was searched with a heat lattice every seven rows, and
+one heat network over the factory joins their pipes and keeps every corridor belt and pipe warm: 29 x 35 in about
+6 minutes ([job](docs/examples/aquilo_cryogenic_science.json)). Heat comes in at one heat pipe on the east side,
+listed as `heat_ports` in [ports.json](docs/examples/aquilo_cryogenic_science/ports.json). Not built in game yet.
+
+![Cryogenic science, heated](docs/examples/aquilo_cryogenic_science/best.png)
 
 Electromagnetic science at 1.5/s (Space Age, Fulgora): electromagnetic plants with assemblers, chemical plants
 and an oil refinery, no machines from other planets. Fulgora's real input is scrap, and a recycler turns it

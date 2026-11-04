@@ -424,6 +424,8 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     val inputs = mine.filter { it.to == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
     val outputs = mine.filter { it.from == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
     val plan = ProductionPlan(machines, ports, terminals, nets, inputs, inputs.filterKeys { k -> mine.any { it.item == k && it.fluid } },
-        emptyMap(), full.beltTier, emptyList(), outputs, beltStack = full.beltStack)
+        emptyMap(), full.beltTier, emptyList(), outputs, beltStack = full.beltStack,
+        // Leftovers sharing a mixed belt: the block hands its share on to the factory's edge like any item.
+        mixed = full.mixed.filterKeys { item -> machines.any { item in it.itemProducts } })
     return BlockPlan(b, plan, ids, linkOfPort, linksOfPort)
 }

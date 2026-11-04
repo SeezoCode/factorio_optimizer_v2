@@ -74,6 +74,8 @@ class HeatTest {
         layout.entities.filter { needsHeat(it, false) }.forEach { e -> assertTrue(edgeNeighbours(e).any { it in pipes }, "${e.name} at ${e.tile} is cold") }
         val inBlocks = f.blockRects.flatMap { it.tiles() }.toSet()
         assertTrue(layout.entities.any { it.kind.beltFamily && it.tile !in inBlocks }, "no corridor belt")
+        // Where to bring heat in is in ports.json.
+        assertTrue(f.heatPorts.isNotEmpty() && File(out, "ports.json").readText().contains("heat_ports"))
     }
 
     @Test

@@ -60,6 +60,8 @@ class Factory(
     val sources: List<SourceSpec>, val outputs: List<OutputSpec>, val notes: List<String>,
     /** Where each block's box ended up, its layout as placed there (turned) and its turn. */
     val blockRects: List<Rect> = emptyList(), val blockLayouts: List<TrialResult> = emptyList(), val blockRot: IntArray = IntArray(0),
+    /** Aquilo: the heat pipe tiles where heat must be brought in. */
+    val heatPorts: List<Tile> = emptyList(),
 ) {
     val success: Boolean get() = errors.isEmpty()
 }
@@ -970,6 +972,8 @@ fun stitchRoute(
     val edgePorts = HashSet<Int>()
     val linksOfNet = HashMap<Int, List<Link>>()
     fun edgeSpecs(item: String, output: Boolean): List<ConfigSource> {
+        // Leftovers (a mixed belt) that cannot leave their block straight out leave at whichever edge is nearest.
+        if (output && item in plan.mixed.values) return listOf(ConfigSource(item, edge = "any"))
         val specs = plan.ports.first { it.item == item && it.output == output }.specs
         if (!config.testMode) return specs
         // Test mode: every fifth tile of the edge only, so each port's harness (a feeder with inserters and chests
@@ -1128,6 +1132,14 @@ fun stitchRoute(
             .flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
         val unrouted = routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }
         val badPairs = routed.failedNets.flatMap { n -> linksOfNet[n] ?: emptyList() }.filter { it.pair >= 0 }.map { minOf(it.id, it.pair) }.toSet()
+        // STITCH_DEBUG_DIR=<dir>: a render of each failed stitch, the trouble marked, for finding out why.
+        System.getenv("STITCH_DEBUG_DIR")?.let { d ->
+            runCatching {
+                val l = geom.Layout(W, H, entities + routed.entities)
+                viz.renderLayout(l, File(d, "stitch_${W}x${H}_${System.nanoTime() % 100000}.png"), viz.RenderOptions(px = 14,
+                    errors = trouble.map { validate.ValidationError(validate.ErrorType.UNSUPPORTED, it, "trouble") }, title = "stitch ${W}x$H: ${routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }}"))
+            }
+        }
         return StitchAttempt(null, trouble, "${routed.conflicts.size} conflicts, ${routed.failedNets.size} unrouted" +
             (if (unrouted.isNotEmpty()) " $unrouted; ${routed.log.filter { l -> unrouted.any { it in l } }.takeLast(2)}" else ""), edges, badPairs)
     }
@@ -1182,7 +1194,7 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
             requirePower = config.power.mode != "none", outsideAllowed = outside.toSet(), outputs = outs)
             .copy(heat = heat?.let { validate.HeatSpec(it.ports.toSet(), config.heat.poles) })
         val errors = validate(layout, spec)
-        return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects, s.layouts, s.rot)
+        return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects, s.layouts, s.rot, heat?.ports ?: emptyList())
     }
 
     // Rows and columns that only straight belts and pipes cross go first; if that breaks anything (it should
@@ -1236,5 +1248,7 @@ fun factoryManifest(f: Factory): JsonObject {
         putJsonArray("outputs") {
             f.outputs.forEach { o -> addJsonObject { put("item", o.item); put("rate", o.rate); put("fluid", o.fluid); put("x", o.tile.x); put("y", o.tile.y); put("edge", edge(o.tile.x, o.tile.y)) } }
         }
+        // Aquilo: where heat must be brought in (heat pipe tiles on the ring).
+        if (f.heatPorts.isNotEmpty()) putJsonArray("heat_ports") { f.heatPorts.forEach { p -> addJsonObject { put("x", p.x); put("y", p.y); put("edge", edge(p.x, p.y)) } } }
     }
 }

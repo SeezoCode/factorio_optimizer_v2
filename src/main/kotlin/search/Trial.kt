@@ -127,6 +127,8 @@ class TrialResult(
     val outputs: List<OutputSpec> = emptyList(),
     /** How routing went, for progress output. */
     val summary: AttemptSummary? = null,
+    /** Aquilo: the heat pipe tiles (on the ring) where heat must be brought in. */
+    val heatPorts: List<Tile> = emptyList(),
 ) {
     val area get() = w * h
 }
@@ -398,7 +400,7 @@ fun runTrial(
         if (!ok) return fail("power", result, errors, layout)
         if (errors.isNotEmpty()) return fail("validate", result, errors, layout)
         return TrialResult(true, w, h, seed, layout, placement, errors, result, score(layout, config), "ok", annealer.lastT0,
-            System.currentTimeMillis() - t0, notes, ringed.sources, ringed.outputs, summary())
+            System.currentTimeMillis() - t0, notes, ringed.sources, ringed.outputs, summary(), heat?.ports ?: emptyList())
     }
     return fail("power", result)
 }
