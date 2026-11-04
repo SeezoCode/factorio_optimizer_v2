@@ -92,6 +92,7 @@ fun validationSpec(
         inserterRate = { name, fromBelt -> inserterRate(name, config, fromBelt) },
         recipeInfo = recipeInfo,
         beacon = beaconSpec(data, config),
+        beltStack = config.beltStackSize,
     )
 }
 

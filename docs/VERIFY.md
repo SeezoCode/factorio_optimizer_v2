@@ -37,6 +37,7 @@ Regenerate the strings with:
 | `v22-recycler-output.txt` | A recycler puts its results straight onto a belt in front of its output end; which tile and lane | Plates and cable appear on the belt above it without an inserter; note the tile and lane | ☑ drops onto a belt (seen in game); ☐ tile and lane |
 | `v23-aquilo-heating.txt` | On Aquilo, entities touching a heat pipe along an edge stay warm, corners do not count; whether poles freeze | The belt at (8,1) freezes, the rest under and beside the pipe run; note the two poles | ☑ edge rule (seen in game); ☐ poles |
 | `v24-blacklist-filter.txt` | Inserter blacklist filters in blueprints (mixed belts take every product but the listed ones) | Top chest only copper cable, bottom only iron plates | ☐ |
+| `v25-belt-stacking.txt` | Belt stacking: stack inserters drop stacks of 4 (fully researched), other inserters single items; the stack inserter's hand size | Top belt in stacks of 4, bottom single; note the hand size | ☐ |
 
 Also from the plan's list:
 

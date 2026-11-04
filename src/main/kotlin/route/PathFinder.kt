@@ -92,7 +92,7 @@ class PathFinder(internal val p: RouteProblem) {
     val dims = GridDims(W, H, MARGIN)
     internal val N = dims.size
     internal val FW = dims.fullW
-    internal val tier = GameConstants.beltTier(config.beltTier)
+    internal val tier = GameConstants.beltTier(config.beltTier, config.beltStackSize)
     private val maxJ = tier.maxUndergroundGap + 1
     private val ugAllowed = config.trick("B2")
     /** Tiles undergrounds may not pass under ([RouteProblem.noTunnel]). */
@@ -1540,8 +1540,10 @@ class PathFinder(internal val p: RouteProblem) {
     }
 
     // ---- emission ----
-    private fun chooseInserter(share: Double, fromBelt: Boolean, long: Boolean): String {
+    private fun chooseInserter(share: Double, fromBelt: Boolean, long: Boolean, ontoBelt: Boolean = false): String {
         if (long) return "long-handed-inserter"
+        // Belt stacking: what goes onto a belt goes in stacks.
+        if (ontoBelt && config.beltStackSize > 1) return GameConstants.STACK_INSERTER
         val allowed = config.inserters.allowed.filter { it != "long-handed-inserter" }
             .sortedBy { GameConstants.inserter(it).tierCost }
         return allowed.firstOrNull { inserterRate(it, config, fromBelt) >= share - 1e-9 }
@@ -1587,7 +1589,7 @@ class PathFinder(internal val p: RouteProblem) {
             r.claims.forEach { o ->
                 val opt = options[o]
                 val v = vts[optTerm[o]]
-                val name = chooseInserter(v.rate / v.k, fromBelt = v.role == Role.CONSUMER, long = opt.long)
+                val name = chooseInserter(v.rate / v.k, fromBelt = v.role == Role.CONSUMER, long = opt.long, ontoBelt = v.role == Role.PRODUCER)
                 // A recycler takes whatever it is given: its inserters are filtered to what it should recycle.
                 val mixedOut = v.role == Role.PRODUCER && v.base.item in mixedNames
                 val item = if (v.role == Role.CONSUMER) v.base.item.takeIf { v.machine != null && plan.machines[v.machine!!].machine == "recycler" }

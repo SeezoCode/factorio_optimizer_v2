@@ -59,6 +59,12 @@ data class RunConfiguration(
     val fuel: String = "coal",
     @SerialName("belt_tier") val beltTier: String = "fast",
     /**
+     * Space Age belt stacking: items stack this high on belts (1: off; up to 4 with the belt capacity research). Every
+     * inserter dropping onto a belt is then a stack inserter and the items coming in are taken as stacked, so a
+     * lane carries this many times its items; items dropped by any other inserter take a whole slot each.
+     */
+    @SerialName("belt_stack_size") val beltStackSize: Int = 1,
+    /**
      * Second underground tier for weaving (B5): undergrounds of different tiers do not pair, so one can pass
      * under a line the other already uses. "auto" (the next tier up, or fast under express), "none", or a tier.
      */
@@ -120,7 +126,7 @@ data class RunConfiguration(
         !trick("B5") || weaveTier == "none" -> null
         weaveTier == "auto" -> GameConstants.beltTier(when (beltTier) { "basic" -> "fast"; "fast" -> "express"; "express" -> "fast"; else -> "express" })
         else -> GameConstants.beltTier(weaveTier)
-    }
+    }?.let { GameConstants.beltTier(it.key, beltStackSize) }
 
     fun validate() {
         // The CP-SAT engine was removed in v2; it lives on in github.com/SeezoCode/factorio_optimizer.
@@ -141,6 +147,7 @@ data class RunConfiguration(
         require(mixedOutputs.isEmpty() || blocks == null) { "mixed outputs are not supported in a factory of blocks yet" }
         mixedOutputs.flatMap { it.items }.groupingBy { it }.eachCount().filter { it.value > 1 }.keys.let { require(it.isEmpty()) { "items in more than one mixed output: $it" } }
         require(inserters.allowed.isNotEmpty()) { "inserters.allowed is empty" }
+        require(beltStackSize in 1..GameConstants.MAX_BELT_STACK) { "belt_stack_size must be 1..${GameConstants.MAX_BELT_STACK}" }
         GameConstants.pole(power.pole)
         box.startSize?.let { require(it >= 3) { "box.start_size must be at least 3" } }
         box.maxSize?.let { require(it >= 3) { "box.max_size must be at least 3" } }

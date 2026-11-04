@@ -53,6 +53,9 @@ object GameConstants {
 
     fun beltTier(key: String): BeltTier = BELT_TIERS[key] ?: error("Unknown belt tier '$key' (known: ${BELT_TIERS.keys})")
 
+    /** [key]'s tier carrying items stacked [stack] high (Space Age belt stacking): [BeltTier.throughput] times [stack]. */
+    fun beltTier(key: String, stack: Int): BeltTier = beltTier(key).let { if (stack > 1) it.copy(throughput = it.throughput * stack) else it }
+
     /** Which tier a belt-family entity name belongs to, or null. */
     fun tierOfEntity(name: String): BeltTier? =
         BELT_TIERS.values.firstOrNull { name == it.belt || name == it.underground || name == it.splitter }
@@ -76,10 +79,16 @@ object GameConstants {
         InserterSpec("fast-inserter", 1, true, 2.31, tierCost = 3),
         // Same swing speed as the fast inserter; its larger hand comes from [handSizes].
         InserterSpec("bulk-inserter", 1, true, 2.31, bulk = true, tierCost = 4),
+        // Space Age: the bulk inserter's swing and hand, and it stacks what it drops on a belt. [W] VERIFY (v25)
+        InserterSpec("stack-inserter", 1, true, 2.31, bulk = true, tierCost = 5),
     ).associateBy { it.name }
 
     /** Hand sizes (non-bulk, bulk) per inserter capacity research level 0..7. [W6] */
     val HAND_SIZES: List<Pair<Int, Int>> = listOf(1 to 2, 1 to 3, 2 to 4, 2 to 5, 2 to 6, 2 to 8, 2 to 10, 3 to 12)
+
+    /** Space Age: the stack inserter drops items on belts in stacks of up to this many (with research). [W] VERIFY (v25) */
+    const val MAX_BELT_STACK = 4
+    const val STACK_INSERTER = "stack-inserter"
 
     fun handSizes(level: Int): Pair<Int, Int> = HAND_SIZES[level.coerceIn(0, HAND_SIZES.size - 1)]
 

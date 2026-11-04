@@ -53,7 +53,9 @@ fun accessOptions(
     val out = mutableListOf<AccessOption>()
     val consumer = t.role == Role.CONSUMER
     val sink = t.role == Role.SINK
+    // With belt stacking a producer drops through a stack inserter (a long-handed one would not stack).
     val longAllowed = !sink && config.trick("I3") && "long-handed-inserter" in config.inserters.allowed &&
+        !(config.beltStackSize > 1 && t.role == Role.PRODUCER) &&
         inserterRate("long-handed-inserter", config, fromBelt = consumer) * k >= rate - 1e-9
     val normalAllowed = config.inserters.allowed.any { it != "long-handed-inserter" }
     for (side in Dir.entries) {

@@ -108,6 +108,8 @@ data class ProductionPlan(
     val warnings: List<String>,
     /** Leaving the block per second: targets plus surplus by-products. */
     val outputs: Map<String, Double> = emptyMap(),
+    /** Belt stack size (Space Age belt stacking; 1 without). */
+    val beltStack: Int = 1,
     /**
      * Items that leave on a mixed belt (sushi), each to the name of its belt ("mixed-1"...): that name is the item of the
      * belt's port, net and terminals; machines making them put them all on it with one inserter.
@@ -162,7 +164,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
             }
         }
     }
-    val beltTier = GameConstants.beltTier(config.beltTier)
+    val beltTier = GameConstants.beltTier(config.beltTier, config.beltStackSize)
     fun isFluid(name: String) = name in lp.fluids
 
     // 1. Machine instances: ceil(machine-seconds), each with an equal share of its recipe's crafts; more when one
@@ -312,6 +314,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         fluidRates = lp.supply.filterKeys { isFluid(it) },
         recipeRates = lp.crafts.entries.associate { (c, x) -> c.recipe.name to x * (c.recipe.mainProduct?.expectedAmount ?: 1.0) },
         beltTier = config.beltTier,
+        beltStack = config.beltStackSize,
         warnings = warnings,
         outputs = lp.output,
         mixed = mixed,

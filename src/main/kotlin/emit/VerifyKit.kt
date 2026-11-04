@@ -313,6 +313,21 @@ object VerifyKit {
             )),
         ),
         Case(
+            "v25-belt-stacking", "A stack inserter drops items on a belt in stacks, other inserters one at a time",
+            "Research transport belt capacity 1 and 2 and inserter capacity (editor: research everything). The stack " +
+                "inserter at (0,1) drops iron plates onto the turbo belt along y=2, the fast inserter at (0,5) onto the one " +
+                "along y=6; both belts back up. Expected: the top belt's plates in stacks of 4 (GameConstants.MAX_BELT_STACK), " +
+                "the bottom one's single. Note the stack inserter's hand size (the code takes the bulk inserter's, 12 at full " +
+                "research) and whether a belt fed only stacks carries 4 times as many items (a belt reader on the last tile).",
+            Layout(8, 7, listOf(
+                e("infinity-chest", 0, 0, item = "iron-plate"), e("stack-inserter", 0, 1, Dir.N),
+                *(0..7).map { e("turbo-transport-belt", it, 2, Dir.E) }.toTypedArray(),
+                e("infinity-chest", 0, 4, item = "iron-plate"), e("fast-inserter", 0, 5, Dir.N),
+                *(0..7).map { e("turbo-transport-belt", it, 6, Dir.E) }.toTypedArray(),
+                pole(1, 3),
+            )),
+        ),
+        Case(
             "v23-aquilo-heating", "On Aquilo, what touches a heat pipe edge-on stays warm",
             "Build on Aquilo (editor). The heat interface (set it to 500 C) feeds a heat pipe running east along y=2. " +
                 "Expected warm: the belt and inserter at (1,1) and (2,1), the assembler under the pipe (seen in game). " +

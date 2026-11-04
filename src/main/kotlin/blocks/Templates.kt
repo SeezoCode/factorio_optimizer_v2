@@ -108,7 +108,7 @@ object Templates {
         val prodOut = outs.filter { it.item == product }
         val passOut = outs.filter { it.item == ingredient }
         if (prodOut.isEmpty() || passOut.size > 1 || outs.size != prodOut.size + passOut.size) return no("output ports other than of $product (and one of $ingredient passing on)")
-        val tier = GameConstants.beltTier(config.beltTier)
+        val tier = GameConstants.beltTier(config.beltTier, config.beltStackSize)
         fun portRate(p: Int) = plan.terminals.filter { it.port == p }.sumOf { it.rate }
         if (ins.sumOf { portRate(it.id) } > tier.throughput + 1e-9) return no("input over one belt")
 

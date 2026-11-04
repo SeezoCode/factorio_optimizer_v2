@@ -105,7 +105,7 @@ fun runFactory(
         synchronized(sayLock) { if (view?.live != true) println(line); logFile.appendText(line + "\n") }
     }
     fun left() = (deadline - System.currentTimeMillis()) / 1000.0
-    val tier = GameConstants.beltTier(config.beltTier)
+    val tier = GameConstants.beltTier(config.beltTier, config.beltStackSize)
     fun recipes(p: ProductionPlan) = recipeCounts(p)
     val saved = if (resume) loadSplit(out) else null
     if (resume) say(when {

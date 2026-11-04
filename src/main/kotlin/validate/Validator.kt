@@ -90,6 +90,11 @@ data class ValidationSpec(
     val beacon: plan.BeaconSpec? = null,
     /** Aquilo heating: everything that freezes must touch a heat pipe joined to a heat port; null: no heating. */
     val heat: HeatSpec? = null,
+    /**
+     * Belt stacking (Space Age): items from sources and stack inserters arrive in stacks this high and a stack takes
+     * one slot of a lane; anything another inserter drops takes a slot per item.
+     */
+    val beltStack: Int = 1,
 )
 
 /** Heat ports (heat pipe tiles where heat comes in) and whether poles freeze too. */
@@ -530,6 +535,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         // Straight feeds and curves keep lanes, a sideload goes to the near lane, an inserter drops on the far
         // lane, a splitter divides each lane by what the consumers below each side draw of its item.
         val addL = HashMap<Int, Double>(); val addR = HashMap<Int, Double>()
+        // What of it arrived unstacked (belt stacking: dropped by an inserter other than a stack inserter).
+        val addUL = HashMap<Int, Double>(); val addUR = HashMap<Int, Double>()
+        val stack = spec.beltStack.coerceAtLeast(1)
         spec.sources.filter { !it.fluid }.forEach { s ->
             indexAt(s.tile)?.let {
                 when (s.lane) {
@@ -541,7 +549,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         }
         beltRate.forEach { (ins, r) ->
             val b = dropIdx(ins)?.takeIf { ents[it].kind == Kind.BELT } ?: return@forEach
-            if (dropLane(ents[ins], b, belts) == 0) addL.merge(b, r, Double::plus) else addR.merge(b, r, Double::plus)
+            val left = dropLane(ents[ins], b, belts) == 0
+            if (left) addL.merge(b, r, Double::plus) else addR.merge(b, r, Double::plus)
+            if (stack > 1 && ents[ins].name != GameConstants.STACK_INSERTER) (if (left) addUL else addUR).merge(b, r, Double::plus)
         }
         // Expected draw per belt and item (a machine's share spread over its pickups), for splitting at splitters.
         val est = HashMap<Int, HashMap<String, Double>>()
@@ -565,6 +575,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         val indeg = HashMap<Int, Int>()
         succs.forEach { (_, ns) -> ns.forEach { indeg.merge(it, 1, Int::plus) } }
         val inL = HashMap<Int, Double>(); val inR = HashMap<Int, Double>()
+        val inUL = HashMap<Int, Double>(); val inUR = HashMap<Int, Double>()
         val queue = ArrayDeque(ents.indices.filter { ents[it].kind.beltFamily && (indeg[it] ?: 0) == 0 })
         val done = HashSet<Int>()
         val order = HashMap<Int, Int>()
@@ -576,9 +587,14 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val e = ents[i]
             var l = (inL[i] ?: 0.0) + (addL[i] ?: 0.0)
             var r = (inR[i] ?: 0.0) + (addR[i] ?: 0.0)
+            var ul = (inUL[i] ?: 0.0) + (addUL[i] ?: 0.0)
+            var ur = (inUR[i] ?: 0.0) + (addUR[i] ?: 0.0)
             val laneCap = beltCapacity(e) / 2 * (if (e.kind == Kind.SPLITTER) 2 else 1)
-            if (l > laneCap + 1e-6 || r > laneCap + 1e-6) {
-                err(ErrorType.BELT_OVER_CAPACITY, e.tile, "lanes carry ${fmt(l)}/s and ${fmt(r)}/s; a lane holds ${fmt(laneCap)}/s")
+            // Slots a lane uses per second: a stack takes one, an unstacked item one.
+            fun slots(all: Double, loose: Double) = (all - loose) / stack + loose
+            if (slots(l, ul) > laneCap + 1e-6 || slots(r, ur) > laneCap + 1e-6) {
+                err(ErrorType.BELT_OVER_CAPACITY, e.tile, "lanes carry ${fmt(l)}/s and ${fmt(r)}/s; a lane holds ${fmt(laneCap)}/s" +
+                    if (stack > 1) " (${fmt(laneCap * stack)}/s in stacks of $stack; ${fmt(ul)}/s and ${fmt(ur)}/s unstacked)" else "")
             }
             // Takes up to [want] of [item] from the lane(s) that carry it; a belt with one item on both lanes
             // drains both evenly.
@@ -588,8 +604,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 val t = min(want, have)
                 if (have > 1e-12) {
                     val keep = max(0.0, 1 - t / have)
-                    if (mask and 1 != 0) l *= keep
-                    if (mask and 2 != 0) r *= keep
+                    if (mask and 1 != 0) { l *= keep; ul *= keep }
+                    if (mask and 2 != 0) { r *= keep; ur *= keep }
                 }
                 return t
             }
@@ -629,6 +645,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             outs.forEachIndexed { k, n ->
                 val (toL, toR) = laneInto(e, ents[n], belts)
                 val fl = l * shareL[k]; val fr = r * shareR[k]
+                val ufl = ul * shareL[k]; val ufr = ur * shareR[k]
                 // toL / toR: where this node's left and right lanes land on the successor (0 = left, 1 = right,
                 // -1 = blocked by an underground's hood: those items stop there and back up).
                 if ((toL < 0 && fl > 1e-6) || (toR < 0 && fr > 1e-6)) {
@@ -638,6 +655,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 }
                 if (toL == 0) inL.merge(n, fl, Double::plus) else if (toL == 1) inR.merge(n, fl, Double::plus)
                 if (toR == 0) inL.merge(n, fr, Double::plus) else if (toR == 1) inR.merge(n, fr, Double::plus)
+                if (toL == 0) inUL.merge(n, ufl, Double::plus) else if (toL == 1) inUR.merge(n, ufl, Double::plus)
+                if (toR == 0) inUL.merge(n, ufr, Double::plus) else if (toR == 1) inUR.merge(n, ufr, Double::plus)
                 indeg[n] = (indeg[n] ?: 1) - 1
                 if (indeg[n] == 0) queue += n
             }

@@ -382,7 +382,7 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
         val l = links[linkOfPort.getValue(p.id)]
         if (!p.output && l.pair >= 0) portOfLink[l.pair]?.let { p.copy(pairWith = it) } ?: p else p
     }
-    val tier = data.GameConstants.beltTier(full.beltTier)
+    val tier = data.GameConstants.beltTier(full.beltTier, full.beltStack)
     val nets = ArrayList<Net>()
     terminals.filter { it.role != Role.SINK }.groupBy { it.item }.forEach { (item, ts) ->
         val takers = ts.filter { it.role == Role.CONSUMER || it.role == Role.OUTPUT }

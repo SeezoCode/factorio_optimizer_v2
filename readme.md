@@ -316,6 +316,10 @@ Unknown keys are an error. Everything except `targets` has a default.
 - `weave_tier` is the second underground tier that may cross under the main tier's undergrounds ("auto":
   express under fast belts; "none" turns weaving off). `lane_sharing: true` lets two items share a belt, one
   per lane (opt-in until the drop-lane facts are checked in game, see docs/VERIFY.md).
+- `belt_stack_size` (Space Age, 1–4, default 1: off) stacks items on belts: every inserter dropping onto a belt is a
+  stack inserter and items coming in are taken as stacked, so a belt carries that many times its items (a lane
+  is counted in slots: a stack takes one, an item another inserter dropped takes one alone). See
+  [Belt stacking](#belt-stacking).
 - `research.inserter_capacity` (0–7) sets inserter hand sizes; `machines` picks one machine per recipe category.
 - `research.productivity` adds research productivity per recipe on top of the machine's own (+50% in a foundry,
   electromagnetic plant or biochamber), capped at the recipe's maximum. Rates and machine counts follow from it.
@@ -496,6 +500,14 @@ There is no special mode for space platforms; the normal options describe one:
   "power": { "pole": "medium-electric-pole" }
 }
 ```
+
+#### Belt stacking
+
+With `belt_stack_size: 4` a turbo belt carries 240 items/s: the planner counts belts at that rate, the router drops
+every product onto a belt through a stack inserter (no long-handed inserters there, as they would not stack) and
+the validator counts lane slots, a stack taking one and an item from any other inserter one of its own, so a lane
+mixing both holds less. Inputs are taken as arriving stacked. A block of 10 gears/s from plates takes its 20
+plates/s on one yellow belt. The stack inserter's hand size and the stack height are marked VERIFY (v25).
 
 #### Recyclers and mixed belts
 
@@ -691,6 +703,15 @@ and practically useless:
   every machine waits for an item stuck behind the others. Done safely it is a loop with one inserter per item
   allowed to add only while the loop holds fewer than N of it (belts read their contents into a circuit); that needs
   loops in the validator and an in-game check first.
+- **Searching identical blocks once.** In the six-science split no two blocks are alike: the four copper columns
+  have 32 furnaces each but different ore rates, port sides and outputs. It would take a split that makes blocks
+  alike on purpose.
+- **The underground side feed as a lane filter in the router.** The validator models it (only the lane on the
+  entrance's open half gets in, the other backs up), so a hand-made one checks out, but the router does not build
+  one: lane pairs already put two items on one belt at a sideload junction.
+- **Spoilage and quality (not yet).** Spoilage needs every belt that carries a spoilable item to end where
+  spoilage can leave (a filter to a chest or a burner), and first an in-game check of where an ingredient that
+  spoils inside a machine goes. Quality splits every item into five tiers that need sorting.
 
 ## Not verified in game yet
 
