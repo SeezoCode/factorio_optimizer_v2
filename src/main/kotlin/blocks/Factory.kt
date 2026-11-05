@@ -135,7 +135,7 @@ fun runFactory(
         heat = config.heat.copy(edge = "any"),
     )
 
-    val weights = machineWeights(plan, cfg)
+    val weights = machineWeights(plan, cfg, tier.throughput)
     val blockSize = BlockSize.of(plan, weights, cfg)
     fun weightOf(ms: List<Int>) = ms.sumOf { weights[it] }
     fun effort(b: Int) = weightOf(split.blocks[b]) + 0.5 * split.links.count { it.from == b || it.to == b }

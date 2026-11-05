@@ -378,6 +378,11 @@ data class BlocksConfig(
     val rows: Int? = null,
     /** A link between two blocks above this share of a belt is split over several belts. */
     @SerialName("link_belt_share") val linkBeltShare: Double = 0.9,
+    /**
+     * With [sizeBy] "weight": a machine also weighs this much per belt's worth of items it takes or makes, so blocks of
+     * machines that fill belts (foundries, beaconed assemblers) come out smaller, with fewer belts to route.
+     */
+    @SerialName("belt_weight") val beltWeight: Double = 0.0,
     /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,
     /** Price of a belt between blocks when splitting (a port on each block and a belt through the corridors). */

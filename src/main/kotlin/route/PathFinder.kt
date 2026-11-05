@@ -361,17 +361,11 @@ class PathFinder(internal val p: RouteProblem) {
                     val around = group.ifEmpty { remaining.filter { it.value > 1e-9 }.keys.toList().ifEmpty { producers } }
                     val gx = around.map { center(it.base).first }.average()
                     val gy = around.map { center(it.base).second }.average()
-                    var left = demand
-                    while (left > 1e-9) {
-                        val pr = remaining.filter { it.value > 1e-9 }.keys
-                            .minByOrNull { val (x, y) = center(it.base); abs(x - gx) + abs(y - gy) } ?: break
-                        val take = minOf(left, remaining.getValue(pr))
-                        remaining[pr] = remaining.getValue(pr) - take
-                        left -= take
-                        // A producer whose whole spare goes here keeps its k; a share gets its own count.
-                        val k = if (abs(take - pr.rate) < 1e-9) pr.k else inserterCount(take, dropRate)
-                        members += VT(vts.size + members.size, pr.base, take, k, idx)
+                    val (takes, left) = laneTakes(demand, remaining, dropRate) {
+                        remaining.filter { it.value > 1e-9 }.keys.minByOrNull { val (x, y) = center(it.base); abs(x - gx) + abs(y - gy) }
                     }
+                    // A producer whose whole spare goes here in one piece keeps its k; a share gets its own count.
+                    takes.forEach { (pr, take, k) -> members += VT(vts.size + members.size, pr.base, take, if (abs(take - pr.rate) < 1e-9 && k <= pr.k) pr.k else k, idx) }
                     if (left > 1e-6) log += "net ${net.id} (${net.item}): chain short of ${"%.2f".format(left)}/s supply"
                 }
                 vts += members
@@ -1763,16 +1757,8 @@ class PathFinder(internal val p: RouteProblem) {
         val prodLeft = LinkedHashMap<EffectiveTerminal, Double>().apply { producers.forEach { put(it, it.rate) } }
         val srcLeft = LinkedHashMap<EffectiveTerminal, Double>().apply { sources.forEach { put(it, it.rate) } }
         fun fromProducers(amount: Double, at: Pair<Double, Double>): Pair<List<EffectiveTerminal>, Double> {
-            var left = amount
-            val parts = ArrayList<EffectiveTerminal>()
-            while (left > 1e-9) {
-                val pr = prodLeft.filter { it.value > 1e-9 }.keys.minByOrNull { dist(center(it.base), at) } ?: break
-                val take = min(left, prodLeft.getValue(pr))
-                prodLeft[pr] = prodLeft.getValue(pr) - take
-                left -= take
-                parts += part(pr, take, dropRate)
-            }
-            return parts to left
+            val (takes, left) = laneTakes(amount, prodLeft, dropRate) { prodLeft.filter { it.value > 1e-9 }.keys.minByOrNull { dist(center(it.base), at) } }
+            return takes.map { (pr, take, k) -> if (abs(take - pr.rate) < 1e-9 && k <= pr.k) pr else EffectiveTerminal(pr.base, take, k) } to left
         }
         /** Chains for [parts], at most [room] by visits (one per tile of the port they start from). */
         fun chainsOf(parts: List<EffectiveTerminal>, room: Int = Int.MAX_VALUE): List<List<EffectiveTerminal>> {
@@ -1839,9 +1825,38 @@ class PathFinder(internal val p: RouteProblem) {
 
     /** Capacity-balanced k-means of consumers into [g] chains, seeded with far-apart consumers. */
     /**
+     * What a chain needing [amount] takes from producers ([nearest] first, out of [remaining]), in pieces that each fit
+     * the room left on one of its two lanes (a piece is what one inserter, or a few slow ones, drop there): the drops
+     * then always split over the lanes as the lane check asks (three drops of 9.6/s from one foundry need two lanes, not
+     * 19.2/s on one). A take that fits a lane whole goes there. Per piece: its producer, take and inserters; and what is
+     * short.
+     */
+    private fun laneTakes(amount: Double, remaining: MutableMap<EffectiveTerminal, Double>, dropRate: Double,
+                          nearest: () -> EffectiveTerminal?): Pair<List<Triple<EffectiveTerminal, Double, Int>>, Double> {
+        val bins = DoubleArray(2)
+        val got = ArrayList<Triple<EffectiveTerminal, Double, Int>>()
+        var left = amount
+        while (left > 1e-9) {
+            val pr = nearest() ?: break
+            val whole = minOf(left, remaining.getValue(pr))
+            val lane = (0..1).filter { laneCap - bins[it] >= whole - 1e-9 }.minByOrNull { bins[it] } ?: (if (bins[0] <= bins[1]) 0 else 1)
+            val room = laneCap - bins[lane]
+            // Lanes full as packed (consumers between the drops free room on the way): the rest whole, as one take.
+            val take = if (room >= minOf(whole, 1.0)) minOf(whole, room) else whole
+            remaining[pr] = remaining.getValue(pr) - take
+            bins[lane] += take
+            left -= take
+            // Each piece a terminal of its own, so its inserters drop what the lane it was packed on has room for (one
+            // terminal of two pieces would split them evenly, 22 + 16 as 19 + 19, and the next producer's fits neither lane).
+            got += Triple(pr, take, inserterCount(take, dropRate))
+        }
+        return got to left
+    }
+
+    /**
      * [cs] in [g] chains by position ([groupConsumers]), or more where a chain would carry more than a belt holds
-     * (what it takes plus [extra] for that many chains): consumers are not split, so six foundries of 15.8 ore/s
-     * each take six fast belts, not the four their sum asks for.
+     * (what it takes plus [extra] for that many chains): consumers are not split, so six foundries of 15.8 ore/s each
+     * take six fast belts, not the four their sum asks for.
      */
     private fun groupWithin(cs: List<EffectiveTerminal>, g: Int, center: (Terminal) -> Pair<Double, Double>, extra: (Int) -> Double = { 0.0 }): List<List<EffectiveTerminal>> {
         var n = g

@@ -38,13 +38,15 @@ import kotlin.math.ln
  * (ore in, plate out) weighs 1, an assembler with three inputs about 2, more with fast machines that need several
  * inserters per item. With size_by machines, 1 each.
  */
-fun machineWeights(plan: ProductionPlan, cfg: BlocksConfig): DoubleArray {
+fun machineWeights(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double = 0.0): DoubleArray {
     val w = DoubleArray(plan.machines.size)
     if (cfg.sizeBy == "machines") return w.also { it.fill(1.0) }
     plan.terminals.forEach { t ->
         val m = t.machine ?: return@forEach
         if (t.role == Role.SOURCE || t.role == Role.OUTPUT) return@forEach
         w[m] += if (t.fluid) 0.75 else 0.5 * t.k
+        // Belts' worth of items in and out: a foundry casting cable fills a belt and more, however few inserters.
+        if (!t.fluid && beltThroughput > 0) w[m] += cfg.beltWeight * t.rate / beltThroughput
     }
     for (m in w.indices) w[m] = maxOf(1.0, w[m])
     return w
@@ -76,7 +78,7 @@ class PartitionModel(
     pureRecipes: Set<String> = emptySet(),
 ) {
     val n = plan.machines.size
-    val weight = machineWeights(plan, cfg)
+    val weight = machineWeights(plan, cfg, beltThroughput)
     val size = BlockSize.of(plan, weight, cfg)
     val items: List<String>
     /** Per item: price of a port, and price per unit of rate through it. */
