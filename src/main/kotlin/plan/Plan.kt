@@ -187,8 +187,11 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         // Products that go on one mixed belt leave through one inserter (count them as one).
         val itemOut = itemOut0.entries.groupBy { mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }
         fun inserters(n: Int) = demandPer.values.sumOf { inserterCount(x * it / n, pickRate0) } + itemOut.values.sumOf { inserterCount(x * it / n, dropRate0) }
+        // A beaconed machine in the lattice has one side against its beacon row: no belt-fed inserter goes there.
+        val beaconSide = if (tuning.planner.beaconSide && config.beacons?.mode == "lattice" && plannedBeacons(data, config, r, c.machine) > 0)
+            maxOf(e.width, e.height) else 0
         val room = maxOf(demandPer.size + itemOut.size,
-            (tuning.planner.accessShare * (2 * (e.width + e.height) - fluidIngredients.size - fluidProducts.size)).toInt())
+            (tuning.planner.accessShare * (2 * (e.width + e.height) - beaconSide - fluidIngredients.size - fluidProducts.size)).toInt())
         val base = maxOf(1, ceil(x * c.machineTime - 1e-6).toInt())
         var n = base
         while (inserters(n) > room && n < base * 20) n++

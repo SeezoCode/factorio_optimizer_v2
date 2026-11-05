@@ -709,6 +709,7 @@ values it used as `tuning.json` in its output folder. The ones that matter most:
 | `place.belt_cost`, `place.path_weight` | hpwl, 1.0 | How a net's belt length is estimated: bounding box x q(k), or "path" (bounding box plus the detours of a path between the machines). |
 | `search.grow_factor`, `search.grow_rounds` | 1.25, 2 | Box growth after a failed size, and seed rounds per size before growing. |
 | `planner.access_share` | 0.75 | Share of the tiles around a machine its inserters may take; a recipe that would need more gets extra machines (fast Space Age machines with productivity hit this). |
+| `planner.beacon_side` | true | A machine planned with beacons in the lattice has one side against its beacon row, so `access_share` counts the other three. Beaconed assembler 3s making circuits from cable (9 inserters at hand size 2) get 5 each instead (10 machines for 45/s instead of 6); a single block of them then routed at 40 x 40 at once, against 50 x 50 after 3 minutes, and a block of 6 such machines with 5 cable machines did not route at all in a factory. |
 
 The full list with explanations is in `src/main/kotlin/config/Tuning.kt`; measurements in
 [docs/TUNING.md](docs/TUNING.md). The block options `link_belt_share` (a link between blocks above this share

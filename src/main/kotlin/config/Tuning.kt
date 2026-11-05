@@ -58,6 +58,11 @@ data class PlannerTuning(
      * gets more machines, each with a smaller share (fast machines with productivity need this most).
      */
     @SerialName("access_share") val accessShare: Double = 0.75,
+    /**
+     * A machine planned with beacons in the lattice stands with one side against its beacon row, so only the other
+     * three count for [accessShare].
+     */
+    @SerialName("beacon_side") val beaconSide: Boolean = true,
 )
 
 @Serializable
