@@ -266,6 +266,7 @@ Unknown keys are an error. Everything except `targets` has a default.
   "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true },
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
+  "templates": true,
   "blocks": { "max_machines": 120, "size_by": "weight", "overflow_cost": 1.0, "hard_max": 1.5,
               "lanes": null, "park_after": 4, "restitch_share": 0.03,
               "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
@@ -274,7 +275,8 @@ Unknown keys are an error. Everything except `targets` has a default.
               "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
               "compact_s": null, "shape_variants": [], "shape_variant_s": null,
               "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3,
-              "templates": true, "template_share": 0.25, "shared_outputs": false },
+              "templates": true, "template_share": 0.25, "template_ingredients": 4, "template_min_machines": 4,
+              "shared_outputs": false },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
   "marker_tile": "hazard-concrete-left",
@@ -354,6 +356,10 @@ Unknown keys are an error. Everything except `targets` has a default.
 - `test_mode` builds the feeds into the search instead: inputs from infinity chests with inserters, outputs into
   void chests, ports spaced out so every feeder fits. The layout differs from the real one; the test copy above
   is usually what you want.
+- `templates` (on by default): a job of one recipe whose machines a ready-made column holds (see
+  [Templates](#templates-ready-made-columns)) starts with that column as its best layout, and the search then tries
+  smaller boxes only, so it never ends with a larger layout than the column. Not with `test_mode`, `reserved`,
+  `forbidden_tiles` or a fixed box width or height.
 - `tricks` toggles individual techniques (I1–I13, B1–B14, F1, F2, P1, P2, H1); v1 ones are on by default. B14, on by
   default, is the dead-end splitter pickup: a splitter on a belt whose second half leads nowhere, so an inserter
   beside the belt picks from that half (or a splitter at the end of a belt, picked from on both halves, up to five
@@ -442,11 +448,12 @@ belts and pipes, in one blueprint:
    (a merged block weighs at most 2.5 times the target, or has at most `merge_max_machines` machines with
    `size_by` machines, default twice `max_machines`).
 
-8. **Templates.** With `templates` (on by default) a block of one recipe of 3x3 machines with one solid ingredient
-   and one product (smelting, mostly) is also offered as a ready-made column, next to whatever the search finds; the
-   floorplan picks the layout that packs best, so nothing is forced (see [Templates](#templates-ready-made-columns)).
-   The split keeps such recipes in blocks of their own, and their search gets `template_share` of its share of the
-   time, since the template is a layout already.
+8. **Templates.** With `templates` (on by default) a block of one recipe of 3x3 machines with one to four solid
+   ingredients and one product (smelting, gears, science packs, engines…) is also offered as a ready-made column,
+   next to whatever the search finds; the floorplan picks the layout that packs best, so nothing is forced (see
+   [Templates](#templates-ready-made-columns)). The split keeps such recipes in blocks of their own (those with at most
+   `template_ingredients` ingredients and at least `template_min_machines` machines), and their search gets
+   `template_share` of its share of the time, since the template is a layout already.
 9. **Shared outputs (experimental, off).** With `shared_outputs` the links of one item leaving a block on one side
    share one output port (two or three links, up to a belt's worth): the block has fewer ports to reach, and in the
    corridors a short belt from the port leads to splitters that give each link its own belt. Small factories route
@@ -464,23 +471,53 @@ split, the links, the pipe trees and every stitching step) and each block in `bl
 
 #### Templates: ready-made columns
 
+A block of one recipe of 3x3 machines with one to four solid ingredients and one product gets a ready-made column.
+With one or two ingredients, the narrow column (ten wide):
+
 ```
 |machine|in, out, pole|A|B|in, out, pole|machine|
 ```
 
-Two machines per three rows: belt A carries the ingredient down the middle, belt B the product. On each side one
-inserter stands next to the belt it serves and a long-handed one reaches across to the other (left: short from A,
-long onto B; right: long from A, short onto B), and the third tile is free for a pole. Twenty electric furnaces take
-30 x 10 = 300 tiles, against 441–484 for the searched smelting blocks of the 2/s factory. Short headers above and
-below the column run the port belts to whichever sides the block's ports are on (a small belt search, undergrounds
-included); more product ports branch off the first one's belt through splitters, more input ports merge into it the
-same way (the first two join from opposite sides onto a lane each, and a merge only joins a side while it stays
-within a lane), what A does not use may pass on to an output port, and when ports sit on both ends of the column a
-bypass lane along it (one tile wider) carries a belt past the machines. Every template is validated before it is
-offered. It needs long-handed inserters fast enough for the machines (furnaces are; an assembler 3 making cable or
-gears is not without inserter research). Machines planned with beacons get a column of beacons outside each column
-of machines (16 wide): units of beacon, pole row, beacon, placed so every machine has the beacons its rate needs
-(with the default two per machine, 2–4 each), the machines with their own modules.
+Two machines per three rows: belt A carries the ingredients down the middle (two of them a lane each), belt B the
+product. On each side one inserter stands next to the belt it serves and a long-handed one reaches across to the
+other (left: short from A, long onto B; right: long from A, short onto B), and the third tile is free for a pole.
+Twenty electric furnaces take 30 x 10 = 300 tiles, against 441–484 for the searched smelting blocks of the 2/s
+factory; eight assembler 3s of red science 13 x 10.
+
+With three or four ingredients (or two that each need more than a lane), the wide column (fourteen wide):
+
+```
+|B1|out|machine|in, in, pole|A1|A2|in, in, pole|machine|out|B2|
+```
+
+Two ingredient belts down the middle carry up to four items: each machine takes from the nearer with a short
+inserter and from the farther with a long-handed one, and puts its product out of its other side onto an outer belt
+(one lane of it). A2 may run the other way to A1, so each has a header end of its own for its junction. Four engine
+units take 9 x 14, eight flying robot frames 14 x 17.
+
+Short headers above and below the column run the port belts to whichever sides the block's ports are on (a small
+belt search; an underground pair costs a tile more than belts over the same distance, so it only crosses other
+belts, and straight runs are left where splitters can go). A belt of two ingredients gets them sideloaded from
+either side of the belt just above its head, so each lands on a lane of its own whatever lanes it came on; so does
+a belt of one item fed from two ports, each within a lane (a port carrying more runs straight into the head, the
+others merging into it). Two ingredients coming on one belt already, a lane each (a factory's lane pair), run
+straight into their belt's head, lanes kept. More input ports merge into their item's belt through splitters (a
+merge only joins a side while it stays within a lane); more product ports branch off through splitters; two product belts with one port between them
+meet through a splitter or a sideload (or meet first and branch to the ports after, when the ports' rates are not
+what each belt carries); what a one-ingredient A does not use may pass on to an output port; and when ports sit on
+both ends of the column a bypass lane along it (one tile wider) carries a belt past the machines. Every template is
+validated before it is offered.
+
+It needs long-handed inserters fast enough for everything a machine takes from a belt (furnaces are, and slow
+recipes such as science packs or engines; an assembler 3 making cable, gears or circuits is not without inserter
+research). Machines planned with beacons get a column of beacons outside each column of machines (16 wide narrow, 20
+wide): units of beacon, pole row, beacon, placed so every machine has the beacons its rate needs (with the default
+two per machine, 2–4 each), the machines with their own modules. Burner machines take no column: stone and steel
+furnaces are 2x2, and a biochamber's nutrients spoil.
+
+In a factory, `template_ingredients` (default 4) and `template_min_machines` (default 4) pick the recipes the split
+keeps in blocks of their own so they get a column; a block that happens to hold one recipe gets one anyway. A job in
+one block starts from its column (top-level `templates`, on by default) and searches only smaller boxes.
 
 Six science at 1/s each from ore, 28 blocks sized by weight (`docs/status/six_science_ore_28_blocks.json`, 1600 s
 plus 600 s of compaction, 2 threads each, same machine): **26,544 and 26,712 tiles in two runs with templates
@@ -489,7 +526,16 @@ against 29,928 without** (about 11 % smaller; an early version that gave a colum
 capacity in front of a steel column fed by three smelting blocks: the validator split each upstream splitter by all
 the demand reachable below each side, which counted the steel column's whole draw behind every one of its three
 inputs. It now splits by what the max flow sends through to the consumers below each side, and the two runs since
-rejected none. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
+rejected none.
+
+With columns for two to four ingredients too (same job and machine, two runs at a time): **24,180 tiles** against
+26,880 with single-ingredient columns only (35 blocks against 28: the split keeps 16 recipes apart). With lane pairs
+(two ingredients on one belt from another block), input ports over a lane and the header search preferring belts,
+27 of the 35 blocks got a column (all single-recipe blocks but production science, whose rails outrun a long-handed
+inserter): **23,405 tiles**; a second run's final stitch did not route on any of its three floorplans (two corridor
+conflicts each) and kept a 25,428-tile preview, and resuming it (`--resume`, 200 s) stitched the same blocks into
+**23,103 tiles**. Keeping every recipe a column holds apart, even with one or two machines, split the small T3 job
+into four blocks instead of two, hence `template_min_machines` 4. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
 `TEMPLATE_JOB=<job>`) says why a block got none; `TEMPLATE_DEBUG=1` traces the header search.
 
 ### Space Age

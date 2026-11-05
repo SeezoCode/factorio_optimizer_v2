@@ -104,6 +104,11 @@ data class RunConfiguration(
     val search: SearchConfig = SearchConfig(),
     val score: ScoreConfig = ScoreConfig(),
     @SerialName("test_mode") val testMode: Boolean = false,
+    /**
+     * A job in one block whose machines a ready-made column holds (one recipe, see Templates.kt) starts with that
+     * column as its best layout; the search then looks for smaller ones only. Factories of blocks: [BlocksConfig.templates].
+     */
+    val templates: Boolean = true,
     /** Split a big job into blocks connected by belts (see [BlocksConfig]); null keeps one block. */
     val blocks: BlocksConfig? = null,
     /**
@@ -416,6 +421,13 @@ data class BlocksConfig(
      * offered to the floorplan next to the searched layouts: it picks whichever packs best, so nothing is forced.
      */
     val templates: Boolean = true,
+    /**
+     * Recipes with up to this many ingredients (1 to 4) that a machine column can hold are kept in blocks of their
+     * own, so that those blocks get a column; recipes with more get one only where a block happens to hold them alone.
+     */
+    @SerialName("template_ingredients") val templateIngredients: Int = 4,
+    /** ...and with at least this many machines (fewer gain little from a block of their own, which costs links). */
+    @SerialName("template_min_machines") val templateMinMachines: Int = 4,
     /**
      * Links of one item leaving a block on one side for other blocks share one output port (two or three, up to a belt's
      * worth): splitters right outside it give each link its own belt, and the block has fewer ports to reach.

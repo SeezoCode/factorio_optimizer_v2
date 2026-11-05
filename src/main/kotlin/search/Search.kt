@@ -51,6 +51,8 @@ class Search(
     initial: TrialResult? = null,
     /** Where progress lines go besides log.txt (stdout by default; a factory's live view keeps them off screen). */
     private val printer: (String) -> Unit = ::println,
+    /** Start from a ready-made layout where one fits the plan ([RunConfiguration.templates]; a single block's search). */
+    private val templates: Boolean = false,
 ) {
     private val start = clock()
     /** When the search stops; [extendTo] moves it (a factory run whose limit changed, or a stop). */
@@ -227,7 +229,8 @@ class Search(
         val (w, h) = box(s)
         val offset = seedsUsed.getOrDefault(s, 0)
         seedsUsed[s] = offset + seeds
-        val warm = best?.placement ?: startFrom
+        // (Not a template's placement: its machines stand in a column of another shape.)
+        val warm = best?.takeIf { it !== template }?.placement ?: startFrom
         val warmT0 = best?.annealT0
         val pool = Executors.newFixedThreadPool(threads.coerceAtLeast(1))
         try {
@@ -294,12 +297,35 @@ class Search(
         say("machines ${plan.machines.size}, machine area $area, s_lo $sLo, start $hi${cap?.let { ", max $it" } ?: ""}, budget ${config.search.timeBudgetS}s, $k seeds x ${config.search.threads} threads")
         box(hi).let { (w, h) -> sayPlan(w, h) }
         val b = best
+        val t = if (b == null && templates) template() else null
         if (b != null) {
             // Refining a finished layout: from its size, try smaller.
             hi = sizeOf(b); sLo = minOf(sLo, hi)
             say("refining a ${b.w}x${b.h} layout (size $hi)")
             phase = Phase.EXTRA
+        } else if (t != null) {
+            // A ready-made layout: the best so far; the search looks below its size.
+            template = t
+            say("${t.notes.firstOrNull() ?: "template"}: ${t.w}x${t.h}; searching smaller boxes")
+            offer(t)
+            // (Below the area estimate too, if the column beats it: the boxes just under it.)
+            hi = sizeOf(t); sLo = minOf(sLo, hi - 1); lo = sLo
+            phase = Phase.BINARY
         } else phase = Phase.GROW
+    }
+
+    /** The template layout the search starts from, if any. */
+    private var template: TrialResult? = null
+
+    /** The smallest ready-made layout for the plan (see blocks.Templates) the box settings allow, or null. */
+    private fun template(): TrialResult? {
+        if (config.testMode || config.reserved.isNotEmpty() || config.forbiddenTiles.isNotEmpty() || config.box.fixedWidth != null || config.box.fixedHeight != null) return null
+        val notes = ArrayList<String>()
+        val ts = runCatching { blocks.Templates.layouts(data, config, plan) { notes += it } }.getOrElse { e -> say("template failed with $e"); emptyList() }
+        // Mixed jobs have none; say why only where the job has one recipe.
+        if (ts.isEmpty() && plan.machines.map { it.recipe }.distinct().size == 1) notes.forEach { say("($it)") }
+        val cap = config.box.maxSize?.let { box(it) }
+        return ts.filter { t -> cap == null || t.w * t.h <= cap.first * cap.second }.minByOrNull { it.area }
     }
 
     /**
@@ -336,7 +362,7 @@ class Search(
             Phase.EXTRA -> {
                 val before = best
                 if (hi - 1 >= sLo && trySize(hi - 1, k, threads)) hi -= 1
-                else if (timeLeft()) trySize(hi, k, threads)
+                else if (timeLeft() && !pointless(hi)) trySize(hi, k, threads)
                 stalls = if (best !== before) 0 else if (inconclusive) stalls else stalls + 1
                 if (++extraRound > tuning.search.extraRounds) end("extra seed rounds done")
             }
@@ -344,6 +370,9 @@ class Search(
         }
         return phase != Phase.DONE
     }
+
+    /** A box of size [s] is larger than the best layout (a template's): nothing found there could replace it. */
+    private fun pointless(s: Int): Boolean = best?.let { b -> box(s).let { (w, h) -> w * h > b.area } } ?: false
 
     private fun closeInterval() { say("search interval closed at size $hi"); phase = Phase.EXTRA }
     private fun end(reason: String) { endReason = reason; phase = Phase.DONE }
@@ -400,7 +429,7 @@ fun portManifest(t: TrialResult): JsonObject {
 
 /** Entry for Main: runs the search with a Ctrl-C hook that flushes the best result. */
 fun runSearch(data: RootData, config: RunConfiguration, tuning: Tuning, plan: ProductionPlan, out: String): SearchResult {
-    val search = Search(data, config, tuning, plan, File(out))
+    val search = Search(data, config, tuning, plan, File(out), templates = config.templates)
     val hook = Thread { search.flush("interrupted") }
     Runtime.getRuntime().addShutdownHook(hook)
     val result = search.run()

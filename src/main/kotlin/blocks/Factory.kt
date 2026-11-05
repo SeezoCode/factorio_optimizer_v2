@@ -117,7 +117,7 @@ fun runFactory(
     })
     var split = saved?.takeIf { recipes(it.plan) == recipes(input) }
         ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved,
-            pure = if (cfg.templates) Templates.columnRecipes(input, config) else emptySet()).also { saveSplit(out, config, it) }
+            pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines) else emptySet()).also { saveSplit(out, config, it) }
     // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
     val plan = split.plan
     plan.write(File(out, "plan_rebalanced.json").path)
@@ -188,12 +188,18 @@ fun runFactory(
         bps.flatMap { bp -> cfg.shapeVariants.mapIndexed { i, f -> Job(bp.index, i + 1, f) } }
     fun baseAspect(b: Int) = loaded[b].firstOrNull()?.let { it.w.toDouble() / it.h } ?: split.geometry.boxes[b].let { it.w.toDouble() / it.h }
     // Ready-made layouts for simple blocks (a column of furnaces...), offered next to whatever the search finds.
-    val templates = bps.map { bp ->
-        if (!cfg.templates) emptyList() else runCatching {
-            Templates.layouts(data, blockConfig(1e7, baseAspect(bp.index)), bp.plan)
-        }.getOrElse { e -> say("block ${bp.index + 1}: template failed with $e"); emptyList() }
-            .also { ts -> if (ts.isNotEmpty()) say("block ${bp.index + 1}: template ${ts.joinToString(", ") { "${it.w} x ${it.h}" }} (${ts[0].notes.firstOrNull() ?: ""})") }
-    }
+    // (Blocks in parallel: a wide column's header search takes a second or two.)
+    val templatePool = java.util.concurrent.Executors.newFixedThreadPool(config.search.threads.coerceAtLeast(1))
+    val templates = try {
+        bps.map { bp ->
+            templatePool.submit(java.util.concurrent.Callable {
+                if (!cfg.templates) emptyList() else runCatching {
+                    Templates.layouts(data, blockConfig(1e7, baseAspect(bp.index)), bp.plan)
+                }.getOrElse { e -> say("block ${bp.index + 1}: template failed with $e"); emptyList() }
+                    .also { ts -> if (ts.isNotEmpty()) say("block ${bp.index + 1}: template ${ts.joinToString(", ") { "${it.w} x ${it.h}" }} (${ts[0].notes.firstOrNull() ?: ""})") }
+            })
+        }.map { it.get() }
+    } finally { templatePool.shutdown() }
     val engine = BlockEngine(
         bps = bps,
         jobs = jobs,

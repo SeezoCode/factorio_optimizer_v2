@@ -173,6 +173,29 @@ class FactoryTest {
     }
 
     @Test
+    fun `a two-ingredient recipe is kept in a block of its own and offered as a column`() {
+        val config = config.RunConfiguration(
+            targets = listOf(config.ConfigTarget("automation-science-pack", 1.5)),
+            machines = listOf("assembling-machine-3"), rawResources = listOf("iron-plate", "copper-plate"),
+            sources = listOf(ConfigSource("iron-plate", edge = "west"), ConfigSource("copper-plate", edge = "west")),
+            outputs = listOf(ConfigSource("automation-science-pack", edge = "east")),
+            blocks = BlocksConfig(maxMachines = 6, sizeBy = "machines"),
+            search = SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7),
+        )
+        val plan = buildPlan(TestData.data, config)
+        // Red science (copper and gears, a lane each) fits a column; gears in an assembler 3 outrun long-handed inserters.
+        assertEquals(setOf("automation-science-pack"), blocks.Templates.columnRecipes(plan, config))
+        val out = File("build/factory/red_science_column")
+        out.deleteRecursively()
+        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
+        assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+        val log = File(out, "factory.txt").readText()
+        assertTrue(Regex("block \\d+: template [\\d x,]+ \\(template: machine column of \\d+ assembling-machine-3 \\(automation-science-pack\\)").containsMatchIn(log), log)
+        // The column (ten wide) is smaller than what the search finds for six assemblers, so the factory uses it.
+        assertTrue(f.blockLayouts.any { r -> r.notes.any { it.startsWith("template: machine column") } }, "no column in the final factory")
+    }
+
+    @Test
     fun `links of one item leaving a block share one output port and branch off in the corridors`() {
         val config = config.RunConfiguration(
             targets = listOf(config.ConfigTarget("automation-science-pack", 1.0), config.ConfigTarget("logistic-science-pack", 1.0)),

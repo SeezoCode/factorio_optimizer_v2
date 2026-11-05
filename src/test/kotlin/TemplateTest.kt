@@ -3,6 +3,8 @@ import config.ConfigSource
 import config.ConfigTarget
 import config.ResearchConfig
 import config.RunConfiguration
+import config.SearchConfig
+import config.Tuning
 import geom.Kind
 import plan.Port
 import plan.Role
@@ -136,6 +138,104 @@ class TemplateTest {
                 assertTrue(l.entities.filter { it.kind == Kind.MACHINE }.all { it.modules == listOf("productivity-module-3", "productivity-module-3") })
             }
         }
+    }
+
+    /** A job making [item] from [inputs] (item to edge) in assembler 3s, the inputs raw. */
+    private fun assembly(item: String, rate: Double, inputs: List<Pair<String, String>>, outEdge: String) = RunConfiguration(
+        targets = listOf(ConfigTarget(item, rate)), machines = listOf("assembling-machine-3"), rawResources = inputs.map { it.first },
+        sources = inputs.map { (i, e) -> ConfigSource(i, edge = e) }, outputs = listOf(ConfigSource(item, edge = outEdge)),
+    )
+
+    @Test
+    fun `a two-ingredient recipe gets the narrow column, an ingredient a lane`() {
+        val config = assembly("automation-science-pack", 2.0, listOf("copper-plate" to "west", "iron-gear-wheel" to "north"), "east")
+        val plan = buildPlan(TestData.data, config)
+        assertEquals(setOf("automation-science-pack"), plan.machines.map { it.recipe }.toSet())
+        val ts = checkAll("red_science", config, plan)
+        ts.forEach { t ->
+            // Ten wide (eleven with a bypass lane), or the same lying down.
+            assertTrue(minOf(t.w, t.h) in 10..11 && (t.w <= 11 || t.h <= 11), "${t.w} x ${t.h}")
+            assertTrue(t.notes.any { "template: machine column" in it }, "${t.notes}")
+        }
+        // The same with each ingredient from two ports.
+        var two = withSplitPort(plan, "copper-plate", false, "south", 0.8)
+        two = withSplitPort(two, "iron-gear-wheel", false, "west", 0.7)
+        checkAll("red_science_four_in", config, two)
+    }
+
+    @Test
+    fun `two ingredients coming on one belt, a lane each, run straight into the column`() {
+        val config = assembly("automation-science-pack", 2.0, listOf("copper-plate" to "west", "iron-gear-wheel" to "west"), "east")
+        val base = buildPlan(TestData.data, config)
+        // A factory's lane pair: the two ports pair up (one belt into the block, an item a lane).
+        val cu = base.ports.first { it.item == "copper-plate" }; val gear = base.ports.first { it.item == "iron-gear-wheel" }
+        val plan = base.copy(ports = base.ports.map { p -> when (p.id) { cu.id -> p.copy(pairWith = gear.id); gear.id -> p.copy(pairWith = cu.id); else -> p } })
+        checkAll("red_science_pair", config, plan).forEach { t ->
+            val srcs = t.sources.filter { it.item in setOf("copper-plate", "iron-gear-wheel") }
+            assertEquals(1, srcs.map { it.tile }.distinct().size, "$srcs")
+            assertEquals(setOf(0, 1), srcs.map { it.lane }.toSet())
+            // No junction: the belt runs in as it is, with no sideload onto it.
+            assertTrue(t.layout!!.entities.none { it.kind == Kind.SPLITTER })
+        }
+    }
+
+    @Test
+    fun `an input port carrying more than a lane runs straight in, the other merging into it`() {
+        val steel = job("steel-plate", 4.4, "iron-plate", "west", "east")
+        val base = buildPlan(TestData.data, steel)
+        val plan = withSplitPort(base, "iron-plate", false, "south", 2.0)
+        assertTrue(plan.terminals.any { it.role == Role.SOURCE && it.rate > 15.0 }, "${plan.terminals.filter { it.role == Role.SOURCE }}")
+        checkAll("steel_big_port", steel, plan).forEach { t -> assertTrue(t.layout!!.entities.any { it.kind == Kind.SPLITTER }) }
+    }
+
+    @Test
+    fun `three and four ingredients get the wide column, products out of the outer sides`() {
+        val engine = assembly("engine-unit", 0.5, listOf("steel-plate" to "west", "iron-gear-wheel" to "west", "pipe" to "north"), "east")
+        val plan = buildPlan(TestData.data, engine)
+        assertEquals(setOf("engine-unit"), plan.machines.map { it.recipe }.toSet())
+        checkAll("engines", engine, plan).forEach { t ->
+            assertTrue(t.w in 14..15 || t.h in 14..15, "${t.w} x ${t.h}")
+            assertTrue(t.notes.any { "wide machine column" in it }, "${t.notes}")
+        }
+        // Engines out on two sides, one per product belt.
+        checkAll("engines_two_out", engine, withSplitPort(plan, "engine-unit", true, "south", 0.2))
+        val frames = assembly("flying-robot-frame", 0.5,
+            listOf("electric-engine-unit" to "west", "battery" to "west", "steel-plate" to "north", "electronic-circuit" to "east"), "south")
+        val fp = buildPlan(TestData.data, frames)
+        assertEquals(setOf("flying-robot-frame"), fp.machines.map { it.recipe }.toSet())
+        checkAll("robot_frames", frames, fp)
+    }
+
+    @Test
+    fun `two ingredients too many for a lane each take a belt each`() {
+        // Copper and gears at 8/s each: over a yellow lane (7.5/s), so each gets a belt of its own in the wide column.
+        val config = assembly("automation-science-pack", 8.0, listOf("copper-plate" to "west", "iron-gear-wheel" to "west"), "east")
+            .copy(beltTier = "basic")
+        val plan = buildPlan(TestData.data, config)
+        checkAll("red_science_wide", config, plan).forEach { t -> assertTrue(t.notes.any { "wide machine column" in it }, "${t.notes}") }
+    }
+
+    @Test
+    fun `a single block starts from its column and searches smaller boxes only`() {
+        val config = job("iron-plate", 12.5, "iron-ore", "west", "east").copy(
+            search = SearchConfig(timeBudgetS = 4.0, seedsPerSize = 2, threads = 2, seed = 3))
+        val plan = buildPlan(TestData.data, config)
+        val column = Templates.layouts(TestData.data, config, plan).minBy { it.area }
+        val out = File("build/search/template_single")
+        out.deleteRecursively()
+        val r = search.Search(TestData.data, config, Tuning.defaults(), plan, out, templates = true).run()
+        val best = r.best!!
+        assertTrue(best.area <= column.area, "${best.w}x${best.h} vs ${column.w}x${column.h}")
+        assertTrue(r.log.any { "template: machine column" in it }, r.log.take(5).toString())
+        // Improvement #1 is the column; every box tried after it is smaller.
+        assertTrue(File(out, "allSolves").list()!!.any { it.startsWith("001 - ${column.w}x${column.h}") }, File(out, "allSolves").list()!!.toList().toString())
+        File(out, "attempts.tsv").takeIf { it.exists() }?.readLines()?.drop(1)?.forEach { line ->
+            val f = line.split("\t")
+            assertTrue(f[1].toInt() * f[2].toInt() < column.area, line)
+        }
+        // Without templates the search starts from scratch.
+        val off = search.Search(TestData.data, config.copy(templates = false), Tuning.defaults(), plan, File("build/search/template_single_off"), templates = false)
+        assertTrue(off.run().log.none { "template:" in it })
     }
 
     @Test
