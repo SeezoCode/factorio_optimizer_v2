@@ -8,6 +8,7 @@ import place.Placement
 import plan.ProductionPlan
 import plan.Role
 import plan.Terminal
+import plan.beltDropRate
 import plan.bestInserterRate
 import plan.inserterCount
 import plan.inserterRate
@@ -192,7 +193,7 @@ private fun gapTiles(a: Rect, b: Rect, gap: Int): Pair<List<Tile>, Dir>? {
 
 /** Terminal rates after direct insertion; terminals fully served by it are dropped. */
 fun effectiveTerminals(plan: ProductionPlan, links: List<DiLink>, config: RunConfiguration): Map<Int, EffectiveTerminal> {
-    val drop = bestInserterRate(config, fromBelt = false)
+    val drop = beltDropRate(config)
     val pick = bestInserterRate(config, fromBelt = true)
     val out = HashMap<Int, EffectiveTerminal>()
     plan.terminals.forEach { t ->

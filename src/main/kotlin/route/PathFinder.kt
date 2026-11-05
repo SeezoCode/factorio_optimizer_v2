@@ -16,6 +16,7 @@ import plan.Net
 import plan.ProductionPlan
 import plan.Role
 import plan.Terminal
+import plan.beltDropRate
 import plan.bestInserterRate
 import plan.inserterCount
 import plan.inserterRate
@@ -309,7 +310,7 @@ class PathFinder(internal val p: RouteProblem) {
         // Nets that still have a producer side and a consumer side, split into chains where needed.
         val rectOf = placement.machines.associate { it.id to placement.rect(plan, it) }
         fun center(t: Terminal): Pair<Double, Double> = rectOf.getValue(t.machine!!).let { (it.x + it.w / 2.0) to (it.y + it.h / 2.0) }
-        val dropRate = bestInserterRate(config, fromBelt = false)
+        val dropRate = beltDropRate(config)
         val beltCap = tier.throughput * tun.chainBeltShare
         plan.beltNets.forEach { net ->
             val ts = net.terminals.mapNotNull { eff[it] }
@@ -339,8 +340,7 @@ class PathFinder(internal val p: RouteProblem) {
             // Each chain ends at the output port when there is one, so chains need not have consumers.
             val g = if (output != null) g0 else g0.coerceAtMost(consumers.size)
             val groups: List<List<EffectiveTerminal>> = when {
-                g == 1 -> listOf(consumers)
-                consumers.size >= g -> groupConsumers(consumers, g, ::center)
+                consumers.size >= g -> groupWithin(consumers, g, ::center) { n -> (output?.rate ?: 0.0) / n }
                 else -> consumers.map { listOf(it) } + List(g - consumers.size) { emptyList() }
             }
             val outShare = (output?.rate ?: 0.0) / groups.size
@@ -1779,7 +1779,7 @@ class PathFinder(internal val p: RouteProblem) {
             if (parts.isEmpty()) return emptyList()
             val g = maxOf(minOf(ceilDiv(parts.sumOf { it.k }, tun.maxChainVisits), room), kotlin.math.ceil(parts.sumOf { it.rate } / beltCap - 1e-9).toInt(), 1)
                 .coerceAtMost(parts.size)
-            return if (g == 1) listOf(parts) else groupConsumers(parts, g, center)
+            return groupWithin(parts, g, center)
         }
         // 1. Output ports. An output chain fed from a single-belt input port (an item passing through a block of a
         // factory) waits for step 2: the consumers that port feeds join it, so the port stays one belt.
@@ -1838,6 +1838,20 @@ class PathFinder(internal val p: RouteProblem) {
     }
 
     /** Capacity-balanced k-means of consumers into [g] chains, seeded with far-apart consumers. */
+    /**
+     * [cs] in [g] chains by position ([groupConsumers]), or more where a chain would carry more than a belt holds
+     * (what it takes plus [extra] for that many chains): consumers are not split, so six foundries of 15.8 ore/s
+     * each take six fast belts, not the four their sum asks for.
+     */
+    private fun groupWithin(cs: List<EffectiveTerminal>, g: Int, center: (Terminal) -> Pair<Double, Double>, extra: (Int) -> Double = { 0.0 }): List<List<EffectiveTerminal>> {
+        var n = g
+        while (true) {
+            val groups = if (n <= 1) listOf(cs) else groupConsumers(cs, n, center)
+            if (n >= cs.size || groups.all { gr -> gr.sumOf { it.rate } + extra(groups.size) <= tier.throughput + 1e-9 }) return groups
+            n++
+        }
+    }
+
     private fun groupConsumers(cs: List<EffectiveTerminal>, g: Int, center: (Terminal) -> Pair<Double, Double>): List<List<EffectiveTerminal>> {
         val pts = cs.map { center(it.base) }
         val mx = pts.map { it.first }.average(); val my = pts.map { it.second }.average()

@@ -140,6 +140,13 @@ fun inserterRate(name: String, config: RunConfiguration, fromBelt: Boolean): Dou
 fun bestInserterRate(config: RunConfiguration, fromBelt: Boolean): Double =
     config.inserters.allowed.maxOf { inserterRate(it, config, fromBelt) }
 
+/**
+ * Best rate of an inserter dropping onto a belt: it drops onto one lane, which holds half the belt (a bulk
+ * inserter at hand size 12 moves more than a fast belt's lane). The router's lane check keeps the same margin.
+ */
+fun beltDropRate(config: RunConfiguration): Double =
+    minOf(bestInserterRate(config, fromBelt = false), GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput / 2 * 0.98)
+
 fun inserterCount(rate: Double, perInserter: Double): Int = maxOf(1, ceil(rate / perInserter - 1e-9).toInt())
 
 /**
@@ -171,7 +178,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     //    machine would need more inserters than fit around it (a foundry or electromagnetic plant is fast).
     val machines = mutableListOf<MachineInstance>()
     val pickRate0 = bestInserterRate(config, fromBelt = true)
-    val dropRate0 = bestInserterRate(config, fromBelt = false)
+    val dropRate0 = beltDropRate(config)
     lp.crafts.entries.sortedBy { it.key.recipe.name }.forEach { (c, x) ->
         val r = c.recipe
         val e = data.entities.getValue(c.machine)
@@ -251,7 +258,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     // 3. Terminals and nets per item and fluid.
     val terminals = mutableListOf<Terminal>()
     val nets = mutableListOf<Net>()
-    val dropRate = bestInserterRate(config, fromBelt = false)
+    val dropRate = beltDropRate(config)
     val pickRate = bestInserterRate(config, fromBelt = true)
 
     fun addTerminal(role: Role, item: String, rate: Double, k: Int, machine: Int? = null, port: Int? = null) =
