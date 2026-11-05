@@ -766,43 +766,126 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             seen
         }
         val insList = producers.flatMap { m -> toBelt.getValue(m).map { m to it } }
-        // Consumer inserter nodes, one per (inserter, item), each capped by the inserter's rate.
-        val pickNodes = draws.flatMap { (item, _, list) -> list.map { it to item } }.distinct()
-        // Nodes: 0 source, 1 sink, producers, producer inserters, fixed supplies, pickups (in, out), draws, outputs.
-        val pBase = 2; val iBase = pBase + producers.size; val fBase = iBase + insList.size; val kBase = fBase + fixed.size
-        val dBase = kBase + 2 * pickNodes.size; val oBase = dBase + draws.size
-        val g = MaxFlow(oBase + outputs.size)
-        val pickIndex = pickNodes.withIndex().associate { (k, p) -> p to kBase + 2 * k }
-        pickNodes.forEachIndexed { k, (ins, _) -> g.edge(kBase + 2 * k, kBase + 2 * k + 1, cap(ins)) }
-        val sinkEdge = IntArray(draws.size + outputs.size)
-        draws.forEachIndexed { j, (item, q, list) ->
-            list.forEach { ins -> g.edge(pickIndex.getValue(ins to item) + 1, dBase + j, Double.MAX_VALUE) }
-            sinkEdge[j] = g.edge(dBase + j, 1, q)
+        /**
+         * What [ins] can put on the belt it drops onto: its rate, but no more than the one lane it drops onto holds (a
+         * bulk inserter outruns a lane).
+         */
+        fun dropCap(ins: Int): Double {
+            val b = dropBelt(ins) ?: return cap(ins)
+            val stack = spec.beltStack.coerceAtLeast(1)
+            val lane = beltCapacity(ents[b]) / 2 * (if (stack > 1 && ents[ins].name == GameConstants.STACK_INSERTER) stack else 1)
+            return minOf(cap(ins), lane)
         }
-        outputs.forEachIndexed { j, (_, r, _) -> sinkEdge[draws.size + j] = g.edge(oBase + j, 1, r) }
-        val allRoutes = ArrayList<Route>()
-        fun connect(from: Int, b: Int, item: String?) {
-            val down = downstream(b, item)
-            pickNodes.forEachIndexed { k, (ins, it2) ->
-                val p = indexAt(ents[ins].pickupTile)
-                if (it2 == item && p != null && p in down) allRoutes += Route(b, p, item, g.edge(from, kBase + 2 * k, Double.MAX_VALUE))
+        /** One max flow with each producer inserter capped by [insCap]; what each draw (then each output) misses. */
+        fun solve(insCap: (Pair<Int, String>, Int) -> Double): DoubleArray {
+            // Consumer inserter nodes, one per (inserter, item), each capped by the inserter's rate.
+            val pickNodes = draws.flatMap { (item, _, list) -> list.map { it to item } }.distinct()
+            // Nodes: 0 source, 1 sink, producers, producer inserters, fixed supplies, pickups (in, out), draws, outputs.
+            val pBase = 2; val iBase = pBase + producers.size; val fBase = iBase + insList.size; val kBase = fBase + fixed.size
+            val dBase = kBase + 2 * pickNodes.size; val oBase = dBase + draws.size
+            val g = MaxFlow(oBase + outputs.size)
+            val pickIndex = pickNodes.withIndex().associate { (k, p) -> p to kBase + 2 * k }
+            pickNodes.forEachIndexed { k, (ins, _) -> g.edge(kBase + 2 * k, kBase + 2 * k + 1, cap(ins)) }
+            val sinkEdge = IntArray(draws.size + outputs.size)
+            draws.forEachIndexed { j, (item, q, list) ->
+                list.forEach { ins -> g.edge(pickIndex.getValue(ins to item) + 1, dBase + j, Double.MAX_VALUE) }
+                sinkEdge[j] = g.edge(dBase + j, 1, q)
             }
-            outputs.forEachIndexed { j, (it2, _, ob) -> if (it2 == item && ob in down) allRoutes += Route(b, ob, item, g.edge(from, oBase + j, Double.MAX_VALUE)) }
+            outputs.forEachIndexed { j, (_, r, _) -> sinkEdge[draws.size + j] = g.edge(oBase + j, 1, r) }
+            val allRoutes = ArrayList<Route>()
+            fun connect(from: Int, b: Int, item: String?) {
+                val down = downstream(b, item)
+                pickNodes.forEachIndexed { k, (ins, it2) ->
+                    val p = indexAt(ents[ins].pickupTile)
+                    if (it2 == item && p != null && p in down) allRoutes += Route(b, p, item, g.edge(from, kBase + 2 * k, Double.MAX_VALUE))
+                }
+                outputs.forEachIndexed { j, (it2, _, ob) -> if (it2 == item && ob in down) allRoutes += Route(b, ob, item, g.edge(from, oBase + j, Double.MAX_VALUE)) }
+            }
+            producers.forEachIndexed { k, m -> g.edge(0, pBase + k, beltOut.getValue(m)) }
+            val insEdge = insList.mapIndexed { k, (m, ins) ->
+                val e = g.edge(pBase + producers.indexOf(m), iBase + k, insCap(m, ins))
+                dropBelt(ins)?.let { b -> connect(iBase + k, b, m.second) }
+                e
+            }
+            fixed.forEachIndexed { k, (b, item, r) -> g.edge(0, fBase + k, r); connect(fBase + k, b, item) }
+            g.run(0, 1)
+            insList.forEachIndexed { k, (_, ins) -> beltRate[ins] = g.flowOn(insEdge[k]) }
+            allRoutes.forEach { it.flow = g.flowOn(it.edge) }
+            routes = allRoutes.filter { it.flow > 1e-9 }
+            reachOf = { b, item -> downstream(b, item) }
+            // What each draw (then each output) misses.
+            return DoubleArray(sinkEdge.size) { j -> (if (j < draws.size) draws[j].second else outputs[j - draws.size].second) - g.flowOn(sinkEdge[j]) }
         }
-        producers.forEachIndexed { k, m -> g.edge(0, pBase + k, beltOut.getValue(m)) }
-        val insEdge = insList.mapIndexed { k, (m, ins) ->
-            val e = g.edge(pBase + producers.indexOf(m), iBase + k, cap(ins))
-            dropBelt(ins)?.let { b -> connect(iBase + k, b, m.second) }
-            e
+        /**
+         * How much each producer inserter drops, with no lane of any belt tile carrying more than a lane holds: per
+         * item, a max flow over belt lanes (items keep their lane straight on, round a curve and into an underground;
+         * a sideload puts them on the near lane; an underground's hood blocks one lane of a side feed) from producer
+         * inserters and supplies to the inserters taking the item and to output ports. In the game a machine's
+         * inserters share its output and one whose lane is full waits, so a split like this is what settles. Null
+         * where none meets every draw.
+         */
+        fun laneDrops(): Map<Int, Double>? {
+            val out = HashMap<Int, Double>()
+            for (item in (draws.map { it.first } + outputs.map { it.first }).distinct()) {
+                val bs = ents.indices.filter { ents[it].kind.beltFamily && belts.items[it]?.contains(item) == true }
+                if (bs.isEmpty()) continue
+                val at = HashMap<Int, Int>().also { m -> bs.forEachIndexed { k, b -> m[b] = k } }
+                fun laneIn(b: Int, lane: Int) = 2 + 4 * at.getValue(b) + 2 * lane
+                val mine = producers.filter { it.second == item }
+                val myIns = mine.flatMap { m -> toBelt.getValue(m).map { m to it } }.filter { (_, ins) -> dropBelt(ins)?.let { it in at } == true }
+                // Supplies: input ports (on their lane, or half on each) and harness chests' inserters.
+                val supplies = ArrayList<Triple<Int, Int, Double>>()
+                spec.sources.filter { !it.fluid && it.item == item }.forEach { src ->
+                    indexAt(src.tile)?.takeIf { it in at }?.let { b -> if (src.lane >= 0) supplies += Triple(b, src.lane, src.rate) else { supplies += Triple(b, 0, src.rate / 2); supplies += Triple(b, 1, src.rate / 2) } }
+                }
+                beltRate.forEach { (ins, r) ->
+                    if (r > 0 && carriedByInserter(ents[ins]) == item) dropBelt(ins)?.takeIf { it in at && ents[it].kind == Kind.BELT }?.let { b -> supplies += Triple(b, dropLane(ents[ins], b, belts), r) }
+                }
+                val myDraws = draws.withIndex().filter { it.value.first == item }
+                val myPicks = myDraws.flatMap { (j, d) -> d.third.mapNotNull { ins -> indexAt(ents[ins].pickupTile)?.takeIf { it in at }?.let { Triple(j, ins, it) } } }
+                val myOuts = outputs.withIndex().filter { it.value.first == item && it.value.third in at }
+                val pBase = 2 + 4 * bs.size; val iBase = pBase + mine.size; val sBase = iBase + myIns.size
+                val kBase = sBase + supplies.size; val dBase = kBase + myPicks.size; val oBase = dBase + myDraws.size
+                val g = MaxFlow(oBase + myOuts.size)
+                for (b in bs) {
+                    val e = ents[b]
+                    val laneCap = beltCapacity(e) / 2 * (if (e.kind == Kind.SPLITTER) 2 else 1)
+                    val mask = belts.lanesWith(b, item)
+                    for (lane in 0..1) if (mask == 0 || mask and (1 shl lane) != 0) g.edge(laneIn(b, lane), laneIn(b, lane) + 1, laneCap)
+                    belts.next[b]?.forEach { n ->
+                        if (n !in at) return@forEach
+                        val (a, c) = laneInto(e, ents[n], belts)
+                        if (a >= 0) g.edge(laneIn(b, 0) + 1, laneIn(n, a), Double.MAX_VALUE)
+                        if (c >= 0) g.edge(laneIn(b, 1) + 1, laneIn(n, c), Double.MAX_VALUE)
+                    }
+                }
+                mine.forEachIndexed { k, m -> g.edge(0, pBase + k, beltOut.getValue(m)) }
+                val insEdge = myIns.mapIndexed { k, (m, ins) ->
+                    val b = dropBelt(ins)!!
+                    g.edge(iBase + k, laneIn(b, dropLane(ents[ins], b, belts)), Double.MAX_VALUE)
+                    g.edge(pBase + mine.indexOf(m), iBase + k, dropCap(ins))
+                }
+                supplies.forEachIndexed { k, (b, lane, r) -> g.edge(0, sBase + k, r); g.edge(sBase + k, laneIn(b, lane), Double.MAX_VALUE) }
+                myPicks.forEachIndexed { k, (j, ins, b) ->
+                    for (lane in 0..1) g.edge(laneIn(b, lane) + 1, kBase + k, Double.MAX_VALUE)
+                    g.edge(kBase + k, dBase + myDraws.indexOfFirst { it.index == j }, cap(ins))
+                }
+                val sink = myDraws.mapIndexed { k, (_, d) -> g.edge(dBase + k, 1, d.second) } +
+                    myOuts.mapIndexed { k, (_, o) -> for (lane in 0..1) g.edge(laneIn(o.third, lane) + 1, oBase + k, Double.MAX_VALUE); g.edge(oBase + k, 1, o.second) }
+                g.run(0, 1)
+                val want = myDraws.map { it.value.second } + myOuts.map { it.value.second }
+                if (sink.indices.any { g.flowOn(sink[it]) < want[it] - 1e-6 }) return null
+                myIns.forEachIndexed { k, (_, ins) -> out[ins] = g.flowOn(insEdge[k]) }
+            }
+            return out
         }
-        fixed.forEachIndexed { k, (b, item, r) -> g.edge(0, fBase + k, r); connect(fBase + k, b, item) }
-        g.run(0, 1)
-        insList.forEachIndexed { k, (_, ins) -> beltRate[ins] = g.flowOn(insEdge[k]) }
-        allRoutes.forEach { it.flow = g.flowOn(it.edge) }
-        routes = allRoutes.filter { it.flow > 1e-9 }
-        reachOf = { b, item -> downstream(b, item) }
-        // What each draw (then each output) misses.
-        return DoubleArray(sinkEdge.size) { j -> (if (j < draws.size) draws[j].second else outputs[j - draws.size].second) - g.flowOn(sinkEdge[j]) }
+        // First the lane-true split (each producer inserter capped at what it drops there); where that misses (an
+        // approximation: items sharing a lane are counted apart), any split, each up to its rate and lane.
+        laneDrops()?.let { lanes ->
+            val r = solve { _, ins -> (lanes[ins] ?: 0.0) + 1e-9 }
+            if (r.all { it < 1e-6 }) return r
+        }
+        return solve { _, ins -> dropCap(ins) }
     }
 
     /** Item output ports: a belt of the item on the port tile that leads out of the box. */
