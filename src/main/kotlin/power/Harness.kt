@@ -1,5 +1,7 @@
 package power
 
+import kotlin.math.abs
+
 import config.RunConfiguration
 import data.GameConstants
 import geom.Dir
@@ -198,8 +200,32 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     }
     if (laned.isNotEmpty()) {
         val hz = buildHarness(laned, layout.entities + out, w, h, config)
-        out += hz.entities
+        hz.entities.forEach { take(it) }
         warnings += hz.warnings
     }
-    return TestCopy(layout.copy(entities = layout.entities + out, label = layout.label + " (test feeds)"), warnings)
+    // The feeders' inserters stand outside the box, beyond the factory's poles (loaders need no power, inserters
+    // do): each one out of reach gets a pole beside it, wired to the nearest pole within reach.
+    val poleName = GameConstants.pole(config.power.pole).takeIf { it.size == 1 }?.name ?: "medium-electric-pole"
+    val spec = GameConstants.pole(poleName)
+    val wires = ArrayList(layout.wires)
+    fun all() = layout.entities + out
+    fun poles() = all().withIndex().filter { (_, e) -> e.kind == Kind.POLE }
+    fun covers(p: PlacedEntity, t: Tile): Boolean {
+        val half = GameConstants.pole(p.name).supplyHalf
+        return abs(t.x + 0.5 - (p.x + p.w / 2.0)) <= half && abs(t.y + 0.5 - (p.y + p.h / 2.0)) <= half
+    }
+    out.filter { it.kind == Kind.INSERTER }.forEach { ins ->
+        if (poles().any { (_, p) -> covers(p, ins.tile) }) return@forEach
+        val spot = (1..3).asSequence().flatMap { r -> (-r..r).asSequence().flatMap { dy -> (-r..r).asSequence().map { dx -> Tile(ins.tile.x + dx, ins.tile.y + dy) } } }
+            .firstOrNull { free(it) } ?: run { warnings += "no room for a pole by the feeder at ${ins.tile}"; return@forEach }
+        val near = poles().minByOrNull { (_, p) -> p.tile.manhattan(spot) }
+        take(PlacedEntity(poleName, Kind.POLE, spot.x, spot.y))
+        val idx = layout.entities.size + out.size - 1
+        near?.let { (i, p) ->
+            val reach = minOf(spec.wireReach, GameConstants.pole(p.name).wireReach)
+            val dx = spot.x + 0.5 - (p.x + p.w / 2.0); val dy = spot.y + 0.5 - (p.y + p.h / 2.0)
+            if (kotlin.math.sqrt(dx * dx + dy * dy) <= reach) wires += i to idx
+        }
+    }
+    return TestCopy(layout.copy(entities = layout.entities + out, wires = wires, label = layout.label + " (test feeds)"), warnings)
 }

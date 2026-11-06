@@ -61,4 +61,27 @@ class TestCopyTest {
         assertTrue(loader.rect.tiles().any { it + Dir.N == belt.tile }, "${loader.rect.tiles()}")
         assertEquals(Tile(8, 11), tc.layout.entities.single { it.kind == Kind.INFINITY_CHEST }.tile)
     }
+
+    @Test
+    fun `a one-lane input's feeder inserters have power`() {
+        // Plastic on the left lane only (the right lane takes cable from inside): fed by inserters, not a loader. They
+        // stand outside the box, beyond the factory's pole, so they get a pole of their own wired to it.
+        val belt = PlacedEntity("fast-transport-belt", Kind.BELT, 0, 4, Dir.E)
+        val pole = PlacedEntity("medium-electric-pole", Kind.POLE, 6, 6)
+        val tc = power.testCopy(Layout(9, 9, listOf(belt, pole)), listOf(SourceSpec(belt.tile, "plastic-bar", 1.5, lane = 0)), emptyList(), config)
+        assertTrue(tc.warnings.isEmpty(), "${tc.warnings}")
+        val es = tc.layout.entities
+        val inserters = es.filter { it.kind == Kind.INSERTER }
+        assertTrue(inserters.isNotEmpty() && es.none { it.kind == Kind.LOADER_OUT })
+        val poles = es.withIndex().filter { it.value.kind == Kind.POLE }
+        inserters.forEach { ins ->
+            assertTrue(poles.any { (_, p) ->
+                val half = GameConstants.pole(p.name).supplyHalf
+                kotlin.math.abs(ins.x + 0.5 - (p.x + p.w / 2.0)) <= half && kotlin.math.abs(ins.y + 0.5 - (p.y + p.h / 2.0)) <= half
+            }, "no pole reaches the feeder inserter at ${ins.tile}")
+        }
+        // The new pole is wired to the factory's.
+        val added = poles.single { it.value !== pole }.index
+        assertTrue(tc.layout.wires.any { (a, b) -> setOf(a, b) == setOf(1, added) }, "${tc.layout.wires}")
+    }
 }
