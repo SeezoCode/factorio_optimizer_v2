@@ -221,7 +221,7 @@ local function start(params)
         if e.loader_type == "input" then
           c.infinity_container_filters = {}
           c.remove_unfiltered_items = false
-          run.sinks[#run.sinks + 1] = { chest = c, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
+          run.sinks[#run.sinks + 1] = { chest = c, loader = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
         else
           local keep = {}
           for _, f in pairs(c.infinity_container_filters or {}) do
@@ -271,13 +271,29 @@ local function flows(run, counting)
       end
     end
   end
+  local caps = run.params.sink_rates
   for _, s in pairs(run.sinks) do
     if s.chest.valid and not s.inv.is_empty() then
-      if counting then
-        for _, it in pairs(s.inv.get_contents()) do add(s.items, key(it.name, it.quality), it.count) end
+      for _, it in pairs(s.inv.get_contents()) do
+        local k = key(it.name, it.quality)
+        local n = it.count
+        if caps and caps[k] then
+          run.budget = run.budget or {}
+          local b = run.budget[k] or 0
+          n = math.min(n, math.floor(b))
+          run.budget[k] = b - n
+        end
+        if n > 0 then
+          if counting then add(s.items, k, n) end
+          s.inv.remove { name = it.name, quality = it.quality, count = n }
+        end
       end
-      s.inv.clear()
+      if caps then s.loader.disabled_by_script = s.inv.get_item_count() >= 20 end
     end
+  end
+  if caps then
+    run.budget = run.budget or {}
+    for k, r in pairs(caps) do run.budget[k] = math.min((run.budget[k] or 0) + r / 60, 50) end
   end
   for _, d in pairs(run.drains) do
     if d.e.valid then
@@ -352,6 +368,10 @@ local function finish(run)
         name = m.name, recipe = str(recipe) or m.recipe or "", x = m.pos.x, y = m.pos.y, status = STATUS[e.status], usual_status = most(m.statuses),
         statuses = m.statuses, crafts = crafts, crafts_per_min = crafts / secs * 60, progress = e.crafting_progress,
         products_finished = e.products_finished, speed = e.crafting_speed,
+        input = (function() local inv = e.get_inventory(defines.inventory.crafter_input); local o = {}
+          if inv then for _, it in pairs(inv.get_contents()) do o[it.name] = it.count end end; return o end)(),
+        output = (function() local inv = e.get_inventory(defines.inventory.crafter_output); local o = {}
+          if inv then for _, it in pairs(inv.get_contents()) do o[it.name] = it.count end end; return o end)(),
       }
     end
   end
@@ -386,6 +406,58 @@ local function finish(run)
       local p = bp_pos(run, b.e.position)
       report.stuck_belts[#report.stuck_belts + 1] = { name = b.e.name, x = p.x, y = p.y, items = belt_items(b.e) }
     end
+  end
+  if run.params.dump then
+  report.dump_belts = {}
+  for _, b in pairs(run.belts) do
+    if b.e.valid then
+      local p = bp_pos(run, b.e.position)
+      local lanes = {}
+      for i = 1, b.e.get_max_transport_line_index() do
+        local o = {}
+        for _, it in pairs(b.e.get_transport_line(i).get_contents()) do o[it.name] = it.count end
+        lanes[i] = o
+      end
+      report.dump_belts[#report.dump_belts + 1] = { n = b.e.name, x = p.x, y = p.y, d = b.e.direction, t = b.e.type == "underground-belt" and b.e.belt_to_ground_type or nil, lanes = lanes }
+    end
+  end
+  report.dump_pipes = {}
+  local okp, errp = pcall(function()
+  for _, e in pairs(run.surface.find_entities_filtered { type = { "pipe", "pipe-to-ground", "storage-tank" } }) do
+    local f = e.get_fluid(1)
+    if f then
+      local p = bp_pos(run, e.position)
+      local seg = 0
+      pcall(function() seg = e.get_fluid_segment_fluid(1).amount end)
+      report.dump_pipes[#report.dump_pipes + 1] = { x = p.x, y = p.y, n = e.name, f = f.name, a = f.amount, seg = seg }
+    end
+  end
+    for _, m in pairs(run.machines) do
+      if m.e.valid and (m.recipe == "heavy-oil-cracking" or m.recipe == "lubricant") then
+        local cb = m.e.get_control_behavior()
+        local info = { x = m.pos.x, y = m.pos.y, n = m.recipe, status = STATUS[m.e.status] }
+        if cb then
+          info.enable = tostring(cb.circuit_enable_disable)
+          pcall(function() info.cond = serpent.line(cb.circuit_condition) end)
+        end
+        pcall(function() info.sig = m.e.get_signal({ type = "fluid", name = "heavy-oil" }, defines.wire_connector_id.circuit_red) end)
+        pcall(function() local fb = {}; for i = 1, #m.e.fluidbox do local f = m.e.fluidbox[i]; fb[i] = f and (f.name .. "=" .. f.amount) or "-" end; info.fb = fb end)
+        report.dump_pipes[#report.dump_pipes + 1] = info
+      end
+    end
+  end)
+  if not okp then report.dump_pipes_error = tostring(errp) end
+  report.dump_inserters = {}
+  for _, i in pairs(run.inserters) do
+    local e = i.e
+    if e.valid then
+      local p = bp_pos(run, e.position)
+      local pp = bp_pos(run, e.pickup_position); local dp = bp_pos(run, e.drop_position)
+      local h = e.held_stack
+      report.dump_inserters[#report.dump_inserters + 1] = { n = e.name, x = p.x, y = p.y, px = pp.x, py = pp.y, dx = dp.x, dy = dp.y,
+        s = STATUS[e.status], h = h.valid_for_read and h.name or nil, moved = i.moved, worked = i.worked }
+    end
+  end
   end
   helpers.write_file(REPORT, helpers.table_to_json(report))
   run.phase = "done"

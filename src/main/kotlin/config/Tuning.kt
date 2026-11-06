@@ -66,7 +66,8 @@ data class PlannerTuning(
     /**
      * Direct-insertion clusters: an item made and used only inside the block gets at least one producer per this many
      * consumer machines, so each producer can sit next to its consumers and feed them by direct insertion instead of a
-     * belt (players trade a spare assembler for a belt). 0 keeps the fewest machines.
+     * belt (players trade a spare assembler for a belt). A producer that cannot feed two consumers gets one per
+     * consumer, so none shares its output between direct insertion and a belt. 0 keeps the fewest machines.
      */
     @SerialName("di_consumers_per_producer") val diConsumersPerProducer: Int = 0,
 )

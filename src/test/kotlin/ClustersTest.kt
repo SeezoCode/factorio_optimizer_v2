@@ -33,12 +33,15 @@ class ClustersTest {
     }
 
     @Test
-    fun `chemical science becomes two cells between the engine and circuit clusters`() {
-        // Two producers per item: 2 gear, 2 pipe and 2 cable machines for 4 engines and 4 advanced circuits.
-        assertEquals(2, plan.machines.count { it.recipe == "copper-cable" })
+    fun `chemical science becomes two cells and a half cell, each science machine with producers of its own`() {
+        // An engine machine cannot feed two science machines, so each gets its own (5 engines and 5 advanced
+        // circuits for 5 science machines); gears, pipes and cable one per two consumers.
+        assertEquals(5, plan.machines.count { it.recipe == "engine-unit" })
+        assertEquals(5, plan.machines.count { it.recipe == "advanced-circuit" })
+        assertEquals(3, plan.machines.count { it.recipe == "copper-cable" })
         val cs = diClusters(plan, longHanded = true)
-        assertEquals(listOf("cell", "cell"), cs.map { it.kind })
-        cs.forEach { c ->
+        assertEquals(listOf("cell", "cell", "half cell"), cs.map { it.kind })
+        cs.take(2).forEach { c ->
             // Engines around a gear machine over a pipe machine, a science machine under each engine, the circuit
             // sandwich under them.
             assertEquals(listOf("engine-unit", "iron-gear-wheel", "pipe", "engine-unit", "chemical-science-pack", "chemical-science-pack",
@@ -50,15 +53,19 @@ class ClustersTest {
             assertEquals(2, pairs.count { it == "iron-gear-wheel" to "engine-unit" })
             assertEquals(2, pairs.count { it == "pipe" to "engine-unit" })
         }
-        // The fifth science machine stays outside, fed by belt.
-        assertEquals(1, plan.machines.indices.count { m -> plan.machines[m].recipe == "chemical-science-pack" && cs.none { m in it.members } })
+        // The fifth science machine between the leftover engine stack and circuit pair.
+        val half = cs[2]
+        assertEquals(listOf("engine-unit", "iron-gear-wheel", "pipe", "chemical-science-pack", "advanced-circuit", "copper-cable"), recipes(half))
+        val pairs = designedPairs(half).map { (p, q) -> plan.machines[p].recipe to plan.machines[q].recipe }
+        assertTrue("engine-unit" to "chemical-science-pack" in pairs && "advanced-circuit" to "chemical-science-pack" in pairs, "$pairs")
+        assertEquals(0, plan.machines.indices.count { m -> plan.machines[m].recipe == "chemical-science-pack" && cs.none { m in it.members } })
     }
 
     @Test
     fun `annealing keeps every cluster whole, each consumer right beside its producers`() {
         val cs = diClusters(plan, longHanded = true)
         for (seed in 1L..3L) {
-            val model = PlaceModel(plan, job, tuning.place, 30, 30, staticObstacles(job, plan, 30, 30))
+            val model = PlaceModel(plan, job, tuning.place, 36, 36, staticObstacles(job, plan, 36, 36))
             val ann = Annealer(model, SplittableRandom(seed), tuning.place)
             ann.setClusters(cs)
             assertTrue(ann.initialRandom(), "seed $seed: no start")

@@ -65,7 +65,8 @@ dots are poles.*
 
 *All six science packs at 2/s each from ore, coal, stone, crude oil and water: 1,220 machines (834 electric
 furnaces, 312 assemblers, 52 chemical plants, 22 oil refineries) in 64 blocks of at most 20 machines, 230 × 237 =
-54,510 tiles. It ran for 9 hours in game with everything working.*
+54,510 tiles. It ran for 9 hours in game, but measured it falls short: chemical science comes out at 1.62/s,
+production at 1.87/s and utility at 1.18/s (see below).*
 
 The search ran for 7 h 55 min on 10 threads (M5): 4 h 15 min for the blocks (about 4 minutes each), 2 h 12 min
 for two extra shapes of every block, then 14 floorplans and compaction; the smallest factory came out of
@@ -76,6 +77,34 @@ packs leave on the east edge.
 
 Twice the rate of the 1/s factories below took 1.97 times the machines and 1.90 times the area of the 28-block
 one: 44.7 tiles per machine against 46.4, so the factory of blocks does not lose density as it grows.
+
+**What the game makes of it.** Built and measured in a headless game, with every input fed without limit and
+every output taken at exactly its planned 2/s (as labs would; anything more backs up), automation, logistic
+and military science hold 2/s, but after a 3 h warm-up chemical comes out at 1.62/s, production at 1.87/s and
+utility at 1.18/s. Two causes:
+
+- **Producers split between belt chains.** The router splits a net into belt chains and gave a machine a
+  planned share on each. In the game a machine cannot steer its output: each inserter takes whenever its belt
+  has room, and one that drops ahead of its chain's other producers fills their gaps first. In block 55 a gear
+  assembler planned to send nearly all of its gears to the block's output sent a good part onto the block's own
+  belt, where the gear assembler downstream of it then stood with full output; gears for engine units ran
+  0.5/s short, and engine units with them. A pipe assembler in block 49, block 51's only pipe supply, was split
+  the same way. The validator now models this (`SPLIT_OUTPUT`: each chain pulls what its consumers take
+  running flat out, less what producers ahead of it bring, at most its inserters' share of the machine) and
+  flags those layouts; the router keeps such a producer whole on one chain when the other chain's producers have
+  spare speed, and otherwise drops its shares after its chains' other producers. Re-solving the flagged blocks
+  gives a factory (221 x 254) in which chemical science holds 2/s.
+- **Heavy oil for lubricant.** The heavy-oil crackers are meant to work only on oil lubricant leaves, through a
+  circuit condition, but every blueprint wrote the condition's switch as `circuit_enable_disable`, and 2.0 reads
+  `circuit_enabled`: in game the crackers ignored their condition, took the heavy oil, and lubricant ran at about
+  60%, so electric engines, robot frames and utility science fell short. The blueprint now writes 2.0's key. The
+  control also needed a storage tank, and the 2/s factory's oil block had no room for one; a wired pipe reads the
+  same fill level and needs no room, so one of the oil's pipes is wired instead.
+
+With both fixed (blocks 48, 49 and 55 re-solved, 221 x 254), taking exactly 2/s of each pack after a 3 h warm-up
+gives chemical 2.00/s, utility 1.99/s and the three others 2/s, but production 1.81/s: one of block 53's three
+electric-furnace assemblers stands with full output while production science waits for furnaces, not traced yet.
+The factory shown here is the original run.
 
 ![2 science/s factory, render](docs/examples/two_science_per_second/best.jpg)
 
@@ -296,11 +325,13 @@ Unknown keys are an error. Everything except `targets` has a default.
   generator picks one and reports it in `ports.json`). `"sinks": {"mode": "chest"}` puts products into chests
   instead, as in v1.
 - Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
-  (lubricant, or oil leaving the block), a storage tank goes on that oil's pipes with a red wire to the cracking
-  plants, which work only while the tank is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns
-  it off; `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan
-  needs, starve lubricant and fill the petroleum pipes until the refineries stop. The tank reads its own contents,
-  which follow the fill level of the whole pipe network, so the threshold does not depend on pipe length.
+  (lubricant, or oil leaving the block), one of that oil's pipes gets a red wire to the cracking plants, which work
+  only while that pipe is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns it off;
+  `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan needs,
+  starve lubricant and fill the petroleum pipes until the refineries stop. A wired pipe reads its own share of the
+  fluid, which follows the fill level of the whole pipe network (50 in a line of 10 pipes or of 40 half full), so
+  the threshold does not depend on pipe length, and nothing needs room (a storage tank, which reads the same, did
+  not fit in the 2/s factory's packed oil block).
 - `beacons` (optional) adds modules and beacons, placed much like electricity poles. `machine_modules` go in every
   electric machine's own slots; one the recipe refuses (productivity on belts, inserters…) becomes `fallback_module`,
   or the slot stays empty. Machines of `recipes` (default: every one that takes beacon effects) are planned with
@@ -802,7 +833,7 @@ narrow, fluids pinned side by side) rather than the box.
 | 3 | `route` | Negotiated-congestion routing: belt chains leg by leg with A* over (tile, heading, belt/underground), splitter branches, pipe trees with pipe-to-ground, and a rip-up-and-reroute endgame around the last conflicts |
 | 4 | `power` | Beacon lattice and set cover, pole set cover and MST wiring (lattice fallback), test-mode harness |
 | 5 | `search` | Box size search (gentle growth to a first success, then bisection), K seeds per size in parallel, warm starts, anytime outputs, calibration |
-| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone |
+| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone; a machine putting one item onto separate belts divides it as the game does (by inserter speed, wherever there is room), not as planned |
 | — | `emit`, `viz` | Blueprint 2.0 encode/decode, PNG renders |
 
 Two things go beyond the original plan and are described in [docs/TUNING.md](docs/TUNING.md): nets with many
@@ -836,7 +867,8 @@ validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 
 64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built with the 2D floorplanner, rotation, lane pairs
 and compaction as a factory of 44 blocks of at most 15 machines at 165 × 182, and as 28 blocks sized by
 weight at 163 × 176. Six science from plates is 92 × 107 in 13 blocks. Six science at 2/s each from ore (1,220 machines) is
-230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours); at 10/s each with
+230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours) (measured, three of its six
+packs fall short, see there); at 10/s each with
 productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in 34 blocks. See [More
 layouts](#more-layouts).
 

@@ -184,14 +184,26 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     // at least one per that many consumer machines. Counts are the rate's, as below, before any extra for inserters.
     val extraFor = HashMap<String, Int>()
     tuning.planner.diConsumersPerProducer.takeIf { it > 0 }?.let { per ->
-        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime - 1e-6).toInt()) }
-        crafts.forEach { (c, _) ->
+        // Counts with the extra machines so far: more consumers above want more producers below (until stable).
+        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime - 1e-6).toInt()) }.toMutableMap()
+        repeat(crafts.size) { crafts.forEach { (c, _) ->
             val main = c.recipe.mainProduct?.name ?: return@forEach
             if (isFluid(main) || main in lp.targets || (lp.output[main] ?: 0.0) > 1e-9 || c.recipe.products.size > 1) return@forEach
             val consumers = crafts.filter { (d, _) -> d.recipe.ingredients.any { it.name == main && !it.isFluid } }.sumOf { (d, _) -> count.getValue(d.recipe.name) }
-            val want = ceil(consumers.toDouble() / per - 1e-9).toInt()
-            if (want > count.getValue(c.recipe.name)) extraFor[c.recipe.name] = want
-        }
+            var want = ceil(consumers.toDouble() / per - 1e-9).toInt()
+            // A producer that cannot feed two consumers (an engine for chemical science) gets one consumer to itself:
+            // shared, it would also put its spare on a belt for another, and that belt's inserter takes from the
+            // machine whenever the belt has room, starving the consumer beside it.
+            val users = crafts.filter { (d, _) -> d.recipe.ingredients.any { it.name == main && !it.isFluid } }
+            if (users.size == 1) {
+                val (d, xd) = users[0]
+                val nd = count.getValue(d.recipe.name)
+                val perConsumer = xd / nd * d.recipe.ingredients.filter { it.name == main }.sumOf { it.amount }
+                val full = (productsPerCraft(data, c, config)[main] ?: 0.0) / c.machineTime
+                if (perConsumer > full / 2 + 1e-9 && perConsumer <= full + 1e-9) want = maxOf(want, nd)
+            }
+            if (want > count.getValue(c.recipe.name)) { extraFor[c.recipe.name] = want; count[c.recipe.name] = want }
+        } }
     }
     crafts.forEach { (c, x) ->
         val r = c.recipe

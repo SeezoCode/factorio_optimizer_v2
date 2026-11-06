@@ -367,6 +367,7 @@ fun runFactory(
         }
     }
     say("done: ${best?.let { "${it.layout.w} x ${it.layout.h} (${area(it)} tiles)" } ?: "no valid factory"}")
+    best?.notes?.forEach { say("  note: $it") }
     return best
     } finally { view?.detach() }
 }
@@ -485,8 +486,17 @@ private fun floorplanInput(
     val k = split.blocks.size
     val blocks = ArrayList<FpBlock>()
     val layouts = ArrayList<List<BlockShape>>()
+    fun edges(item: String, output: Boolean): Set<Dir> {
+        val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return emptySet()
+        return specs.flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
+    }
     for (b in 0 until k) {
-        val bs = if (soft) emptyList() else variants[b].flatMap { r -> (0 until if (cfg.rotate) 4 else 1).map { q -> BlockShape(turnLayout(r, q), q) } }
+        // A port that leaves the factory straight out of the block turns with it: only turns that keep each such port
+        // on an edge the job allows it (the search put it on one; a turned block would put a west input on the north).
+        val straight = split.links.filter { !it.throughCorridor && (it.from == b || it.to == b) && (it.from == EDGE || it.to == EDGE) }
+        fun turnKeepsEdges(q: Int) = straight.all { l -> l.side(b)?.let { Dir.fromName(it).turned(q) in edges(l.item, l.to == EDGE) } ?: true }
+        val turns = (0 until if (cfg.rotate) 4 else 1).filter { turnKeepsEdges(it) }.ifEmpty { listOf(0) }
+        val bs = if (soft) emptyList() else variants[b].flatMap { r -> turns.map { q -> BlockShape(turnLayout(r, q), q) } }
         val shapes = if (soft) softShapes(variants[b][0].area.toDouble()) else bs.map { sh ->
             val r = sh.layout
             val pins = HashMap<Int, Tile>()
@@ -500,10 +510,6 @@ private fun floorplanInput(
     }
     config.reserved.forEachIndexed { i, r -> blocks += reservedBlock(r, i, cfg.corridor) }
     val nets = ArrayList<FpNet>()
-    fun edges(item: String, output: Boolean): Set<Dir> {
-        val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return emptySet()
-        return specs.flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
-    }
     split.links.filter { !it.hub }.forEach { l ->
         nets += when {
             l.inner -> FpNet(listOf(l.from to l.id, l.to to l.id))
@@ -1258,6 +1264,8 @@ private fun writeFactory(f: Factory, out: File, config: RunConfiguration) {
     }
     renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}"))
     File(out, "ports.json").writeText(strictJson.encodeToString(JsonObject.serializer(), factoryManifest(f)))
+    // What stitching could not do as asked (crackers without a tank, poles short, ...).
+    File(out, "factory_notes.txt").writeText(f.notes.joinToString("\n", postfix = if (f.notes.isEmpty()) "" else "\n"))
 }
 
 /** Where the factory's inputs and outputs are (box-relative tiles, edge, item, rate, lane for shared belts). */

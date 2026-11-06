@@ -6,7 +6,8 @@
     python3 tools/factorio-verify/verify.py some_blueprint.txt --mods Krastorio2 --no-space-age
 
 The blueprint is the run's "test copy" (test_output_string.txt): the factory as built plus a loader from an infinity
-chest on every input port and a loader into an infinity chest on every output port. The verify mod in this folder
+chest on every input port and a loader into an infinity chest on every output port. Output chests are emptied at each item's planned rate (--uncapped: without limit), so
+a full output belt backs up as it would at a real consumer. The verify mod in this folder
 builds it on a lab-tile surface of a fresh game (every ghost revived, modules inserted), gives each electric network an
 energy interface, lets it warm up, then measures: per machine its usual status, crafts and crafting progress, the items
 per second leaving at each output and taken at each input, fluids drained at fluid outputs, and inserters and belts
@@ -404,6 +405,10 @@ def main():
     ap.add_argument("--machines", action="store_true", help="list every machine (default: all when 40 or fewer, else the idle ones)")
     ap.add_argument("--belts", type=int, default=10, help="stuck belts to list (default 10)")
     ap.add_argument("--timeout", type=int, default=600, help="seconds to wait for the server, on top of the run")
+    ap.add_argument("--uncapped", action="store_true",
+                    help="empty output chests without limit (default: take each output item at its planned rate, so a "
+                         "factory cannot look good by over-making one pack while starving another)")
+    ap.add_argument("--dump", action="store_true", help="also write every belt's lanes, inserter and pipe to the report")
     ap.add_argument("--keep", action="store_true", help="keep the temporary game folder (log, save)")
     args = ap.parse_args()
 
@@ -414,6 +419,14 @@ def main():
               "inserter_capacity": research.get("inserter_capacity", 0),
               "productivity": research.get("productivity") or None,
               "belt_stack_size": (job or {}).get("belt_stack_size", 1)}
+    if not args.uncapped and ports:
+        rates = defaultdict(float)
+        for o in ports.get("outputs", []):
+            if not o.get("fluid"):
+                rates[o["item"]] += o["rate"]
+        params["sink_rates"] = dict(rates)
+    if args.dump:
+        params["dump"] = True
     params = {k: v for k, v in params.items() if v is not None}
     report = run_game(args, bp, params, enabled, have)
     report["mods"] = enabled

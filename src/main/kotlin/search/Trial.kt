@@ -77,6 +77,7 @@ fun validationSpec(
             products = items.takeIf { it.size > 1 } ?: emptyMap(),
             sinks = plan.terminals.filter { it.machine == pm.id && it.role == Role.SINK }.groupBy { it.item }.mapValues { (_, ts) -> ts.sumOf { it.rate } },
             beaconNeed = beaconNeed(inst.crafts, inst.beaconCrafts),
+            fullRates = if (inst.crafts > 1e-12 && inst.maxCrafts > inst.crafts) items.mapValues { it.value * inst.maxCrafts / inst.crafts } else emptyMap(),
         )
     }
     val sourceOutside = (sources.map { it.tile } + outputs.map { it.tile }).filter { it.x !in 0 until placement.w || it.y !in 0 until placement.h }
