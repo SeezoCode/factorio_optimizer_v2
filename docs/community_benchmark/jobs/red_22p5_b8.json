@@ -1,0 +1,56 @@
+{
+ "targets": [
+  {
+   "name": "automation-science-pack",
+   "amount": 22.5
+  }
+ ],
+ "machine": "assembling-machine-3",
+ "belt_tier": "express",
+ "sources": [
+  {
+   "name": "iron-plate",
+   "edge": "west",
+   "from": 0,
+   "to": 3
+  },
+  {
+   "name": "copper-plate",
+   "edge": "west",
+   "from": 4,
+   "to": 7
+  }
+ ],
+ "inserters": {
+  "allowed": [
+   "inserter",
+   "long-handed-inserter",
+   "fast-inserter",
+   "bulk-inserter"
+  ]
+ },
+ "research": {
+  "inserter_capacity": 7
+ },
+ "beacons": {
+  "per_machine": 8,
+  "modules": [
+   "speed-module-3",
+   "speed-module-3"
+  ],
+  "machine_modules": [
+   "productivity-module-3",
+   "productivity-module-3",
+   "productivity-module-3",
+   "productivity-module-3"
+  ],
+  "fallback_module": "speed-module-3"
+ },
+ "search": {
+  "time_budget_s": 300,
+  "seeds_per_size": 3,
+  "threads": 3,
+  "seed": 2026,
+  "verbose": false
+ }
+}

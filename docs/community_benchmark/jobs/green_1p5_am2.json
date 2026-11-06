@@ -1,0 +1,27 @@
+{
+ "targets": [
+  {
+   "name": "logistic-science-pack",
+   "amount": 1.5
+  }
+ ],
+ "machine": "assembling-machine-2",
+ "belt_tier": "basic",
+ "sources": [
+  {
+   "name": "iron-plate",
+   "edge": "west"
+  },
+  {
+   "name": "electronic-circuit",
+   "edge": "west"
+  }
+ ],
+ "search": {
+  "time_budget_s": 300,
+  "seeds_per_size": 3,
+  "threads": 3,
+  "seed": 2026,
+  "verbose": false
+ }
+}

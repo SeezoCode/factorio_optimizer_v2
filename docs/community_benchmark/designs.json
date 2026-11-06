@@ -1,0 +1,137 @@
+[
+ {
+  "id": "kosrg",
+  "key": "-O5tYoVnbCXQNShamF6Y",
+  "pick": "0",
+  "title": "KoS Factorio Framework red + green science, 1.5/s each (the KoS book labels the same layout 2/s)",
+  "book": "The Science Book",
+  "url": "https://www.factorio.school/view/-O5tYoVnbCXQNShamF6Y",
+  "job": "docs/community_benchmark/jobs/rg_1p5_am2.json"
+ },
+ {
+  "id": "red1p5",
+  "key": "-O5tYoVnbCXQNShamF6Y",
+  "pick": "26/0",
+  "title": "Automation science 1.5/s",
+  "book": "The Science Book",
+  "url": "https://www.factorio.school/view/-O5tYoVnbCXQNShamF6Y",
+  "job": "docs/community_benchmark/jobs/red_1p5_am2.json"
+ },
+ {
+  "id": "green1p5",
+  "key": "-O5tYoVnbCXQNShamF6Y",
+  "pick": "26/3",
+  "title": "Logistic science 1.5/s (circuits in)",
+  "book": "The Science Book",
+  "url": "https://www.factorio.school/view/-O5tYoVnbCXQNShamF6Y",
+  "job": "docs/community_benchmark/jobs/green_1p5_am2.json"
+ },
+ {
+  "id": "red100",
+  "key": "-OEKiQbV_Vqpu--C4GbR",
+  "pick": "0",
+  "title": "Red science 100 SPM (assembler 1)",
+  "book": "All 100 SPM. Nauvis science book",
+  "url": "https://www.factorio.school/view/-OEKiQbV_Vqpu--C4GbR",
+  "job": "docs/community_benchmark/jobs/red_1p7_am1.json"
+ },
+ {
+  "id": "green100",
+  "key": "-OEKiQbV_Vqpu--C4GbR",
+  "pick": "1",
+  "title": "Green science 100 SPM from plates (assembler 1)",
+  "book": "All 100 SPM. Nauvis science book",
+  "url": "https://www.factorio.school/view/-OEKiQbV_Vqpu--C4GbR",
+  "job": "docs/community_benchmark/jobs/green_1p67_am1.json"
+ },
+ {
+  "id": "red1",
+  "key": "-ON-v5kGTPfWiuj04bIv",
+  "pick": "0/0",
+  "title": "Automation science 1/s (assembler 1)",
+  "book": "ALL THE SCIENCE",
+  "url": "https://www.factorio.school/view/-ON-v5kGTPfWiuj04bIv",
+  "job": "docs/community_benchmark/jobs/red_1_am1.json"
+ },
+ {
+  "id": "green1",
+  "key": "-ON-v5kGTPfWiuj04bIv",
+  "pick": "1/0",
+  "title": "Logistic science 1/s from plates (assembler 1)",
+  "book": "ALL THE SCIENCE",
+  "url": "https://www.factorio.school/view/-ON-v5kGTPfWiuj04bIv",
+  "job": "docs/community_benchmark/jobs/green_1_am1.json"
+ },
+ {
+  "id": "circ12",
+  "key": "-O5tdYHBzmLLrYWeydMv",
+  "pick": "0",
+  "title": "12 electronic circuits/s bus build",
+  "book": "The Circuit Book",
+  "url": "https://www.factorio.school/view/-O5tdYHBzmLLrYWeydMv",
+  "job": "docs/community_benchmark/jobs/circuit_12_am2.json"
+ },
+ {
+  "id": "circ6",
+  "key": "-O5tdYHBzmLLrYWeydMv",
+  "pick": "39/10",
+  "title": "Electronic circuits 02 (6/s per tile, tileable)",
+  "book": "The Circuit Book",
+  "url": "https://www.factorio.school/view/-O5tdYHBzmLLrYWeydMv",
+  "job": "docs/community_benchmark/jobs/circuit_6_am2_fast.json"
+ },
+ {
+  "id": "circ30",
+  "key": "-OEKiQbV_Vqpu--C4GbR",
+  "pick": "7",
+  "title": "Green circuits 30/s",
+  "book": "All 100 SPM. Nauvis science book",
+  "url": "https://www.factorio.school/view/-OEKiQbV_Vqpu--C4GbR",
+  "job": "docs/community_benchmark/jobs/circuit_30_am2.json"
+ },
+ {
+  "id": "circ28",
+  "key": "-O5tdYHBzmLLrYWeydMv",
+  "pick": "1",
+  "title": "30 electronic circuits/s bus build (28.5/s as built)",
+  "book": "The Circuit Book",
+  "url": "https://www.factorio.school/view/-O5tdYHBzmLLrYWeydMv",
+  "job": "docs/community_benchmark/jobs/circuit_30_am2.json"
+ },
+ {
+  "id": "plastic24",
+  "key": "-OEYpgwrnR1zCwk_r2JF",
+  "pick": "0/13",
+  "title": "Microfactories: plastic (24/s)",
+  "book": "Microfactories for Space Age",
+  "url": "https://www.factorio.school/view/-OEYpgwrnR1zCwk_r2JF",
+  "job": "docs/community_benchmark/jobs/plastic_24_express.json"
+ },
+ {
+  "id": "acid100",
+  "key": "-N8_DKC5AVE1L5tfVX4l",
+  "pick": "26/3",
+  "title": "Production Book: sulfuric acid, 2 plants (100/s)",
+  "book": "Production Book",
+  "url": "https://www.factorio.school/view/-N8_DKC5AVE1L5tfVX4l",
+  "job": "docs/community_benchmark/jobs/acid_100_fast.json"
+ },
+ {
+  "id": "red22",
+  "key": "-O5tYoVnbCXQNShamF6Y",
+  "pick": "6",
+  "title": "22.5 automation science/s, 8 beacons per assembler",
+  "book": "The Science Book",
+  "url": "https://www.factorio.school/view/-O5tYoVnbCXQNShamF6Y",
+  "job": "docs/community_benchmark/jobs/red_22p5_b8.json"
+ },
+ {
+  "id": "green22",
+  "key": "-O5tYoVnbCXQNShamF6Y",
+  "pick": "7",
+  "title": "22.5 logistic science/s, 8 beacons per assembler",
+  "book": "The Science Book",
+  "url": "https://www.factorio.school/view/-O5tYoVnbCXQNShamF6Y",
+  "job": "docs/community_benchmark/jobs/green_22p5_b8.json"
+ }
+]

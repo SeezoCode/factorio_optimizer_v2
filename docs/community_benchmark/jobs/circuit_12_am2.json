@@ -1,0 +1,31 @@
+{
+ "targets": [
+  {
+   "name": "electronic-circuit",
+   "amount": 12
+  }
+ ],
+ "machine": "assembling-machine-2",
+ "belt_tier": "basic",
+ "sources": [
+  {
+   "name": "iron-plate",
+   "edge": "west",
+   "from": 0,
+   "to": 3
+  },
+  {
+   "name": "copper-plate",
+   "edge": "west",
+   "from": 4,
+   "to": 8
+  }
+ ],
+ "search": {
+  "time_budget_s": 300,
+  "seeds_per_size": 3,
+  "threads": 3,
+  "seed": 2026,
+  "verbose": false
+ }
+}

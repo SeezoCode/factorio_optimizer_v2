@@ -1,0 +1,26 @@
+{
+ "targets": [
+  {
+   "name": "plastic-bar",
+   "amount": 24
+  }
+ ],
+ "belt_tier": "express",
+ "sources": [
+  {
+   "name": "coal",
+   "edge": "west"
+  },
+  {
+   "name": "petroleum-gas",
+   "edge": "north"
+  }
+ ],
+ "search": {
+  "time_budget_s": 300,
+  "seeds_per_size": 3,
+  "threads": 3,
+  "seed": 2026,
+  "verbose": false
+ }
+}

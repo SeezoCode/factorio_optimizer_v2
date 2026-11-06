@@ -1,0 +1,30 @@
+{
+ "targets": [
+  {
+   "name": "sulfuric-acid",
+   "amount": 100
+  }
+ ],
+ "belt_tier": "fast",
+ "sources": [
+  {
+   "name": "sulfur",
+   "edge": "west"
+  },
+  {
+   "name": "iron-plate",
+   "edge": "west"
+  },
+  {
+   "name": "water",
+   "edge": "north"
+  }
+ ],
+ "search": {
+  "time_budget_s": 300,
+  "seeds_per_size": 3,
+  "threads": 3,
+  "seed": 2026,
+  "verbose": false
+ }
+}
