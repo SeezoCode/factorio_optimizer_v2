@@ -567,7 +567,9 @@ With columns for two to four ingredients too (same job and machine, two runs at 
 27 of the 35 blocks got a column (all single-recipe blocks but production science, whose rails outrun a long-handed
 inserter): **23,405 tiles**; a second run's final stitch did not route on any of its three floorplans (two corridor
 conflicts each) and kept a 25,428-tile preview, and resuming it (`--resume`, 200 s) stitched the same blocks into
-**23,103 tiles**. Keeping every recipe a column holds apart, even with one or two machines, split the small T3 job
+**23,103 tiles**. With columns for any machine (split, one-sided, double and piped columns, ingredients passing on,
+blocks kept within what one column carries): **22,356 tiles** (35 blocks again; the chemical plants making plastic
+get a piped column). Keeping every recipe a column holds apart, even with one or two machines, split the small T3 job
 into four blocks instead of two, hence `template_min_machines` 4. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
 `TEMPLATE_JOB=<job>`) says why a block got none; `TEMPLATE_DEBUG=1` traces the header search.
 
