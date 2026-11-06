@@ -335,6 +335,7 @@ fun runFactory(
         }
     }
     say("done: ${best?.let { "${it.layout.w} x ${it.layout.h} (${area(it)} tiles)" } ?: "no valid factory"}")
+    best?.notes?.forEach { say("  note: $it") }
     return best
     } finally { view?.detach() }
 }
@@ -1110,6 +1111,8 @@ private fun writeFactory(f: Factory, out: File, config: RunConfiguration) {
     }
     renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}"))
     File(out, "ports.json").writeText(strictJson.encodeToString(JsonObject.serializer(), factoryManifest(f)))
+    // What stitching could not do as asked (crackers without a tank, poles short, ...).
+    File(out, "factory_notes.txt").writeText(f.notes.joinToString("\n", postfix = if (f.notes.isEmpty()) "" else "\n"))
 }
 
 /** Where the factory's inputs and outputs are (box-relative tiles, edge, item, rate, lane for shared belts). */

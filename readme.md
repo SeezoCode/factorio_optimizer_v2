@@ -62,8 +62,8 @@ dots are poles.*
 
 *All six science packs at 2/s each from ore, coal, stone, crude oil and water: 1,220 machines (834 electric
 furnaces, 312 assemblers, 52 chemical plants, 22 oil refineries) in 64 blocks of at most 20 machines, 230 × 237 =
-54,510 tiles. It ran for 9 hours in game, but measured it falls short: after an hour, chemical science comes out
-at 1.58/s, production at 1.87/s and utility at 1.15/s (see below).*
+54,510 tiles. It ran for 9 hours in game, but measured it falls short: chemical science comes out at 1.62/s,
+production at 1.87/s and utility at 1.18/s (see below).*
 
 The search ran for 7 h 55 min on 10 threads (M5): 4 h 15 min for the blocks (about 4 minutes each), 2 h 12 min
 for two extra shapes of every block, then 14 floorplans and compaction; the smallest factory came out of
@@ -75,33 +75,33 @@ packs leave on the east edge.
 Twice the rate of the 1/s factories below took 1.97 times the machines and 1.90 times the area of the 28-block
 one: 44.7 tiles per machine against 46.4, so the factory of blocks does not lose density as it grows.
 
-**What the game makes of it.** Built and measured in a headless game (1 h warm-up, then 10 minutes; every input
-fed without limit, every output emptied), automation, logistic and military science reach 2/s, but chemical
-comes out at 1.58/s, production at 1.87/s and utility at 1.15/s. With a 3 h warm-up it is no better. The cause is
-how the router split nets into belt chains: a machine whose output the plan divides between two chains gets an
-inserter onto each, and in the game a machine cannot steer its output. Each inserter takes whenever its belt has
-room, and one that drops ahead of its chain's other producers fills their gaps first. In block 55 a gear
-assembler planned to send nearly all of its gears to the block's output sent a good part onto the block's own
-belt, where the gear assembler downstream of it then stood with full output. Gears for engine units ran 0.5/s
-short and the engine units with them, so chemical science (engines) and utility science (robot frames, whose
-electric engines need engines) fell short. A pipe assembler in block 49 that is block 51's only pipe supply was
-split the same way. Taking just those two inserters and one more out of the test blueprint brings engine units
-to plan and chemical science to 1.99/s.
+**What the game makes of it.** Built and measured in a headless game, with every input fed without limit and
+every output taken at exactly its planned 2/s (as labs would; anything more backs up), automation, logistic
+and military science hold 2/s, but after a 3 h warm-up chemical comes out at 1.62/s, production at 1.87/s and
+utility at 1.18/s. Two causes:
 
-The validator now models this (`SPLIT_OUTPUT`: a machine on several belt chains divides its output by inserter
-speed, each chain pulling what its consumers take running flat out, less what producers ahead of it bring), and
-flags those gear and pipe layouts. The router keeps such a producer whole on one chain when the other chain's
-producers have the spare speed to cover its share, and otherwise drops its shares after its chains' other
-producers. Re-solving the blocks it flags and stitching again gives a valid 232 × 240 factory whose
-measurements are production 1.94/s (within 5%) and utility 1.74/s, but chemical still 1.37/s. Block 55 again
-splits a gear assembler with almost no slack (the other producers' spare speed covers 0.31 of the 0.33 gears/s
-it would have to give up), which the model rates under the threshold; in the game the belt's two lanes are
-drawn about evenly, so it loses about 0.5/s again (removing that one inserter gives chemical 1.97/s).
+- **Producers split between belt chains.** The router splits a net into belt chains and gave a machine a
+  planned share on each. In the game a machine cannot steer its output: each inserter takes whenever its belt
+  has room, and one that drops ahead of its chain's other producers fills their gaps first. In block 55 a gear
+  assembler planned to send nearly all of its gears to the block's output sent a good part onto the block's own
+  belt, where the gear assembler downstream of it then stood with full output; gears for engine units ran
+  0.5/s short, and engine units with them. A pipe assembler in block 49, block 51's only pipe supply, was split
+  the same way. The validator now models this (`SPLIT_OUTPUT`: each chain pulls what its consumers take
+  running flat out, less what producers ahead of it bring, at most its inserters' share of the machine) and
+  flags those layouts; the router keeps such a producer whole on one chain when the other chain's producers have
+  spare speed, and otherwise drops its shares after its chains' other producers. Re-solving the flagged blocks
+  gives a factory (221 x 254) in which chemical science holds 2/s.
+- **Heavy oil for lubricant.** The heavy-oil crackers are meant to work only on oil lubricant leaves, through a
+  circuit condition, but every blueprint wrote the condition's switch as `circuit_enable_disable`, and 2.0 reads
+  `circuit_enabled`: in game the crackers ignored their condition, took the heavy oil, and lubricant ran at about
+  60%, so electric engines, robot frames and utility science fell short. The blueprint now writes 2.0's key. The
+  control also needed a storage tank, and the 2/s factory's oil block had no room for one; a wired pipe reads the
+  same fill level and needs no room, so one of the oil's pipes is wired instead.
 
-Still short, beyond that split: utility at 87% (circuits for block 61's robot frames: processing-unit assemblers
-ahead of them on the same belt take more than their share while their own output fills the long belt to the
-utility block), and machines with spare speed generally drawing more than their share while their output is
-taken, which the in-game test does without limit. The factory shown here is the original run.
+With both fixed (blocks 48, 49 and 55 re-solved, 221 x 254), taking exactly 2/s of each pack after a 3 h warm-up
+gives chemical 2.00/s, utility 1.99/s and the three others 2/s, but production 1.81/s: one of block 53's three
+electric-furnace assemblers stands with full output while production science waits for furnaces, not traced yet.
+The factory shown here is the original run.
 
 ![2 science/s factory, render](docs/examples/two_science_per_second/best.jpg)
 
@@ -315,11 +315,13 @@ Unknown keys are an error. Everything except `targets` has a default.
   generator picks one and reports it in `ports.json`). `"sinks": {"mode": "chest"}` puts products into chests
   instead, as in v1.
 - Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
-  (lubricant, or oil leaving the block), a storage tank goes on that oil's pipes with a red wire to the cracking
-  plants, which work only while the tank is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns
-  it off; `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan
-  needs, starve lubricant and fill the petroleum pipes until the refineries stop. The tank reads its own contents,
-  which follow the fill level of the whole pipe network, so the threshold does not depend on pipe length.
+  (lubricant, or oil leaving the block), one of that oil's pipes gets a red wire to the cracking plants, which work
+  only while that pipe is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns it off;
+  `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan needs,
+  starve lubricant and fill the petroleum pipes until the refineries stop. A wired pipe reads its own share of the
+  fluid, which follows the fill level of the whole pipe network (50 in a line of 10 pipes or of 40 half full), so
+  the threshold does not depend on pipe length, and nothing needs room (a storage tank, which reads the same, did
+  not fit in the 2/s factory's packed oil block).
 - `beacons` (optional) adds modules and beacons, placed much like electricity poles. `machine_modules` go in every
   electric machine's own slots; one the recipe refuses (productivity on belts, inserters…) becomes `fallback_module`,
   or the slot stays empty. Machines of `recipes` (default: every one that takes beacon effects) are planned with

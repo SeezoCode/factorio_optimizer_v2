@@ -140,7 +140,8 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
             },
             controlBehavior = e.circuit?.let { c ->
                 buildJsonObject {
-                    put("circuit_enable_disable", true)
+                    // 2.0's key (checked in game: a machine built from "circuit_enable_disable" ignores its condition).
+                    put("circuit_enabled", true)
                     put("circuit_condition", buildJsonObject {
                         put("first_signal", buildJsonObject { if (c.fluid) put("type", "fluid"); put("name", c.signal) })
                         put("constant", c.constant)

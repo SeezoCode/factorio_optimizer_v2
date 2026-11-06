@@ -998,16 +998,17 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             }
         }
         checkCircuitWires()
-        // A machine working on a fluid condition is wired to a tank on the pipes that bring it that fluid.
+        // A machine working on a fluid condition is wired to a tank or pipe on the pipes that bring it that fluid
+        // (each reads its own contents, which follow the fill level of its whole pipe network).
         val inputRoot = HashMap<Pair<Int, String>, Int>()
         connList.forEachIndexed { k, (m, c) -> if (c.fluid != null && c.flow == GameConstants.Flow.INPUT && attached[k]) inputRoot[m to c.fluid] = find(ents.size + k) }
-        val tankRoots = tanks.associateWith { find(it) }
+        val tankRoots = ents.indices.filter { ents[it].kind == Kind.TANK || ents[it].kind in pipeKinds }.associateWith { find(it) }
         ents.indices.filter { ents[it].circuit?.fluid == true }.forEach { m ->
             val f = ents[m].circuit!!.signal
             val want = inputRoot[m to f]
             val wired = circuitNetworkOf(m).filter { it in tankRoots }
             if (want == null) err(ErrorType.CIRCUIT, ents[m].tile, "${ents[m].recipe} works on a $f condition but takes no $f from pipes")
-            else if (wired.none { tankRoots[it] == want }) err(ErrorType.CIRCUIT, ents[m].tile, "${ents[m].recipe} works on a $f condition but no tank on its $f pipes is wired to it")
+            else if (wired.none { tankRoots[it] == want }) err(ErrorType.CIRCUIT, ents[m].tile, "${ents[m].recipe} works on a $f condition but no tank or pipe on its $f pipes is wired to it")
         }
         connList.forEachIndexed { k, (m, c) ->
             val f = c.fluid ?: return@forEachIndexed

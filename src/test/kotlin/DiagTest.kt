@@ -109,3 +109,21 @@ class RecheckTest {
         println("RECHECK $bad block layouts fail")
     }
 }
+
+/** Diagnostic, skipped unless SURPLUS=<factory run folder>,<block>: cracking control on one saved block layout. */
+class SurplusDiagTest {
+    @Test
+    fun surplus() {
+        val (path, block) = (System.getenv("SURPLUS") ?: return).split(",")
+        val dir = File(path)
+        val config = blocks.savedJob(dir)!!
+        val split = blocks.loadSplit(dir)!!
+        val b = block.toInt() - 1
+        val bp = blocks.blockPlan(split.plan, split, b, Tuning.defaults().withOverrides(config.tuning))
+        val l = blocks.loadBlock(dir, b).first().layout!!
+        println("SURPLUS control ${config.fluids.surplusOnly} mode ${config.fluids.mode}")
+        println("SURPLUS crackers ${l.entities.count { it.recipe?.contains("cracking") == true }} pipes ${l.entities.groupingBy { "${it.kind}:${it.fluid}" }.eachCount().filterKeys { it.startsWith("PIPE") }}")
+        val ctl = route.addSurplusControl(l.entities, if (System.getenv("FULL") != null) split.plan else bp.plan, config, l.w, l.h, listOf(geom.Rect(0, 0, l.w, l.h)))
+        println("SURPLUS tanks ${ctl.entities.count { it.kind == geom.Kind.TANK }} wires ${ctl.circuitWires.size} notes ${ctl.notes}")
+    }
+}

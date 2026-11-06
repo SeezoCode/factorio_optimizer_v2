@@ -173,6 +173,8 @@ object GameConstants {
     const val STORAGE_TANK = "storage-tank"
     /** Fluid a storage tank holds; it reads out its contents on a circuit wire. [P] VERIFY (v19) */
     const val STORAGE_TANK_CAPACITY = 25000.0
+    /** Fluid one pipe (or pipe-to-ground) holds; wired, it reads its own share of its network's fluid. */
+    const val PIPE_CAPACITY = 100.0
     /**
      * A storage tank's (3 x 3) fluid connections: tile inside it (from its top-left) and the side it opens to. Facing
      * north the top-left corner opens north and west and the bottom-right corner south and east; facing east the
