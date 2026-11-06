@@ -1,0 +1,431 @@
+-- Builds a factorio_optimizer "test copy" blueprint for real and measures it. The blueprint string arrives in pieces
+-- (/verify_append, RCON packets are small), /verify_start builds it on a lab-tile surface, powers every electric
+-- network with an energy interface, runs the game for a warm-up and a measuring window and writes
+-- script-output/factorio-optimizer-verify.json. verify.py drives this over RCON on a headless server.
+--
+-- The test copy feeds every input port with a loader from an infinity chest and empties every output port with a
+-- loader into an infinity chest (fluids: infinity pipes, a drain at outputs). To count what flows, the chests become
+-- plain stores: inputs are topped up by script every tick (what was added is what the factory took) and outputs are
+-- emptied every tick (what was removed is what the factory made). Fluid drains are emptied the same way.
+
+local REPORT = "factorio-optimizer-verify.json"
+-- Ticks between status samples while measuring: a prime, so no machine or inserter cycle stays in step with it.
+local SAMPLE = 47
+
+local STATUS = {}
+for k, v in pairs(defines.entity_status) do STATUS[v] = k end
+
+local CRAFTERS = { ["assembling-machine"] = true, ["furnace"] = true, ["rocket-silo"] = true }
+local BELTS = { ["transport-belt"] = true, ["underground-belt"] = true, ["splitter"] = true }
+local LOADERS = { ["loader"] = true, ["loader-1x1"] = true }
+
+local function reply(t)
+  local s = helpers.table_to_json(t)
+  if rcon then rcon.print(s) end
+  log("factorio-optimizer-verify: " .. s)
+end
+
+local function str(x)
+  if type(x) == "string" then return x end
+  if x == nil then return nil end
+  return x.name
+end
+
+local function round(v, step) return math.floor(v / step + 0.5) * step end
+
+local function bp_pos(run, p)
+  return { x = round(p.x - run.dx, 0.5), y = round(p.y - run.dy, 0.5) }
+end
+
+local function add(t, k, n) t[k] = (t[k] or 0) + n end
+
+-- "name", or "name@quality" for anything but normal (as the solver writes items in ports.json).
+local function key(name, quality)
+  quality = str(quality)
+  if quality and quality ~= "normal" then return name .. "@" .. quality end
+  return name
+end
+
+-- Items on a belt as one string, so two snapshots compare by equality: unchanged means nothing on it moved.
+local function belt_key(e)
+  local parts = {}
+  for i = 1, e.get_max_transport_line_index() do
+    local ok, items = pcall(function() return e.get_transport_line(i).get_detailed_contents() end)
+    if ok then
+      for _, it in pairs(items) do parts[#parts + 1] = i .. ":" .. it.unique_id .. "@" .. string.format("%.3f", it.position) end
+    end
+  end
+  if #parts == 0 then return nil end
+  return table.concat(parts, ",")
+end
+
+local function belt_items(e)
+  local out = {}
+  for i = 1, e.get_max_transport_line_index() do
+    for _, it in pairs(e.get_transport_line(i).get_contents()) do add(out, key(it.name, it.quality), it.count) end
+  end
+  return out
+end
+
+local function set_research(force, params, warnings)
+  force.enable_all_recipes()
+  for name, _ in pairs(prototypes.quality) do
+    if name ~= "quality-unknown" then pcall(function() force.unlock_quality(name) end) end
+  end
+  local level = params.inserter_capacity or 0
+  for i = 1, level do
+    local t = force.technologies["inserter-capacity-bonus-" .. i]
+    if t then t.researched = true else warnings[#warnings + 1] = "no technology inserter-capacity-bonus-" .. i end
+  end
+  if (params.belt_stack_size or 1) > 1 then force.belt_stack_size_bonus = params.belt_stack_size - 1 end
+  for name, bonus in pairs(params.productivity or {}) do
+    if force.recipes[name] then force.recipes[name].productivity_bonus = bonus
+    else warnings[#warnings + 1] = "no recipe " .. name .. " for productivity research" end
+  end
+end
+
+local function surface_for(radius_chunks)
+  local name = "verify"
+  if game.surfaces[name] then game.delete_surface(name) name = "verify-" .. game.tick end
+  local s = game.create_surface(name)
+  s.generate_with_lab_tiles = true
+  s.always_day = true
+  s.request_to_generate_chunks({ 0, 0 }, radius_chunks)
+  s.force_generate_chunk_requests()
+  return s
+end
+
+-- Item request proxies (modules for machines and beacons): put the items straight in.
+local function fulfil_proxies(surface)
+  local n = 0
+  for _, p in pairs(surface.find_entities_filtered { type = "item-request-proxy" }) do
+    local target = p.proxy_target
+    if target then
+      for _, plan in pairs(p.insert_plan or {}) do
+        local item = { name = str(plan.id.name), quality = str(plan.id.quality) or "normal" }
+        for _, at in pairs((plan.items or {}).in_inventory or {}) do
+          item.count = at.count or 1
+          local inv = target.get_inventory(at.inventory)
+          local done = inv and inv[at.stack + 1] and inv[at.stack + 1].set_stack(item)
+          if not done then target.insert(item) end
+          n = n + item.count
+        end
+      end
+    end
+    p.destroy()
+  end
+  return n
+end
+
+-- One energy interface per electric network of the blueprint, wired to one of its poles, off to the side.
+local function power(run, surface, force, x0, y0)
+  local nets = {}
+  for _, p in pairs(surface.find_entities_filtered { type = "electric-pole", force = force }) do
+    local id = p.electric_network_id
+    if id then nets[id] = nets[id] or {}; table.insert(nets[id], p) end
+  end
+  local y, count, unwired = y0, 0, 0
+  for _, poles in pairs(nets) do
+    local eei = surface.create_entity { name = "electric-energy-interface", position = { x0, y }, force = force }
+    eei.electric_buffer_size = 1e15
+    eei.power_production = 1e13
+    eei.energy = 1e15
+    local hub = surface.create_entity { name = "medium-electric-pole", position = { x0 + 1.5, y - 0.5 }, force = force }
+    local from = hub.get_wire_connector(defines.wire_connector_id.pole_copper, true)
+    local ok = false
+    for _, p in ipairs(poles) do
+      local to = p.get_wire_connector(defines.wire_connector_id.pole_copper, true)
+      if to and from.connect_to(to, false, defines.wire_origin.script) then ok = true; break end
+    end
+    if not ok then unwired = unwired + 1 end
+    count = count + 1
+    y = y + 4
+  end
+  return count, unwired
+end
+
+local function start(params)
+  local text = table.concat(storage.buf or {})
+  storage.buf = {}
+  local inv = game.create_inventory(1)
+  local stack = inv[1]
+  if stack.import_stack(text) == 1 or not stack.valid_for_read then inv.destroy(); return { error = "could not import the blueprint string" } end
+  if stack.is_blueprint_book then
+    local book = stack.get_inventory(defines.inventory.item_main)
+    stack = book[stack.active_index or 1]
+  end
+  if not stack.is_blueprint then inv.destroy(); return { error = "not a blueprint" } end
+  local bp_entities = stack.get_blueprint_entities() or {}
+  if #bp_entities == 0 then inv.destroy(); return { error = "the blueprint is empty" } end
+  local minx, miny, maxx, maxy = math.huge, math.huge, -math.huge, -math.huge
+  for _, e in pairs(bp_entities) do
+    minx = math.min(minx, e.position.x); miny = math.min(miny, e.position.y)
+    maxx = math.max(maxx, e.position.x); maxy = math.max(maxy, e.position.y)
+  end
+
+  local warnings = {}
+  local force = game.forces.player
+  set_research(force, params, warnings)
+  local surface = surface_for(math.ceil(math.max(maxx - minx, maxy - miny) / 64) + 2)
+  local ghosts = stack.build_blueprint { surface = surface, force = force, position = { 0, 0 },
+                                        build_mode = defines.build_mode.forced, skip_fog_of_war = false }
+  inv.destroy()
+
+  -- Blueprint coordinates of what is built, so positions in the report match the solver's layout.
+  local gx, gy = math.huge, math.huge
+  for _, g in pairs(ghosts) do
+    if g.valid then gx = math.min(gx, g.position.x); gy = math.min(gy, g.position.y) end
+  end
+  local run = { dx = gx - minx, dy = gy - miny, warnings = warnings, params = params, surface = surface }
+
+  local revived, failed, tiles, entity_ghosts = 0, {}, 0, 0
+  for _, g in pairs(ghosts) do
+    if g.valid and g.type == "tile-ghost" then
+      if g.revive() then tiles = tiles + 1 end
+    end
+  end
+  for _, g in pairs(ghosts) do
+    if g.valid and g.type == "entity-ghost" then
+      entity_ghosts = entity_ghosts + 1
+      local name = g.ghost_name
+      local _, ent = g.revive()
+      if ent then revived = revived + 1 else add(failed, name, 1) end
+    end
+  end
+  local modules = fulfil_proxies(surface)
+  local networks, unwired = power(run, surface, force, maxx + run.dx + 6, miny + run.dy)
+
+  run.machines, run.inserters, run.belts, run.sources, run.sinks, run.drains = {}, {}, {}, {}, {}, {}
+  local counts = {}
+  for _, e in pairs(surface.find_entities_filtered { force = force }) do
+    add(counts, e.name, 1)
+    local t = e.type
+    if CRAFTERS[t] then
+      local r = e.get_recipe()
+      run.machines[#run.machines + 1] = { e = e, name = e.name, recipe = r and r.name, pos = bp_pos(run, e.position), statuses = {} }
+    elseif t == "inserter" then
+      run.inserters[#run.inserters + 1] = { e = e, held_all = true, moved = false, samples = 0 }
+    elseif BELTS[t] then
+      run.belts[#run.belts + 1] = { e = e }
+    elseif LOADERS[t] then
+      local c = e.loader_container
+      if not (c and c.valid) then
+        -- The chest the solver put at the loader's far end (either end: input loaders face the other way).
+        local d = ({ [defines.direction.north] = { 0, 1 }, [defines.direction.east] = { 1, 0 }, [defines.direction.south] = { 0, 1 }, [defines.direction.west] = { 1, 0 } })[e.direction]
+        local reach = (e.type == "loader") and 1.5 or 1
+        for _, sign in pairs(d and { 1, -1 } or {}) do
+          c = c or surface.find_entities_filtered { type = "infinity-container", position = { e.position.x + d[1] * reach * sign, e.position.y + d[2] * reach * sign } }[1]
+        end
+      end
+      if c and c.type == "infinity-container" then
+        if e.loader_type == "input" then
+          c.infinity_container_filters = {}
+          c.remove_unfiltered_items = false
+          run.sinks[#run.sinks + 1] = { chest = c, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
+        else
+          local keep = {}
+          for _, f in pairs(c.infinity_container_filters or {}) do
+            keep[#keep + 1] = { name = str(f.name), quality = str(f.quality) or "normal", count = math.max(f.count or 50, 50) }
+          end
+          c.infinity_container_filters = {}
+          c.remove_unfiltered_items = false
+          run.sources[#run.sources + 1] = { chest = c, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), keep = keep, items = {} }
+        end
+      end
+    elseif t == "infinity-pipe" then
+      local f = e.get_infinity_pipe_filter()
+      if f and (f.mode == "remove" or ((f.mode == "exactly" or f.mode == "at-most") and (f.percentage or 0) == 0)) then
+        e.set_infinity_pipe_filter(nil)
+        run.drains[#run.drains + 1] = { e = e, fluid = f.name, pos = bp_pos(run, e.position), amount = 0 }
+      end
+    end
+  end
+
+  run.build = {
+    blueprint_entities = #bp_entities, ghosts = entity_ghosts, tiles = tiles, revived = revived, failed = failed, modules_inserted = modules,
+    power_networks = networks, power_networks_unwired = unwired, entities = counts,
+  }
+  local speed = params.speed or 1000
+  run.warmup = math.floor((params.warmup_s or 300) * 60)
+  run.measure = math.floor((params.measure_s or 300) * 60)
+  run.t0 = game.tick
+  run.phase = "warmup"
+  storage.run = run
+  game.speed = speed
+  return {
+    phase = run.phase, machines = #run.machines, inserters = #run.inserters, belts = #run.belts, sources = #run.sources,
+    sinks = #run.sinks, drains = #run.drains, build = { revived = revived, failed = failed, ghosts = entity_ghosts, tiles = tiles,
+    power_networks = networks, power_networks_unwired = unwired, modules_inserted = modules }, warnings = warnings,
+  }
+end
+
+local function flows(run, counting)
+  for _, s in pairs(run.sources) do
+    if s.chest.valid then
+      for _, k in pairs(s.keep) do
+        local have = s.inv.get_item_count({ name = k.name, quality = k.quality })
+        if have < k.count then
+          local n = s.inv.insert { name = k.name, quality = k.quality, count = k.count - have }
+          if counting then add(s.items, key(k.name, k.quality), n) end
+        end
+      end
+    end
+  end
+  for _, s in pairs(run.sinks) do
+    if s.chest.valid and not s.inv.is_empty() then
+      if counting then
+        for _, it in pairs(s.inv.get_contents()) do add(s.items, key(it.name, it.quality), it.count) end
+      end
+      s.inv.clear()
+    end
+  end
+  for _, d in pairs(run.drains) do
+    if d.e.valid then
+      local ok, f = pcall(function() return d.e.get_fluid_segment_fluid(1) end)
+      if ok then
+        if f and f.amount > 0 then
+          if counting then d.amount = d.amount + f.amount end
+          d.e.clear_fluid_segment_fluid(1)
+        end
+      else
+        f = d.e.get_fluid(1)
+        if f and f.amount > 0 then
+          if counting then d.amount = d.amount + f.amount end
+          d.e.clear_fluid(1)
+        end
+      end
+    end
+  end
+end
+
+local function begin_measure(run)
+  run.phase = "measure"
+  run.m0 = game.tick
+  for _, m in pairs(run.machines) do if m.e.valid then m.start = m.e.products_finished end end
+  for _, b in pairs(run.belts) do if b.e.valid then b.key = belt_key(b.e) end end
+end
+
+local function sample(run)
+  for _, m in pairs(run.machines) do
+    if m.e.valid then add(m.statuses, STATUS[m.e.status] or "none", 1) end
+  end
+  for _, i in pairs(run.inserters) do
+    local e = i.e
+    if e.valid then
+      local p = e.held_stack_position
+      if not e.held_stack.valid_for_read then i.held_all = false end
+      if i.p then
+        if math.abs(p.x - i.p.x) > 0.01 or math.abs(p.y - i.p.y) > 0.01 then i.moved = true end
+      else
+        i.p = { x = p.x, y = p.y }
+      end
+      i.samples = i.samples + 1
+      i.status = STATUS[e.status]
+      if e.status == defines.entity_status.working then i.worked = true end
+    end
+  end
+end
+
+local function most(t)
+  local best, n = nil, -1
+  for k, v in pairs(t) do if v > n then best, n = k, v end end
+  return best
+end
+
+local function finish(run)
+  local secs = (game.tick - run.m0) / 60
+  local report = {
+    measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
+    machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
+    inserters = #run.inserters, belts = #run.belts,
+    research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
+                 bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
+                 belt_stack_size_bonus = game.forces.player.belt_stack_size_bonus },
+  }
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    if e.valid then
+      local crafts = e.products_finished - (m.start or 0)
+      local recipe = e.get_recipe()
+      if not recipe and e.type == "furnace" and e.previous_recipe then recipe = e.previous_recipe.name end
+      report.machines[#report.machines + 1] = {
+        name = m.name, recipe = str(recipe) or m.recipe or "", x = m.pos.x, y = m.pos.y, status = STATUS[e.status], usual_status = most(m.statuses),
+        statuses = m.statuses, crafts = crafts, crafts_per_min = crafts / secs * 60, progress = e.crafting_progress,
+        products_finished = e.products_finished, speed = e.crafting_speed,
+      }
+    end
+  end
+  for _, s in pairs(run.sinks) do
+    local rates = {}
+    for k, v in pairs(s.items) do rates[k] = v / secs end
+    report.outputs[#report.outputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates }
+  end
+  for _, s in pairs(run.sources) do
+    local rates = {}
+    for k, v in pairs(s.items) do rates[k] = v / secs end
+    for _, k in pairs(s.keep) do rates[key(k.name, k.quality)] = rates[key(k.name, k.quality)] or 0 end
+    report.inputs[#report.inputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates }
+  end
+  for _, d in pairs(run.drains) do
+    report.fluid_outputs[#report.fluid_outputs + 1] = { x = d.pos.x, y = d.pos.y, fluid = d.fluid, per_s = d.amount / secs }
+  end
+  for _, i in pairs(run.inserters) do
+    if i.e.valid and i.samples > 1 and not i.moved and not i.worked then
+      if i.held_all then
+        local h = i.e.held_stack
+        local p = bp_pos(run, i.e.position)
+        report.stuck_inserters[#report.stuck_inserters + 1] = { name = i.e.name, x = p.x, y = p.y, status = i.status,
+          holding = h.valid_for_read and h.name or nil, drop_target = i.e.drop_target and i.e.drop_target.name or nil }
+      else
+        report.idle_inserters = report.idle_inserters + 1
+      end
+    end
+  end
+  for _, b in pairs(run.belts) do
+    if b.e.valid and b.key and b.key == belt_key(b.e) then
+      local p = bp_pos(run, b.e.position)
+      report.stuck_belts[#report.stuck_belts + 1] = { name = b.e.name, x = p.x, y = p.y, items = belt_items(b.e) }
+    end
+  end
+  helpers.write_file(REPORT, helpers.table_to_json(report))
+  run.phase = "done"
+  game.speed = 1
+  log("factorio-optimizer-verify: wrote " .. REPORT)
+end
+
+script.on_event(defines.events.on_tick, function()
+  local run = storage.run
+  if not run or run.phase == "done" or run.phase == nil then return end
+  flows(run, run.phase == "measure")
+  if run.phase == "warmup" and game.tick - run.t0 >= run.warmup then begin_measure(run) end
+  if run.phase == "measure" then
+    local t = game.tick - run.m0
+    if t > 0 and t % SAMPLE == 0 then sample(run) end
+    if t >= run.measure then finish(run) end
+  end
+end)
+
+commands.add_command("verify_clear", "Forget any blueprint pieces sent so far.", function()
+  storage.buf = {}
+  reply { ok = true }
+end)
+
+commands.add_command("verify_append", "Append a piece of the blueprint string to verify.", function(c)
+  storage.buf = storage.buf or {}
+  storage.buf[#storage.buf + 1] = c.parameter or ""
+  reply { ok = true, pieces = #storage.buf }
+end)
+
+commands.add_command("verify_start", "Build the blueprint sent with /verify_append and run it. Parameter: JSON {warmup_s, measure_s, speed, inserter_capacity, belt_stack_size, productivity}.", function(c)
+  local params = {}
+  if c.parameter and c.parameter ~= "" then params = helpers.json_to_table(c.parameter) or {} end
+  local ok, result = pcall(start, params)
+  if ok then reply(result) else reply { error = tostring(result) } end
+end)
+
+commands.add_command("verify_status", "Where a verify run is.", function()
+  local run = storage.run
+  if not run then reply { phase = "idle", tick = game.tick }; return end
+  local at = game.tick - run.t0
+  reply { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil }
+end)

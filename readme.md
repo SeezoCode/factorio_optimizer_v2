@@ -897,6 +897,45 @@ fluid input side, wire format, Space Age fluid connections, inserter filters, be
 which tile and lane a recycler drops on, whether poles freeze on Aquilo, blacklist filters). [docs/VERIFY.md](docs/VERIFY.md)
 has a blueprint for each.
 
+### Checking a layout in the real game
+
+`tools/factorio-verify/verify.py` runs a layout in Factorio itself, with no window and no clicking:
+
+```
+python3 tools/factorio-verify/verify.py out                          # a run's out folder
+python3 tools/factorio-verify/verify.py out --warmup 600 --measure 300
+python3 tools/factorio-verify/verify.py out --job my_job.json         # a single-block run (no resume/job.json)
+```
+
+It takes the run's test copy (`test_output_string.txt`: the layout plus a loader from an infinity chest on every
+input and into one on every output) and starts Factorio as a headless server, with a mod folder and data folder of
+its own as the exporter does (your saves, settings and mod list stay as they are; it runs beside an open game). The
+verify mod in that folder builds the blueprint on a lab-tile surface (every ghost revived, modules put in), gives
+each electric network an energy interface, and runs the game as fast as it goes (`game.speed`, driven over RCON):
+a warm-up (default 300 game seconds), then a measured window (default 300). It reports:
+
+- every machine: its usual status, crafts and crafts/min while measured, and crafting progress (grouped by recipe;
+  all listed when there are 40 or fewer, or with `--machines`);
+- items per second leaving at each output port and taken at each input port, next to the plan in `ports.json`
+  (fluids drained at fluid outputs too; quality items as `name@quality`, mixed belts by what is on them);
+- inserters that never moved while holding an item, and belts whose items never moved.
+
+It passes when everything was built, every machine crafted something, each output item reached its planned rate
+(within `--tolerance`, default 5%) and no inserter stayed stuck. Belts that stand still are listed but do not fail
+it: the end of a belt past its last inserter stands still in a working factory too. The full report, every machine
+included, goes to `<out>/verify_report.json`. Mods come from the job's `data` file (`--mods`, `--no-space-age`
+to override), and the job's `research` and `belt_stack_size` are applied to the game.
+
+Tried so far: small vanilla test runs (red and green science, circuits from ore, plastic from oil with cracking,
+uncommon gears with quality modules and a mixed output belt, processing units) pass, and so does the Krastorio 2
+plastic job (40/s planned from three advanced chemical plants; the game makes 45/s, as every machine runs flat out).
+It caught faults the validator missed. In the `acid_east` test copy the water feed sits east of a corner port
+whose pipe-to-ground faces north, so the chemical plant gets no water (fed from the north it makes its 50/s). The
+2/s six science factory above builds completely (21,572 entities, about 70 times real time) but falls short in
+game: after an hour, chemical science comes out at 1.6/s, production at 1.9/s and utility at 1.1/s, with some 50
+machines idle, some furnaces' output full, and output inserters stuck holding plates over full belts. Why is not
+known yet.
+
 ## More layouts
 
 Cryogenic science at 0.5/s (Space Age, Aquilo), heated: five cryogenic plants in two blocks fed ice, lithium plates
