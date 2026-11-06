@@ -118,8 +118,8 @@ private fun centreDistance(a: Rect, b: Rect): Double =
 fun splitPlan(
     input: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L,
     aspect: Double = 1.0, reserved: List<ReservedArea> = emptyList(),
-    /** Recipes kept in blocks of their own (machine columns, see Templates.kt). */
-    pure: Set<String> = emptySet(),
+    /** Recipes kept in blocks of their own (machine columns, see Templates.kt), each with the most machines per block. */
+    pure: Map<String, Int> = emptyMap(),
 ): Split {
     val warnings = ArrayList<String>()
     val part = partitionPlan(input, cfg, beltThroughput, seed, pure)

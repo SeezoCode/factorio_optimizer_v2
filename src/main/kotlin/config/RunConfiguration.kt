@@ -434,6 +434,12 @@ data class BlocksConfig(
     /** ...and with at least this many machines (fewer gain little from a block of their own, which costs links). */
     @SerialName("template_min_machines") val templateMinMachines: Int = 4,
     /**
+     * Columns side by side the split sizes such a recipe's blocks for (1 or 2): with 1 each block fits one column's
+     * belts; with 2 a block may hold what a double column carries (fewer, larger blocks), which needs ports that
+     * divide between the two columns, else the block is searched.
+     */
+    @SerialName("template_columns") val templateColumns: Int = 1,
+    /**
      * Links of one item leaving a block on one side for other blocks share one output port (two or three, up to a belt's
      * worth): splitters right outside it give each link its own belt, and the block has fewer ports to reach.
      */

@@ -117,7 +117,7 @@ fun runFactory(
     })
     var split = saved?.takeIf { recipes(it.plan) == recipes(input) }
         ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved,
-            pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines) else emptySet()).also { saveSplit(out, config, it) }
+            pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines, cfg.maxMachines / 2, cfg.templateColumns) else emptyMap()).also { saveSplit(out, config, it) }
     // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
     val plan = split.plan
     plan.write(File(out, "plan_rebalanced.json").path)

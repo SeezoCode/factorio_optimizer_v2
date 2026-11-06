@@ -74,8 +74,8 @@ class BlockSize(val target: Double, val hard: Double, private val k: Double) {
 
 class PartitionModel(
     val plan: ProductionPlan, val cfg: BlocksConfig, beltThroughput: Double,
-    /** Recipes kept in blocks of their own (see [pure]). */
-    pureRecipes: Set<String> = emptySet(),
+    /** Recipes kept in blocks of their own (see [pure]), each with the most machines one such block holds. */
+    pureRecipes: Map<String, Int> = emptyMap(),
 ) {
     val n = plan.machines.size
     val weight = machineWeights(plan, cfg, beltThroughput)
@@ -95,6 +95,8 @@ class PartitionModel(
      * block of only them gets a ready-made column layout, much denser than a searched mixed block.
      */
     val pure: BooleanArray
+    /** Per recipe: the most machines of it one block holds (a pure recipe's column carries no more). */
+    val pureCap: IntArray
 
     init {
         val itemIdx = LinkedHashMap<String, Int>()
@@ -128,12 +130,14 @@ class PartitionModel(
         val rIdx = recipes.withIndex().associate { (i, r) -> r to i }
         recipeOf = IntArray(n) { rIdx.getValue(plan.machines[it].recipe) }
         pure = BooleanArray(recipes.size) { r -> cfg.templates && recipes[r] in pureRecipes }
+        pureCap = IntArray(recipes.size) { r -> if (pure[r]) pureRecipes.getValue(recipes[r]) else Int.MAX_VALUE }
     }
 
-    /** No block mixes a [pure] recipe with any other. */
+    /** No block mixes a [pure] recipe with any other, or holds more of it than [pureCap]. */
     fun pureOk(assign: IntArray, blocks: Int): Boolean = (0 until blocks).all { b ->
-        val rs = (0 until n).filter { assign[it] == b }.map { recipeOf[it] }.toSet()
-        rs.size <= 1 || rs.none { pure[it] }
+        val rs = (0 until n).filter { assign[it] == b }.map { recipeOf[it] }
+        val set = rs.toSet()
+        (set.size <= 1 || set.none { pure[it] }) && set.all { r -> rs.count { it == r } <= pureCap[r] }
     }
 
     /** Price of one (block, item) balance [b] with [count] machines of the block touching the item. */
@@ -185,7 +189,7 @@ class Partition(
  * over single machines (move one to another block, swap two) and whole recipe groups (move every machine of a
  * recipe in a block to another block). Several annealing runs; the cheapest split wins.
  */
-fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L, pure: Set<String> = emptySet()): Partition {
+fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L, pure: Map<String, Int> = emptyMap()): Partition {
     val model = PartitionModel(plan, cfg, beltThroughput, pure)
     val n = model.n
     val sz = model.size
@@ -205,7 +209,8 @@ fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Doubl
     (0 until n).groupBy { model.recipeOf[it] }.values.forEach { ms ->
         val half = if (cfg.sizeBy == "machines") maxOf(1, cfg.maxMachines / 2).toDouble() else maxOf(model.weight[ms[0]], sz.target / 2)
         val pieces = maxOf(1, kotlin.math.ceil(ms.sumOf { model.weight[it] } / half - 1e-9).toInt())
-        val per = (ms.size + pieces - 1) / pieces
+        // (A pure recipe's pieces hold no more than its column carries.)
+        val per = minOf((ms.size + pieces - 1) / pieces, model.pureCap[model.recipeOf[ms[0]]])
         ms.chunked(per).forEach { clusters += clusterOf(it) }
     }
     fun mergedCost(a: Cluster, b: Cluster): Double =
@@ -217,6 +222,7 @@ fun partitionPlan(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Doubl
         for (i in clusters.indices) for (j in i + 1 until clusters.size) {
             if (clusters[i].w + clusters[j].w > sz.hard + 1e-9) continue
             if ((rs[i] + rs[j]).size > 1 && (rs[i] + rs[j]).any { model.pure[it] }) continue
+            if ((rs[i] + rs[j]).size == 1 && clusters[i].ms.size + clusters[j].ms.size > model.pureCap[rs[i].first()]) continue
             val saving = costs[i] + costs[j] - mergedCost(clusters[i], clusters[j])
             if (saving > best) { best = saving; bi = i; bj = j }
         }
@@ -260,8 +266,8 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, rnd: Splittab
         model.mItems[m].forEachIndexed { j, i -> bal[b][i] += model.mRates[m][j]; cnt[b][i]++ }
         val r = model.recipeOf[m]; if (rcnt[b][r]++ == 0) distinct[b]++; if (model.pure[r]) pureIn[b]++
     }
-    /** A block holding a pure recipe holds nothing else. */
-    fun pureOk(b: Int) = pureIn[b] == 0 || distinct[b] <= 1
+    /** A block holding a pure recipe holds nothing else, and no more of it than its column carries ([r]: the recipe moved in). */
+    fun pureOk(b: Int, r: Int) = (pureIn[b] == 0 || distinct[b] <= 1) && rcnt[b][r] <= model.pureCap[r]
     var cost = model.cost(assign, k)
     // Blocks holding each item, for picking a target block that already trades in one of the machine's items.
     fun delta(m: Int, to: Int): Double {
@@ -310,7 +316,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, rnd: Splittab
                 val m = rnd.nextInt(n); val to = target(m); val from = assign[m]
                 if (to == from || wsum[to] + wt[m] > sz.hard + 1e-9) return null
                 val d = delta(m, to); apply(m, to)
-                if (!pureOk(to)) { apply(m, from); return null }
+                if (!pureOk(to, model.recipeOf[m])) { apply(m, from); return null }
                 return d to { apply(m, from) }
             }
             in 5..7 -> {   // swap two machines of different recipes
@@ -321,7 +327,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, rnd: Splittab
                 if (wsum[ta] + wt[a] - wt[inB] > sz.hard + 1e-9 || wsum[fa] - wt[a] + wt[inB] > sz.hard + 1e-9) return null
                 val d1 = delta(a, ta); apply(a, ta)
                 val d2 = delta(inB, fa); apply(inB, fa)
-                if (!pureOk(ta) || !pureOk(fa)) { apply(inB, ta); apply(a, fa); return null }
+                if (!pureOk(ta, model.recipeOf[a]) || !pureOk(fa, model.recipeOf[inB])) { apply(inB, ta); apply(a, fa); return null }
                 return (d1 + d2) to { apply(inB, ta); apply(a, fa) }
             }
             else -> {   // move a block's machines of one recipe
@@ -333,7 +339,7 @@ private fun anneal(model: PartitionModel, start: IntArray, k: Int, rnd: Splittab
                 if (wsum[to] + ms.sumOf { wt[it] } > sz.hard + 1e-9) return null
                 var d = 0.0
                 ms.forEach { d += delta(it, to); apply(it, to) }
-                if (!pureOk(to)) { ms.forEach { apply(it, from) }; return null }
+                if (!pureOk(to, model.recipeOf[m0])) { ms.forEach { apply(it, from) }; return null }
                 return d to { ms.forEach { apply(it, from) } }
             }
         }

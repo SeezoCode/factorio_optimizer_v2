@@ -141,8 +141,8 @@ class FactoryTest {
         )
         val plan = buildPlan(TestData.data, config)
         val pure = blocks.Templates.columnRecipes(plan, config)
-        // Furnaces fit a column; assembler 3s making cable and gears outrun long-handed inserters, so they mix freely.
-        assertEquals(setOf("iron-plate", "copper-plate"), pure)
+        // Furnaces fit a column (and so do the cable and gear assembler 3s, in split columns of short inserters).
+        assertTrue(pure.keys.containsAll(setOf("iron-plate", "copper-plate")), "${pure.keys}")
         val split = splitPlan(plan, config.blocks!!, 30.0, pure = pure)
         split.blocks.forEach { ms ->
             val recipes = ms.map { split.plan.machines[it].recipe }.toSet()
@@ -183,8 +183,8 @@ class FactoryTest {
             search = SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
         val plan = buildPlan(TestData.data, config)
-        // Red science (copper and gears, a lane each) fits a column; gears in an assembler 3 outrun long-handed inserters.
-        assertEquals(setOf("automation-science-pack"), blocks.Templates.columnRecipes(plan, config))
+        // Red science (copper and gears, a lane each) fits a column.
+        assertTrue("automation-science-pack" in blocks.Templates.columnRecipes(plan, config))
         val out = File("build/factory/red_science_column")
         out.deleteRecursively()
         val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
