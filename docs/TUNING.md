@@ -24,6 +24,15 @@ can find the exact gap.
 - Nets with more than `max_chain_visits` (12) inserter visits, or more flow than 0.9 of a belt, are split into
   several chains after direct insertion (capacity-balanced k-means on consumers, nearest producers supply each
   chain). This is the plan's b > 1 split, done per routing run so that it always matches that run's DI.
+- A producer the chains split (a share of its output on each of two chains) goes whole to its larger chain when
+  the other chain's producers have the spare speed to cover its share (machine counts are rounded up). In the
+  game a machine cannot steer its output: each of its inserters takes whenever its belt has room, and one ahead
+  of its chain's other producers fills their gaps first. Measured on the 2/s six-science factory, a gear
+  assembler planned to send nearly all its gears to its block's output sent about half each way and the
+  factory fell to 1.6 chemical and 1.15 utility science per second. Where no spare speed covers the share, the
+  split stays, and its shares drop after their chains' other producers (the shares that are a producer's
+  largest first); a chain that cannot route so drops that order. The validator models what the game does with
+  every split (`SPLIT_OUTPUT`).
 - Chains may interleave producers and consumers whenever the supply upstream covers the consumer's share (the
   plan's v2 prefix rule). Strict producers-first chains drove past consumer slots they could not use yet.
 - A* states are (tile, heading, kind), so a found path can cross itself; such paths are repaired lazily by

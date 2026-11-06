@@ -25,6 +25,7 @@ enum class ErrorType {
     FLUID_MISSING, FLUID_BLOCKED, FLUID_MIX, FLUID_STUCK, FLUID_LEAK,
     OUTPUT_MISSING,
     BEACON_SHORT,
+    SPLIT_OUTPUT,
 }
 
 data class ValidationError(val type: ErrorType, val tile: Tile, val message: String) {
@@ -48,6 +49,12 @@ data class MachineSpec(
     val sinks: Map<String, Double> = emptyMap(),
     /** Beacons that must reach this machine for its planned rate (0: none). */
     val beaconNeed: Int = 0,
+    /**
+     * Item products at full speed (items/s), when the machine may run faster than planned (machine counts are
+     * rounded up): a machine runs as fast as its output is taken, so the machines making one item share its work.
+     * Empty: no faster than planned.
+     */
+    val fullRates: Map<String, Double> = emptyMap(),
 ) {
     /** Item products leaving the machine, with their rates. */
     val outputs: Map<String, Double> get() = products.ifEmpty { if (outputRate > 0) mapOf(product to outputRate) else emptyMap() }
@@ -455,6 +462,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         // Producer outputs onto belts, after direct insertion.
         val beltRate = HashMap<Int, Double>()   // inserter -> items/s dropped onto its belt
         val beltOut = HashMap<Pair<Int, String>, Double>()
+        val beltFull = HashMap<Pair<Int, String>, Double>()
         val toBelt = HashMap<Pair<Int, String>, List<Int>>()
         machines.forEach { m ->
             val mi = info[m] ?: return@forEach
@@ -463,6 +471,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 toBelt[m to item] = mine.filter { dropIdx(it)?.let { d -> ents[d].kind == Kind.BELT } == true }
                 val diOut = mine.sumOf { delivered[it] ?: 0.0 }
                 beltOut[m to item] = max(0.0, rate - mi.sinkOf(item) - diOut)
+                beltFull[m to item] = max(beltOut.getValue(m to item), (mi.fullRates[item] ?: rate) - mi.sinkOf(item) - diOut)
             }
         }
         inserters.filter { pickIdx(it)?.let { p -> ents[p].kind == Kind.INFINITY_CHEST } == true && dropIdx(it)?.let { d -> ents[d].kind == Kind.BELT } == true }
@@ -471,7 +480,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         // Consumers: what each machine still needs of each item after direct insertion, drawn through any of its
         // belt inserters (on one chain or several): it takes items as they pass, upstream machines first.
         val comp = belts.components()
-        class Draw(val item: String, val quota: Double, val pickups: List<Int>) { var left = quota }
+        /** [full]: what the machine takes running flat out (as a rounded-up machine does while its output is taken). */
+        class Draw(val item: String, val quota: Double, val pickups: List<Int>, val full: Double = quota) { var left = quota }
         val draws = ArrayList<Draw>()
         machines.forEach { m ->
             val mi = info[m] ?: return@forEach
@@ -480,7 +490,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 val rest = max(0.0, need - diIn)
                 val fromBelts = inIns.getValue(m).filter { fromBelt(it) && belts.items[pickIdx(it)!!]?.contains(item) == true }
                 if (rest < 1e-12 || fromBelts.isEmpty()) return@forEach
-                draws += Draw(item, rest, fromBelts)
+                val made = mi.outputs.values.sum()
+                val speedUp = if (made > 1e-12 && mi.fullRates.isNotEmpty()) max(1.0, mi.fullRates.values.sum() / made) else 1.0
+                draws += Draw(item, rest, fromBelts, rest + need * (speedUp - 1))
             }
         }
         val drawsAt = HashMap<Int, MutableList<Pair<Draw, Int>>>()   // pickup belt -> (draw, inserter)
@@ -488,14 +500,43 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         val outputsAt = HashMap<Int, MutableList<OutputSpec>>()
         spec.outputs.filter { !it.fluid }.forEach { o -> indexAt(o.tile)?.takeIf { ents[it].kind.beltFamily }?.let { outputsAt.getOrPut(it) { mutableListOf() } += o } }
         val outputList = outputsAt.flatMap { (b, os) -> os.map { b to it } }
-        val short = allocateProducers(belts, beltRate, beltOut, toBelt, ::cap,
-            draws.map { Triple(it.item, it.quota, it.pickups) },
-            outputList.map { (b, o) -> Triple(o.item, o.rate, b) })
+        val drawList = draws.map { Triple(it.item, it.quota, it.pickups) }
+        val outList = outputList.map { (b, o) -> Triple(o.item, o.rate, b) }
+        // Once as the game divides split producers' output (for what comes up short), once steered as planned
+        // (for the walk below: a full lane makes a split producer send the rest the other way).
+        val drawFull = draws.map { it.full }
+        val splitShort = allocateProducers(belts, comp, HashMap(beltRate), beltOut, beltFull, toBelt, ::cap, drawList, outList, drawFull, splitShares = true)
+        val short = allocateProducers(belts, comp, beltRate, beltOut, beltFull, toBelt, ::cap, drawList, outList, drawFull, splitShares = false)
         // The max flow decides whether a chain is short of an item (a splitter sends items wherever they are
         // drawn); the walk below decides who starves when it is (upstream machines draw first).
         val shortGroups = HashSet<Pair<String, Int>>()
         draws.forEachIndexed { j, d -> if (short[j] > 1e-6) d.pickups.forEach { shortGroups += d.item to comp.getValue(pickIdx(it)!!) } }
         outputList.forEachIndexed { j, (b, o) -> if (short[draws.size + j] > 1e-6) shortGroups += o.item to comp.getValue(b) }
+        // A machine putting one item onto separate belts, and a belt chain of that item comes up more than
+        // SPLIT_TOLERANCE short of what its consumers and output ports take, once split producers divide their
+        // output as the game does (see allocateProducers).
+        val chainWant = HashMap<Pair<String, Int?>, Double>(); val chainMiss = HashMap<Pair<String, Int?>, Double>()
+        drawList.forEachIndexed { j, d ->
+            val c = d.third.firstOrNull()?.let { ins -> indexAt(ents[ins].pickupTile)?.let { comp[it] } }
+            chainWant.merge(d.first to c, d.second, Double::plus); chainMiss.merge(d.first to c, splitShort[j], Double::plus)
+        }
+        outList.forEachIndexed { j, o ->
+            chainWant.merge(o.first to comp[o.third], o.second, Double::plus); chainMiss.merge(o.first to comp[o.third], splitShort[draws.size + j], Double::plus)
+        }
+        val worst = HashMap<String, Pair<Double, Double>>()   // item -> (largest share a chain misses, items/s missing in all)
+        chainMiss.forEach { (key, miss) ->
+            val want = chainWant[key] ?: return@forEach
+            if (miss <= 1e-6 || want <= 1e-9) return@forEach
+            val (f, total) = worst[key.first] ?: (0.0 to 0.0)
+            worst[key.first] = max(f, miss / want) to total + miss
+        }
+        splitProducers(comp, toBelt).forEach { (key, chains) ->
+            val (m, item) = key
+            val (f, miss) = worst[item]?.takeIf { it.first > SPLIT_TOLERANCE } ?: return@forEach
+            err(ErrorType.SPLIT_OUTPUT, ents[m].tile, "${ents[m].recipe} puts $item onto ${chains.size} separate belts; the game divides its output " +
+                "between them by inserter speed wherever there is room, not as planned, and then ${fmt(miss)}/s of $item is missing " +
+                "(up to ${(f * 100).toInt()}% of what one belt's consumers take)")
+        }
 
         // Walk belt chains in flow order, lane by lane: consumers draw what passes, lane and belt capacity hold.
         // Straight feeds and curves keep lanes, a sideload goes to the near lane, an inserter drops on the far
@@ -637,21 +678,30 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     }
 
     /**
-     * Where each producer's belt output goes. A producer feeding several belts sends its output wherever it
-     * is taken (a full belt backs up and its inserters wait), and an item dropped on a belt reaches only what
-     * lies downstream of the drop. Max flow: producer -> each of its belt inserters (capped by the inserter's
-     * rate) -> each consumer inserter of its item picking downstream of the drop (capped by that inserter's
+     * Where each producer's belt output goes. Within one belt chain a producer's output goes wherever it is
+     * taken (a full belt backs up and its inserters wait), and an item dropped on a belt reaches only what lies
+     * downstream of the drop. A producer whose inserters drop onto separate chains cannot steer its output: each
+     * inserter takes whenever its belt has room, so it divides between them by inserter speed (in game, a
+     * machine planned to send nearly everything one way sent half each way, and the factory starved). The
+     * producers of one item share the item's planned total, each up to full speed ([MachineSpec.fullRates]).
+     * Max flow: item pool -> producer -> each of its belt inserters (capped by the inserter's rate, and by its
+     * share for a split producer) -> each consumer inserter of its item picking downstream of the drop (capped by that inserter's
      * rate) -> the machine's draw of the item along that chain -> sink (capped by the draw); output ports
      * take directly. Fixed supplies (ports, harness chests) join as sources at their rate. Each producer
      * inserter's belt rate is the flow through it; what the flow cannot meet shows up as starvation.
      */
     private fun allocateProducers(
-        belts: BeltGraph, beltRate: HashMap<Int, Double>, beltOut: Map<Pair<Int, String>, Double>, toBelt: Map<Pair<Int, String>, List<Int>>,
+        belts: BeltGraph, comp: Map<Int, Int>, beltRate: HashMap<Int, Double>, beltOut: Map<Pair<Int, String>, Double>,
+        beltFull: Map<Pair<Int, String>, Double>, toBelt: Map<Pair<Int, String>, List<Int>>,
         cap: (Int) -> Double,
         /** Machine draws: (item, items/s, consumer inserters that may serve it). */
         draws: List<Triple<String, Double, List<Int>>>,
         /** Output ports: (item, items/s, belt). */
         outputs: List<Triple<String, Double, Int>>,
+        /** What each draw takes running flat out. */
+        drawFull: List<Double>,
+        /** Split producers divide their output as the game does (true, see [splitCaps]), or as the flow needs (false). */
+        splitShares: Boolean,
     ): DoubleArray {
         val producers = toBelt.filter { it.value.isNotEmpty() && (beltOut[it.key] ?: 0.0) > 1e-12 }.keys.toList()
         fun dropBelt(ins: Int) = indexAt(ents[ins].dropTile)?.takeIf { ents[it].kind.beltFamily }
@@ -672,7 +722,13 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         // Nodes: 0 source, 1 sink, producers, producer inserters, fixed supplies, pickups (in, out), draws, outputs.
         val pBase = 2; val iBase = pBase + producers.size; val fBase = iBase + insList.size; val kBase = fBase + fixed.size
         val dBase = kBase + 2 * pickNodes.size; val oBase = dBase + draws.size
-        val g = MaxFlow(oBase + outputs.size)
+        // The machines making one item share its work: together they make what the plan says, each up to full
+        // speed. A machine on separate belts makes its planned rate and divides it between them in proportion to
+        // its inserters' speeds: each inserter takes from the machine whenever its belt has room.
+        val split = if (splitShares) splitProducers(comp, toBelt).keys else emptySet()
+        val capOf = HashMap<Int, Double>()   // producer inserter -> what it may move (split producers)
+        val poolOf = producers.map { it.second }.distinct().withIndex().associate { (k, item) -> item to oBase + outputs.size + k }
+        val g = MaxFlow(oBase + outputs.size + poolOf.size)
         val pickIndex = pickNodes.withIndex().associate { (k, p) -> p to kBase + 2 * k }
         pickNodes.forEachIndexed { k, (ins, _) -> g.edge(kBase + 2 * k, kBase + 2 * k + 1, cap(ins)) }
         val sinkEdge = IntArray(draws.size + outputs.size)
@@ -688,18 +744,88 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             }
             outputs.forEachIndexed { j, (it2, _, ob) -> if (it2 == item && ob in down) g.edge(from, oBase + j, Double.MAX_VALUE) }
         }
-        producers.forEachIndexed { k, m -> g.edge(0, pBase + k, beltOut.getValue(m)) }
+        poolOf.forEach { (item, node) -> g.edge(0, node, producers.filter { it.second == item }.sumOf { beltOut.getValue(it) }) }
+        // Planned rates first; then faster where something is still short.
+        val prodEdge = producers.mapIndexed { k, m -> g.edge(poolOf.getValue(m.second), pBase + k, beltOut.getValue(m)) }
+        split.forEach { m -> capOf += splitCaps(m, comp, beltOut, beltFull, toBelt, cap, draws, outputs, drawFull, ::downstream) }
         val insEdge = insList.mapIndexed { k, (m, ins) ->
-            val e = g.edge(pBase + producers.indexOf(m), iBase + k, cap(ins))
+            val e = g.edge(pBase + producers.indexOf(m), iBase + k, min(cap(ins), capOf[ins] ?: Double.MAX_VALUE))
             dropBelt(ins)?.let { b -> connect(iBase + k, b, m.second) }
             e
         }
         fixed.forEachIndexed { k, (b, item, r) -> g.edge(0, fBase + k, r); connect(fBase + k, b, item) }
         g.run(0, 1)
+        producers.forEachIndexed { k, m -> if (m !in split) g.raise(prodEdge[k], (beltFull[m] ?: 0.0) - beltOut.getValue(m)) }
+        g.run(0, 1)
         insList.forEachIndexed { k, (_, ins) -> beltRate[ins] = g.flowOn(insEdge[k]) }
         // What each draw (then each output) misses.
         return DoubleArray(sinkEdge.size) { j -> (if (j < draws.size) draws[j].second else outputs[j - draws.size].second) - g.flowOn(sinkEdge[j]) }
     }
+
+    /**
+     * How a producer on separate belt chains divides its output in the game, per inserter. Each chain pulls what
+     * the consumers downstream of the producer's drop take running flat out (a machine whose output is taken runs
+     * as fast as it can, and machine counts are rounded up), less what producers upstream of the drop bring it
+     * running flat out (they fill its gaps first; producers downstream of it get what is left, so it takes their
+     * share); a chain gets at most its inserters' share of the machine's speed, and what one chain cannot take
+     * goes to the others (a full belt makes its inserter wait).
+     */
+    private fun splitCaps(
+        m: Pair<Int, String>, comp: Map<Int, Int>, beltOut: Map<Pair<Int, String>, Double>, beltFull: Map<Pair<Int, String>, Double>,
+        toBelt: Map<Pair<Int, String>, List<Int>>, cap: (Int) -> Double,
+        draws: List<Triple<String, Double, List<Int>>>, outputs: List<Triple<String, Double, Int>>, drawFull: List<Double>,
+        downstream: (Int) -> Set<Int>,
+    ): Map<Int, Double> {
+        val item = m.second
+        fun dropOf(ins: Int) = indexAt(ents[ins].dropTile)
+        val mine = toBelt.getValue(m)
+        val byChain = mine.groupBy { dropOf(it)?.let { d -> comp[d] } }
+        val total = beltOut.getValue(m)
+        val allCap = mine.sumOf { cap(it) }
+        val pull = byChain.mapValues { (c, list) ->
+            val down = list.mapNotNull { dropOf(it) }.flatMap { downstream(it) }.toSet()
+            var downDraw = 0.0; var upDraw = 0.0
+            draws.forEachIndexed { j, (it2, _, pickups) ->
+                if (it2 != item) return@forEachIndexed
+                pickups.forEach { ins ->
+                    val b = indexAt(ents[ins].pickupTile) ?: return@forEach
+                    if (comp[b] != c) return@forEach
+                    if (b in down) downDraw += drawFull[j] / pickups.size else upDraw += drawFull[j] / pickups.size
+                }
+            }
+            outputs.forEach { (it2, r, b) -> if (it2 == item && b in down) downDraw += r }
+            var upSupply = 0.0
+            toBelt.forEach { (o, oList) ->
+                if (o == m || o.second != item) return@forEach
+                oList.forEach { ins -> val d = dropOf(ins) ?: return@forEach
+                    if (comp[d] == c && list.any { mi -> dropOf(mi)?.let { it in downstream(d) } == true })
+                        upSupply += min(cap(ins), (beltFull[o] ?: beltOut.getValue(o)) / oList.size) }
+            }
+            spec.sources.filter { !it.fluid && it.item == item }.forEach { s ->
+                val b = indexAt(s.tile) ?: return@forEach
+                if (comp[b] == c && list.any { mi -> dropOf(mi)?.let { it in downstream(b) } == true }) upSupply += s.rate
+            }
+            max(0.0, downDraw - max(0.0, upSupply - upDraw))
+        }
+        // Water-filling: chains that pull less than their inserters' share take what they pull; the rest is shared
+        // by the others in proportion to their inserters.
+        val take = HashMap<Int?, Double>()
+        var open = byChain.keys.toMutableSet()
+        var left = total
+        while (open.isNotEmpty()) {
+            val capOpen = open.sumOf { c -> byChain.getValue(c).sumOf { cap(it) } }
+            val limited = open.filter { c -> pull.getValue(c) < left * byChain.getValue(c).sumOf { cap(it) } / capOpen }
+            if (limited.isEmpty()) { open.forEach { c -> take[c] = left * byChain.getValue(c).sumOf { cap(it) } / capOpen }; break }
+            limited.forEach { c -> take[c] = pull.getValue(c); left -= pull.getValue(c) }
+            open = (open - limited.toSet()).toMutableSet()
+        }
+        if (allCap <= 0) return emptyMap()
+        return mine.associateWith { ins -> val c = dropOf(ins)?.let { comp[it] }; (take[c] ?: 0.0) * cap(ins) / byChain.getValue(c).sumOf { cap(it) } }
+    }
+
+    /** Producers (machine, item) whose belt inserters drop onto more than one belt chain, with those chains. */
+    private fun splitProducers(comp: Map<Int, Int>, toBelt: Map<Pair<Int, String>, List<Int>>): Map<Pair<Int, String>, Set<Int>> =
+        toBelt.mapValues { (_, list) -> list.mapNotNull { ins -> indexAt(ents[ins].dropTile)?.let { comp[it] } }.toSet() }.filterValues { it.size > 1 }
 
     /** Item output ports: a belt of the item on the port tile that leads out of the box. */
     private fun checkOutputs(belts: BeltGraph) {
@@ -918,6 +1044,17 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     }
 
     private fun fmt(d: Double) = "%.2f".format(d)
+
+    private companion object {
+        /**
+         * How far below plan a split producer may leave a belt chain (what its consumers and output ports take)
+         * before it is an error. Splits leave small gaps the model cannot place exactly (which of two such
+         * producers on one belt fills first, which lane the consumers take from); single-block cable jobs leave
+         * belts about 6% short in the model. The divisions that starved the 2/s six-science factory in game left
+         * its gear and pipe belts 11% to 37% short in the model (11% to 23% measured in game).
+         */
+        const val SPLIT_TOLERANCE = 0.08
+    }
 }
 
 fun validate(layout: Layout, spec: ValidationSpec): List<ValidationError> = Validator(layout, spec).run()

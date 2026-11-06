@@ -126,9 +126,14 @@ class PathFinder(internal val p: RouteProblem) {
      * A chain's share of a plan terminal. Nets with many inserter visits (or more flow than one belt) are
      * split into several chains after direct insertion, so one producer may feed two chains.
      */
-    private class VT(val id: Int, val base: Terminal, val rate: Double, val k: Int, var net: Int) {
+    private class VT(val id: Int, val base: Terminal, var rate: Double, var k: Int, var net: Int) {
         /** Which of its chain's items this is: 0, or 1 for the second item of a shared belt (its lane). */
         var slot = 0
+        /**
+         * Where a share of a producer split over chains drops among its chain's producers of the item: 0 anywhere
+         * (not split), 1 after those (its producer's largest share), 2 after those and the largest shares too.
+         */
+        var rank = 0
         val role get() = base.role
         val machine get() = base.machine
     }
@@ -363,6 +368,7 @@ class PathFinder(internal val p: RouteProblem) {
                     srcPort = source?.base?.port ?: -1, outPort = output?.base?.port ?: -1)
             }
         }
+        keepProducersWhole(dropRate, beltCap)
         if (config.laneSharing || plan.ports.any { it.pairWith >= 0 }) pairChains()
         routed = arrayOfNulls(nets.size)
         netOrder = arrayOfNulls(nets.size)
@@ -406,6 +412,64 @@ class PathFinder(internal val p: RouteProblem) {
         val mj = maxOf(maxJ, maxJw)
         val ugStep = ((2 * tun.beltBase + tun.ugPenalty + tun.ugPenaltyPerTile * mj) / (mj + 1)).toFloat()
         minStep = if (ugAllowed) minOf(tun.beltBase.toFloat(), ugStep) else tun.beltBase.toFloat()
+    }
+
+    /**
+     * A producer the chains split (a share of its output on each of several chains) goes whole to the chain with
+     * the largest share. In the game a machine cannot steer its output: each of its inserters takes whenever its
+     * belt has room, so it divides by inserter speed, not as planned (a gear assembler planned to send nearly
+     * everything to its block's output sent half each way, and the factory starved). The other chains get what
+     * they lose from their own producers running faster than planned (machine counts are rounded up, so most have
+     * spare speed). A producer stays split when its chains' other producers lack the spare speed, or its whole
+     * output would overfill the chain it goes to. Its shares then drop after their chains' other producers (see
+     * [claimable]; on a chain several split producers feed, the ones whose largest share it is go first): those
+     * fill each belt first, so each takes from it only what its consumers still lack; ahead of them it would fill
+     * their gaps and leave them waiting while its other chain starves. The validator checks what the game makes of
+     * each split.
+     */
+    private fun keepProducersWhole(dropRate: Double, beltCap: Double) {
+        val spare = HashMap<Pair<Int, String>, Double>()
+        fun spareOf(v: VT): Double {
+            val m = plan.machines[v.machine ?: return 0.0]
+            return spare.getOrPut(m.id to v.base.item) {
+                if (m.crafts <= 1e-12) 0.0 else max(0.0, (m.products[v.base.item] ?: 0.0) * (m.maxCrafts / m.crafts - 1))
+            }
+        }
+        fun chainFlow(net: Int) = nets[net].sourceRate + nets[net].terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate }
+        val split = vts.filter { it.role == Role.PRODUCER && it.machine != null }.groupBy { it.base.id }.values.filter { ps -> ps.map { it.net }.distinct().size > 1 }
+        for (parts in split) {
+            val major = parts.maxByOrNull { it.rate }!!
+            val minors = parts.filter { it !== major }
+            fun holdBack() { major.rank = 1; minors.forEach { it.rank = 2 } }
+            if (chainFlow(major.net) + minors.sumOf { it.rate } > beltCap + 1e-9) { holdBack(); continue }
+            // Who covers each minor chain's loss: its other producers, by spare speed.
+            val cover = ArrayList<Pair<VT, Double>>()
+            val ok = minors.all { minor ->
+                var left = minor.rate
+                nets[minor.net].terms.map { vts[it] }
+                    .filter { it.role == Role.PRODUCER && it !== minor && it.machine != major.machine && split.none { ps -> it in ps } }
+                    .sortedByDescending { spareOf(it) }
+                    .forEach { o ->
+                        val take = minOf(left, spareOf(o) - cover.filter { it.first.machine == o.machine && it.first.base.item == o.base.item }.sumOf { it.second })
+                        if (take > 1e-9) { cover += o to take; left -= take }
+                    }
+                left <= 1e-9
+            }
+            if (!ok) { holdBack(); continue }
+            cover.forEach { (o, take) ->
+                o.rate += take
+                o.k = maxOf(o.k, inserterCount(o.rate, dropRate))
+                spare[o.machine!! to o.base.item] = spareOf(o) - take
+            }
+            minors.forEach { minor ->
+                val n = nets[minor.net]
+                nets[minor.net] = n.copy(terms = n.terms.filter { it != minor.id }.toIntArray())
+                major.rate += minor.rate
+                minor.rate = 0.0
+            }
+            major.k = maxOf(major.k, inserterCount(major.rate, dropRate))
+            log += "${major.base.item}: a producer split over ${parts.size} chains goes whole to one; ${"%.2f".format(cover.sumOf { it.second })}/s more from producers with spare speed"
+        }
     }
 
     private fun isRing1(t: Tile) = !dims.inBox(t.x, t.y) && t.x >= -1 && t.y >= -1 && t.x <= W && t.y <= H
@@ -480,7 +544,22 @@ class PathFinder(internal val p: RouteProblem) {
     private var paired = false
 
     private fun share(v: Int) = vts[v].rate / vts[v].k
-    private fun claimable(v: Int) = need[v] > 0 && (vts[v].role == Role.PRODUCER || surplus[vts[v].slot] >= share(v) - 1e-9)
+    private fun claimable(v: Int) = need[v] > 0 && (vts[v].role == Role.PRODUCER || surplus[vts[v].slot] >= share(v) - 1e-9) &&
+        (vts[v].rank == 0 || !orderLast[termNet[v]] || nets[termNet[v]].terms.all { t ->
+            vts[t].rank >= vts[v].rank || vts[t].role != Role.PRODUCER || vts[t].base.item != vts[v].base.item || need[t] <= 0 })
+
+    /** Chains that still order split producers' shares after their other producers (one that cannot route so drops it). */
+    private val orderLast by lazy { BooleanArray(nets.size) { true } }
+
+    /** Routes chain [w]; if it fails with split producers' shares held back ([VT.rank]), once more without that. */
+    private fun routeChain(w: Int): Boolean {
+        if (routeNet(nets[w])) return true
+        if (!orderLast[w] || nets[w].terms.none { vts[it].rank > 0 }) return false
+        orderLast[w] = false
+        log += "chain $w (${nets[w].item}): routes only with its split producers' shares among its other producers"
+        ripUp(w)
+        return routeNet(nets[w])
+    }
 
     /** Items/s on each lane of the chain at its head (0 left, 1 right of the belt's heading). */
     private val laneLoad = DoubleArray(2)
@@ -1209,7 +1288,7 @@ class PathFinder(internal val p: RouteProblem) {
                 !ok(w) || (if (w >= 0) touchesOveruse(w) else pr!!.touchesOveruse(-1 - w, ::overuseAt))
             }
             todo.forEach { w ->
-                if (w >= 0) { ripUp(w); routeNet(nets[w]) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) }
+                if (w >= 0) { ripUp(w); routeChain(w) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) }
             }
             solveSinks()
             unrouted = nets.filter { routed[it.idx]?.ok != true }.map { it.idx }
@@ -1375,7 +1454,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun endgame(order: List<Int>, ok: (Int) -> Boolean, deadline: Long): Int {
         val pr = pipes
         val rnd = java.util.Random(31L * N + nets.size + 1_000_003L * p.endgameSeed)
-        fun reroute(w: Int) { if (w >= 0) { ripUp(w); routeNet(nets[w]) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) } }
+        fun reroute(w: Int) { if (w >= 0) { ripUp(w); routeChain(w) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) } }
         fun overused(w: Int) = !ok(w) || (if (w >= 0) touchesOveruse(w) else pr!!.touchesOveruse(-1 - w, ::overuseAt))
         fun seeds(): List<Int> {
             val s = ArrayList<Int>()
@@ -1408,7 +1487,7 @@ class PathFinder(internal val p: RouteProblem) {
             val saved = victims.associateWith { w -> if (w >= 0) routed[w] else pr!!.saved(-1 - w) }
             victims.forEach { w -> if (w >= 0) ripUp(w) else pr!!.ripUp(-1 - w) }
             victims.shuffle(rnd)
-            victims.forEach { w -> if (w >= 0) routeNet(nets[w]) else pr!!.route(-1 - w) }
+            victims.forEach { w -> if (w >= 0) routeChain(w) else pr!!.route(-1 - w) }
             for (k in 0 until tun.endgameIterations) {
                 solveSinks()
                 val todo = victims.filter { overused(it) }

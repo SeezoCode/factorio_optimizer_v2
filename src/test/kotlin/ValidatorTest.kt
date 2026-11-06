@@ -5,6 +5,7 @@ import geom.PlacedEntity
 import geom.Tile
 import validate.ErrorType
 import validate.MachineSpec
+import validate.OutputSpec
 import validate.SourceSpec
 import validate.ValidationError
 import validate.ValidationSpec
@@ -272,6 +273,60 @@ class ValidatorTest {
         val errors = check("starved", layout, spec)
         assertHas(errors, ErrorType.STARVED, Tile(10, 3))
         assertTrue(errors.none { it.type == ErrorType.STARVED && it.tile == Tile(6, 3) }, "$errors")
+    }
+
+    /**
+     * Gear assemblers above two separate belts: the top belt (y 3) leaves the box at (12,3) as an output port, the
+     * bottom one (y 9) feeds a science assembler at (9,11). [extra] adds machines and inserters.
+     */
+    private fun twoBelts(vararg extra: PlacedEntity) = Layout(13, 14, listOf(
+        e("assembling-machine-3", 9, 11, recipe = "automation-science-pack"),
+        e("fast-inserter", 10, 10, Dir.N),   // bottom belt -> science
+    ) + extra + (0..12).flatMap { listOf(belt(it, 3, Dir.E, 1), belt(it, 9, Dir.E, 2)) })
+
+    private val science = MachineSpec("automation-science-pack", setOf("copper-plate", "iron-gear-wheel"), 0.0, 0.0, mapOf("iron-gear-wheel" to 0.1))
+    private fun gears(rate: Double, full: Double = rate) =
+        MachineSpec("iron-gear-wheel", setOf("iron-plate"), rate, 0.0, emptyMap(), fullRates = mapOf("iron-gear-wheel" to full))
+
+    @Test
+    fun `a machine dropping onto two belts divides its output as the game does, not as planned`() {
+        // B is planned to send 1.0/s up to the port and 0.1/s down to the science. In the game each of its
+        // inserters takes whenever its belt has room. Upstream of C on the bottom belt, B fills the gaps the science
+        // leaves first (C waits) and sends 0.1/s down: fine. Downstream of C, C fills the bottom belt and B sends
+        // the rest up. But with C downstream and only able to supply part, the bottom belt pulls more of B than
+        // planned and the port comes up short.
+        fun layout(cAt: Int) = twoBelts(
+            e("assembling-machine-3", 1, 5, recipe = "iron-gear-wheel"), e("fast-inserter", 2, 4, Dir.S),
+            e("assembling-machine-3", 4, 5, recipe = "iron-gear-wheel"), e("fast-inserter", 5, 4, Dir.S), e("fast-inserter", 5, 8, Dir.N),
+            e("assembling-machine-3", cAt, 11, recipe = "iron-gear-wheel"), e("fast-inserter", cAt + 1, 10, Dir.S),
+        )
+        val spec = base.copy(
+            checkRates = true,
+            machines = mapOf(Tile(1, 5) to gears(0.5), Tile(4, 5) to gears(1.1), Tile(1, 11) to gears(0.4), Tile(5, 11) to gears(0.4),
+                Tile(9, 11) to science.copy(demand = mapOf("iron-gear-wheel" to 0.5))),
+            outputs = listOf(OutputSpec(Tile(12, 3), "iron-gear-wheel", 1.5)),
+        )
+        assertEquals(emptyList(), check("split_output_after", layout(cAt = 1), spec))
+        assertHas(check("split_output_before", layout(cAt = 5), spec), ErrorType.SPLIT_OUTPUT, Tile(4, 5))
+    }
+
+    @Test
+    fun `machines making one item share its work up to full speed`() {
+        // A and B (1.4/s planned) feed the port's 1.5/s; C below makes 0.2/s for a science that takes 0.1/s. In the
+        // game C's belt backs up and A runs faster than planned (it has spare speed), so nothing starves.
+        val layout = twoBelts(
+            e("assembling-machine-3", 1, 5, recipe = "iron-gear-wheel"), e("fast-inserter", 2, 4, Dir.S),
+            e("assembling-machine-3", 6, 5, recipe = "iron-gear-wheel"), e("fast-inserter", 7, 4, Dir.S),
+            e("assembling-machine-3", 1, 11, recipe = "iron-gear-wheel"), e("fast-inserter", 2, 10, Dir.S),
+        )
+        fun spec(fullA: Double) = base.copy(
+            checkRates = true,
+            machines = mapOf(Tile(1, 5) to gears(0.4, fullA), Tile(6, 5) to gears(1.0), Tile(1, 11) to gears(0.2), Tile(9, 11) to science),
+            outputs = listOf(OutputSpec(Tile(12, 3), "iron-gear-wheel", 1.5)),
+        )
+        assertEquals(emptyList(), check("shared_work", layout, spec(fullA = 2.5)))
+        // Without spare speed the port comes up short.
+        assertHas(check("shared_work_no_spare", layout, spec(fullA = 0.4)), ErrorType.STARVED, Tile(12, 3))
     }
 
     @Suppress("unused")

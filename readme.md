@@ -62,7 +62,8 @@ dots are poles.*
 
 *All six science packs at 2/s each from ore, coal, stone, crude oil and water: 1,220 machines (834 electric
 furnaces, 312 assemblers, 52 chemical plants, 22 oil refineries) in 64 blocks of at most 20 machines, 230 × 237 =
-54,510 tiles. It ran for 9 hours in game with everything working.*
+54,510 tiles. It ran for 9 hours in game, but measured it falls short: after an hour, chemical science comes out
+at 1.58/s, production at 1.87/s and utility at 1.15/s (see below).*
 
 The search ran for 7 h 55 min on 10 threads (M5): 4 h 15 min for the blocks (about 4 minutes each), 2 h 12 min
 for two extra shapes of every block, then 14 floorplans and compaction; the smallest factory came out of
@@ -73,6 +74,34 @@ packs leave on the east edge.
 
 Twice the rate of the 1/s factories below took 1.97 times the machines and 1.90 times the area of the 28-block
 one: 44.7 tiles per machine against 46.4, so the factory of blocks does not lose density as it grows.
+
+**What the game makes of it.** Built and measured in a headless game (1 h warm-up, then 10 minutes; every input
+fed without limit, every output emptied), automation, logistic and military science reach 2/s, but chemical
+comes out at 1.58/s, production at 1.87/s and utility at 1.15/s. With a 3 h warm-up it is no better. The cause is
+how the router split nets into belt chains: a machine whose output the plan divides between two chains gets an
+inserter onto each, and in the game a machine cannot steer its output. Each inserter takes whenever its belt has
+room, and one that drops ahead of its chain's other producers fills their gaps first. In block 55 a gear
+assembler planned to send nearly all of its gears to the block's output sent a good part onto the block's own
+belt, where the gear assembler downstream of it then stood with full output. Gears for engine units ran 0.5/s
+short and the engine units with them, so chemical science (engines) and utility science (robot frames, whose
+electric engines need engines) fell short. A pipe assembler in block 49 that is block 51's only pipe supply was
+split the same way. Taking just those two inserters and one more out of the test blueprint brings engine units
+to plan and chemical science to 1.99/s.
+
+The validator now models this (`SPLIT_OUTPUT`: a machine on several belt chains divides its output by inserter
+speed, each chain pulling what its consumers take running flat out, less what producers ahead of it bring), and
+flags those gear and pipe layouts. The router keeps such a producer whole on one chain when the other chain's
+producers have the spare speed to cover its share, and otherwise drops its shares after its chains' other
+producers. Re-solving the blocks it flags and stitching again gives a valid 232 × 240 factory whose
+measurements are production 1.94/s (within 5%) and utility 1.74/s, but chemical still 1.37/s. Block 55 again
+splits a gear assembler with almost no slack (the other producers' spare speed covers 0.31 of the 0.33 gears/s
+it would have to give up), which the model rates under the threshold; in the game the belt's two lanes are
+drawn about evenly, so it loses about 0.5/s again (removing that one inserter gives chemical 1.97/s).
+
+Still short, beyond that split: utility at 87% (circuits for block 61's robot frames: processing-unit assemblers
+ahead of them on the same belt take more than their share while their own output fills the long belt to the
+utility block), and machines with spare speed generally drawing more than their share while their output is
+taken, which the in-game test does without limit. The factory shown here is the original run.
 
 ![2 science/s factory, render](docs/examples/two_science_per_second/best.jpg)
 
@@ -520,7 +549,7 @@ narrow, fluids pinned side by side) rather than the box.
 | 3 | `route` | Negotiated-congestion routing: belt chains leg by leg with A* over (tile, heading, belt/underground), splitter branches, pipe trees with pipe-to-ground, and a rip-up-and-reroute endgame around the last conflicts |
 | 4 | `power` | Beacon lattice and set cover, pole set cover and MST wiring (lattice fallback), test-mode harness |
 | 5 | `search` | Box size search (gentle growth to a first success, then bisection), K seeds per size in parallel, warm starts, anytime outputs, calibration |
-| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone |
+| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone; a machine putting one item onto separate belts divides it as the game does (by inserter speed, wherever there is room), not as planned |
 | — | `emit`, `viz` | Blueprint 2.0 encode/decode, PNG renders |
 
 Two things go beyond the original plan and are described in [docs/TUNING.md](docs/TUNING.md): nets with many
@@ -552,7 +581,8 @@ validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 
 64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built with the 2D floorplanner, rotation, lane pairs
 and compaction as a factory of 44 blocks of at most 15 machines at 165 × 182, and as 28 blocks sized by
 weight at 163 × 176. Six science from plates is 92 × 107 in 13 blocks. Six science at 2/s each from ore (1,220 machines) is
-230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours); at 10/s each with
+230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours) (measured, three of its six
+packs fall short, see there); at 10/s each with
 productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in 34 blocks. See [More
 layouts](#more-layouts).
 

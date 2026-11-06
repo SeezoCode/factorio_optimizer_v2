@@ -37,6 +37,7 @@ class DiagTest {
             val r = runTrial(TestData.data, plan, config, tuning, s, s, seed)
             println("DIAG seed $seed: ${r.stage} ${r.millis}ms score ${r.score}")
             r.notes.forEach { println("DIAG   note $it") }
+            r.route?.log?.filter { "split" in it }?.forEach { println("DIAG   log $it") }
             r.errors.take(8).forEach { println("DIAG   error $it") }
             System.getenv("DIAG_NET")?.toIntOrNull()?.let { net -> r.layout?.entities?.filter { it.net == net }?.forEach { en ->
                 println("DIAG   net$net: ${en.name} ${en.kind} (${en.x},${en.y}) ${en.dir}") } }
@@ -72,5 +73,39 @@ class DiagTest {
                 renderLayout(geom.Layout(s, s, rt.entities), File("build/renders/diag/${s}_${seed}_fail.png"), RenderOptions(errors = over, px = 24, title = "route seed $seed: ${rt.failedNets.map { plan.nets[it].item }}"))
             }
         }
+    }
+}
+
+/**
+ * Diagnostic, skipped unless RECHECK=<factory run folder> is set: validates every block layout saved in its
+ * resume/ folder again with today's validator and prints each block's errors (RECHECK_JOB=<job> when the saved
+ * job is not wanted). Use `./gradlew test --tests RecheckTest --rerun -i`.
+ */
+class RecheckTest {
+    @Test
+    fun recheck() {
+        val dir = File(System.getenv("RECHECK") ?: return)
+        val config = System.getenv("RECHECK_JOB")?.let { RunConfiguration.load(it) } ?: blocks.savedJob(dir)!!
+        val tuning = Tuning.defaults().withOverrides(config.tuning)
+        val split = blocks.loadSplit(dir)!!
+        var bad = 0
+        val only = System.getenv("RECHECK_BLOCK")?.toInt()
+        split.blocks.indices.forEach { b ->
+            if (only != null && b + 1 != only) return@forEach
+            val bp = blocks.blockPlan(split.plan, split, b, tuning)
+            val all = blocks.loadBlock(dir, b)
+            if (all.isEmpty()) return@forEach println("RECHECK block ${b + 1}: no layout")
+            all.forEachIndexed { v, r ->
+            val l = r.layout!!
+            val outside = l.entities.flatMap { it.rect.tiles() }.filter { it.x !in 0 until l.w || it.y !in 0 until l.h }.toSet()
+            val spec = search.validationSpec(TestData.data, bp.plan, config, r.placement!!, r.sources, requirePower = false,
+                outsideAllowed = outside, outputs = r.outputs)
+            val errors = validate.validate(l, spec)
+            if (errors.isNotEmpty()) bad++
+            println("RECHECK block ${b + 1} layout ${v + 1} (${l.w}x${l.h}): ${errors.size} errors ${errors.groupingBy { it.type }.eachCount()}")
+            errors.take(6).forEach { println("RECHECK   $it") }
+            }
+        }
+        println("RECHECK $bad block layouts fail")
     }
 }
