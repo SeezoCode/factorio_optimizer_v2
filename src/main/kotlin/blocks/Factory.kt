@@ -170,8 +170,20 @@ fun runFactory(
 
     // 1. Blocks in turns (see Engine.kt): a first layout each and a preview factory, then smaller boxes, the blocks
     //    that set the factory's size first, until the time for blocks is up or the run is stopped.
-    val loaded = split.blocks.indices.map { if (resume) loadBlock(out, it) else emptyList() }
-    loaded.forEachIndexed { b, l -> if (l.isNotEmpty()) say("block ${b + 1}: ${l[0].w} x ${l[0].h}, resumed (${l.size} layout(s)); refining it") }
+    // A saved layout that cannot be stitched (one an older version made, see [unstitchable]) is left out; its slot
+    // stays empty so the others keep their shape variants, and an empty one is searched afresh.
+    val loaded: List<List<TrialResult?>> = split.blocks.indices.map { b ->
+        if (!resume) return@map emptyList()
+        loadBlock(out, b).mapIndexed { i, r ->
+            val why = unstitchable(bps[b], r) ?: return@mapIndexed r
+            say("block ${b + 1}: resumed layout ${i + 1} (${r.w} x ${r.h}) dropped: $why")
+            null
+        }
+    }
+    loaded.forEachIndexed { b, l ->
+        val first = l.firstOrNull() ?: return@forEachIndexed
+        say("block ${b + 1}: ${first.w} x ${first.h}, resumed (${l.count { it != null }} layout(s)); refining it")
+    }
     bps.forEach { bp ->
         val b = bp.index
         bp.plan.write(File(out, "block_${b + 1}/plan.json").path)

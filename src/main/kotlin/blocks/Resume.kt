@@ -128,6 +128,22 @@ fun loadSplit(out: File): Split? {
     return Split(s.blocks, links, s.warnings, g, s.plan, part, s.ports)
 }
 
+/**
+ * Why layout [r] of block [bp] cannot be stitched, or null: it leaves out a port between blocks, or a lane pair's port
+ * has another port right beside it (where the pair's two belts may have to join). Layouts saved by older versions
+ * can be like that; the search and templates no longer make them.
+ */
+fun unstitchable(bp: BlockPlan, r: TrialResult): String? {
+    search.missingLinkPorts(bp.plan, r.sources, r.outputs).takeIf { it.isNotEmpty() }?.let { ps ->
+        return "missing its " + ps.joinToString { "${it.item} ${if (it.output) "output" else "input"} (link ${bp.linkOfPort[it.id]})" }
+    }
+    val tiles = r.sources.map { it.tile } + r.outputs.map { it.tile }
+    r.sources.filter { it.lane >= 0 }.forEach { s ->
+        if (tiles.any { it != s.tile && it.manhattan(s.tile) == 1 }) return "a port beside its ${s.item} lane pair's port"
+    }
+    return null
+}
+
 /** The layouts saved for block [b] in [out] (empty if none). */
 fun loadBlock(out: File, b: Int): List<TrialResult> {
     val f = File(out, "resume/block_${b + 1}.json").takeIf { it.exists() } ?: return emptyList()

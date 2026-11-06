@@ -97,6 +97,15 @@ fun validationSpec(
     )
 }
 
+/**
+ * One-belt ports of [plan] (links between blocks of a factory) that [sources] and [outputs] leave out: a block
+ * layout without one cannot be stitched.
+ */
+fun missingLinkPorts(plan: ProductionPlan, sources: List<SourceSpec>, outputs: List<OutputSpec>): List<plan.Port> {
+    val have = (sources.map { it.port } + outputs.map { it.port }).toSet()
+    return plan.ports.filter { it.single && it.id !in have }
+}
+
 fun layoutOf(placement: Placement, entities: List<PlacedEntity>, wires: List<Pair<Int, Int>> = emptyList(), label: String = "factorio-optimizer") =
     Layout(placement.w, placement.h, entities, wires, label)
 
@@ -396,7 +405,10 @@ fun runTrial(
             .filter { (p, _) -> p >= 0 && plan.ports[p].single }.groupBy({ it.first }, { it.second })
             .filter { (_, ts) -> ts.distinct().size > 1 }
             .map { (p, ts) -> ValidationError(validate.ErrorType.UNSUPPORTED, ts.first(), "${plan.ports[p].item} must be one belt at its port, uses ${ts.distinct().size}") }
-        val errors = validate(layout, spec) + split
+        // ... and it is there at all: stitching joins every link between blocks at its ports.
+        val missing = missingLinkPorts(plan, ringed.sources, ringed.outputs)
+            .map { p -> ValidationError(validate.ErrorType.UNSUPPORTED, Tile(0, 0), "${p.item} ${if (p.output) "output" else "input"} port ${p.id} has no belt") }
+        val errors = validate(layout, spec) + split + missing
         if (beacons != null && !beacons.ok) return fail("beacons", result, errors, layout)
         if (!ok) return fail("power", result, errors, layout)
         if (errors.isNotEmpty()) return fail("validate", result, errors, layout)

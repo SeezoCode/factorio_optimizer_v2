@@ -1779,7 +1779,11 @@ class PathFinder(internal val p: RouteProblem) {
                 var src: EffectiveTerminal? = null
                 var srcRate = 0.0
                 if (missing > 1e-6) {
-                    src = srcLeft.filter { it.value > 1e-9 }.keys.maxByOrNull { srcLeft.getValue(it) }
+                    // A one-belt input port carries one item passing through: a second output takes another input
+                    // port (one that covers it first), else it would need a second belt at that port.
+                    fun free(s: EffectiveTerminal) = !plan.ports[s.base.port!!].single || s !in pending
+                    src = srcLeft.filter { it.value > 1e-9 }.keys.maxWithOrNull(
+                        compareBy<EffectiveTerminal> { srcLeft.getValue(it) >= missing - 1e-9 }.thenBy { free(it) }.thenBy { srcLeft.getValue(it) })
                     if (src != null) { srcRate = min(missing, srcLeft.getValue(src)); srcLeft[src] = srcLeft.getValue(src) - srcRate }
                 }
                 if (missing - srcRate > 1e-6) log += "net ${net.id} (${net.item}): output chain short of ${"%.2f".format(missing - srcRate)}/s"
@@ -1804,9 +1808,13 @@ class PathFinder(internal val p: RouteProblem) {
             // A link port is one belt: one chain (branches serve many consumers), so it pairs with its other end; an item
             // passing through runs past these consumers on to its output port.
             if (plan.ports[s.base.port!!].single) {
-                val through = pending.remove(s)?.firstOrNull()
+                val ps = pending.remove(s).orEmpty()
+                val through = ps.firstOrNull()
                 if (through != null) addChain(net, mine + through.parts, s, through.srcRate + mine.sumOf { it.rate }, through.out, through.outRate, rectOf)
                 else if (mine.isNotEmpty()) addChain(net, mine, s, mine.sumOf { it.rate }, null, 0.0, rectOf)
+                // More outputs passing through this port still get chains: their output ports must exist (a second
+                // belt at the port fails the trial's one-belt check rather than leaving an output out).
+                ps.drop(1).forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) }
             } else chainsOf(mine, portTilesOf(s.base.port).size).forEach { group -> addChain(net, group, s, group.sumOf { it.rate }, null, 0.0, rectOf) }
         }
         // Pass-through chains whose port fed no consumers here.
