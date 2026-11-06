@@ -1,0 +1,23 @@
+{
+  "data": "data/krastorio2.json",
+  "targets": [
+    { "name": "automation-science-pack", "amount": 1.0 },
+    { "name": "logistic-science-pack", "amount": 1.0 }
+  ],
+  "machines": ["assembling-machine-3", "electric-furnace"],
+  "belt_tier": "express",
+  "weave_tier": "none",
+  "lane_sharing": true,
+  "research": { "inserter_capacity": 4 },
+  "inserters": { "allowed": ["inserter", "long-handed-inserter", "fast-inserter"], "belt_pickup_derate": 0.7 },
+  "sources": [
+    { "name": "iron-ore", "edge": "west" },
+    { "name": "copper-ore", "edge": "west" },
+    { "name": "wood", "edge": "west" }
+  ],
+  "outputs": [
+    { "name": "automation-science-pack", "edge": "east" },
+    { "name": "logistic-science-pack", "edge": "east" }
+  ],
+  "search": { "time_budget_s": 300, "seeds_per_size": 10, "threads": 10, "seed": 1, "verbose": false }
+}

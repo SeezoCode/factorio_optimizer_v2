@@ -16,7 +16,8 @@ import emit.withQuality
  * "name@quality" ("iron-gear-wheel@rare"; normal keeps the plain name), and so are recipes ("iron-gear-wheel@rare"
  * takes rare plates and makes rare gears, or better). Every recipe that makes what the targets need gets a variant per
  * quality; its machine's quality modules ([qualityChance]) spread each item product over that quality and the ones
- * above it, the 2.0 way: one tier up with the chance, each further tier with that tier's next probability (10 %).
+ * above it: one tier up with the chance, each further tier with that tier's chain probability (10 %; in 2.0 data,
+ * its next probability).
  * Recyclers (with their own quality modules) take what is not wanted back to a quarter of its ingredients, of the
  * same quality or better: the planner may loop items through them to climb (upcycling). Fluids have no quality.
  *
@@ -28,9 +29,9 @@ import emit.withQuality
 fun withQualityProduction(data: RootData, config: RunConfiguration): Pair<RootData, RunConfiguration> {
     val qp = config.qualityProduction ?: return data to config
     val tiers = GameConstants.QUALITIES
-    val next = tiers.map { data.quality[it]?.nextProbability ?: 0.0 }
+    val chainProb = tiers.map { data.quality[it]?.chain ?: 0.0 }
     val machines = effectiveMachines(config)
-    fun machineFor(r: Recipe) = machines.firstOrNull { r.category in data.craftingCategories(it) }
+    fun machineFor(r: Recipe) = machines.firstOrNull { r.inAny(data.craftingCategories(it)) }
     val raw = (config.rawResources?.toSet() ?: BASE_RAW) + config.sources.map { it.name }
 
     // The recipes that make what the targets need, down to raw resources (recycling apart, added below).
@@ -41,7 +42,7 @@ fun withQualityProduction(data: RootData, config: RunConfiguration): Pair<RootDa
         val item = needed.removeFirst()
         if (item in raw) continue
         data.recipes.values.filter { r ->
-            r.category !in RECYCLING_CATEGORIES && r.products.any { it.name == item } && r.name !in config.forbiddenRecipes &&
+            !r.inAny(RECYCLING_CATEGORIES) && r.products.any { it.name == item } && r.name !in config.forbiddenRecipes &&
                 config.recipeOverrides[item].let { it == null || it == r.name } && machineFor(r) != null
         }.forEach { r ->
             if (chain.add(r)) r.ingredients.filter { !it.isFluid }.forEach { if (seen.add(it.name)) needed += it.name }
@@ -49,7 +50,7 @@ fun withQualityProduction(data: RootData, config: RunConfiguration): Pair<RootDa
     }
     val chainItems = chain.flatMap { r -> r.ingredients.filter { !it.isFluid }.map { it.name } + r.products.filter { it.type != "fluid" }.map { it.name } }.toSet()
     val recycling = if (!qp.recycle) emptyList() else data.recipes.values.filter { r ->
-        r.category in RECYCLING_CATEGORIES && !selfRecycling(r) && r.ingredients.singleOrNull()?.name in chainItems
+        r.inAny(RECYCLING_CATEGORIES) && !selfRecycling(r) && r.ingredients.singleOrNull()?.name in chainItems
     }
 
     /** Shares of tiers [i] and up a product of tier [i] lands in, with quality chance [q]. */
@@ -58,21 +59,21 @@ fun withQualityProduction(data: RootData, config: RunConfiguration): Pair<RootDa
         val out = arrayListOf(i to 1 - q)
         var reach = q   // chance of getting to tier j at least
         for (j in i + 1 until tiers.size) {
-            val further = if (j == tiers.size - 1) 0.0 else next[j]
+            val further = if (j == tiers.size - 1) 0.0 else chainProb[j]
             out += j to reach * (1 - further)
             reach *= further
         }
         return out
     }
     fun variant(r: Recipe, i: Int): Recipe {
-        val q = qualityChance(data, config, r, machineFor(r) ?: "recycler")
+        val q = qualityChance(data, config, r, machineFor(r) ?: "recycler", tiers[i])
         fun item(name: String) = withQuality(name, tiers[i])
         return r.copy(
             name = withQuality(r.name, tiers[i]),
             ingredients = r.ingredients.map { if (it.isFluid) it else it.copy(name = item(it.name)) },
             products = r.products.flatMap { p ->
                 if (p.type == "fluid") listOf(p) else spread(i, q).map { (j, share) ->
-                    p.copy(name = withQuality(p.name, tiers[j]), probability = (p.probability ?: 1.0) * share,
+                    p.copy(name = withQuality(p.name, tiers[j]), probability = p.chance * share, independentProbability = null, sharedProbability = null,
                         extraCountFraction = p.extraCountFraction?.let { it * share })
                 }
             },
@@ -100,10 +101,11 @@ fun withQualityProduction(data: RootData, config: RunConfiguration): Pair<RootDa
 
 /**
  * Chance a craft of [recipe] in [machine] comes out one tier better: the quality effects of its modules (quality
- * modules add, speed modules take away; bonuses times the module quality's multiplier) and of planned beacons, an
- * effect of 0.25 being 2.5 %. [W] VERIFY (v28)
+ * modules add, speed modules take away; bonuses times the module quality's multiplier) and of planned beacons, times
+ * the next probability of the craft's quality [tier]. 2.0 data has effects ten times larger and a next probability of
+ * 10 % (0.25 x 0.1); 2.1 data has the effect itself and 100 % (0.025 x 1): 2.5 % either way. [W] VERIFY (v28)
  */
-fun qualityChance(data: RootData, config: RunConfiguration, recipe: Recipe, machine: String): Double {
+fun qualityChance(data: RootData, config: RunConfiguration, recipe: Recipe, machine: String, tier: String = "normal"): Double {
     if (!recipe.allowedEffects.quality) return 0.0
     val mult = GameConstants.moduleBonusMultiplier(data.quality[config.moduleQuality()]?.level ?: 0)
     val own = machineModules(data, config, recipe, machine).sumOf { m ->
@@ -114,5 +116,5 @@ fun qualityChance(data: RootData, config: RunConfiguration, recipe: Recipe, mach
     val fromBeacons = beaconSpec(data, config)?.takeIf { beacons > 0 }?.let { b ->
         b.effectivity * kotlin.math.sqrt(beacons.toDouble()) * b.modules.sumOf { moduleEffects(data, it).quality?.let { q -> if (q > 0) q * mult else q } ?: 0.0 }
     } ?: 0.0
-    return ((own + fromBeacons) / 10.0).coerceIn(0.0, 1.0)
+    return ((own + fromBeacons) * (data.quality[tier]?.nextProbability ?: 0.0)).coerceIn(0.0, 1.0)
 }

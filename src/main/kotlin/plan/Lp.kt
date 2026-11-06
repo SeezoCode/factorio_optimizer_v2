@@ -19,11 +19,11 @@ internal val RECYCLING_CATEGORIES = setOf("recycling", "recycling-or-hand-crafti
 
 /** A recycling recipe that turns an item into a quarter of itself (the way recyclers destroy items). */
 fun selfRecycling(r: Recipe): Boolean =
-    r.category in RECYCLING_CATEGORIES && r.ingredients.size == 1 && r.products.size == 1 && r.products[0].name == r.ingredients[0].name
+    r.inAny(RECYCLING_CATEGORIES) && r.ingredients.size == 1 && r.products.size == 1 && r.products[0].name == r.ingredients[0].name
 
 /** Whether the job's [config.RecyclingConfig] allows recycling recipe [r] (true for any other recipe). */
 fun recyclingAllowed(r: Recipe, config: RunConfiguration): Boolean {
-    if (r.category !in RECYCLING_CATEGORIES) return true
+    if (!r.inAny(RECYCLING_CATEGORIES)) return true
     // Quality production climbs by recycling what is not wanted.
     if (config.qualityProduction?.recycle == true && !selfRecycling(r)) return true
     val rc = config.recycling
@@ -68,9 +68,9 @@ fun fuelItem(data: RootData, machine: String, config: RunConfiguration): String?
     val burner = (e as? FurnaceEntity)?.energySource == "burner" || (e as? AssemblingMachineEntity)?.energySource == "burner"
     if (!burner) return null
     val cats = (e as? FurnaceEntity)?.fuelCategories ?: (e as? AssemblingMachineEntity)?.fuelCategories ?: listOf("chemical")
-    if (data.items[config.fuel]?.fuelCategory in cats) return config.fuel
-    cats.forEach { c -> if (data.items[c]?.fuelCategory == c) return c }
-    return data.items.values.filter { it.fuelCategory in cats && it.fuelValue > 0 }.minByOrNull { it.name }?.name
+    if (data.items[config.fuel]?.allFuelCategories?.any { it in cats } == true) return config.fuel
+    cats.forEach { c -> if (data.items[c]?.allFuelCategories?.contains(c) == true) return c }
+    return data.items.values.filter { it.allFuelCategories.any { c -> c in cats } && it.fuelValue > 0 }.minByOrNull { it.name }?.name
         ?: error("no fuel for '$machine' (fuel categories $cats)")
 }
 
@@ -122,16 +122,16 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     val categoryFilter = config.recipeCategories?.toSet()
 
     val choices = data.recipes.values.mapNotNull { r ->
-        if (r.category in EXCLUDED_CATEGORIES || r.subgroup in EXCLUDED_SUBGROUPS || r.name in config.forbiddenRecipes) return@mapNotNull null
+        if (r.inAny(EXCLUDED_CATEGORIES) || r.subgroup in EXCLUDED_SUBGROUPS || r.name in config.forbiddenRecipes) return@mapNotNull null
         if (!recyclingAllowed(r, config)) return@mapNotNull null
-        if (categoryFilter != null && r.category !in categoryFilter) return@mapNotNull null
+        if (categoryFilter != null && !r.inAny(categoryFilter)) return@mapNotNull null
         if (r.products.isEmpty()) return@mapNotNull null
         // Items the job supplies are not made inside the block.
         val main = r.mainProduct?.name
         if (main != null && main in sourced) return@mapNotNull null
         // recipe_overrides: only the chosen recipe may make that item.
         if (overrides.any { (item, chosen) -> chosen != r.name && r.products.any { it.name == item } }) return@mapNotNull null
-        val m = machines.firstOrNull { r.category in data.craftingCategories(it) } ?: return@mapNotNull null
+        val m = machines.firstOrNull { r.inAny(data.craftingCategories(it)) } ?: return@mapNotNull null
         // Modules and the planned beacons make the machine faster (see Modules.kt).
         RecipeChoice(r, m, moduleSpeed(data, config, r, m, plannedBeacons(data, config, r, m)))
     }

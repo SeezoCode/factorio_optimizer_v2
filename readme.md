@@ -717,6 +717,29 @@ which recipes may be used; `box`, `forbidden_tiles` and `reserved` fit the layou
 leave room for what you build by hand. Not modelled: spoilage, the stack inserter's belt stacking, quality
 outputs, and the space platform foundation itself.
 
+### Game data and mods
+
+`src/main/resources/recipes.json` is Factorio 2.1 with Space Age, written by the exporter mod in
+`tools/factorio-exporter`: recipes, items, fluids, quality, every crafting machine with its fluid boxes, and the
+belts, inserters, poles and pipes of the game. To export a game with mods, install them in Factorio (Mods ->
+Install; they may stay disabled there) and run
+
+```
+python3 tools/factorio-exporter/export.py data/krastorio2.json --mods Krastorio2
+```
+
+It enables those mods and their dependencies in a mod folder of its own (your mod list stays as it is), starts a
+new game, waits for the file and closes the game. A job uses it with `"data": "data/krastorio2.json"`.
+
+What a mod brings is then known as the job is read: its crafting machines (size, speed, categories, modules and
+fluid connections, from their fluid boxes), its belt tiers (`belt_tier` is the belt's name, e.g.
+`"kr-advanced-transport-belt"`), its inserters (`inserters.allowed`; rate from the swing speed) and its poles
+(`power.pole`). What a mod changes of the base game counts too: with Krastorio 2 express undergrounds reach 20 tiles
+and substations supply 20 x 20. Krastorio 2 (exported with `--no-space-age`) routes 40 plastic/s from three of its
+7 x 7 advanced chemical plants on its advanced belts in 19 x 19. This is basic support: a machine's fluid box with
+several connections uses its first, mining drills, boilers, heat and mod-specific mechanics are not modelled, and
+nothing modded has been checked in game.
+
 ### Tuning knobs
 
 Every algorithm knob (placer, router, search) has a measured default in `src/main/resources/tuning.json`. A

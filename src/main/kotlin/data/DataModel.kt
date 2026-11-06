@@ -23,8 +23,39 @@ data class RootData(
     var recipes: Map<String, Recipe>,
     val items: Map<String, Item>,
     val fluids: Map<String, Fluid>,
-    val entities: Map<String, Entity>
+    val entities: Map<String, Entity>,
+    /** Belts, inserters, poles and pipes of the game (exporter mod data; the built-in recipes.json may lack it). */
+    val logistics: LogisticsData? = null,
 )
+
+/** A fluid box of a crafting machine as the exporter writes it (machine facing north). */
+data class FluidBoxData(val index: Int, val productionType: String, val filter: String? = null, val connections: List<PipeConnectionData>? = null)
+
+/**
+ * One pipe connection of a fluid box: [positions] (north, east, south, west orientation) of the tile inside the
+ * machine, from the machine's centre; the pipe goes on the tile next to it in [direction] (for north).
+ */
+data class PipeConnectionData(
+    val flowDirection: String, val connectionType: String, val direction: String?, val positions: List<Vec>,
+    val maxUndergroundDistance: Int? = null,
+)
+
+data class Vec(val x: Double, val y: Double)
+
+data class LogisticsData(
+    val belts: List<BeltData>? = null, val undergrounds: List<UndergroundData>? = null, val splitters: List<SplitterData>? = null,
+    val inserters: List<InserterData>? = null, val poles: List<PoleData>? = null,
+    val pipesToGround: List<PipeToGroundData>? = null,
+)
+data class BeltData(val name: String, val speed: Double, val itemsPerSecond: Double, val underground: String? = null, val hidden: Boolean? = null)
+data class UndergroundData(val name: String, val speed: Double, val maxDistance: Int, val hidden: Boolean? = null)
+data class SplitterData(val name: String, val speed: Double, val width: Int, val height: Int, val hidden: Boolean? = null)
+data class InserterData(
+    val name: String, val rotationSpeed: Double, val extensionSpeed: Double, val pickup: Vec, val drop: Vec,
+    val bulk: Boolean? = null, val filterCount: Int? = null, val stackSizeBonus: Int? = null, val energySource: String? = null, val hidden: Boolean? = null,
+)
+data class PoleData(val name: String, val width: Int, val height: Int, val supplyAreaDistance: Double, val maxWireDistance: Double, val hidden: Boolean? = null)
+data class PipeToGroundData(val name: String, val maxDistance: Int? = null, val hidden: Boolean? = null)
 
 data class Group(
     val name: String,
@@ -42,8 +73,16 @@ data class Quality(
     val group: String,
     val subgroup: String,
     val next: String? = null,
-    val translatedName: String
-)
+    val translatedName: String,
+    /**
+     * Factorio 2.1: the chance to go on to the tier after the next once a craft got one tier better
+     * ([nextProbability] is then only the first step's factor, 1). 2.0 data has none: [nextProbability] is both.
+     */
+    val chainProbability: Double? = null,
+) {
+    /** Chance a craft that reached this tier goes one further. */
+    val chain: Double get() = chainProbability ?: nextProbability
+}
 
 data class Recipe(
     val name: String,
@@ -59,8 +98,18 @@ data class Recipe(
     val subgroup: String,
     val enabled: Boolean,
     val productivityBonus: Int,
-    val translatedName: String
-)
+    val translatedName: String,
+    /** Factorio 2.1: every category the recipe is in (a machine of any of them makes it); 2.0 data has [category] only. */
+    val categories: List<String>? = null,
+) {
+    /** Every category of the recipe: [categories], or the single [category] of 2.0 data. */
+    val allCategories: List<String> get() = categories ?: listOf(category)
+    /** The recipe is in at least one of [cats]. */
+    fun inAny(cats: Collection<String>): Boolean = allCategories.any { it in cats }
+}
+
+/** The part of a product's shared random roll that yields it (Factorio 2.1). */
+data class ProbabilityRange(val min: Double = 0.0, val max: Double = 1.0)
 
 data class Ingredient(
     val type: String,
@@ -87,10 +136,20 @@ data class Product(
     val fluidboxMultiplier: Int? = null,
     val percentSpoiled: Double? = null,
     val ignoredByStats: Double? = null,
-    val ignoredByProductivity: Double? = null
+    val ignoredByProductivity: Double? = null,
+    /** Factorio 2.1: [probability] became an independent chance and a share of a roll common to the recipe's products. */
+    val independentProbability: Double? = null,
+    val sharedProbability: ProbabilityRange? = null,
+    /** A random amount between these instead of [amount] (mods: Krastorio's sand from crushing). */
+    val amountMin: Double? = null,
+    val amountMax: Double? = null,
 ) {
+    /** Items per successful craft: [amount], or the middle of [amountMin]..[amountMax]. */
+    val meanAmount: Double get() = if (amountMin != null && amountMax != null && amount == 0.0) (amountMin + amountMax) / 2 else amount
+    /** The chance a craft yields this product. */
+    val chance: Double get() = (independentProbability ?: probability ?: 1.0) * (sharedProbability?.let { it.max - it.min } ?: 1.0)
     /** Expected items per craft, counting probability and extra fraction. */
-    val expectedAmount: Double get() = amount * (probability ?: 1.0) + (extraCountFraction ?: 0.0)
+    val expectedAmount: Double get() = meanAmount * chance + (extraCountFraction ?: 0.0)
 }
 
 data class AllowedEffects(
@@ -110,12 +169,17 @@ data class Item(
     val stackSize: Int,
     val weight: Double,
     val fuelValue: Long,
-    val rocketLaunchProducts: JsonObject,
+    val rocketLaunchProducts: com.google.gson.JsonElement? = null,
     val translatedName: String,
     val fuelCategory: String? = null,
     val flags: List<String>? = null,
-    val moduleEffects: ModuleEffects? = null
-)
+    val moduleEffects: ModuleEffects? = null,
+    /** Factorio 2.1: an item may be fuel of several categories; 2.0 data has [fuelCategory] only. */
+    val fuelCategories: List<String>? = null,
+) {
+    /** Every fuel category of the item (empty if it is no fuel). */
+    val allFuelCategories: List<String> get() = fuelCategories ?: listOfNotNull(fuelCategory)
+}
 
 data class ModuleEffects(
     val consumption: Double? = null,
@@ -139,12 +203,20 @@ interface Entity {
     val subgroup: String; val moduleInventorySize: Int; val width: Int
     val height: Int; val flags: List<String>; val translatedName: String
 }
+
+/** A machine that crafts recipes; exporter data adds its fluid boxes. */
+interface CraftingEntity : Entity {
+    val fluidBoxes: List<FluidBoxData>?
+    /** Its fluid connections exist only while it is set to a recipe with fluids. */
+    val fluidBoxesOffWhenNoFluidRecipe: Boolean?
+    val hidden: Boolean?
+}
 data class BoilerEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, override val moduleInventorySize: Int, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String) : Entity
 data class EffectReceiver(val baseEffect: Map<String, Double>, val usesModuleEffects: Boolean, val usesBeaconEffects: Boolean, val usesSurfaceEffects: Boolean)
-data class FurnaceEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, val craftingSpeed: Map<String, Double>, val craftingCategories: List<String>, val allowedEffects: List<String>, override val moduleInventorySize: Int, val effectReceiver: EffectReceiver, val energyConsumption: Double, val drain: Double, val energySource: String, val fuelCategories: List<String>? = null, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String) : Entity
-data class AssemblingMachineEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, val craftingSpeed: Map<String, Double>, val craftingCategories: List<String>, val allowedEffects: List<String>, override val moduleInventorySize: Int, val effectReceiver: EffectReceiver, val energyConsumption: Double, val drain: Double, val energySource: String, val fuelCategories: List<String>? = null, val fixedRecipe: String? = null, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String) : Entity
+data class FurnaceEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, val craftingSpeed: Map<String, Double>, val craftingCategories: List<String>, val allowedEffects: List<String>, override val moduleInventorySize: Int, val effectReceiver: EffectReceiver, val energyConsumption: Double, val drain: Double, val energySource: String, val fuelCategories: List<String>? = null, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String, override val fluidBoxes: List<FluidBoxData>? = null, override val fluidBoxesOffWhenNoFluidRecipe: Boolean? = null, override val hidden: Boolean? = null) : CraftingEntity
+data class AssemblingMachineEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, val craftingSpeed: Map<String, Double>, val craftingCategories: List<String>, val allowedEffects: List<String>, override val moduleInventorySize: Int, val effectReceiver: EffectReceiver, val energyConsumption: Double, val drain: Double, val energySource: String, val fuelCategories: List<String>? = null, val fixedRecipe: String? = null, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String, override val fluidBoxes: List<FluidBoxData>? = null, override val fluidBoxesOffWhenNoFluidRecipe: Boolean? = null, override val hidden: Boolean? = null) : CraftingEntity
 data class BeaconEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, val allowedEffects: List<String>, override val moduleInventorySize: Int, val distributionEffectivity: Double, val distributionEffectivityBonusPerQualityLevel: Double, val supplyAreaDistance: Map<String, Int>, val energyConsumption: Double, val drain: Double, val energySource: String, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String) : Entity
-data class RocketSiloEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, val craftingSpeed: Map<String, Double>, val craftingCategories: List<String>, val allowedEffects: List<String>, override val moduleInventorySize: Int, val effectReceiver: EffectReceiver, val rocketPartsRequired: Int, val energyConsumption: Double, val drain: Double, val energySource: String, val fixedRecipe: String? = null, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String) : Entity
+data class RocketSiloEntity(override val name: String, override val type: String, override val order: String, override val group: String, override val subgroup: String, val craftingSpeed: Map<String, Double>, val craftingCategories: List<String>, val allowedEffects: List<String>, override val moduleInventorySize: Int, val effectReceiver: EffectReceiver, val rocketPartsRequired: Int, val energyConsumption: Double, val drain: Double, val energySource: String, val fixedRecipe: String? = null, override val width: Int, override val height: Int, override val flags: List<String>, override val translatedName: String, override val fluidBoxes: List<FluidBoxData>? = null, override val fluidBoxesOffWhenNoFluidRecipe: Boolean? = null, override val hidden: Boolean? = null) : CraftingEntity
 
 
 class EntityDeserializer : JsonDeserializer<Entity> {

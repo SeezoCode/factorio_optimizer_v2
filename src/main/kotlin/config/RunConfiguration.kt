@@ -2,6 +2,7 @@ package config
 
 import data.GameConstants
 import data.readResourceOrFile
+import data.loadRootData as loadGameData
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -17,7 +18,8 @@ val strictJson = Json {
 
 val DEFAULT_CATEGORIES = listOf(
     "crafting", "advanced-crafting", "electronics", "crafting-with-fluid", "electronics-with-fluid",
-    // transport-belt and a few other plates-only items are "pressing" in the 2.0 data.
+    // transport-belt and a few other plates-only items are "pressing" in 2.0 data (2.1 lists such recipes under
+    // several categories instead, "crafting" among them; a recipe is allowed when any of its categories is).
     "pressing",
 )
 
@@ -38,6 +40,12 @@ val DEFAULT_TRICKS: Map<String, Boolean> = buildMap {
 @Serializable
 data class RunConfiguration(
     val engine: String = "sa",
+    /**
+     * The game data this job uses: a file written by the exporter mod (tools/factorio-exporter), e.g. with mods
+     * loaded. Default: the built-in recipes.json. Its machines, belts, inserters and poles become known as the job
+     * is read (see GameConstants.register).
+     */
+    val data: String? = null,
     val quality: String = "normal",
     val targets: List<ConfigTarget>,
     @SerialName("forbidden_recipes") val forbiddenRecipes: List<String> = emptyList(),
@@ -209,7 +217,11 @@ data class RunConfiguration(
     }
 
     companion object {
-        fun parse(text: String): RunConfiguration = strictJson.decodeFromString(serializer(), text).also { it.validate() }
+        fun parse(text: String): RunConfiguration = strictJson.decodeFromString(serializer(), text).also { c ->
+            // A job on exported (modded) data knows that data's machines before it is checked.
+            c.data?.let { loadGameData(it) }
+            c.validate()
+        }
         fun load(name: String): RunConfiguration = parse(readResourceOrFile(name))
     }
 }

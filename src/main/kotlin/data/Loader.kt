@@ -20,12 +20,18 @@ fun readResourceOrFile(name: String): String {
     throw RuntimeException("Could not find $name on the classpath or on disk")
 }
 
-/** Loads recipes.json and links products and ingredients to items and fluids. */
-fun loadRootData(name: String = "recipes.json"): RootData {
+private val loaded = java.util.concurrent.ConcurrentHashMap<String, RootData>()
+
+/**
+ * Loads game data (recipes.json, or a file the exporter mod wrote) and links products and ingredients to items and
+ * fluids; its machines, belts, inserters and poles set GameConstants' tables ([GameConstants.register]): one game's
+ * data is in use at a time, the one loaded last. Each file is read once.
+ */
+fun loadRootData(name: String = "recipes.json"): RootData = loaded.getOrPut(name) {
     val data = recipeGson.fromJson(readResourceOrFile(name), RootData::class.java)
     interlinkProductsWithItems(data)
-    return data
-}
+    data
+}.also { GameConstants.register(it) }   // the tables follow the data loaded last
 
 /** Crafting speed of a machine at a quality, from recipes.json. */
 fun RootData.craftingSpeed(machine: String, quality: String): Double {

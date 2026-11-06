@@ -73,7 +73,7 @@ fun main(args: Array<String>) {
         return
     }
     // Quality production: items and recipes of every quality the targets need (see plan/Quality.kt).
-    val (data, config) = plan.withQualityProduction(loadRootData(), config0)
+    val (data, config) = plan.withQualityProduction(loadRootData(config0.data ?: "recipes.json"), config0)
 
     val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
     val out = resume ?: flags["out"] ?: "src/main/resources/solves/$stamp - sa"

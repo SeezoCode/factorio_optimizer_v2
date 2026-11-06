@@ -88,7 +88,7 @@ fun machineModules(data: RootData, config: RunConfiguration, recipe: Recipe, mac
     config.qualityProduction?.let { qp ->
         val rc = receiver(data, machine)?.takeIf { it.modules && it.slots > 0 } ?: return emptyList()
         if (!recipe.allowedEffects.quality || "quality" !in rc.allowed) return emptyList()
-        val mods = if (recipe.category in RECYCLING_CATEGORIES) qp.recyclerModules else qp.modules
+        val mods = if (recipe.inAny(RECYCLING_CATEGORIES)) qp.recyclerModules else qp.modules
         return mods.take(rc.slots).filter { m -> (moduleEffects(data, m).speed ?: 0.0) == 0.0 || ("speed" in rc.allowed && recipe.allowedEffects.speed) }
     }
     val b = config.beacons ?: return emptyList()

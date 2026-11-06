@@ -40,7 +40,7 @@ class SpaceAgeTest {
     fun `research productivity adds to the machine's own, up to the recipe cap`() {
         val job = RunConfiguration.parse("""{"targets": [{"name": "iron-plate", "amount": 6.0}], "machines": ["foundry"],
             "sources": [{"name": "calcite", "edge": "north"}],
-            "research": {"productivity": {"casting-iron": 0.1, "molten-iron": 5.0}}}""")
+            "research": {"productivity": {"casting-iron": 0.1, "iron-ore-melting": 5.0}}}""")
         val plan = buildPlan(data, job)
         // Casting at 1.6 (2 -> 3.2 plates); melting capped at +300% (500 -> 2000 molten iron).
         assertEquals(6.0 * 20 / 3.2 * 50 / 2000, plan.rawRates.getValue("iron-ore"), 1e-6)
@@ -69,8 +69,8 @@ class SpaceAgeTest {
     fun `a platform job takes only its listed sources`() {
         val plan = buildPlan(data, platform)
         assertEquals(setOf("metallic-asteroid-chunk"), plan.rawRates.keys)
-        // 4 ore/s from crushing at 20 ore a craft; a craft keeps 0.2 of its chunk.
-        assertEquals(4.0 / 20 * 0.8, plan.rawRates.getValue("metallic-asteroid-chunk"), 1e-6)
+        // 4 ore/s from crushing at 20 ore a craft; a craft keeps 0.3 of its chunk (0.2 before Factorio 2.1).
+        assertEquals(4.0 / 20 * 0.7,plan.rawRates.getValue("metallic-asteroid-chunk"), 1e-6)
         assertTrue(plan.machines.any { it.machine == "crusher" })
     }
 
