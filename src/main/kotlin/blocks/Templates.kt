@@ -928,7 +928,10 @@ object Templates {
         // ([module]: only into that column's belt; [trunk]: only merging into the item's first path, the trunk.)
         fun routeIn(port: Int, item: String, pairItem: String? = null, module: Int = -1, trunk: Boolean = false): Routed? {
             val dd = sides.getValue(port)
-            val starts = ringTiles(dd).filter { it !in used && it !in occ && it !in allExits }.map { Step(it, dd.opposite) }
+            // A lane pair's two belts join right outside its port when the factory has no room for that next to the
+            // supplier: the ring tiles beside it stay free of other ports.
+            val starts = ringTiles(dd).filter { it !in used && it !in occ && it !in allExits && (pairItem == null || listOf(it + dd.cw, it + dd.ccw).none { n -> n in used }) }
+                .map { Step(it, dd.opposite) }
             val cands = if (trunk) emptyList() else feeds.filter { f ->
                 (module < 0 || f.module == module) && open(f, item, pairItem) && (junction[f] == null || minOf(portRate(port), demand(f, item)) <= s.laneCap * 0.98)
             }
@@ -1231,6 +1234,7 @@ object Templates {
                     break
                 }
                 book(r, c.item, pairItem)
+                if (c.with >= 0 && !c.branch) r.port?.let { pt -> val dd = sides.getValue(c.port); used += pt + dd.cw; used += pt + dd.ccw }
                 got += c to r
             }
             if (!ok || drains.any { it !in drained }) continue

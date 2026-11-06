@@ -599,8 +599,14 @@ fun assembleFactory(
         // FACTORY_INVALID_DIR=<dir>: a render of each factory that failed validation, for finding out why.
         System.getenv("FACTORY_INVALID_DIR")?.let { d ->
             runCatching {
-                viz.renderLayout(f.layout, File(d, "${what.replace(' ', '_')}_${f.layout.w}x${f.layout.h}_${System.currentTimeMillis() % 100000}.png"),
+                val name = "${what.replace(' ', '_')}_${f.layout.w}x${f.layout.h}_${System.currentTimeMillis() % 100000}"
+                viz.renderLayout(f.layout, File(d, "$name.png"),
                     viz.RenderOptions(px = 12, errors = f.errors, title = "$what ${f.layout.w}x${f.layout.h} blocks ${f.blockRects}"))
+                // Each error with the block it lies in (1-based; 0: the corridors).
+                File(d, "$name.txt").writeText(f.errors.joinToString("\n") { e ->
+                    val b = f.blockRects.indexOfFirst { r -> e.tile.x in r.x until r.x + r.w && e.tile.y in r.y until r.y + r.h } + 1
+                    "block $b: $e"
+                })
             }
         }
         last = f to st
@@ -871,7 +877,12 @@ fun stitchRoute(
         }
     }
     val corridorLinks = split.links.filter { it.throughCorridor || it.id in detoured }
-    if (corridorLinks.any { (it.from >= 0 && it.id !in starts) || (it.to >= 0 && it.id !in ends) }) return StitchAttempt(null, emptyList(), "a block port is missing")
+    corridorLinks.filter { (it.from >= 0 && it.id !in starts) || (it.to >= 0 && it.id !in ends) }.takeIf { it.isNotEmpty() }?.let { miss ->
+        return StitchAttempt(null, emptyList(), "a block port is missing: " + miss.take(3).joinToString { l ->
+            val b = if (l.from >= 0 && l.id !in starts) l.from else l.to
+            "block ${b + 1}'s ${l.item} ${if (b == l.from) "output" else "input"} (link ${l.id}, its layout: ${results[b].notes.firstOrNull() ?: "searched"})"
+        })
+    }
 
     // A pipe link whose first tile outside its port touches another fluid's pipe (ports of two fluids side by side)
     // or a machine starts with a pipe-to-ground pair out of the port instead: it joins only through its open sides.

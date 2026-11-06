@@ -19,6 +19,11 @@ class TemplateDiagTest {
             val notes = ArrayList<String>()
             val t0 = System.currentTimeMillis()
             val ts = Templates.layouts(TestData.data, config, plan) { notes += it }
+            ts.forEach { t ->
+                val have = (t.sources.map { it.port } + t.outputs.map { it.port }).toSet()
+                val missing = plan.ports.filter { it.id !in have }
+                if (missing.isNotEmpty()) println("MISSING ${b.name} ${t.w}x${t.h} ${t.notes}: ${missing.map { "${it.id} ${if (it.output) "out" else "in"} ${it.item}${if (it.fluid) " (fluid)" else ""}" }} sources ${t.sources.map { it.port }} outputs ${t.outputs.map { it.port }}")
+            }
             println("${b.name} (${System.currentTimeMillis() - t0} ms): ${plan.machines.groupingBy { it.recipe }.eachCount()} ports ${plan.ports.map { "${if (it.output) "out" else "in"} ${it.item} ${it.specs.map { s -> s.edge }}" }} -> ${ts.map { "${it.w}x${it.h}" }} ${ts.firstOrNull()?.notes} $notes")
         }
     }
