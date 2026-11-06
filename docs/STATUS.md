@@ -247,7 +247,8 @@ Night of 2026-10-24 (see [NIGHT_LOG.md](NIGHT_LOG.md)):
   diverges at 118 x 118 (belt length doubles as history grows) and plateaus at 60–90 conflicts at 160 x 160,
   mostly belts forced through the same corridors beside machine access slots. It needs placement with
   deliberate belt corridors, more direct insertion, or v2 lane sharing / weaving.
-- Comparison with a well-known hand layout: not done; no reference layout was measured.
+- Comparison with community layouts: [COMMUNITY_BENCHMARK.md](COMMUNITY_BENCHMARK.md) measures 15 factorio.school
+  designs against the solver on the same jobs (tools in `tools/blueprints/`).
 
 ## Beyond the plan
 
