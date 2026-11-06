@@ -223,8 +223,13 @@ fun runTrial(
     // others start warm from a larger box's best placement when there is one, else at random.
     val pt = tuning.place
     require(pt.initial in setOf("random", "columns", "mixed")) { "place.initial must be random, columns or mixed" }
-    val columns = (pt.initial == "columns" || (pt.initial == "mixed" && seed % 2 == 0L)) && annealer.initialColumns(plan)
-    val warmed = !columns && warm != null && annealer.initialFrom(legalize(warm, model))
+    val clusters = if (pt.clusters) place.diClusters(plan) else emptyList()
+    if (clusters.isNotEmpty()) {
+        annealer.setClusters(clusters)
+        notes += "${clusters.size} direct-insertion clusters (${clusters.groupingBy { it.kind }.eachCount()})"
+    }
+    val columns = clusters.isEmpty() && (pt.initial == "columns" || (pt.initial == "mixed" && seed % 2 == 0L)) && annealer.initialColumns(plan)
+    val warmed = clusters.isEmpty() && !columns && warm != null && annealer.initialFrom(legalize(warm, model))
     val started = columns || warmed || annealer.initialRandom() || annealer.initialRows(plan)
     if (!started) return fail("placement")
     if (columns) notes += "column start"

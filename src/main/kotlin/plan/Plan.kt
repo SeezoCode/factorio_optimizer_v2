@@ -179,7 +179,21 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     val machines = mutableListOf<MachineInstance>()
     val pickRate0 = bestInserterRate(config, fromBelt = true)
     val dropRate0 = beltDropRate(config)
-    lp.crafts.entries.sortedBy { it.key.recipe.name }.forEach { (c, x) ->
+    val crafts = lp.crafts.entries.sortedBy { it.key.recipe.name }
+    // Direct-insertion clusters (planner.di_consumers_per_producer): producers of an item used only inside the block,
+    // at least one per that many consumer machines. Counts are the rate's, as below, before any extra for inserters.
+    val extraFor = HashMap<String, Int>()
+    tuning.planner.diConsumersPerProducer.takeIf { it > 0 }?.let { per ->
+        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime - 1e-6).toInt()) }
+        crafts.forEach { (c, _) ->
+            val main = c.recipe.mainProduct?.name ?: return@forEach
+            if (isFluid(main) || main in lp.targets || (lp.output[main] ?: 0.0) > 1e-9 || c.recipe.products.size > 1) return@forEach
+            val consumers = crafts.filter { (d, _) -> d.recipe.ingredients.any { it.name == main && !it.isFluid } }.sumOf { (d, _) -> count.getValue(d.recipe.name) }
+            val want = ceil(consumers.toDouble() / per - 1e-9).toInt()
+            if (want > count.getValue(c.recipe.name)) extraFor[c.recipe.name] = want
+        }
+    }
+    crafts.forEach { (c, x) ->
         val r = c.recipe
         val e = data.entities.getValue(c.machine)
         val fluidIngredients = r.ingredients.filter { it.isFluid }
@@ -200,9 +214,11 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val room = maxOf(demandPer.size + itemOut.size,
             (tuning.planner.accessShare * (2 * (e.width + e.height) - beaconSide - fluidIngredients.size - fluidProducts.size)).toInt())
         val base = maxOf(1, ceil(x * c.machineTime - 1e-6).toInt())
-        var n = base
+        val di = maxOf(base, extraFor[r.name] ?: 0)
+        if (di > base) warn("${r.name}: ${di - base} more ${c.machine} than its rate needs, one per ${tuning.planner.diConsumersPerProducer} consumers for direct insertion")
+        var n = di
         while (inserters(n) > room && n < base * 20) n++
-        if (n > base) warn("${r.name}: ${n - base} more ${c.machine} than its rate needs, so each one's inserters fit around it")
+        if (n > di) warn("${r.name}: ${n - di} more ${c.machine} than its rate needs, so each one's inserters fit around it")
         val crafts = x / n
         val insCap = demandPer.values.filter { it > 1e-12 }.map { a -> inserterCount(crafts * a, pickRate0) * pickRate0 / a } +
             itemOut.values.map { a -> inserterCount(crafts * a, dropRate0) * dropRate0 / a }

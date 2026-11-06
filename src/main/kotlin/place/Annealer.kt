@@ -32,13 +32,45 @@ class Annealer(val model: PlaceModel, private val rnd: SplittableRandom, private
     var lastT0 = 0.0
         private set
 
+    // ---------------- direct-insertion clusters (see Clusters.kt) ----------------
+    /** Cluster of each machine (-1: none); a clustered machine only moves with its whole cluster. */
+    private val groupOf = IntArray(nM) { -1 }
+    private var groups: List<Cluster> = emptyList()
+
+    /** Machines of each cluster move and turn as one from now on; the next initial placement places them whole. */
+    fun setClusters(cs: List<Cluster>) {
+        groups = cs
+        groupOf.fill(-1)
+        cs.forEachIndexed { g, c -> c.members.forEach { groupOf[it] = g } }
+    }
+
+    /** Places cluster [g] with its top-left at ([x], [y]) during an initial placement; false if it does not fit there. */
+    private fun placeGroup(g: Int, x: Int, y: Int): Boolean {
+        val c = groups[g]
+        val xs = IntArray(c.members.size) { x + c.dx[it] }; val ys = IntArray(c.members.size) { y + c.dy[it] }
+        if (!model.legal(c.members, xs, ys, IntArray(c.members.size))) return false
+        c.members.forEachIndexed { i, m -> model.placeOne(m, xs[i], ys[i], 0) }
+        return true
+    }
+
     // ---------------- initial placement ----------------
     /** Random legal positions; false if some machine finds no spot. */
     fun initialRandom(tries: Int = 500): Boolean {
         model.clear()
         structured = false
         colOf.fill(-1)
-        val order = (0 until nM).toMutableList().also { shuffle(it) }
+        // Clusters first, each whole, then the other machines one by one.
+        for (g in groups.indices) {
+            val c = groups[g]
+            val gw = c.members.indices.maxOf { c.dx[it] + model.mw[c.members[it]] }
+            val gh = c.members.indices.maxOf { c.dy[it] + model.mh[c.members[it]] }
+            var ok = false
+            for (t in 0 until tries) {
+                if (placeGroup(g, rnd.nextInt(0, max(1, model.w - gw + 1)), rnd.nextInt(0, max(1, model.h - gh + 1)))) { ok = true; break }
+            }
+            if (!ok) return false
+        }
+        val order = (0 until nM).filter { groupOf[it] < 0 }.toMutableList().also { shuffle(it) }
         for (m in order) {
             var ok = false
             for (t in 0 until tries) {
@@ -172,7 +204,8 @@ class Annealer(val model: PlaceModel, private val rnd: SplittableRandom, private
                 else -> rotate()
             }
         }
-        if (tun.columnShare > 0 && rnd.nextDouble() < tun.columnShare) return if (rnd.nextBoolean()) shiftColumn(range) else swapColumns()
+        if (tun.columnShare > 0 && groups.isEmpty() && rnd.nextDouble() < tun.columnShare) return if (rnd.nextBoolean()) shiftColumn(range) else swapColumns()
+        if (tun.diSnapShare > 0 && model.diPairCount > 0 && rnd.nextDouble() < tun.diSnapShare) return snap()
         val u = rnd.nextDouble()
         return when {
             u < tun.shiftShare || (!canSwap && fluidMachines.isEmpty()) -> shift(range)
@@ -186,9 +219,58 @@ class Annealer(val model: PlaceModel, private val rnd: SplittableRandom, private
         val m = rnd.nextInt(nM)
         var dx: Int; var dy: Int
         do { dx = rnd.nextInt(-range, range + 1); dy = rnd.nextInt(-range, range + 1) } while (dx == 0 && dy == 0)
+        if (groupOf[m] >= 0) return if (rnd.nextInt(5) == 0) turnGroup(groupOf[m]) else shiftGroup(groupOf[m], dx, dy)
         moveSize = 1; ms1[0] = m
         nx[0] = model.px[m] + dx; ny[0] = model.py[m] + dy; nr[0] = model.rot[m]
         return model.legal(ms1, nx, ny, nr)
+    }
+
+    /**
+     * One machine of a direct-insertion pair that does not fit yet goes right beside the other: on a random side, a
+     * 1-tile gap (or 3 for long-handed inserters), overlapping the partner's edge by at least one tile.
+     */
+    private fun snap(): Boolean {
+        var i = rnd.nextInt(model.diPairCount)
+        var guard = 0
+        while (model.diFits(i) && guard++ < 8) i = rnd.nextInt(model.diPairCount)
+        if (model.diFits(i)) return false
+        val moveConsumer = rnd.nextBoolean()
+        val m = if (moveConsumer) model.diConsumer(i) else model.diProducer(i)
+        val p = if (moveConsumer) model.diProducer(i) else model.diConsumer(i)
+        val gap = if (model.diLong && rnd.nextInt(4) == 0) 3 else 1
+        val pw = model.mw[p]; val ph = model.mh[p]; val w = model.mw[m]; val h = model.mh[m]
+        val x: Int; val y: Int
+        when (rnd.nextInt(4)) {
+            0 -> { x = model.px[p] - gap - w; y = model.py[p] - h + 1 + rnd.nextInt(ph + h - 1) }
+            1 -> { x = model.px[p] + pw + gap; y = model.py[p] - h + 1 + rnd.nextInt(ph + h - 1) }
+            2 -> { y = model.py[p] - gap - h; x = model.px[p] - w + 1 + rnd.nextInt(pw + w - 1) }
+            else -> { y = model.py[p] + ph + gap; x = model.px[p] - w + 1 + rnd.nextInt(pw + w - 1) }
+        }
+        if (groupOf[m] >= 0) return shiftGroup(groupOf[m], x - model.px[m], y - model.py[m])
+        moveSize = 1; ms1[0] = m
+        nx[0] = x; ny[0] = y; nr[0] = model.rot[m]
+        return model.legal(ms1, nx, ny, nr)
+    }
+
+    /** Cluster [g] moves by ([dx], [dy]). */
+    private fun shiftGroup(g: Int, dx: Int, dy: Int): Boolean {
+        val ms = groups[g].members
+        msN = ms; moveSize = ms.size
+        ms.forEachIndexed { i, m -> nx[i] = model.px[m] + dx; ny[i] = model.py[m] + dy; nr[i] = model.rot[m] }
+        return model.legal(ms, nx, ny, nr)
+    }
+
+    /** Cluster [g] turns a quarter clockwise within its bounding box's top-left corner (its machines are square). */
+    private fun turnGroup(g: Int): Boolean {
+        val ms = groups[g].members
+        val x0 = ms.minOf { model.px[it] }; val y0 = ms.minOf { model.py[it] }
+        val gh = ms.maxOf { model.py[it] + model.mh[it] } - y0
+        msN = ms; moveSize = ms.size
+        ms.forEachIndexed { i, m ->
+            val rx = model.px[m] - x0; val ry = model.py[m] - y0
+            nx[i] = x0 + gh - ry - model.mh[m]; ny[i] = y0 + rx; nr[i] = model.rot[m]
+        }
+        return model.legal(ms, nx, ny, nr)
     }
 
     private fun swap(): Boolean {
@@ -197,6 +279,7 @@ class Annealer(val model: PlaceModel, private val rnd: SplittableRandom, private
         var guard = 0
         do { b = rnd.nextInt(nM); guard++ } while ((b == a || model.plan.machines[a].recipe == model.plan.machines[b].recipe) && guard < 50)
         if (b == a || model.plan.machines[a].recipe == model.plan.machines[b].recipe) return false
+        if (groupOf[a] >= 0 || groupOf[b] >= 0) return shift(4)
         moveSize = 2; ms2[0] = a; ms2[1] = b
         swapCols = colOf[a] != colOf[b]
         nx[0] = model.px[b]; ny[0] = model.py[b]; nr[0] = model.rot[a]

@@ -63,6 +63,12 @@ data class PlannerTuning(
      * three count for [accessShare].
      */
     @SerialName("beacon_side") val beaconSide: Boolean = true,
+    /**
+     * Direct-insertion clusters: an item made and used only inside the block gets at least one producer per this many
+     * consumer machines, so each producer can sit next to its consumers and feed them by direct insertion instead of a
+     * belt (players trade a spare assembler for a belt). 0 keeps the fewest machines.
+     */
+    @SerialName("di_consumers_per_producer") val diConsumersPerProducer: Int = 0,
 )
 
 @Serializable
@@ -82,6 +88,26 @@ data class PlaceTuning(
     val gamma: Double = 12.0,
     /** Direct-insertion bonus per belt inserter a fitting pair saves, in units of one belt tile. */
     val delta: Double = 6.0,
+    /**
+     * Weight of the belts direct insertion removes: a net inside the block (no port) whose every consumer has a
+     * fitting direct-insertion pair needs no belt at all, so its whole wirelength term and [netRemovalBonus] are
+     * credited back; a net partly covered gets the square of the covered share of half that, so the annealer feels
+     * the way to the whole cluster. 0 turns it off.
+     */
+    @SerialName("net_removal") val netRemoval: Double = 0.0,
+    /** Belt tiles a removed net saves beyond its wirelength estimate: its belt inserters, ends and crossings. */
+    @SerialName("net_removal_bonus") val netRemovalBonus: Double = 12.0,
+    /**
+     * Share of annealing moves that put one machine of a direct-insertion pair that does not fit yet right beside the
+     * other (a 1-tile gap, or 3 for long-handed inserters, on a random side), so clusters form in one step. 0: off.
+     */
+    @SerialName("di_snap_share") val diSnapShare: Double = 0.0,
+    /**
+     * Direct-insertion clusters (place/Clusters.kt): consumers placed around the producers of the items they need at
+     * fixed offsets, each cluster moved and turned whole, so the belts between them are never built. Starts are
+     * random (no column or warm starts). Best with planner.di_consumers_per_producer 2.
+     */
+    val clusters: Boolean = false,
     /** Weight of the squared beacon shortfall per machine (beacons in lattice mode, see BeaconConfig). */
     @SerialName("beacon_weight") val beaconWeight: Double = 15.0,
     @SerialName("rudy_bin") val rudyBin: Int = 4,
