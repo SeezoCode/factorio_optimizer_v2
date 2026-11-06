@@ -13,6 +13,27 @@ import validate.SourceSpec
 
 data class Harness(val entities: List<PlacedEntity>, val tiles: Set<Tile>, val warnings: List<String>)
 
+private val PIPE_KINDS = setOf(Kind.PIPE, Kind.PIPE_UG, Kind.INFINITY_PIPE)
+
+/**
+ * Sides of a fluid port tile holding [port] where a feed pipe connects, best first, out of the [outward] ones: a
+ * pipe-to-ground only on its open side (on a corner the first outward side may be its closed one), a plain pipe on
+ * any of them.
+ */
+internal fun fluidSides(port: PlacedEntity?, outward: List<Dir>): List<Dir> =
+    if (port?.kind == Kind.PIPE_UG) outward.filter { it == port.dir } else outward
+
+/**
+ * Sides of an item input tile holding [port] a feed can come from, best first, out of the [outward] ones: from
+ * behind first (a corner belt fed from its side gets one lane only), then from the sides for a plain belt, never
+ * head-on. Undergrounds and splitters only take items from behind.
+ */
+internal fun beltFeedSides(port: PlacedEntity?, outward: List<Dir>): List<Dir> = when {
+    port == null -> outward
+    port.kind == Kind.BELT -> outward.filter { it == port.dir.opposite } + outward.filter { it != port.dir && it != port.dir.opposite }
+    else -> outward.filter { it == port.dir.opposite }
+}
+
 /**
  * H1 (test mode): feed every source belt from outside the box with a straight feeder belt whose sides
  * carry inserters taking from infinity chests, enough inserters for the source's rate. Every output belt
@@ -38,7 +59,7 @@ fun buildHarness(
 
     fun fluidPort(at: Tile, fluid: String, drain: Boolean) {
         // A fluid port gets an infinity pipe just outside the box, next to its pipe.
-        val o = Dir.entries.firstOrNull { d -> !inBox(at + d) && free(at + d) }
+        val o = fluidSides(byTile[at], Dir.entries.filter { d -> !inBox(at + d) }).firstOrNull { d -> free(at + d) }
         if (o == null) { warnings += "no room for a fluid harness at $at ($fluid)"; return }
         val t = at + o
         out += PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, t.x, t.y, fluid = fluid, drain = drain)
@@ -54,7 +75,7 @@ fun buildHarness(
         // Outward direction: off the box, and not the way the first belt faces (it cannot take items head-on);
         // a laned belt must be fed straight from behind so its lanes stay as they are.
         val dirs = if (laned && first != null) listOf(first.dir.opposite).filter { !inBox(tile + it) }
-            else Dir.entries.filter { d -> !inBox(tile + d) && first?.dir != d }
+            else beltFeedSides(first, Dir.entries.filter { d -> !inBox(tile + d) })
         val o = dirs.firstOrNull { d -> free(tile + d) }
         if (o == null) { warnings += "no room for a harness at $tile (${group.map { it.item }})"; return@forEach }
         // Feeder heading o.opposite: inserters on its o.ccw side drop on the left lane, on o.cw the right lane.
@@ -140,16 +161,18 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
         Dir.W.takeIf { t.x <= 0 }, Dir.E.takeIf { t.x >= w - 1 }, Dir.N.takeIf { t.y <= 0 }, Dir.S.takeIf { t.y >= h - 1 },
     ).filter { !inBox(t + it) }
 
-    sources.filter { it.fluid }.forEach { s ->
-        val d = outward(s.tile).firstOrNull { free(s.tile + it) }
-        if (d == null) warnings += "no room to feed ${s.item} at ${s.tile}"
-        else (s.tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = s.item)) }
+    // An infinity pipe next to a fluid port, on a side the port's pipe connects to, touching no pipe of another fluid.
+    fun fluidFeed(tile: Tile, fluid: String, drain: Boolean): Boolean {
+        val d = fluidSides(byTile[tile], outward(tile)).firstOrNull { d ->
+            val t = tile + d
+            free(t) && Dir.entries.all { n -> (t + n == tile) || byTile[t + n]?.let { it.kind !in PIPE_KINDS || it.fluid == fluid } ?: true } &&
+                out.none { it.kind == Kind.INFINITY_PIPE && it.fluid != fluid && it.tile.manhattan(t) == 1 }
+        } ?: return false
+        (tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = fluid, drain = drain)) }
+        return true
     }
-    outputs.filter { it.fluid }.forEach { o ->
-        val d = outward(o.tile).firstOrNull { free(o.tile + it) }
-        if (d == null) warnings += "no room to drain ${o.item} at ${o.tile}"
-        else (o.tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = o.item, drain = true)) }
-    }
+    sources.filter { it.fluid }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
+    outputs.filter { it.fluid }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
     // A loader on the two tiles out from the port, the chest on the third.
     fun loaderAt(port: Tile, d: Dir, into: Boolean): PlacedEntity? {
         val a = port + d; val b = port.step(d, 2); val c = port.step(d, 3)
@@ -162,9 +185,7 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     val laned = ArrayList<SourceSpec>()
     sources.filter { !it.fluid }.groupBy { it.tile }.forEach { (tile, group) ->
         if (group.map { it.item }.distinct().size > 1 || group.any { it.lane >= 0 }) { laned += group; return@forEach }
-        val first = byTile[tile]
-        // Not from the side the port belt heads to (it cannot take items head-on).
-        val d = outward(tile).filter { first?.dir != it }.firstOrNull { loaderAt(tile, it, true) != null }
+        val d = beltFeedSides(byTile[tile], outward(tile)).firstOrNull { loaderAt(tile, it, true) != null }
         if (d == null) { warnings += "no room to feed ${group[0].item} at $tile"; return@forEach }
         take(loaderAt(tile, d, true)!!)
         tile.step(d, 3).let { take(PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, it.x, it.y, item = group[0].item)) }
