@@ -220,6 +220,25 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
   time budget; the final factory is stitched after the stop.
 - `--plain`: line-by-line output instead of the live view.
 
+### The browser UI
+
+```sh
+./optimize --ui            # then open http://localhost:8765 (--port=<n> for another port)
+```
+
+- **Jobs**: every job file in the repository, edited in a form built from the job and tuning types themselves:
+  each setting with its type, default and documentation (from the source), item and recipe names suggested from
+  the game data. Unchecked settings stay out of the file (the default applies). The JSON is beside it and can be
+  edited too. Save, check, and start a run (out folder, RAM, resume).
+- **Runs**: run folders (`solves/`, `out/`, ...) with live status, the block table and the log of a running
+  factory; the best layout, the test copy and each block drawn to scale (drag to pan, wheel to zoom, hover for
+  details), with the game's own icons when Factorio is installed (`FACTORIO_DATA` points elsewhere), blocks
+  outlined in a factory, and machines outlined by what they did in game once verified. **Verify in game** runs
+  the in-game check below, and **Why short?** traces any machine that starved there (`starve.py`).
+
+The UI only reads and writes files and starts `./optimize` and the verifier as separate processes, so runs started
+from a terminal show up too, and the solver does not depend on it.
+
 ### Watching and steering a factory run
 
 (The live view needs the program in a terminal: start it with `./optimize`, not `./gradlew run`.)
@@ -800,6 +819,8 @@ values it used as `tuning.json` in its output folder. The ones that matter most:
 | `place.belt_cost`, `place.path_weight` | hpwl, 1.0 | How a net's belt length is estimated: bounding box x q(k), or "path" (bounding box plus the detours of a path between the machines). |
 | `search.grow_factor`, `search.grow_rounds` | 1.25, 2 | Box growth after a failed size, and seed rounds per size before growing. |
 | `planner.access_share` | 0.75 | Share of the tiles around a machine its inserters may take; a recipe that would need more gets extra machines (fast Space Age machines with productivity hit this). |
+| `planner.max_utilization` | 1 | The most of its full speed a machine is planned to run: machine counts round up past it, and block rebalancing stops there. A chain of machines planned at exactly 100% loses for good whatever one inserter swing costs; 0.97 is worth it for factories of blocks (the 2/s six-science factory's rail and stick machines at 100% left production science 10% short in game). |
+| `planner.di_consumers_per_producer`, `place.clusters` | 0, false | Direct-insertion clusters: producers per consumer for direct insertion (2 is a good value), and placing consumers around their producers as fixed groups (sandwich, stack, duo: cable-circuit-cable, cells: a row between two clusters). Circuits 12/s: 25 x 25 instead of 29 x 29 and half the belts. |
 | `planner.beacon_side` | true | A machine planned with beacons in the lattice has one side against its beacon row, so `access_share` counts the other three. Beaconed assembler 3s making circuits from cable (9 inserters at hand size 2) get 5 each instead (10 machines for 45/s instead of 6); a single block of them then routed at 40 x 40 at once, against 50 x 50 after 3 minutes, and a block of 6 such machines with 5 cable machines did not route at all in a factory. |
 
 The full list with explanations is in `src/main/kotlin/config/Tuning.kt`; measurements in
@@ -953,6 +974,12 @@ a warm-up (default 300 game seconds), then a measured window (default 300). It r
 - items per second leaving at each output port and taken at each input port, next to the plan in `ports.json`
   (fluids drained at fluid outputs too; quality items as `name@quality`, mixed belts by what is on them);
 - inserters that never moved while holding an item, and belts whose items never moved.
+
+Outputs are taken at their planned rate (`--uncapped` empties the output chests without limit), so a factory cannot
+look good by over-making one item while starving another. `--dump` adds every belt's lanes, every inserter and pipe
+to the report, and then `python3 tools/factorio-verify/starve.py out` explains each machine that waited for an
+ingredient: the belts that bring it traced upstream, who makes it there and in what state, who else takes it on
+the way, and whether a producer standing with full output can reach the machine at all.
 
 It passes when everything was built, every machine crafted something, each output item reached its planned rate
 (within `--tolerance`, default 5%) and no inserter stayed stuck. Belts that stand still are listed but do not fail
