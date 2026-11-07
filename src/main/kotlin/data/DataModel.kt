@@ -131,7 +131,11 @@ data class Ingredient(
     val amount: Double,
     val fluidboxMultiplier: Int? = null,
     val ignoredByStats: Double? = null,
-    val fluidboxIndex: Int? = null
+    val fluidboxIndex: Int? = null,
+    /** A fluid ingredient's accepted temperatures: exactly [temperature], or [minimumTemperature]..[maximumTemperature]. */
+    val temperature: Double? = null,
+    val minimumTemperature: Double? = null,
+    val maximumTemperature: Double? = null,
 ) {
     val isFluid: Boolean get() = type == "fluid"
 }

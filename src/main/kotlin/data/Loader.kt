@@ -28,7 +28,8 @@ private val loaded = java.util.concurrent.ConcurrentHashMap<String, RootData>()
  * data is in use at a time, the one loaded last. Each file is read once.
  */
 fun loadRootData(name: String = "recipes.json"): RootData = loaded.getOrPut(name) {
-    val data = recipeGson.fromJson(readResourceOrFile(name), RootData::class.java)
+    // Fluids made at several temperatures become fluids of their own (see Temperatures.kt).
+    val data = withFluidTemperatures(recipeGson.fromJson(readResourceOrFile(name), RootData::class.java))
     interlinkProductsWithItems(data)
     data
 }.also { GameConstants.register(it) }   // the tables follow the data loaded last

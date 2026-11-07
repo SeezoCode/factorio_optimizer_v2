@@ -1,6 +1,8 @@
 package emit
 
 import data.GameConstants
+import data.gameName
+import data.temperatureOf
 import geom.CircuitCondition
 import geom.Dir
 import geom.Kind
@@ -97,7 +99,7 @@ data class BuildQuality(val machines: String = "normal", val beacons: String = "
  * game's name and the quality, null for normal.
  */
 fun splitQuality(name: String): Pair<String, String?> =
-    name.indexOf('@').let { i -> if (i < 0) name to null else name.substring(0, i) to name.substring(i + 1) }
+    name.indexOf('@').let { i -> if (i < 0) gameName(name) to null else gameName(name.substring(0, i)) to name.substring(i + 1) }
 
 /** [name] at [quality] (normal: the plain name). */
 fun withQuality(name: String, quality: String?): String = if (quality == null || quality == "normal") name else "$name@$quality"
@@ -132,7 +134,8 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                 }
                 Kind.INFINITY_PIPE -> e.fluid?.let { fluid ->
                     buildJsonObject {
-                        put("name", fluid)
+                        put("name", gameName(fluid))
+                        temperatureOf(fluid)?.let { put("temperature", it) }
                         if (e.drain) { put("percentage", 0.0); put("mode", "exactly") } else { put("percentage", 1.0); put("mode", "at-least") }
                     }
                 }
@@ -167,7 +170,7 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                     // 2.0's key (checked in game: a machine built from "circuit_enable_disable" ignores its condition).
                     put("circuit_enabled", true)
                     put("circuit_condition", buildJsonObject {
-                        put("first_signal", buildJsonObject { if (c.fluid) put("type", "fluid"); put("name", c.signal) })
+                        put("first_signal", buildJsonObject { if (c.fluid) put("type", "fluid"); put("name", gameName(c.signal)) })
                         put("constant", c.constant)
                         put("comparator", c.comparator)
                     })
