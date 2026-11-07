@@ -164,6 +164,12 @@ class Server(private val root: File, private val port: Int) {
             // A factory run rewrites status.json every few seconds; an old one means the run is gone.
             File(d, "status.json").takeIf { it.isFile }?.let { put("statusAge", (System.currentTimeMillis() - it.lastModified()) / 1000.0) }
             read("ports.json")?.let { put("ports", it) }
+            // The plan in short: machines per recipe and machine type.
+            File(d, "plan.json").takeIf { it.isFile }?.let { f -> runCatching {
+                val ms = Json.parseToJsonElement(f.readText()).jsonObject["machines"] as JsonArray
+                val counts = ms.map { it.jsonObject }.groupingBy { it["recipe"]!!.jsonPrimitive.content + " (" + it["machine"]!!.jsonPrimitive.content + ")" }.eachCount()
+                put("plan", buildJsonObject { counts.entries.sortedByDescending { it.value }.forEach { (k, v) -> put(k, v) } })
+            } }
             read("verify_report.json")?.let { r -> put("verify", buildJsonObject {
                 (r as? JsonObject)?.get("outputs")?.let { put("outputs", it) }
                 (r as? JsonObject)?.get("machines")?.let { ms -> put("machines", JsonPrimitive((ms as JsonArray).size)) }

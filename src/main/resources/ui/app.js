@@ -329,6 +329,12 @@ function renderStatus(info) {
     for (const [k, v] of Object.entries(per)) add("in game", `${k} ${v.toFixed(3)}/s`);
   }
   box.append(kv);
+  if (info.plan) {
+    const total = Object.values(info.plan).reduce((a, b) => a + b, 0);
+    const t = el("table", {}, el("tr", {}, el("th", {}, "recipe (machine)"), el("th", {}, "machines")));
+    for (const [k, v] of Object.entries(info.plan)) t.append(el("tr", {}, el("td", {}, k), el("td", {}, v)));
+    box.append(el("details", {}, el("summary", {}, `Plan: ${total} machines, ${Object.keys(info.plan).length} recipes`), t));
+  }
   const bb = $("#blocksBox"); bb.textContent = "";
   if (st && st.blocks && st.blocks.length) {
     const t = el("table", {}, el("tr", {}, ...["block", "machines", "size", "state", "spent"].map((h) => el("th", {}, h))));
