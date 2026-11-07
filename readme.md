@@ -982,6 +982,10 @@ to the report, and then `python3 tools/factorio-verify/starve.py out` explains e
 ingredient: the belts that bring it traced upstream, who makes it there and in what state, who else takes it on
 the way, and whether a producer standing with full output can reach the machine at all.
 
+`tools/factorio-verify/bench.py` does both for a set of jobs: solves each (optionally with tuning overrides, a time
+budget and threads), checks it in game, and writes one line per job (box, belts, undergrounds, inserters, what came
+out, PASS or why not) to `results.tsv`, for comparing a change on, say, `docs/community_benchmark/jobs/*.json`.
+
 It passes when everything was built, every machine crafted something, each output item reached its planned rate
 (within `--tolerance`, default 5%) and no inserter stayed stuck. Belts that stand still are listed but do not fail
 it: the end of a belt past its last inserter stands still in a working factory too. The full report, every machine
