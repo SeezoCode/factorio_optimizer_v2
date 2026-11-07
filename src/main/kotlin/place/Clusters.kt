@@ -20,7 +20,7 @@ data class Cluster(val members: IntArray, val dx: IntArray, val dy: IntArray, va
  * are left out (their orientation or fit is not fixed). A consumer that needs two producers' output sits between
  * them (`duo`: cable, circuit, cable). Consumers of items from the bottom of the chain go first.
  */
-fun diClusters(plan: ProductionPlan, longHanded: Boolean = false): List<Cluster> {
+fun diClusters(plan: ProductionPlan, longHanded: Boolean = false, cells: Boolean = true): List<Cluster> {
     val ms = plan.machines
     val producersOf = HashMap<String, MutableList<Int>>()
     plan.terminals.filter { it.role == Role.PRODUCER && it.machine != null && !it.fluid }.forEach { producersOf.getOrPut(it.item) { ArrayList() } += it.machine!! }
@@ -85,7 +85,7 @@ fun diClusters(plan: ProductionPlan, longHanded: Boolean = false): List<Cluster>
             out += Cluster(members.toIntArray(), dx.toIntArray(), IntArray(members.size), "sandwich")
         }
     }
-    return cells(plan, out, used, if (longHanded) 3 else 1)
+    return if (cells) cells(plan, out, used, if (longHanded) 3 else 1) else out
 }
 
 /**

@@ -116,6 +116,8 @@ data class PlaceTuning(
      * random (no column or warm starts). Best with planner.di_consumers_per_producer 2.
      */
     val clusters: Boolean = false,
+    /** With [clusters]: also cells (a row of machines between two clusters). Off keeps sandwiches, stacks and duos. */
+    val cells: Boolean = true,
     /** Weight of the squared beacon shortfall per machine (beacons in lattice mode, see BeaconConfig). */
     @SerialName("beacon_weight") val beaconWeight: Double = 15.0,
     @SerialName("rudy_bin") val rudyBin: Int = 4,
