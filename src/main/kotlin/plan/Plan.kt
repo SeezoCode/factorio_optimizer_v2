@@ -128,13 +128,27 @@ data class ProductionPlan(
     fun write(path: String) = File(path).also { it.parentFile?.mkdirs() }.writeText(toJson())
 }
 
-/** Effective items/s of one inserter of [name], given hand size research and whether it picks from a belt. */
+/**
+ * Effective items/s of one inserter of [name], given hand size research and whether it picks from a belt. A bulk
+ * inserter picking from a belt also waits for its hand to fill from the items passing: one swing plus [hand] items
+ * at [BULK_PICKUP_SHARE] of the belt's throughput per cycle.
+ */
 fun inserterRate(name: String, config: RunConfiguration, fromBelt: Boolean): Double {
     val spec = GameConstants.inserter(name)
     val (normal, bulk) = GameConstants.handSizes(config.research.inserterCapacity)
     val hand = if (spec.bulk) bulk else normal
-    return spec.baseRate * hand * (if (fromBelt) config.inserters.beltPickupDerate else 1.0)
+    val rate = spec.baseRate * hand * (if (fromBelt) config.inserters.beltPickupDerate else 1.0)
+    if (!fromBelt || !spec.bulk || hand <= 1) return rate
+    val belt = runCatching { GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput }.getOrNull() ?: return rate
+    return minOf(rate, hand / (1.0 / spec.baseRate + hand / (BULK_PICKUP_SHARE * belt)))
 }
+
+/**
+ * Share of a belt's throughput a bulk inserter's hand fills at when it picks from the belt. Measured in game: one bulk
+ * inserter at hand size 12 took 13.5 iron/s from a full express belt into a beaconed gear assembler that wanted more
+ * (19.4/s with the plain belt derate): 12 / (1 / 2.31 + 12 / (0.58 x 45)).
+ */
+const val BULK_PICKUP_SHARE = 0.58
 
 /** Best rate among the allowed inserters that sit at d = 1 (long-handed only serves trick options). */
 fun bestInserterRate(config: RunConfiguration, fromBelt: Boolean): Double =
