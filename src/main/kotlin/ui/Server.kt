@@ -72,7 +72,7 @@ class Server(private val root: File, private val port: Int) {
                 path == "/api/runs" -> send(ex, runList())
                 path == "/api/run" && ex.requestMethod == "GET" -> send(ex, run(q.getValue("dir")))
                 path == "/api/run" && ex.requestMethod == "POST" -> startRun(ex)
-                path == "/api/stop" -> stopRun(ex, q.getValue("dir"))
+                path == "/api/stop" -> stopRun(ex, q.getValue("dir"), q["force"] == "1")
                 path == "/api/control" -> control(ex, q.getValue("dir"), q.getValue("cmd"))
                 path == "/api/verify" -> startVerify(ex, q.getValue("dir"))
                 path == "/api/starve" -> starve(ex, q.getValue("dir"))
@@ -163,6 +163,8 @@ class Server(private val root: File, private val port: Int) {
         return buildJsonObject {
             put("dir", d.relativeOrAbsolute())
             put("running", runs[d.canonicalPath]?.isAlive == true)
+            // Started from here and since ended (finished, stopped or killed): its status.json is no longer live.
+            put("ended", runs[d.canonicalPath]?.isAlive == false)
             put("verifying", runs[d.canonicalPath + "#verify"]?.isAlive == true)
             File(d, "verify.log").takeIf { it.isFile }?.let { put("verifyLog", tail(it, 60)) }
             read("status.json")?.let { put("status", it) }
@@ -211,8 +213,15 @@ class Server(private val root: File, private val port: Int) {
         send(ex, buildJsonObject { put("started", od.relativeOrAbsolute()); put("command", cmd.joinToString(" ")) })
     }
 
-    private fun stopRun(ex: HttpExchange, dir: String) {
+    /** Stops a run: a factory of blocks through its control file (it finishes the best factory so far); [force] kills it. */
+    private fun stopRun(ex: HttpExchange, dir: String, force: Boolean = false) {
         val d = inside(dir) ?: return error(ex, 403, "outside the project")
+        if (force) {
+            val p = runs[d.canonicalPath] ?: return error(ex, 409, "the run was not started from this UI: use Stop now")
+            // ./optimize execs the JVM, so the process is the run itself (its children too, to be sure).
+            p.descendants().forEach { it.destroyForcibly() }; p.destroyForcibly()
+            return send(ex, buildJsonObject { put("killed", d.relativeOrAbsolute()) })
+        }
         // A factory of blocks stops cleanly through its control file (it finishes the best factory so far).
         File(d, "control").writeText("stop\n")
         val p = runs[d.canonicalPath]

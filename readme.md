@@ -233,8 +233,17 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 - **Runs**: run folders (`solves/`, `out/`, ...) with live status, the block table and the log of a running
   factory; the best layout, the test copy and each block drawn to scale (drag to pan, wheel to zoom, hover for
   details), with the game's own icons when Factorio is installed (`FACTORIO_DATA` points elsewhere), blocks
-  outlined in a factory, and machines outlined by what they did in game once verified. **Verify in game** runs
-  the in-game check below, and **Why short?** traces any machine that starved there (`starve.py`).
+  outlined in a factory, and machines outlined by what they did in game once verified. Inputs and outputs are
+  marked on the edge and labelled with item and rate. **Verify in game** runs the in-game check below, and **Why
+  short?** traces any machine that starved there (`starve.py`). Drag the divider to widen the side panel.
+- **Steering a factory run** (while it runs, started here or in a terminal): pause and resume, stitch a preview,
+  move the time limit (−5, +5, +30 minutes, no limit, or minutes left from now), lanes up and down, **Finish**
+  (the turns running, then the final factory), **Stop now** (keeping the best factory so far) and **Kill** (runs
+  started from the UI); each block row has **focus** (every thread on it) and **skip**. These are the terminal's
+  keys, sent through the run's control file.
+- **History** of a factory run (from its `factory.txt`): each phase and how long it took, the factory's size at
+  each preview and save as a chart, every preview with how long its stitch took, each block's first and current
+  size with how often and when it last got smaller (hover a row for every step), and every steering action.
 
 The UI only reads and writes files and starts `./optimize` and the verifier as separate processes, so runs started
 from a terminal show up too, and the solver does not depend on it.

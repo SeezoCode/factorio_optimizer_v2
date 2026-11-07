@@ -271,13 +271,18 @@ async function refreshRun(first) {
   clearTimeout(runTimer);
   if (!runDir) return;
   let info;
+  const asked = runDir;
   try { info = await api("/api/run?dir=" + encodeURIComponent(runDir)); } catch (e) { $("#runState").textContent = e.message; return; }
+  if (asked !== runDir) return;   // another run was picked meanwhile; its own refresh is under way
   const changed = !runInfo || runInfo.dir !== info.dir || JSON.stringify(runInfo.files) !== JSON.stringify(info.files) ||
     (info.status && runInfo.status && info.status.elapsed !== runInfo.status.elapsed && (info.files || []).includes("best_blueprint.json"));
   runInfo = info;
-  const alive = info.status && info.status.left > 0 && !info.status.stopping && (info.statusAge ?? 0) < 60;
+  // Live while its status.json keeps being written (also while finishing, so "Stop now" can follow "Finish").
+  const alive = !info.ended && !!info.status && (info.statusAge ?? 0) < 20;
   $("#stopRun").disabled = !info.running && !alive;
-  $("#factoryCtl").hidden = !alive;
+  $("#stopRun").hidden = alive;   // a live factory has its own row of controls
+  $("#runCtl").hidden = !alive;
+  if (alive) renderControls(info);
   $("#runState").textContent = info.running ? "running" : alive ? "running (started elsewhere)" : "";
   renderStatus(info);
   $("#verifyRun").disabled = info.verifying || !(info.files || []).includes("test_output_string.txt");
@@ -288,14 +293,54 @@ async function refreshRun(first) {
   if (first) await drawPicked();
   else if (changed && $("#layoutPick").value === "best") await drawPicked();
   const live = info.running || info.verifying || alive;
+  loadHistory(live);
   runTimer = setTimeout(() => refreshRun(false), live ? 2500 : 15000);
 }
 
-document.querySelectorAll("#factoryCtl button").forEach((b) => b.addEventListener("click", async () => {
+// --- live controls of a factory run: the same commands as the terminal's keys, through the run's control file ---
+
+async function sendCmd(cmd) {
   if (!runDir) return;
-  try { await api("/api/control?dir=" + encodeURIComponent(runDir) + "&cmd=" + encodeURIComponent(b.dataset.cmd), { method: "POST" }); $("#runState").textContent = "sent: " + b.dataset.cmd; }
+  try {
+    await api("/api/control?dir=" + encodeURIComponent(runDir) + "&cmd=" + encodeURIComponent(cmd), { method: "POST" });
+    $("#runState").textContent = "sent: " + cmd;
+    setTimeout(() => refreshRun(false), 1200);
+  } catch (e) { $("#runState").textContent = e.message; }
+}
+document.querySelectorAll("#runCtl button[data-cmd]").forEach((b) => b.addEventListener("click", () => sendCmd(b.dataset.cmd)));
+$("#ctlLimitSet").addEventListener("click", () => {
+  const m = parseFloat($("#ctlLimit").value);
+  const st = runInfo && runInfo.status;
+  if (!(m >= 0) || !st) return;
+  sendCmd("limit " + Math.round(st.elapsed + m * 60));   // the limit counts from the run's start
+});
+$("#ctlLimit").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#ctlLimitSet").click(); });
+$("#ctlLanesDown").addEventListener("click", () => { const st = runInfo && runInfo.status; if (st) sendCmd("lanes " + Math.max(1, st.lanes - 1)); });
+$("#ctlLanesUp").addEventListener("click", () => { const st = runInfo && runInfo.status; if (st) sendCmd("lanes " + Math.min(st.threads, st.lanes + 1)); });
+$("#ctlKill").addEventListener("click", async () => {
+  if (!runDir || !confirm("Kill the run's process? Nothing more is saved (Stop now keeps the best factory so far).")) return;
+  try { await api("/api/stop?force=1&dir=" + encodeURIComponent(runDir), { method: "POST" }); $("#runState").textContent = "killed"; }
   catch (e) { $("#runState").textContent = e.message; }
-}));
+});
+
+function renderControls(info) {
+  const st = info.status;
+  const pause = $("#ctlPause");
+  pause.textContent = st.paused ? "Resume" : "Pause"; pause.dataset.cmd = st.paused ? "resume" : "pause";
+  pause.classList.toggle("on", !!st.paused);
+  $("#ctlLeft").textContent = st.left < 0 ? "no limit" : fmtTime(st.left) + " left";
+  $("#ctlLanes").textContent = st.lanes;
+  $("#ctlLanesDown").disabled = st.lanes <= 1; $("#ctlLanesUp").disabled = st.lanes >= st.threads;
+  const focused = (st.blocks || []).some((b) => b.state === "focus");
+  $("#ctlFocusOff").disabled = !focused;
+  $("#ctlKill").disabled = !info.running;
+  const flags = [];
+  if (st.stopping) flags.push("finishing");
+  if (st.paused) flags.push("paused");
+  if (st.stitching) flags.push("stitching a preview");
+  else if (st.sinceStitch >= 0) flags.push("stitched " + fmtTime(st.sinceStitch) + " ago");
+  $("#ctlFlags").textContent = flags.join(" · ");
+}
 $("#verifyRun").addEventListener("click", async () => {
   if (!runDir) return;
   try { await api("/api/verify?dir=" + encodeURIComponent(runDir), { method: "POST" }); $("#runState").textContent = "verifying in game…"; refreshRun(false); }
@@ -312,6 +357,138 @@ $("#stopRun").addEventListener("click", async () => {
   await api("/api/stop?dir=" + encodeURIComponent(runDir), { method: "POST" });
   $("#runState").textContent = "stopping…";
 });
+
+// --- history of a factory run, read from its factory.txt: phases, previews, the factory's size, block progress ---
+
+let historyAt = 0, historyDir = null;
+async function loadHistory(live) {
+  if (!runDir) return;
+  const now = Date.now();
+  if (historyDir === runDir && now - historyAt < (live ? 10000 : 60000)) return;
+  historyAt = now; historyDir = runDir;
+  const asked = runDir;
+  let text;
+  try { text = await (await fetch("/api/file?path=" + encodeURIComponent(runDir + "/factory.txt"))).text(); } catch { text = null; }
+  if (asked !== runDir) return;
+  if (!text || text.startsWith("{")) { $("#historyBox").hidden = true; return; }
+  $("#historyBox").hidden = false;
+  renderHistory(parseHistory(text));
+}
+
+function parseHistory(text) {
+  const num = (x) => parseFloat(String(x).replace(",", "."));
+  const h = { phases: [], previews: [], finals: [], blocks: new Map(), steering: [], end: 0 };
+  let stitchFrom = null, lastPreviewLine = null;
+  const phase = (name, t) => { const p = h.phases[h.phases.length - 1]; if (p && p.name === name) return; h.phases.push({ name, t }); };
+  phase("plan and split", 0);
+  for (const line of text.split("\n")) {
+    const m = line.match(/^\[\s*([\d.,]+)s\] (.*)$/);
+    if (!m) continue;
+    const t = num(m[1]), msg = m[2];
+    h.end = Math.max(h.end, t);
+    let b;
+    if ((b = msg.match(/^block (\d+)(?: x([\d.,]+))?: (first layout )?(\d+) x (\d+)(?: \(was (\d+) x (\d+)\))?$/))) {
+      if (!h.phases.some((p) => p.name === "first layouts")) phase("first layouts", t);
+      const key = b[1] + (b[2] ? " ×" + num(b[2]).toFixed(1) : "");
+      if (!h.blocks.has(key)) h.blocks.set(key, []);
+      h.blocks.get(key).push({ t, w: +b[4], h: +b[5] });
+    } else if (/^every block has a layout/.test(msg)) { phase("refining", t); stitchFrom = t; }
+    else if (/^stitching a preview$/.test(msg) || /^stitch requested$/.test(msg)) { stitchFrom = stitchFrom ?? t; }
+    else if ((b = msg.match(/^preview: (\d+) x (\d+) \((\d+) tiles\)(?: in ([\d.,]+) s)?;/))) {
+      const from = b[4] ? t - num(b[4]) : (stitchFrom ?? lastPreviewLine ?? t);
+      h.previews.push({ t, from, w: +b[1], h: +b[2], tiles: +b[3], ok: true }); stitchFrom = null; lastPreviewLine = null;
+    } else if ((b = msg.match(/^preview: did not stitch(?: \(([\d.,]+) s\))?/))) {
+      const from = b[1] ? t - num(b[1]) : (stitchFrom ?? lastPreviewLine ?? t);
+      h.previews.push({ t, from, ok: false }); stitchFrom = null; lastPreviewLine = null;
+    } else if (/^preview:/.test(msg)) { lastPreviewLine = lastPreviewLine ?? t; }
+    else if (/^final factory/.test(msg)) phase("final factory", t);
+    else if ((b = msg.match(/^factory(?: \(compacting\))?: (\d+) x (\d+) \((\d+) tiles\), saved/))) h.finals.push({ t, w: +b[1], h: +b[2], tiles: +b[3] });
+    else if ((b = msg.match(/^done: (\d+) x (\d+)/))) { phase("done", t); h.done = { t, w: +b[1], h: +b[2] }; }
+    else if (/^(stop|stopping|paused|resumed|limit:|focus|lanes:|control:|time is up)|skipped$|back in turn$/.test(msg) || /^block \d+.* (skipped|back in turn)$/.test(msg))
+      h.steering.push({ t, msg });
+  }
+  return h;
+}
+
+function renderHistory(h) {
+  const box = $("#historyBody"); box.textContent = "";
+  // Phases and how long each took.
+  const pt = el("table", {}, el("tr", {}, el("th", {}, "phase"), el("th", {}, "from"), el("th", {}, "took")));
+  h.phases.forEach((p, i) => {
+    const next = h.phases[i + 1];
+    const took = p.name === "done" ? "" : fmtTime((next ? next.t : h.end) - p.t) + (next ? "" : " so far");
+    pt.append(el("tr", {}, el("td", {}, p.name), el("td", { class: "num" }, fmtClock(p.t)), el("td", { class: "num" }, took)));
+  });
+  box.append(el("h4", {}, "Phases"), pt);
+  // The factory's size over time: previews, then the final factory's saves.
+  const pts = h.previews.filter((p) => p.ok).map((p) => ({ t: p.t, tiles: p.tiles, label: `preview ${p.w} × ${p.h}` }))
+    .concat(h.finals.map((f) => ({ t: f.t, tiles: f.tiles, label: `final ${f.w} × ${f.h}` })));
+  if (pts.length) box.append(el("h4", {}, "Factory size (tiles)"), sizeChart(pts, h.previews.filter((p) => !p.ok)));
+  // Previews: when, what, how long the stitch took.
+  if (h.previews.length) {
+    const t = el("table", {}, el("tr", {}, el("th", {}, "preview at"), el("th", {}, "factory"), el("th", {}, "tiles"), el("th", {}, "took")));
+    for (const p of h.previews) t.append(el("tr", {}, el("td", { class: "num" }, fmtClock(p.t)), el("td", {}, p.ok ? `${p.w} × ${p.h}` : "did not stitch"),
+      el("td", { class: "num" }, p.ok ? p.tiles.toLocaleString() : ""), el("td", { class: "num" }, fmtTime(p.t - p.from))));
+    box.append(el("h4", {}, `Previews (${h.previews.length})`), t);
+  }
+  // Blocks: first layout, now, how much smaller, how many times it improved and when last.
+  if (h.blocks.size) {
+    const rows = [...h.blocks.entries()].map(([k, v]) => {
+      const a = v[0], z = v[v.length - 1];
+      return { k, a, z, n: v.length - 1, gain: 1 - (z.w * z.h) / (a.w * a.h), v };
+    }).sort((x, y) => y.gain - x.gain);
+    const t = el("table", {}, el("tr", {}, ...["block", "first", "now", "smaller", "better", "last at"].map((x) => el("th", {}, x))));
+    for (const r of rows) {
+      const tr = el("tr", { class: "pick", title: r.v.map((s) => `${fmtTime(s.t)}: ${s.w} × ${s.h}`).join("\n") },
+        el("td", {}, r.k), el("td", {}, `${r.a.w}×${r.a.h}`), el("td", {}, `${r.z.w}×${r.z.h}`),
+        el("td", { class: "num" }, (100 * r.gain).toFixed(0) + "%"), el("td", { class: "num" }, r.n + "×"), el("td", { class: "num" }, fmtClock(r.z.t)));
+      tr.addEventListener("click", () => { const name = "block_" + r.k.split(" ")[0]; if ([...$("#layoutPick").options].some((o) => o.value === name)) { $("#layoutPick").value = name; drawPicked(); } });
+      t.append(tr);
+    }
+    box.append(el("h4", {}, "Blocks (hover a row for every step)"), t);
+  }
+  if (h.steering.length) {
+    const t = el("table", {});
+    for (const s of h.steering) t.append(el("tr", {}, el("td", { class: "num" }, fmtClock(s.t)), el("td", {}, s.msg)));
+    box.append(el("h4", {}, "Steering and stops"), t);
+  }
+}
+
+/** One series: the factory's tiles at each preview and final save, with a crosshair tooltip; failed previews as rings on the axis. */
+function sizeChart(pts, fails) {
+  const ns = "http://www.w3.org/2000/svg";
+  const W = 360, H = 150, L = 46, R = 10, T = 8, B = 20;
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("class", "hist-chart");
+  const mk = (tag, attrs) => { const e = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); svg.append(e); return e; };
+  const tMax = Math.max(...pts.map((p) => p.t), ...fails.map((f) => f.t), 1);
+  const lo = Math.min(...pts.map((p) => p.tiles)), hi = Math.max(...pts.map((p) => p.tiles));
+  const pad = Math.max(1, (hi - lo) * 0.1), y0 = Math.max(0, lo - pad), y1 = hi + pad;
+  const x = (t) => L + (t / tMax) * (W - L - R), y = (v) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  for (let i = 0; i <= 3; i++) {
+    const v = y0 + (i / 3) * (y1 - y0);
+    mk("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" });
+    mk("text", { x: L - 4, y: y(v) + 3, "text-anchor": "end", class: "axis" }).textContent = Math.round(v / 1000) + "k";
+  }
+  for (let i = 0; i <= 4; i++) mk("text", { x: x((i / 4) * tMax), y: H - 5, "text-anchor": i === 0 ? "start" : i === 4 ? "end" : "middle", class: "axis" }).textContent = fmtClock((i / 4) * tMax);
+  mk("path", { d: pts.map((p, i) => `${i ? "L" : "M"}${x(p.t)},${y(p.tiles)}`).join(""), class: "line" });
+  for (const p of pts) mk("circle", { cx: x(p.t), cy: y(p.tiles), r: 4, class: "dot" });
+  for (const f of fails) mk("circle", { cx: x(f.t), cy: H - B, r: 4, class: "fail" });
+  const cross = mk("line", { y1: T, y2: H - B, class: "cross", visibility: "hidden" });
+  const hit = mk("rect", { x: L, y: T, width: W - L - R, height: H - T - B, class: "hit" });
+  const wrap = el("div", { class: "hist-wrap" }); wrap.append(svg);
+  const tip = el("div", { class: "hist-tip", hidden: true }); wrap.append(tip);
+  hit.addEventListener("mousemove", (e) => {
+    const r = svg.getBoundingClientRect(), sx = ((e.clientX - r.left) / r.width) * W;
+    const p = pts.reduce((a, q) => Math.abs(x(q.t) - sx) < Math.abs(x(a.t) - sx) ? q : a);
+    cross.setAttribute("x1", x(p.t)); cross.setAttribute("x2", x(p.t)); cross.setAttribute("visibility", "visible");
+    tip.hidden = false; tip.textContent = `${fmtTime(p.t)}: ${p.label}, ${p.tiles.toLocaleString()} tiles`;
+    const px = (x(p.t) / W) * r.width;
+    tip.style.left = Math.min(px + 8, r.width - tip.offsetWidth - 4) + "px"; tip.style.top = "4px";
+  });
+  hit.addEventListener("mouseleave", () => { cross.setAttribute("visibility", "hidden"); tip.hidden = true; });
+  return wrap;
+}
 
 function renderStatus(info) {
   const box = $("#statusBox"); box.textContent = "";
@@ -341,21 +518,47 @@ function renderStatus(info) {
     for (const [k, v] of Object.entries(info.plan)) t.append(el("tr", {}, el("td", {}, k), el("td", {}, v)));
     box.append(el("details", {}, el("summary", {}, `Plan: ${total} machines, ${Object.keys(info.plan).length} recipes`), t));
   }
-  const bb = $("#blocksBox"); bb.textContent = "";
+  const bb = $("#blocksBox");
+  const wasOpen = bb.querySelector("details") ? bb.querySelector("details").open : true;
+  bb.textContent = "";
   if (st && st.blocks && st.blocks.length) {
-    const t = el("table", {}, el("tr", {}, ...["block", "machines", "size", "state", "spent"].map((h) => el("th", {}, h))));
+    const live = !$("#runCtl").hidden;
+    const heads = ["block", "thr", "mach", "size", "first", "turns", "better ago", "spent", "state"].concat(live ? [""] : []);
+    const t = el("table", {}, el("tr", {}, ...heads.map((h) => el("th", {}, h))));
     for (const b of st.blocks) {
       const name = "block_" + b.block;
-      const tr = el("tr", { class: "pick" + ($("#layoutPick").value === name ? " sel" : ""), onclick: () => { $("#layoutPick").value = name; drawPicked(); } },
-        el("td", {}, b.block), el("td", {}, b.machines), el("td", {}, b.w ? b.w + "×" + b.h : "—"), el("td", {}, b.state || ""), el("td", {}, fmtTime(b.spent)));
+      const id = b.variant > 0 ? `${b.block}:${b.variant}` : String(b.block);
+      const label = b.variant > 0 ? `${b.block} ×${(+b.factor).toFixed(1)}` : String(b.block);
+      const cells = [
+        el("td", {}, label), el("td", { class: "num" }, b.threads || ""), el("td", { class: "num" }, b.machines),
+        el("td", {}, b.w ? b.w + "×" + b.h : "—"), el("td", { class: "muted" }, b.firstW ? b.firstW + "×" + b.firstH : ""),
+        el("td", { class: "num" }, b.turns), el("td", { class: "num", title: "since it last got smaller" }, b.sinceBetter >= 0 ? fmtClock(b.sinceBetter) : ""),
+        el("td", { class: "num" }, fmtClock(b.spent)), el("td", {}, b.state || ""),
+      ];
+      if (live) {
+        const stop = (f) => (e) => { e.stopPropagation(); f(); };
+        const focus = el("button", { class: "mini" + (b.state === "focus" ? " on" : ""), title: "Every thread on this block (again: back to normal)",
+          onclick: stop(() => sendCmd(b.state === "focus" ? "focus off" : "focus " + id)) }, "focus");
+        const skip = el("button", { class: "mini" + (b.state === "skipped" ? " on" : ""), title: "Leave this block out of the turns (again: back in)",
+          onclick: stop(() => sendCmd((b.state === "skipped" ? "unskip " : "skip ") + id)) }, b.state === "skipped" ? "unskip" : "skip");
+        cells.push(el("td", { class: "acts" }, focus, " ", skip));
+      }
+      const tr = el("tr", { class: "pick" + ($("#layoutPick").value === name ? " sel" : "") + (b.critical ? " crit" : ""),
+        title: b.critical ? "sets the factory's width or height" : "", onclick: () => { $("#layoutPick").value = name; drawPicked(); } }, ...cells);
       t.append(tr);
     }
-    bb.append(el("details", { open: true }, el("summary", {}, `Blocks (${st.blocks.length}) — click to view`), t));
+    bb.append(el("details", { open: wasOpen }, el("summary", {}, `Blocks (${st.blocks.length}) — click a row to view, * sets the factory's size`), t));
   }
   const lb = $("#logBox");
   const atEnd = lb.scrollTop + lb.clientHeight >= lb.scrollHeight - 10;
   lb.textContent = info.log || "";
   if (atEnd) lb.scrollTop = lb.scrollHeight;
+}
+/** m:ss or h:mm:ss, for tables. */
+function fmtClock(s) {
+  if (s === undefined || s === null || s < 0) return "";
+  s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`;
 }
 function fmtTime(s) {
   if (s === undefined || s === null) return "";
@@ -716,7 +919,7 @@ const viewer = (() => {
   }, { passive: false });
   cv.addEventListener("dblclick", () => { fitView(); draw(); });
   window.addEventListener("resize", () => { resize(); draw(); });
-  return { set, draw, resize: () => { resize(); draw(); } };
+  return { set, draw, resize: () => { resize(); draw(); }, fit: () => { fitView(); draw(); } };
 })();
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -731,4 +934,20 @@ const viewer = (() => {
   showTab(store.get("tab", "jobs"));
   const lastRun = store.get("run", null);
   if (lastRun) openRun(lastRun).catch(() => {});
+})();
+
+// The run panel's width: drag the divider; remembered.
+(() => {
+  const root = document.documentElement, drag = $("#sideDrag");
+  const saved = store.get("sideW");
+  if (saved) root.style.setProperty("--side-w", saved + "px");
+  drag.addEventListener("mousedown", (e) => {
+    e.preventDefault(); drag.classList.add("on"); document.body.style.userSelect = "none";
+    const move = (ev) => {
+      const w = Math.max(280, Math.min(window.innerWidth * 0.75, window.innerWidth - ev.clientX));
+      root.style.setProperty("--side-w", w + "px"); store.set("sideW", Math.round(w));
+    };
+    const up = () => { drag.classList.remove("on"); document.body.style.userSelect = ""; window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); viewer.fit(); };
+    window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+  });
 })();

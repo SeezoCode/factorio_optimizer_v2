@@ -349,7 +349,10 @@ class BlockEngine(
                     stitchRequested = false
                     val layouts = (0 until n).map { layouts(it) }
                     stitchingNow = true
+                    event("stitching a preview")
                     stitchJob = stitcher.submit {
+                        val began = System.currentTimeMillis()
+                        fun took() = "%.0f s".format((System.currentTimeMillis() - began) / 1000.0)
                         try {
                             val r = stitch(layouts)
                             lastStitch = System.currentTimeMillis()
@@ -358,8 +361,8 @@ class BlockEngine(
                                 val (rects, fw, fh) = r
                                 factory = fw to fh
                                 critical = criticalBlocks(rects, fw, fh, corridor)
-                                event("preview: ${fw} x ${fh} (${fw * fh} tiles); blocks setting its size: ${critical.sorted().map { it + 1 }}")
-                            } else event("preview: did not stitch")
+                                event("preview: ${fw} x ${fh} (${fw * fh} tiles) in ${took()}; blocks setting its size: ${critical.sorted().map { it + 1 }}")
+                            } else event("preview: did not stitch (${took()})")
                         } finally { stitchingNow = false }
                     }
                 }

@@ -77,7 +77,9 @@ fieldset .field { grid-template-columns: minmax(70px, 32%) minmax(0, 1fr); }
 #view.drag { cursor: grabbing; }
 .hint { position: absolute; left: 10px; bottom: 8px; color: var(--muted); font-size: 11px; pointer-events: none; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 12px; display: none; max-width: 320px; box-shadow: 0 2px 8px rgba(0,0,0,.15); white-space: pre-wrap; }
-.run-side { width: 360px; border-left: 1px solid var(--line); overflow: auto; padding: 10px; background: var(--panel); }
+.run-side { width: var(--side-w, 460px); min-width: 280px; max-width: 75vw; border-left: 1px solid var(--line); overflow: auto; padding: 10px; background: var(--panel); }
+.side-drag { width: 6px; margin-right: -6px; cursor: col-resize; z-index: 2; position: relative; }
+.side-drag:hover, .side-drag.on { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 .run-side table { border-collapse: collapse; width: 100%; font-size: 12px; }
 .run-side td, .run-side th { padding: 2px 4px; text-align: left; border-bottom: 1px solid var(--line); }
 .run-side th { color: var(--muted); font-weight: normal; }
@@ -94,3 +96,31 @@ details summary { cursor: pointer; color: var(--muted); margin: 8px 0 4px; }
   .field { grid-template-columns: 1fr; }
   .field .doc { grid-column: 1; }
 }
+
+/* Run controls: one row of groups under the run's header. */
+.run-ctl { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.run-ctl .grp { display: inline-flex; gap: 4px; align-items: center; }
+.run-ctl .lbl { color: var(--muted); margin-right: 2px; }
+.run-ctl b { min-width: 2.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.run-ctl input { width: 4em; }
+button.danger { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); color: var(--bad); }
+button.on { border-color: var(--accent); color: var(--accent); }
+button.mini { padding: 0 6px; font-size: 12px; }
+tr.crit td:first-child::after { content: " *"; color: var(--accent); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* History: phases, previews, a chart of the factory's size, block progress. */
+#historyBody h4 { margin: 10px 0 4px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+#historyBody table { width: 100%; }
+.hist-chart { width: 100%; height: 150px; display: block; }
+.hist-chart .grid { stroke: var(--line); stroke-width: 1; }
+.hist-chart .axis { fill: var(--muted); font-size: 10px; }
+.hist-chart .line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.hist-chart .dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.hist-chart .fail { fill: var(--panel); stroke: var(--bad); stroke-width: 2; }
+.hist-chart .hit { fill: transparent; }
+.hist-chart .cross { stroke: var(--muted); stroke-dasharray: 3 3; }
+.hist-tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 8px #0003; }
+.hist-wrap { position: relative; }
+td.muted { color: var(--muted); }
+td.acts { white-space: nowrap; }
