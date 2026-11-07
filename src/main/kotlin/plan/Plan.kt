@@ -197,7 +197,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     // Direct-insertion clusters (planner.di_consumers_per_producer): producers of an item used only inside the block,
     // at least one per that many consumer machines. Counts are the rate's, as below, before any extra for inserters.
     val extraFor = HashMap<String, Int>()
-    val duos = tuning.place.duos && config.beacons == null
+    val duos = tuning.place.duos && config.beacons == null && config.heat.mode == "off"
     tuning.planner.diConsumersPerProducer.takeIf { it > 0 || duos }?.let { per ->
         // Counts with the extra machines so far: more consumers above want more producers below (until stable).
         val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime / tuning.planner.maxUtilization - 1e-6).toInt()) }.toMutableMap()

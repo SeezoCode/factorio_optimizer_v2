@@ -122,9 +122,9 @@ data class PlaceTuning(
      * Duos only (without [clusters]): a consumer that needs more than one producer's output, and at most two, gets two
      * producers of its own and sits between them (cable, circuit, cable). Electronic circuits 30/s: 47 x 46 against
      * 53 x 52, 517 belt tiles against 919, 2 inserters per machine against 3.9. Nothing changes where no consumer
-     * needs that (science). Off with beacons (the cluster ignores beacon rows).
+     * needs that (science). Off with beacons and with heat (the cluster ignores beacon rows and heat pipe lattices).
      */
-    val duos: Boolean = false,
+    val duos: Boolean = true,
     /** Weight of the squared beacon shortfall per machine (beacons in lattice mode, see BeaconConfig). */
     @SerialName("beacon_weight") val beaconWeight: Double = 15.0,
     @SerialName("rudy_bin") val rudyBin: Int = 4,

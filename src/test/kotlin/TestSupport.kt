@@ -15,6 +15,6 @@ object TestData {
 
 /**
  * Tuning for tests whose machine counts are worked out by hand (and fixtures placed for them): machines may run
- * at full speed, no headroom (planner.max_utilization 1).
+ * at full speed, no headroom (planner.max_utilization 1), and no extra producers for duos.
  */
-val handTuning: Tuning = Tuning().let { it.copy(planner = it.planner.copy(maxUtilization = 1.0)) }
+val handTuning: Tuning = Tuning().let { it.copy(planner = it.planner.copy(maxUtilization = 1.0), place = it.place.copy(duos = false)) }
