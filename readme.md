@@ -769,6 +769,30 @@ which recipes may be used; `box`, `forbidden_tiles` and `reserved` fit the layou
 leave room for what you build by hand. Not modelled: spoilage, the stack inserter's belt stacking, quality
 outputs, and the space platform foundation itself.
 
+### Rocket silos
+
+Put `rocket-silo` in `machines` and ask for `rocket-part`: the silo (9 x 9) builds the parts from what its recipe
+takes (with Space Age: one processing unit, low-density structure and rocket fuel each) and launches a rocket every
+50 parts, so the parts leave through no port; the plan lists them under `launched`. One silo builds 1/3 part/s at
+crafting speed 1, and it builds the next rocket while one launches (seen in game: 400 parts and 8 rockets in 20
+minutes, flat out).
+
+```json
+{
+  "targets": [{"name": "rocket-part", "amount": 0.1}],
+  "machines": ["rocket-silo", "assembling-machine-3", "chemical-plant"],
+  "sources": [{"name": "iron-plate", "edge": "west"}, {"name": "copper-plate", "edge": "west"},
+              {"name": "steel-plate", "edge": "west"}, {"name": "plastic-bar", "edge": "west"},
+              {"name": "solid-fuel", "edge": "north"}, {"name": "light-oil", "edge": "north"},
+              {"name": "sulfuric-acid", "edge": "north"}]
+}
+```
+
+That job (`jobs/rocket_silo_chain.json`): 20 x 20 with 9 assemblers making the parts' ingredients; in game 0.104
+parts/s, 3 rockets in 20 minutes. The in-game check launches each finished rocket and counts the parts built. In a
+real Space Age save the silo launches when a platform asks for something (or by hand); without Space Age, satellites
+and space science are not modelled.
+
 ### Game data and mods
 
 `src/main/resources/recipes.json` is Factorio 2.1 with Space Age, written by the exporter mod in

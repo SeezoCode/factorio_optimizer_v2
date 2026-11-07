@@ -347,7 +347,7 @@ object GameConstants {
         "stone-furnace" to (2 to 2), "steel-furnace" to (2 to 2), "electric-furnace" to (3 to 3),
         "chemical-plant" to (3 to 3), "oil-refinery" to (5 to 5), "centrifuge" to (3 to 3),
         "foundry" to (5 to 5), "electromagnetic-plant" to (4 to 4), "cryogenic-plant" to (5 to 5),
-        "biochamber" to (3 to 3), "crusher" to (2 to 3), "recycler" to (2 to 4),
+        "biochamber" to (3 to 3), "crusher" to (2 to 3), "recycler" to (2 to 4), "rocket-silo" to (9 to 9),
     )
 
     /** Crafting machine footprints: the base game's, then those of loaded exporter data. */
@@ -362,7 +362,13 @@ object GameConstants {
     fun recyclerOutputTiles(r: geom.Rect, dir: geom.Dir): List<Tile> = r.sideTiles(dir, 1)
 
     /** Machines whose blueprint entity carries a recipe (furnaces and the recycler pick theirs from their input). */
-    fun takesRecipe(name: String) = machineTypes[name]?.let { it != "furnace" } ?: (!name.endsWith("furnace") && name != "recycler")
+    fun takesRecipe(name: String) = machineTypes[name]?.let { it != "furnace" && it != "rocket-silo" } ?: (!name.endsWith("furnace") && name != "recycler")
+
+    /**
+     * A rocket silo: it builds rocket parts from its ingredients and launches them (one rocket per
+     * rocket_parts_required parts), so what it makes never leaves it.
+     */
+    fun launches(name: String) = machineTypes[name] == "rocket-silo"
 
     /**
      * Prototype type of each crafting machine of the loaded data: a "furnace" picks its recipe from its input, anything
@@ -373,7 +379,7 @@ object GameConstants {
     /** Base-game crafting machines. */
     val BASE_MACHINES = listOf(
         "assembling-machine-1", "assembling-machine-2", "assembling-machine-3",
-        "stone-furnace", "steel-furnace", "electric-furnace", "chemical-plant", "oil-refinery", "centrifuge",
+        "stone-furnace", "steel-furnace", "electric-furnace", "chemical-plant", "oil-refinery", "centrifuge", "rocket-silo",
     )
 
     /** Space Age crafting machines (the crusher and recycler have no fluid connections). */
@@ -394,7 +400,7 @@ object GameConstants {
      */
     @Synchronized
     fun register(data: RootData) {
-        val machines = data.entities.values.filterIsInstance<CraftingEntity>().filter { it.hidden != true && it.type != "rocket-silo" }
+        val machines = data.entities.values.filterIsInstance<CraftingEntity>().filter { it.hidden != true }
         val extra = machines.filter { it.name !in BASE_MACHINE_SIZES }
         MACHINE_SIZES = BASE_MACHINE_SIZES + machines.associate { it.name to (it.width to it.height) }
         exportedFluids = machines.filter { it.fluidBoxes != null }.associate {

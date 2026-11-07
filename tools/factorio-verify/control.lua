@@ -203,6 +203,7 @@ local function start(params)
     if CRAFTERS[t] then
       local r = e.get_recipe()
       run.machines[#run.machines + 1] = { e = e, name = e.name, recipe = r and r.name, pos = bp_pos(run, e.position), statuses = {} }
+      if t == "rocket-silo" then run.silos = run.silos or {}; run.silos[#run.silos + 1] = { e = e, launches = 0, failed = 0 } end
     elseif t == "inserter" then
       run.inserters[#run.inserters + 1] = { e = e, held_all = true, moved = false, samples = 0 }
     elseif BELTS[t] then
@@ -320,6 +321,10 @@ local function begin_measure(run)
   run.phase = "measure"
   run.m0 = game.tick
   for _, m in pairs(run.machines) do if m.e.valid then m.start = m.e.products_finished end end
+  -- Rocket parts built so far: finished rockets times the parts each takes, plus the parts of the one being built.
+  for _, s in pairs(run.silos or {}) do
+    if s.e.valid then s.req = s.e.prototype.rocket_parts_required or 1; s.p0 = s.e.products_finished * s.req + s.e.rocket_parts end
+  end
   for _, b in pairs(run.belts) do if b.e.valid then b.key = belt_key(b.e) end end
 end
 
@@ -470,6 +475,11 @@ local function finish(run)
     end
   end
   end
+  report.silos = {}
+  for _, s in pairs(run.silos or {}) do
+    if s.e.valid then report.silos[#report.silos + 1] = { x = bp_pos(run, s.e.position).x, y = bp_pos(run, s.e.position).y, launches = s.launches, failed_launches = s.failed, status = s.e.rocket_silo_status,
+      parts_required = s.req, parts = s.e.products_finished * (s.req or 1) + s.e.rocket_parts - (s.p0 or 0) } end
+  end
   helpers.write_file(REPORT, helpers.table_to_json(report))
   run.phase = "done"
   game.speed = 1
@@ -480,6 +490,17 @@ script.on_event(defines.events.on_tick, function()
   local run = storage.run
   if not run or run.phase == "done" or run.phase == nil then return end
   flows(run, run.phase == "measure")
+  -- Rocket silos launch each finished rocket (nothing comes back without Space Age's platforms; the parts are what count).
+  if run.silos and game.tick % 30 == 0 then
+    for _, s in pairs(run.silos) do
+      local e = s.e
+      if e.valid and e.rocket_silo_status == defines.rocket_silo_status.rocket_ready then
+        if e.launch_rocket() then
+          if run.phase == "measure" then s.launches = s.launches + 1 end
+        else s.failed = s.failed + 1 end
+      end
+    end
+  end
   if run.phase == "warmup" and game.tick - run.t0 >= run.warmup then begin_measure(run) end
   if run.phase == "measure" then
     local t = game.tick - run.m0

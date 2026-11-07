@@ -283,10 +283,9 @@ class Server(private val root: File, private val port: Int) {
             putJsonArray("machines") {
                 d["entities"]?.jsonObject?.forEach { (name, e) ->
                     val o = e as? JsonObject ?: return@forEach
-                    // What a job may name (GameConstants.register): no hidden machines, no rocket silo yet.
-                    val type = (o["type"] as? JsonPrimitive)?.content
+                    // What a job may name (GameConstants.register): no hidden machines.
                     val hidden = (o["hidden"] as? JsonPrimitive)?.content == "true"
-                    if (o["crafting_categories"] != null && type != "rocket-silo" && !hidden) add(JsonPrimitive(name))
+                    if (o["crafting_categories"] != null && !hidden) add(JsonPrimitive(name))
                 }
             }
         }

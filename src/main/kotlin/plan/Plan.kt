@@ -123,6 +123,8 @@ data class ProductionPlan(
      * anything upstream of it does. Machines making targets may run flat out.
      */
     val headroom: Double = 1.0,
+    /** Items launched in rocket silos per second (rocket parts; a rocket is rocket_parts_required of them). */
+    val launched: Map<String, Double> = emptyMap(),
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -259,7 +261,9 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val productsPer = productsPerCraft(data, c, config)
         val demandPer = r.ingredients.filter { !it.isFluid }.groupBy { it.name }.mapValues { (_, ings) -> ings.sumOf { it.amount } }
             .let { if (fuel > 0) it + (fuelItem!! to (it[fuelItem] ?: 0.0) + fuel) else it }
-        val itemOut0 = productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
+        // A rocket silo launches what it builds: no product leaves it.
+        val launched = GameConstants.launches(c.machine)
+        val itemOut0 = if (launched) emptyMap() else productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
         // Products that go on one mixed belt leave through one inserter (count them as one).
         val itemOut = itemOut0.entries.groupBy { mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }
         fun inserters(n: Int) = demandPer.values.sumOf { inserterCount(x * it / n, pickRate0) } + itemOut.values.sumOf { inserterCount(x * it / n, dropRate0) }
@@ -278,7 +282,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val insCap = demandPer.values.filter { it > 1e-12 }.map { a -> inserterCount(crafts * a, pickRate0) * pickRate0 / a } +
             itemOut.values.map { a -> inserterCount(crafts * a, dropRate0) * dropRate0 / a }
         val maxCrafts = maxOf(crafts, minOf(1.0 / c.machineTime, insCap.minOrNull() ?: Double.MAX_VALUE))
-        val products = productsPer.mapValues { crafts * it.value }
+        val products = if (launched) emptyMap() else productsPer.mapValues { crafts * it.value }
         val demand = demandPer.mapValues { crafts * it.value }
         val beacons = plannedBeacons(data, config, r, c.machine)
         val beaconCrafts = if (beacons == 0) emptyList() else (0..beacons).map { k -> moduleSpeed(data, config, r, c.machine, k) / r.energy }
@@ -290,7 +294,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 w = e.width,
                 h = e.height,
                 needsFluid = fluidIngredients.firstOrNull()?.name,
-                outputRate = products.getValue(main),
+                outputRate = products[main] ?: 0.0,
                 product = main,
                 demand = demand,
                 products = products,
@@ -314,7 +318,11 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item))
     }
     val portMode = config.sinks.mode == "port"
-    lp.output.keys.sorted().filter { (portMode || isFluid(it)) && it !in mixed }.forEach { item ->
+    // Launched in rocket silos (rocket parts): counted, but nothing to carry.
+    val launched = crafts.filter { (c, _) -> GameConstants.launches(c.machine) }
+        .flatMap { (c, _) -> c.recipe.products.map { it.name } }.associateWith { lp.output[it] ?: 0.0 }.filterValues { it > 1e-12 }
+    val outputs = lp.output.filterKeys { it !in launched }
+    outputs.keys.sorted().filter { (portMode || isFluid(it)) && it !in mixed }.forEach { item ->
         val specs = config.outputs.filter { it.name == item }
         ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item), output = true)
     }
@@ -341,7 +349,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val fluid = isFluid(item)
         val producers = machines.filter { (it.products[item] ?: 0.0) > 1e-12 }
         val consumers = machines.filter { (it.demand[item] ?: it.fluidDemand[item] ?: 0.0) > 1e-12 }
-        val outTotal = lp.output[item] ?: 0.0
+        val outTotal = outputs[item] ?: 0.0
         val netTerminals = mutableListOf<Terminal>()
         val produced = producers.sumOf { it.products.getValue(item) }
 
@@ -397,7 +405,8 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         beltTier = config.beltTier,
         beltStack = config.beltStackSize,
         warnings = warnings,
-        outputs = lp.output,
+        outputs = outputs,
+        launched = launched,
         mixed = mixed,
         utilization = crafts.associate { (c, _) -> c.recipe.name to utilOf(c.recipe.name) },
         headroom = tuning.planner.maxUtilization,

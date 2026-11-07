@@ -374,6 +374,23 @@ def judge(report, ports, args):
     if not ports:
         notes.append("no ports.json: rates not compared with the plan")
 
+    # Rocket silos: parts built (each finished rocket is launched), against the plan's launched rate.
+    launched = getattr(args, "launched", {}) or {}
+    silos = report.get("silos") or []
+    if launched or silos:
+        print("\nLaunched (per second):")
+        secs = report["measured_s"]
+        for item, want in sorted(launched.items()):
+            # A silo's crafts are finished rockets; its parts are counted apart.
+            got = sum(s.get("parts", 0) for s in silos) / secs if item == "rocket-part" else \
+                sum(m["crafts"] for m in machines if m.get("recipe") == item) / secs
+            print(f"  {item:34} {'':14} {fmt(got):>9}  planned {fmt(want):>8}  {100 * got / want if want else 0:6.1f}%")
+            if want and got < want * (1 - args.tolerance):
+                fails.append(f"{item}: {fmt(got)}/s built, planned {fmt(want)}/s")
+        for s in silos:
+            print(f"  rocket silo at ({s['x']:g},{s['y']:g}): {s.get('parts', 0)} parts built, {s['launches']} rockets launched while measured"
+                  + (f", {s['failed_launches']} launches refused" if s.get("failed_launches") else ""))
+
     # A machine that crafted nothing is a fault, unless every output kept its rate: with outputs taken at the plan and
     # machine counts rounded up (headroom), a spare machine at the end of a belt can wait all the time.
     if dead_msg:
@@ -445,6 +462,10 @@ def main():
     if out:
         with open(os.path.join(out, "verify_report.json"), "w") as f:
             json.dump(report, f, indent=1)
+    args.launched = {}
+    if out and os.path.exists(os.path.join(out, "plan.json")):
+        with open(os.path.join(out, "plan.json")) as f:
+            args.launched = json.load(f).get("launched") or {}
     fails = judge(report, ports, args)
     if out:
         print(f"\nfull report: {os.path.join(out, 'verify_report.json')}")
