@@ -621,6 +621,7 @@ fun assembleFactory(
                 val name = "${what.replace(' ', '_')}_${f.layout.w}x${f.layout.h}_${System.currentTimeMillis() % 100000}"
                 viz.renderLayout(f.layout, File(d, "$name.png"),
                     viz.RenderOptions(px = 12, errors = f.errors, title = "$what ${f.layout.w}x${f.layout.h} blocks ${f.blockRects}"))
+                File(d, "$name.json").writeText(f.layout.toBlueprint(config.buildQuality()).toJson())
                 // Each error with the block it lies in (1-based; 0: the corridors).
                 File(d, "$name.txt").writeText(f.errors.joinToString("\n") { e ->
                     val b = f.blockRects.indexOfFirst { r -> e.tile.x in r.x until r.x + r.w && e.tile.y in r.y until r.y + r.h } + 1
