@@ -226,6 +226,11 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 ./optimize --ui            # then open the address it prints: http://localhost:8765, or the next free port (--port=<n> to start elsewhere)
 ```
 
+![The browser UI: a finished 2/s six-science factory with its stages, in-game check and history](docs/ui/run_history.png)
+
+*A finished factory of blocks (six science at 2/s each, 207 × 227): its stages and how long each took, what the
+in-game check measured, and the history with the factory's size at each preview.*
+
 - **Jobs**: every job file in the repository, edited in a form built from the job and tuning types themselves:
   each setting with its type, default and documentation (from the source), item and recipe names suggested from
   the game data. Unchecked settings stay out of the file (the default applies). The JSON is beside it and can be
