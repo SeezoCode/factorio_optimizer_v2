@@ -241,7 +241,7 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
   (the turns running, then the final factory), **Stop now** (keeping the best factory so far) and **Kill** (runs
   started from the UI); each block row has **focus** (every thread on it) and **skip**. These are the terminal's
   keys, sent through the run's control file.
-- **Stages** along the top of the layout: plan, first layouts, refining blocks, final factory, done, and the
+- **Stages** at the top of the side panel: plan, first layouts, refining blocks, final factory, done, and the
   in-game check, each done stage with how long it took, the current one with a running counter (and the time
   left while blocks are refined), and the run's total time.
 - **History** of a factory run (from its `factory.txt`): each phase and how long it took, the factory's size at

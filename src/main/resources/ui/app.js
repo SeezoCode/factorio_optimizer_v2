@@ -364,7 +364,7 @@ $("#stopRun").addEventListener("click", async () => {
 let historyAt = 0, historyDir = null, lastHistory = null;
 
 /**
- * The stage strip over the layout: a factory run's stages in order (from its factory.txt and live status), those
+ * The stages at the top of the side panel: a factory run's stages in order (from its factory.txt and live status), those
  * done with how long they took, the current one with a counter running every second (and the time left while
  * blocks are refined), the ones to come; then the in-game check. Seconds count from the run's start (factory.txt).
  */
@@ -378,32 +378,29 @@ function renderStages() {
   // The run's clock now: the log's last line, plus the time since it was read while the run is live.
   const now = live ? h.end + (Date.now() - lh.at) / 1000 : h.end;
   const at = new Map(h.phases.map((p) => [p.name, p.t]));
-  const reached = STAGES.filter(([k]) => at.has(k)).map(([k]) => k);
   const cur = h.phases.length ? h.phases[h.phases.length - 1].name : null;
   box.textContent = "";
+  const row = (state, label, time, sub) => {
+    const icon = { done: "✓", now: "●", bad: "✗", todo: "○" }[state];
+    box.append(el("span", { class: "ic " + state }, icon), el("span", { class: "lb " + state }, label), el("span", { class: "tm " + state }, time || ""));
+    if (sub) box.append(el("span", { class: "sub" }, sub));
+  };
   STAGES.forEach(([k, label], i) => {
-    if (i) box.append(el("span", { class: "arrow" }, "›"));
     const t0 = at.get(k);
     const next = STAGES.slice(i + 1).map(([n]) => at.get(n)).find((x) => x !== undefined);
-    if (k === "done") {
-      box.append(el("span", { class: "st" + (at.has("done") ? " done" : "") }, label));
-      return;
-    }
-    if (t0 === undefined) { box.append(el("span", { class: "st" }, label)); return; }
+    if (k === "done") { row(at.has("done") ? "done" : "todo", label, at.has("done") ? fmtClock(at.get("done")) : ""); return; }
+    if (t0 === undefined) { row("todo", label); return; }
     if (k === cur && live) {
-      let extra = "";
-      if (k === "refining" && st && st.left >= 0) extra = ` · ${fmtClock(Math.max(0, st.left - (Date.now() - lh.at) / 1000))} left`;
-      if (k === "refining" && st && st.left < 0) extra = " · no limit";
-      if (st && st.paused) extra += " · paused";
-      box.append(el("span", { class: "st now" }, label, el("span", { class: "t" }, fmtClock(now - t0) + extra)));
-    } else {
-      const end = next !== undefined ? next : h.end;
-      box.append(el("span", { class: "st" + (reached.includes(k) && (next !== undefined || !live) ? " done" : "") }, label, el("span", { class: "t" }, fmtClock(end - t0))));
-    }
+      let sub = "";
+      if (k === "refining" && st) sub = st.left >= 0 ? `${fmtClock(Math.max(0, st.left - (Date.now() - lh.at) / 1000))} left` : "no time limit";
+      if (st && st.paused) sub += (sub ? " · " : "") + "paused";
+      if (st && st.stopping) sub += (sub ? " · " : "") + "finishing";
+      row("now", label, fmtClock(now - t0), sub);
+    } else row("done", label, fmtClock((next !== undefined ? next : h.end) - t0));
   });
   // The in-game check: running, or its verdict.
   const files = info.files || [];
-  if (info.verifying) { box.append(el("span", { class: "arrow" }, "›"), el("span", { class: "st now" }, "in-game check")); }
+  if (info.verifying) row("now", "in-game check", "");
   else if (files.includes("verify_report.json")) {
     // The verdict: the verifier's own (verify.log), else every planned output at its rate in the report.
     let pass = info.verifyLog ? /\nPASS\s*$/.test(info.verifyLog) : null;
@@ -413,9 +410,9 @@ function renderStages() {
       for (const o of info.ports.outputs) if (!o.fluid) want[o.item] = (want[o.item] || 0) + +o.rate;
       pass = Object.entries(want).every(([k, v]) => (got[k] || 0) >= v * 0.99);
     }
-    box.append(el("span", { class: "arrow" }, "›"), el("span", { class: "st " + (pass === false ? "bad" : "done") }, "in-game check" + (pass === false ? ": short" : pass ? ": pass" : "")));
-  }
-  box.append(el("span", { class: "total" }, (live ? "running " : "took ") + fmtClock(now)));
+    row(pass === false ? "bad" : "done", "in-game check", pass === false ? "short" : pass ? "pass" : "");
+  } else row("todo", "in-game check");
+  box.append(el("div", { class: "total" }, el("span", {}, live ? "running" : "took"), el("b", {}, fmtClock(now))));
   box.hidden = false;
 }
 setInterval(() => { if (lastHistory && !$("#runCtl").hidden) renderStages(); }, 1000);
@@ -565,9 +562,7 @@ function renderStatus(info) {
   const kv = el("div", { class: "kv" });
   const add = (k, v) => kv.append(el("span", {}, k), el("span", {}, v));
   if (st) {
-    add("phase", st.phase || "");
-    add("elapsed", fmtTime(st.elapsed));
-    if (st.left > 0) add("left", fmtTime(st.left));
+    // Phase and times are in the stage list above.
     if (st.factoryW) add("factory", st.factoryW + " × " + st.factoryH);
     add("threads", st.threads);
   }
@@ -768,7 +763,7 @@ const viewer = (() => {
     const W = cv.clientWidth, H = cv.clientHeight;
     // Room in pixels for the port labels beside the box.
     ctx.font = "12px sans-serif";
-    const pad = { west: 8, east: 8, north: 40, south: 8 };   // the stage strip sits along the top
+    const pad = { west: 8, east: 8, north: 8, south: 8 };
     for (const p of ports) {
       const e = edgeOf(p);
       const w = ctx.measureText(portLabel(p)).width + 30;   // room for "n ×" when grouped
