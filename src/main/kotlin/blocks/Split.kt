@@ -279,6 +279,16 @@ fun linksFor(
     val k = blocks.size
     val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
     val bal = balances(plan, blocks, blockOf)
+    // Per net and block: how much more of it the block's producers could make at full speed (for slivers, below).
+    val spare = HashMap<Int, HashMap<Int, Double>>()
+    plan.nets.forEach { net ->
+        val m = HashMap<Int, Double>()
+        plan.netTerminals(net).filter { it.role == Role.PRODUCER && it.machine != null }.forEach { t ->
+            val mi = plan.machines[t.machine!!]
+            m.merge(blockOf[t.machine], t.rate * (maxOf(mi.crafts, plan.headroom * mi.maxCrafts) / mi.crafts - 1), Double::plus)
+        }
+        spare[net.id] = m
+    }
     val raw = ArrayList<Link>()
     fun pieces(r: Double) = maxOf(1, ceil(r / (cfg.linkBeltShare * beltThroughput) - 1e-9).toInt())
 
@@ -331,6 +341,22 @@ fun linksFor(
             if (r < 1e-9) return@forEach
             giveLeft[a] = giveLeft.getValue(a) - r; takeLeft[b] = takeLeft.getValue(b) - r
             flows.merge(a to b, r, Double::plus)
+        }
+        // Slivers: a flow of a few hundredths of a belt from a supplier whose output goes mostly elsewhere goes instead
+        // with the consumer's largest other supplier, if that one can make it (spare below full speed); the first
+        // supplier just makes that much less. A sliver link gets a belt of its own, and in game a hungry consumer
+        // takes from it whatever the machines feeding that belt make (block 19's 0.15/s link to block 29 took half a
+        // furnace column, and the block it was planned for starved).
+        val sliver = minOf(1.0, 0.03 * beltThroughput)
+        flows.entries.filter { (ab, r) -> r < sliver && ab.first >= 0 && ab.second >= 0 }.sortedBy { it.value }.forEach { e ->
+            val (a, b) = e.key
+            val r = flows[a to b] ?: return@forEach
+            if (flows.filterKeys { it.first == a && it.second != b }.values.sum() < r) return@forEach   // a's main output is this one
+            val s = flows.filterKeys { it.second == b && it.first != a && it.first >= 0 }
+                .filter { (sb, _) -> (spare[net.id]?.get(sb.first) ?: 0.0) >= r }.maxByOrNull { it.value }?.key?.first ?: return@forEach
+            flows.remove(a to b)
+            flows.merge(s to b, r, Double::plus)
+            spare[net.id]!![s] = spare[net.id]!!.getValue(s) - r
         }
         fun emit(a: Int, b: Int, r: Double) {
             when {
