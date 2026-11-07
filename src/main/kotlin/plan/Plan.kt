@@ -115,6 +115,8 @@ data class ProductionPlan(
      * belt's port, net and terminals; machines making them put them all on it with one inserter.
      */
     val mixed: Map<String, String> = emptyMap(),
+    /** The most of its full speed each recipe's machines are planned to run (planner.max_utilization, lower up the chain). */
+    val utilization: Map<String, Double> = emptyMap(),
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -196,11 +198,28 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     val crafts = lp.crafts.entries.sortedBy { it.key.recipe.name }
     // Direct-insertion clusters (planner.di_consumers_per_producer): producers of an item used only inside the block,
     // at least one per that many consumer machines. Counts are the rate's, as below, before any extra for inserters.
+    // Utilization per recipe: max_utilization for what makes the targets, times upstream_utilization per level further
+    // up the chain (a recipe's level is its longest way down to a target), so a supplier flat out more than covers
+    // its consumers flat out.
+    val level = HashMap<String, Int>()
+    run {
+        val makes = crafts.associate { (c, _) -> c.recipe.name to c.recipe.products.map { it.name }.toSet() }
+        val uses = crafts.associate { (c, _) -> c.recipe.name to c.recipe.ingredients.map { it.name }.toSet() }
+        crafts.forEach { (c, _) -> if (makes.getValue(c.recipe.name).any { it in lp.targets }) level[c.recipe.name] = 0 }
+        repeat(12) {
+            crafts.forEach { (c, _) ->
+                val r = c.recipe.name
+                val down = crafts.mapNotNull { (d, _) -> level[d.recipe.name]?.takeIf { makes.getValue(r).any { it in uses.getValue(d.recipe.name) } } }
+                down.maxOrNull()?.let { l -> if ((level[r] ?: -1) < minOf(l + 1, 12)) level[r] = minOf(l + 1, 12) }
+            }
+        }
+    }
+    fun utilOf(recipe: String): Double = tuning.planner.maxUtilization * Math.pow(tuning.planner.upstreamUtilization, (level[recipe] ?: 0).toDouble())
     val extraFor = HashMap<String, Int>()
     val duos = tuning.place.duos && config.beacons == null && config.heat.mode == "off"
     tuning.planner.diConsumersPerProducer.takeIf { it > 0 || duos }?.let { per ->
         // Counts with the extra machines so far: more consumers above want more producers below (until stable).
-        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime / tuning.planner.maxUtilization - 1e-6).toInt()) }.toMutableMap()
+        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime / utilOf(c.recipe.name) - 1e-6).toInt()) }.toMutableMap()
         repeat(crafts.size) { crafts.forEach { (c, _) ->
             val main = c.recipe.mainProduct?.name ?: return@forEach
             if (isFluid(main) || main in lp.targets || (lp.output[main] ?: 0.0) > 1e-9 || c.recipe.products.size > 1) return@forEach
@@ -243,7 +262,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
             maxOf(e.width, e.height) else 0
         val room = maxOf(demandPer.size + itemOut.size,
             (tuning.planner.accessShare * (2 * (e.width + e.height) - beaconSide - fluidIngredients.size - fluidProducts.size)).toInt())
-        val base = maxOf(1, ceil(x * c.machineTime / tuning.planner.maxUtilization - 1e-6).toInt())
+        val base = maxOf(1, ceil(x * c.machineTime / utilOf(c.recipe.name) - 1e-6).toInt())
         val di = maxOf(base, extraFor[r.name] ?: 0)
         if (di > base) warn("${r.name}: ${di - base} more ${c.machine} than its rate needs, for direct insertion")
         var n = di
@@ -374,5 +393,6 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         warnings = warnings,
         outputs = lp.output,
         mixed = mixed,
+        utilization = crafts.associate { (c, _) -> c.recipe.name to utilOf(c.recipe.name) },
     )
 }

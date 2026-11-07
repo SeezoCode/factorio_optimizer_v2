@@ -77,6 +77,13 @@ data class PlannerTuning(
      * production science 10% short; green science 1/s from plates made 0.92/s at 1 and 1/s at 0.97. 1: no headroom.
      */
     @SerialName("max_utilization") val maxUtilization: Double = 0.97,
+    /**
+     * Further utilization factor per level up the production chain (a recipe's level: its longest way down to a
+     * target), so suppliers flat out more than cover their consumers flat out: with equal headroom everywhere, a
+     * consumer whose own output is short runs flat out and takes more than its share of a shared input, and in a
+     * factory of blocks the spare capacity of another block cannot help. 1: the same headroom everywhere.
+     */
+    @SerialName("upstream_utilization") val upstreamUtilization: Double = 1.0,
 )
 
 @Serializable

@@ -20,7 +20,7 @@ fun rebalance(plan: ProductionPlan, blocks: List<List<Int>>, maxUtilization: Dou
     Loader.loadNativeLibraries()
     val solver = MPSolver.createSolver("GLOP") ?: return plan
     val ms = plan.machines
-    val c = ms.map { m -> solver.makeNumVar(0.25 * m.crafts, maxOf(m.crafts, maxUtilization * m.maxCrafts), "c${m.id}") }
+    val c = ms.map { m -> solver.makeNumVar(0.25 * m.crafts, maxOf(m.crafts, (plan.utilization[m.recipe] ?: maxUtilization) * m.maxCrafts), "c${m.id}") }
     ms.groupBy { it.recipe }.forEach { (r, group) ->
         val total = group.sumOf { it.crafts }
         val row = solver.makeConstraint(total, total, "r_$r")
