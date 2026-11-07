@@ -43,7 +43,7 @@ fun main(args: Array<String>) {
 
     flags["test-copy"]?.let { dir -> writeTestCopy(java.io.File(dir), flags["config"]); return }
 
-    if (flags.containsKey("ui")) { ui.Server(java.io.File("."), flags["port"]?.toInt() ?: 8765).start(); return }
+    if (flags.containsKey("ui")) { ui.Server(java.io.File(".").canonicalFile, flags["port"]?.toInt() ?: 8765).start(); return }
 
     flags["verify-kit"]?.let { dir ->
         emit.VerifyKit.write(java.io.File(dir))

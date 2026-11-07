@@ -104,7 +104,7 @@ class Server(private val root: File, private val port: Int) {
         Json.parseToJsonElement(text)   // well-formed at least
         f.parentFile.mkdirs()
         f.writeText(text)
-        send(ex, buildJsonObject { put("saved", f.relativeTo(root).path) })
+        send(ex, buildJsonObject { put("saved", f.relativeOrAbsolute()) })
     }
 
     private fun jobs(): JsonElement = buildJsonArray {
