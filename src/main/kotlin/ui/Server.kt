@@ -161,6 +161,8 @@ class Server(private val root: File, private val port: Int) {
             put("verifying", runs[d.canonicalPath + "#verify"]?.isAlive == true)
             File(d, "verify.log").takeIf { it.isFile }?.let { put("verifyLog", tail(it, 60)) }
             read("status.json")?.let { put("status", it) }
+            // A factory run rewrites status.json every few seconds; an old one means the run is gone.
+            File(d, "status.json").takeIf { it.isFile }?.let { put("statusAge", (System.currentTimeMillis() - it.lastModified()) / 1000.0) }
             read("ports.json")?.let { put("ports", it) }
             read("verify_report.json")?.let { r -> put("verify", buildJsonObject {
                 (r as? JsonObject)?.get("outputs")?.let { put("outputs", it) }

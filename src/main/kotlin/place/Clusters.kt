@@ -17,7 +17,8 @@ data class Cluster(val members: IntArray, val dx: IntArray, val dy: IntArray, va
  * producer (`sandwich`: consumer, producer, consumer in a row); a consumer of two such items sits beside both
  * producers stacked one over the other (`stack`: one consumer left, one right, each touching both producers).
  * A producer joins only when it makes all its consumers there need at full speed; machines with fluids, or of different sizes,
- * are left out (their orientation or fit is not fixed). Consumers of items from the bottom of the chain go first.
+ * are left out (their orientation or fit is not fixed). A consumer that needs two producers' output sits between
+ * them (`duo`: cable, circuit, cable). Consumers of items from the bottom of the chain go first.
  */
 fun diClusters(plan: ProductionPlan, longHanded: Boolean = false): List<Cluster> {
     val ms = plan.machines
@@ -67,7 +68,15 @@ fun diClusters(plan: ProductionPlan, longHanded: Boolean = false): List<Cluster>
             // Sandwich: the producer between two consumers of its item.
             val item = items[0]
             val p = free(item, s) ?: continue
-            if (output(p, item) + 1e-9 < (ms[c].demand[item] ?: 0.0)) continue
+            if (output(p, item) + 1e-9 < (ms[c].demand[item] ?: 0.0)) {
+                // Duo: a consumer that needs two producers sits between them (cable, circuit, cable).
+                used[p] = true
+                val p2 = free(item, s)
+                if (p2 == null || output(p, item) + output(p2, item) + 1e-9 < (ms[c].demand[item] ?: 0.0)) { used[p] = false; continue }
+                used[p2] = true; used[c] = true
+                out += Cluster(intArrayOf(p, c, p2), intArrayOf(0, s + 1, 2 * (s + 1)), IntArray(3), "duo")
+                continue
+            }
             used[p] = true; used[c] = true
             val c2 = mates(c).firstOrNull { m -> output(p, item) + 1e-9 >= (ms[c].demand[item] ?: 0.0) + (ms[m].demand[item] ?: 0.0) }
             c2?.let { used[it] = true }

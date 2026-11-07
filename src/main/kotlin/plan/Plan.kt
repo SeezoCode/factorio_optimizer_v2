@@ -201,6 +201,9 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 val perConsumer = xd / nd * d.recipe.ingredients.filter { it.name == main }.sumOf { it.amount }
                 val full = (productsPerCraft(data, c, config)[main] ?: 0.0) / c.machineTime
                 if (perConsumer > full / 2 + 1e-9 && perConsumer <= full + 1e-9) want = maxOf(want, nd)
+                // A consumer that needs more than one producer's full output (a circuit assembler needs 1.5 cable
+                // assemblers) gets two of its own, one on each side: cable, circuit, cable.
+                else if (perConsumer > full + 1e-9 && perConsumer <= 2 * full + 1e-9) want = maxOf(want, 2 * nd)
             }
             if (want > count.getValue(c.recipe.name)) { extraFor[c.recipe.name] = want; count[c.recipe.name] = want }
         } }

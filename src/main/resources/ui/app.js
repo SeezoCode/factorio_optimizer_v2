@@ -275,8 +275,9 @@ async function refreshRun(first) {
   const changed = !runInfo || runInfo.dir !== info.dir || JSON.stringify(runInfo.files) !== JSON.stringify(info.files) ||
     (info.status && runInfo.status && info.status.elapsed !== runInfo.status.elapsed && (info.files || []).includes("best_blueprint.json"));
   runInfo = info;
-  $("#stopRun").disabled = !info.running && !(info.status && !info.status.stopping && info.status.left > 0);
-  $("#runState").textContent = info.running ? "running" : (info.status && info.status.left > 0 && !info.status.stopping ? "running (started elsewhere?)" : "");
+  const alive = info.status && info.status.left > 0 && !info.status.stopping && (info.statusAge ?? 0) < 60;
+  $("#stopRun").disabled = !info.running && !alive;
+  $("#runState").textContent = info.running ? "running" : alive ? "running (started elsewhere)" : "";
   renderStatus(info);
   $("#verifyRun").disabled = info.verifying || !(info.files || []).includes("test_output_string.txt");
   $("#verifyBox").hidden = !info.verifyLog;
@@ -285,7 +286,7 @@ async function refreshRun(first) {
   if (first || changed) fillLayoutPick(info, first);
   if (first) await drawPicked();
   else if (changed && $("#layoutPick").value === "best") await drawPicked();
-  const live = info.running || info.verifying || (info.status && info.status.left > 0);
+  const live = info.running || info.verifying || alive;
   runTimer = setTimeout(() => refreshRun(false), live ? 2500 : 15000);
 }
 
@@ -550,8 +551,10 @@ const viewer = (() => {
       ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
       for (const b of blocks) {
         ctx.strokeStyle = "#c4661f"; ctx.strokeRect(ox + b.x * scale, oy + b.y * scale, b.w * scale, b.h * scale);
-        ctx.fillStyle = "#c4661f"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
-        ctx.fillText("block " + b.block, ox + b.x * scale + 3, oy + b.y * scale + 3);
+        if (b.w * scale > 60) {
+          ctx.fillStyle = "#c4661f"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+          ctx.fillText("block " + b.block, ox + b.x * scale + 3, oy + b.y * scale + 3);
+        }
       }
       ctx.setLineDash([]);
     }
