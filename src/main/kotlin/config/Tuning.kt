@@ -303,7 +303,7 @@ data class RouteTuning(
     @SerialName("endgame_time_factor") val endgameTimeFactor: Double = 2.0,
     /** A net's flow above this share of a belt is split over several belt chains. */
     @SerialName("chain_belt_share") val chainBeltShare: Double = 0.9,
-    /** A chain's flow may use up to this share of the weaving (second) underground tier's throughput. */
+    /** A chain may weave through the second underground tier while its flow (on a lane pair, each item's) fits this share of one of that tier's lanes. */
     @SerialName("weave_belt_share") val weaveBeltShare: Double = 0.98,
     /** How many tile conflicts one unrouted chain counts as when comparing routing iterations and rounds. */
     @SerialName("unrouted_penalty") val unroutedPenalty: Int = 10,

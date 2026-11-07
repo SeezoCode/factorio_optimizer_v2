@@ -1125,9 +1125,13 @@ class PathFinder(internal val p: RouteProblem) {
     private fun routeNetFrom(n: RNet, startTerm: Int, startOpts: List<Int>?): Boolean {
         stamp++
         cur = n.idx
-        // Weaving undergrounds of a slower tier only on chains whose flow fits that tier.
-        weaveOk = weave != null && ugAllowed &&
-            n.sourceRate + n.terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate } <= weave.throughput * tun.weaveBeltShare
+        // Weaving undergrounds of a slower tier only on chains whose flow fits one of its lanes (each item its own
+        // lane on a lane pair): which lane the items ride on is up to the inserters and belts upstream, so a chain
+        // that only fits the slower tier with its lanes evenly loaded overflows a lane as soon as they are not (in a
+        // factory of blocks, 40/s copper cable links through express undergrounds carried 24/16 and 26/14).
+        val chainFlow = n.sourceRate + n.terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate }
+        val laneMost = if (n.item2 != null) maxOf(n.sourceRate, n.sourceRate2) else chainFlow
+        weaveOk = weave != null && ugAllowed && laneMost <= weave.throughput / 2 * tun.weaveBeltShare
         n.terms.forEach { need[it] = termK[it] }
         paired = n.item2 != null
         surplus[0] = n.sourceRate; surplus[1] = n.sourceRate2

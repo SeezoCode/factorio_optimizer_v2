@@ -887,16 +887,25 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
          * Producers make their planned rate first, then up to full speed where a draw is still short (as in [solve]).
          * Items for which no split meets every draw are left out of the map and listed in the second value.
          */
-        fun laneDrops(): Pair<Map<Int, Double>, Set<String>> {
+        fun laneDrops(): Pair<Map<Int, Double>, Set<Int>> {
             val out = HashMap<Int, Double>()
-            val failed = HashSet<String>()
-            for (item in (draws.map { it.first } + outputs.map { it.first }).distinct()) {
-                val bs = ents.indices.filter { ents[it].kind.beltFamily && belts.items[it]?.contains(item) == true }
+            val failed = HashSet<Int>()   // producer inserters on a chain with no lane-true split
+            // Per item and belt chain: one chain without a lane-true split must not send every chain of the item
+            // to the rough split (in a factory of blocks that piled lanes full in blocks that were fine).
+            val chains = (draws.map { it.first } + outputs.map { it.first }).distinct().flatMap { item ->
+                ents.indices.filter { ents[it].kind.beltFamily && belts.items[it]?.contains(item) == true }.groupBy { comp[it] }.values.map { item to it }
+            }
+            for ((item, bs) in chains) {
                 if (bs.isEmpty()) continue
                 val at = HashMap<Int, Int>().also { m -> bs.forEachIndexed { k, b -> m[b] = k } }
                 fun laneIn(b: Int, lane: Int) = 2 + 4 * at.getValue(b) + 2 * lane
-                val mine = producers.filter { it.second == item }
-                val myIns = mine.flatMap { m -> toBelt.getValue(m).map { m to it } }.filter { (_, ins) -> dropBelt(ins)?.let { it in at } == true }
+                val myIns = producers.filter { it.second == item }.flatMap { m -> toBelt.getValue(m).map { m to it } }.filter { (_, ins) -> dropBelt(ins)?.let { it in at } == true }
+                val mine = myIns.map { it.first }.distinct()
+                // A producer also dropping on other chains gives this one its inserters' share.
+                fun share(m: Pair<Int, String>): Double {
+                    val all = toBelt.getValue(m); val here = all.filter { dropBelt(it)?.let { b -> b in at } == true }
+                    return if (here.size == all.size) 1.0 else here.sumOf { dropCap(it) } / all.sumOf { dropCap(it) }.coerceAtLeast(1e-9)
+                }
                 // Supplies: input ports (on their lane, or half on each) and harness chests' inserters.
                 val supplies = ArrayList<Triple<Int, Int, Double>>()
                 spec.sources.filter { !it.fluid && it.item == item }.forEach { src ->
@@ -923,7 +932,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                         if (c >= 0) g.edge(laneIn(b, 1) + 1, laneIn(n, c), Double.MAX_VALUE)
                     }
                 }
-                val prodEdge = mine.mapIndexed { k, m -> g.edge(0, pBase + k, beltOut.getValue(m)) }
+                val prodEdge = mine.mapIndexed { k, m -> g.edge(0, pBase + k, beltOut.getValue(m) * share(m)) }
                 val insEdge = myIns.mapIndexed { k, (m, ins) ->
                     val b = dropBelt(ins)!!
                     g.edge(iBase + k, laneIn(b, dropLane(ents[ins], b, belts)), Double.MAX_VALUE)
@@ -940,10 +949,10 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 val want = myDraws.map { it.value.second } + myOuts.map { it.value.second }
                 fun short() = sink.indices.any { g.flowOn(sink[it]) < want[it] - 1e-6 }
                 if (short()) {
-                    mine.forEachIndexed { k, m -> g.raise(prodEdge[k], (beltFull[m] ?: 0.0) - beltOut.getValue(m)) }
+                    mine.forEachIndexed { k, m -> g.raise(prodEdge[k], ((beltFull[m] ?: 0.0) - beltOut.getValue(m)) * share(m)) }
                     g.run(0, 1)
                 }
-                if (short()) { failed += item; continue }
+                if (short()) { myIns.forEach { failed += it.second }; continue }
                 myIns.forEachIndexed { k, (_, ins) -> out[ins] = g.flowOn(insEdge[k]) }
             }
             return out to failed
@@ -954,9 +963,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         // Items with a lane-true split keep it; the others (an approximation: items sharing a lane are counted apart)
         // may split any way, each inserter up to its rate and lane. If that does worse than any split for every item,
         // any split for every item.
-        val mixed = { m: Pair<Int, String>, ins: Int -> if (m.second in failed) dropCap(ins) else (lanes[ins] ?: 0.0) + 1e-9 }
+        val mixed = { _: Pair<Int, String>, ins: Int -> if (ins in failed) dropCap(ins) else (lanes[ins] ?: 0.0) + 1e-9 }
         val r = solve(mixed)
-        if (r.all { it < 1e-6 } || failed.containsAll(producers.map { it.second })) return r
+        if (r.all { it < 1e-6 } || failed.containsAll(insList.map { it.second })) return r
         val any = solve { _, ins -> dropCap(ins) }
         if (any.sum() < r.sum() - 1e-6) return any
         return solve(mixed)
