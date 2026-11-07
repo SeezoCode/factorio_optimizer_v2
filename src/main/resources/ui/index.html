@@ -71,6 +71,12 @@
         <select id="layoutPick" title="Which layout to draw"></select>
         <label class="toggle" title="Colour machines by what they did in the game (verify_report.json)"><input type="checkbox" id="showVerify" checked> in-game status</label>
         <button id="stopRun" disabled>Stop</button>
+        <span id="factoryCtl" hidden>
+          <button data-cmd="pause" title="Pause the block search">Pause</button>
+          <button data-cmd="resume" title="Resume the block search">Resume</button>
+          <button data-cmd="stitch" title="Stitch a preview factory now">Stitch now</button>
+          <button data-cmd="limit +600" title="Ten more minutes of block search">+10 min</button>
+        </span>
         <button id="verifyRun" title="Build the test copy in the real game and measure it (needs Factorio; takes minutes)">Verify in game</button>
         <button id="starveRun" title="Why machines starved in the last in-game check">Why short?</button>
         <span id="runState" class="msg"></span>

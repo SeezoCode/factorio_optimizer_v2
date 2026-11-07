@@ -69,6 +69,7 @@ class Server(private val root: File, private val port: Int) {
                 path == "/api/run" && ex.requestMethod == "GET" -> send(ex, run(q.getValue("dir")))
                 path == "/api/run" && ex.requestMethod == "POST" -> startRun(ex)
                 path == "/api/stop" -> stopRun(ex, q.getValue("dir"))
+                path == "/api/control" -> control(ex, q.getValue("dir"), q.getValue("cmd"))
                 path == "/api/verify" -> startVerify(ex, q.getValue("dir"))
                 path == "/api/starve" -> starve(ex, q.getValue("dir"))
                 path.startsWith("/api/sprite/") -> sprite(ex, path.removePrefix("/api/sprite/"))
@@ -213,6 +214,14 @@ class Server(private val root: File, private val port: Int) {
         val p = runs[d.canonicalPath]
         if (p != null && !File(d, "status.json").isFile) p.destroy()
         send(ex, buildJsonObject { put("stopping", d.relativeOrAbsolute()) })
+    }
+
+    /** A command for a running factory (its control file, one per line: pause, resume, stitch, limit +600, focus 3, ...). */
+    private fun control(ex: HttpExchange, dir: String, cmd: String) {
+        val d = inside(dir) ?: return error(ex, 403, "outside the project")
+        if (blocks.Command.parse(cmd) == null) return error(ex, 400, "unknown command: $cmd")
+        File(d, "control").appendText(cmd.trim() + "\n")
+        send(ex, buildJsonObject { put("sent", cmd) })
     }
 
     /** Builds the run's test copy in the real game (tools/factorio-verify/verify.py, with belt dumps for starve.py). */

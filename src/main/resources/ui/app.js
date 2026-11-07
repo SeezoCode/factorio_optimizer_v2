@@ -277,6 +277,7 @@ async function refreshRun(first) {
   runInfo = info;
   const alive = info.status && info.status.left > 0 && !info.status.stopping && (info.statusAge ?? 0) < 60;
   $("#stopRun").disabled = !info.running && !alive;
+  $("#factoryCtl").hidden = !alive;
   $("#runState").textContent = info.running ? "running" : alive ? "running (started elsewhere)" : "";
   renderStatus(info);
   $("#verifyRun").disabled = info.verifying || !(info.files || []).includes("test_output_string.txt");
@@ -290,6 +291,11 @@ async function refreshRun(first) {
   runTimer = setTimeout(() => refreshRun(false), live ? 2500 : 15000);
 }
 
+document.querySelectorAll("#factoryCtl button").forEach((b) => b.addEventListener("click", async () => {
+  if (!runDir) return;
+  try { await api("/api/control?dir=" + encodeURIComponent(runDir) + "&cmd=" + encodeURIComponent(b.dataset.cmd), { method: "POST" }); $("#runState").textContent = "sent: " + b.dataset.cmd; }
+  catch (e) { $("#runState").textContent = e.message; }
+}));
 $("#verifyRun").addEventListener("click", async () => {
   if (!runDir) return;
   try { await api("/api/verify?dir=" + encodeURIComponent(runDir), { method: "POST" }); $("#runState").textContent = "verifying in game…"; refreshRun(false); }
