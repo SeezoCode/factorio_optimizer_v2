@@ -15,10 +15,20 @@ import plan.Role
  * relative to its total flow). Solutions of such programs sit on vertices, so most balances come out exactly zero.
  * Returns [plan] itself if nothing changes.
  */
-fun rebalance(plan: ProductionPlan, blocks: List<List<Int>>, maxUtilization: Double = 1.0): ProductionPlan {
-    if (blocks.size < 2) return plan
+fun rebalance(plan: ProductionPlan, blocks: List<List<Int>>, maxUtilization: Double = 1.0): ProductionPlan =
+    if (blocks.size < 2) plan else rebalanceWith(plan, blocks, maxUtilization, emptyList()) ?: plan
+
+/** What one block makes of one net (made minus used, items/s) must be at least [min] and at most [max]. */
+data class BalanceBound(val net: Int, val block: Int, val min: Double = Double.NEGATIVE_INFINITY, val max: Double = Double.POSITIVE_INFINITY)
+
+/**
+ * [rebalance] with [bounds] on some blocks' balances (a sliver link handed to another supplier: that block makes
+ * that much more, the first supplier that much less). Every machine's rate, and with it what it takes in, follows.
+ * Null if the bounds cannot be met (or the solver fails).
+ */
+fun rebalanceWith(plan: ProductionPlan, blocks: List<List<Int>>, maxUtilization: Double, bounds: List<BalanceBound>): ProductionPlan? {
     Loader.loadNativeLibraries()
-    val solver = MPSolver.createSolver("GLOP") ?: return plan
+    val solver = MPSolver.createSolver("GLOP") ?: return null
     val ms = plan.machines
     val c = ms.map { m -> solver.makeNumVar(0.25 * m.crafts, maxOf(m.crafts, (plan.utilization[m.recipe] ?: maxUtilization) * m.maxCrafts), "c${m.id}") }
     ms.groupBy { it.recipe }.forEach { (r, group) ->
@@ -45,9 +55,19 @@ fun rebalance(plan: ProductionPlan, blocks: List<List<Int>>, maxUtilization: Dou
             obj.setCoefficient(t, 1.0 / maxOf(net.flow, 1e-6))
         }
     }
+    bounds.forEach { bd ->
+        val net = plan.nets[bd.net]
+        val row = solver.makeConstraint(bd.min, bd.max, "bound_${bd.net}_${bd.block}")
+        plan.netTerminals(net).forEach { t ->
+            val m = t.machine ?: return@forEach
+            if (blockOf[m] != bd.block) return@forEach
+            val sign = when (t.role) { Role.PRODUCER -> 1.0; Role.CONSUMER -> -1.0; else -> return@forEach }
+            row.setCoefficient(c[m], row.getCoefficient(c[m]) + sign * t.rate / ms[m].crafts)
+        }
+    }
     obj.setMinimization()
     val status = solver.solve()
-    if (status != MPSolver.ResultStatus.OPTIMAL) return plan
+    if (status != MPSolver.ResultStatus.OPTIMAL) return null
     val factor = DoubleArray(ms.size) { i -> c[i].solutionValue() / ms[i].crafts }
     if (factor.all { kotlin.math.abs(it - 1) < 1e-9 }) return plan
     val machines = ms.map { m ->

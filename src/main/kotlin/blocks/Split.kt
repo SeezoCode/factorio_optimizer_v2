@@ -164,9 +164,68 @@ fun splitPlan(
     reserved.forEachIndexed { i, r -> fpBlocks += reservedBlock(r, i, cfg.corridor) }
     val fp = Floorplanner(fpBlocks, fpNets, FpParams(aspect = aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = seed)).optimise()
     val geometry = BlockGeometry(fp.boxes.take(k), fp.w, fp.h, fp.touches.take(k), fp.state)
-    val links = linksFor(plan, cfg, beltThroughput, blocks, geometry, warnings)
-    val (plan2, blocks2) = wholeMachines(plan, blocks, links, warnings)
+    val proposed = ArrayList<SliverMove>()
+    var links = linksFor(plan, cfg, beltThroughput, blocks, geometry, warnings, proposed = proposed)
+    var linkPlan = plan
+    if (proposed.isNotEmpty()) {
+        val moved = sliverPlan(input, plan, blocks, blockOf, proposed, maxUtilization)
+        if (moved != null) {
+            linkPlan = moved.first
+            links = linksFor(linkPlan, cfg, beltThroughput, blocks, geometry, warnings, moves = moved.second)
+            warnings += "${moved.second.size} of ${proposed.size} sliver links handed to the consumer's main supplier"
+        }
+    }
+    val (plan2, blocks2) = wholeMachines(linkPlan, blocks, links, warnings)
+    linkMismatches(plan2, blocks2, links).forEach { warnings += "SPLIT MISMATCH $it" }
     return Split(blocks2, links, warnings, geometry, plan2, part, tradePorts)
+}
+
+/**
+ * Where a block's links disagree with what its machines make: per block and item, what leaves on links minus what
+ * arrives must equal what the block's machines make minus what they use. Empty when the split is consistent (a block
+ * that must send more than it makes can never get a valid layout).
+ */
+fun linkMismatches(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Link>): List<String> {
+    val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
+    val bal = balances(plan, blocks, blockOf)
+    val out = ArrayList<String>()
+    plan.nets.filter { !it.fluid }.forEach { net ->
+        blocks.indices.forEach { b ->
+            val sent = links.filter { it.item == net.item && !it.fluid && it.from == b }.sumOf { it.rate } -
+                links.filter { it.item == net.item && !it.fluid && it.to == b }.sumOf { it.rate }
+            val made = bal[net.id][b]
+            if (abs(sent - made) > 1e-6 + 1e-6 * abs(made)) out += "block ${b + 1} ${net.item}: links send ${"%.4f".format(sent)}/s, machines make ${"%.4f".format(made)}/s"
+        }
+    }
+    return out
+}
+
+/**
+ * The plan rebalanced so that [proposed] sliver moves hold (each move's supplier makes its rate more, the first
+ * supplier that much less), with the moves that could be kept: all if the rebalancing can meet them together, else
+ * those it can meet one at a time (largest first, a bounded number of tries). Null if none can.
+ */
+private fun sliverPlan(
+    input: ProductionPlan, plan: ProductionPlan, blocks: List<List<Int>>, blockOf: IntArray,
+    proposed: List<SliverMove>, maxUtilization: Double,
+): Pair<ProductionPlan, List<SliverMove>>? {
+    val bal = balances(plan, blocks, blockOf)
+    fun bounds(ms: List<SliverMove>): List<BalanceBound> {
+        val shift = HashMap<Pair<Int, Int>, Double>()
+        ms.forEach { m -> shift.merge(m.net to m.via, m.rate, Double::plus); shift.merge(m.net to m.from, -m.rate, Double::plus) }
+        return shift.map { (nb, d) ->
+            val (n, b) = nb
+            if (d > 0) BalanceBound(n, b, min = bal[n][b] + d - 1e-9) else BalanceBound(n, b, max = bal[n][b] + d + 1e-9)
+        }
+    }
+    rebalanceWith(input, blocks, maxUtilization, bounds(proposed))?.let { return it to proposed }
+    val kept = ArrayList<SliverMove>()
+    var best: ProductionPlan? = null
+    proposed.sortedByDescending { it.rate }.take(40).forEach { m ->
+        val p = rebalanceWith(input, blocks, maxUtilization, bounds(kept + m)) ?: return@forEach
+        kept += m; best = p
+    }
+    return best?.let { it to kept }
 }
 
 /**
@@ -272,9 +331,20 @@ fun balances(plan: ProductionPlan, blocks: List<List<Int>>, blockOf: IntArray): 
  * through the corridors that joins one port on each block trading it (and the factory edge, if it enters or leaves
  * there), so any number of blocks can make and use the same fluid. Each port faces what it connects to.
  */
+/**
+ * A sliver link ([rate] of net [net] from block [from] to block [to]) handed to [via], the consumer's main supplier:
+ * [via] makes that much more and [from] that much less. Only applied to a plan rebalanced with that move built in
+ * ([rebalanceWith]), so every block's machines make what its links say.
+ */
+data class SliverMove(val net: Int, val from: Int, val to: Int, val via: Int, val rate: Double)
+
 fun linksFor(
     plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, blocks: List<List<Int>>,
     g: BlockGeometry, warnings: MutableList<String> = ArrayList(),
+    /** Moves the plan was rebalanced for (see [SliverMove]); null: none applied. */
+    moves: List<SliverMove>? = null,
+    /** Collects the sliver moves worth rebalancing for (when [moves] is null). */
+    proposed: MutableList<SliverMove>? = null,
 ): List<Link> {
     val k = blocks.size
     val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
@@ -323,40 +393,63 @@ fun linksFor(
             return@forEach
         }
 
-        val give = ArrayList<Pair<Int, Double>>(); val take = ArrayList<Pair<Int, Double>>()
-        (0 until k).forEach { b -> val r = bal[net.id][b]; if (r > PartitionModel.EPS) give += b to r else if (r < -PartitionModel.EPS) take += b to -r }
-        if (source > 1e-9) give += EDGE to source
-        if (output > 1e-9) take += EDGE to output
         fun dist(a: Int, b: Int): Double = when {
             a == EDGE && b == EDGE -> 1e9
             a == EDGE -> edgeDist(b, inAll) - (if (directSide(b, inDirect) != null) 0.5 else 0.0)
             b == EDGE -> edgeDist(a, outAll) - (if (directSide(a, outDirect) != null) 0.5 else 0.0)
             else -> centreDistance(g.boxes[a], g.boxes[b])
         }
-        val giveLeft = give.toMap().toMutableMap(); val takeLeft = take.toMap().toMutableMap()
-        val pairs = give.flatMap { gv -> take.map { t -> gv.first to t.first } }.filter { (a, b) -> a != b }.sortedBy { (a, b) -> dist(a, b) }
-        val flows = LinkedHashMap<Pair<Int, Int>, Double>()
-        pairs.forEach { (a, b) ->
-            val r = minOf(giveLeft.getValue(a), takeLeft.getValue(b))
-            if (r < 1e-9) return@forEach
-            giveLeft[a] = giveLeft.getValue(a) - r; takeLeft[b] = takeLeft.getValue(b) - r
-            flows.merge(a to b, r, Double::plus)
+        // Suppliers and takers paired nearest first, from each block's balance of the item.
+        fun pairUp(row: DoubleArray): LinkedHashMap<Pair<Int, Int>, Double> {
+            val give = ArrayList<Pair<Int, Double>>(); val take = ArrayList<Pair<Int, Double>>()
+            (0 until k).forEach { b -> val r = row[b]; if (r > PartitionModel.EPS) give += b to r else if (r < -PartitionModel.EPS) take += b to -r }
+            if (source > 1e-9) give += EDGE to source
+            if (output > 1e-9) take += EDGE to output
+            val giveLeft = give.toMap().toMutableMap(); val takeLeft = take.toMap().toMutableMap()
+            val pairs = give.flatMap { gv -> take.map { t -> gv.first to t.first } }.filter { (a, b) -> a != b }.sortedBy { (a, b) -> dist(a, b) }
+            val flows = LinkedHashMap<Pair<Int, Int>, Double>()
+            pairs.forEach { (a, b) ->
+                val r = minOf(giveLeft.getValue(a), takeLeft.getValue(b))
+                if (r < 1e-9) return@forEach
+                giveLeft[a] = giveLeft.getValue(a) - r; takeLeft[b] = takeLeft.getValue(b) - r
+                flows.merge(a to b, r, Double::plus)
+            }
+            return flows
         }
         // Slivers: a flow of a few hundredths of a belt from a supplier whose output goes mostly elsewhere goes instead
-        // with the consumer's largest other supplier, if that one can make it (spare below full speed); the first
-        // supplier just makes that much less. A sliver link gets a belt of its own, and in game a hungry consumer
-        // takes from it whatever the machines feeding that belt make (block 19's 0.15/s link to block 29 took half a
-        // furnace column, and the block it was planned for starved).
-        val sliver = minOf(1.0, 0.03 * beltThroughput)
-        flows.entries.filter { (ab, r) -> r < sliver && ab.first >= 0 && ab.second >= 0 }.sortedBy { it.value }.forEach { e ->
-            val (a, b) = e.key
-            val r = flows[a to b] ?: return@forEach
-            if (flows.filterKeys { it.first == a && it.second != b }.values.sum() < r) return@forEach   // a's main output is this one
-            val s = flows.filterKeys { it.second == b && it.first != a && it.first >= 0 }
-                .filter { (sb, _) -> (spare[net.id]?.get(sb.first) ?: 0.0) >= r }.maxByOrNull { it.value }?.key?.first ?: return@forEach
-            flows.remove(a to b)
-            flows.merge(s to b, r, Double::plus)
-            spare[net.id]!![s] = spare[net.id]!!.getValue(s) - r
+        // with the consumer's largest other supplier, if that one can make it. A sliver link gets a belt of its own,
+        // and in game a hungry consumer takes from it whatever the machines feeding that belt make (block 19's 0.15/s
+        // link to block 29 took half a furnace column, and the block it was planned for starved). Moving a link
+        // changes what both suppliers make, so a move is only proposed here; the plan is rebalanced with it built in
+        // ([rebalanceWith]) and the links made again with [moves]. Pairing the moved plan's balances with each move
+        // undone gives the same flows, and the move then hands the sliver over.
+        val netMoves = moves.orEmpty().filter { it.net == net.id }
+        var flows = pairUp(bal[net.id])
+        if (netMoves.isNotEmpty()) {
+            val undone = bal[net.id].copyOf()
+            netMoves.forEach { m -> undone[m.via] -= m.rate; undone[m.from] += m.rate }
+            val f = pairUp(undone)
+            val fits = netMoves.groupBy { it.from to it.to }.all { (ab, ms) -> (f[ab] ?: 0.0) >= ms.sumOf { it.rate } - 1e-9 }
+            if (fits) {
+                netMoves.forEach { m ->
+                    val left = f.getValue(m.from to m.to) - m.rate
+                    if (left > 1e-9) f[m.from to m.to] = left else f.remove(m.from to m.to)
+                    f.merge(m.via to m.to, m.rate, Double::plus)
+                }
+                flows = f
+            } else warnings += "${net.item}: sliver links kept (the rebalanced plan pairs its blocks differently)"
+        } else if (proposed != null) {
+            val sliver = minOf(1.0, 0.03 * beltThroughput)
+            val spareLeft = HashMap(spare[net.id].orEmpty())
+            flows.entries.filter { (ab, r) -> r < sliver && ab.first >= 0 && ab.second >= 0 }.sortedBy { it.value }.forEach { e ->
+                val (a, b) = e.key
+                val r = e.value
+                if (flows.filterKeys { it.first == a && it.second != b }.values.sum() < r) return@forEach   // a's main output is this one
+                val s = flows.filterKeys { it.second == b && it.first != a && it.first >= 0 }
+                    .filter { (sb, _) -> (spareLeft[sb.first] ?: 0.0) >= r }.maxByOrNull { it.value }?.key?.first ?: return@forEach
+                proposed += SliverMove(net.id, a, b, s, r)
+                spareLeft[s] = spareLeft.getValue(s) - r
+            }
         }
         fun emit(a: Int, b: Int, r: Double) {
             when {

@@ -11,6 +11,7 @@ import blocks.PartitionModel
 import blocks.machineWeights
 import blocks.partitionPlan
 import blocks.rebalance
+import blocks.linkMismatches
 import blocks.splitPlan
 import config.BlocksConfig
 import geom.Dir
@@ -150,5 +151,18 @@ class FloorplanTest {
         val before = PartitionModel(plan, cfg, 30.0).ports(blockOf, blocks.size)
         val after = PartitionModel(r, cfg, 30.0).ports(blockOf, blocks.size)
         assertTrue(after <= before, "$after ports after rebalancing, $before before")
+    }
+
+    @Test
+    fun `sliver links handed to another supplier keep every block's links equal to what its machines make`() {
+        // Six science at 2/s from ore, 64 blocks: many slivers. Before, a moved sliver left the receiving block's machines
+        // at their old rates, so the block had to send more than it made and never got a valid layout.
+        val job = config.RunConfiguration.load("docs/examples/two_science_per_second.json")
+        val tun = config.Tuning.defaults().withOverrides(job.tuning)
+        val plan = buildPlan(TestData.data, job, tun)
+        val split = splitPlan(plan, job.blocks!!, 30.0, maxUtilization = tun.planner.maxUtilization)
+        assertEquals(emptyList(), linkMismatches(split.plan, split.blocks, split.links))
+        assertTrue(split.warnings.none { it.startsWith("SPLIT MISMATCH") }, split.warnings.joinToString("\n"))
+        println("slivers: " + split.warnings.filter { "sliver" in it })
     }
 }
