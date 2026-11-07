@@ -261,7 +261,7 @@ $("#refreshRuns").addEventListener("click", loadRuns);
 async function openRun(dir) {
   runDir = dir; store.set("run", dir);
   $("#runTitle").textContent = dir;
-  runInfo = null; viewer.set(null); $("#statusBox").textContent = ""; $("#starveBox").hidden = true; $("#blocksBox").textContent = ""; $("#logBox").textContent = "";
+  runInfo = null; viewer.set(null); $("#runCtl").hidden = true; $("#statusBox").textContent = ""; $("#starveBox").hidden = true; $("#blocksBox").textContent = ""; $("#logBox").textContent = "";
   delete $("#view").dataset.shown;
   loadRuns();
   await refreshRun(true);
@@ -442,7 +442,16 @@ function renderHistory(h) {
       const tr = el("tr", { class: "pick", title: r.v.map((s) => `${fmtTime(s.t)}: ${s.w} × ${s.h}`).join("\n") },
         el("td", {}, r.k), el("td", {}, `${r.a.w}×${r.a.h}`), el("td", {}, `${r.z.w}×${r.z.h}`),
         el("td", { class: "num" }, (100 * r.gain).toFixed(0) + "%"), el("td", { class: "num" }, r.n + "×"), el("td", { class: "num" }, fmtClock(r.z.t)));
-      tr.addEventListener("click", () => { const name = "block_" + r.k.split(" ")[0]; if ([...$("#layoutPick").options].some((o) => o.value === name)) { $("#layoutPick").value = name; drawPicked(); } });
+      tr.addEventListener("click", () => {
+        // "9" is block 9; "9 ×0.6" its variant with that factor (found in the live status, else by the order of the factors).
+        const [blk, f] = r.k.split(" ×");
+        let variant = 0;
+        if (f) {
+          const st = runInfo && runInfo.status && (runInfo.status.blocks || []).find((b) => b.block === +blk && Math.abs(b.factor - parseFloat(f)) < 0.051);
+          variant = st ? st.variant : 1 + [...new Set([...h.blocks.keys()].filter((k) => k.startsWith(blk + " ×")).map((k) => parseFloat(k.split(" ×")[1])))].sort((a, b) => a - b).indexOf(parseFloat(f));
+        }
+        pickLayout(blockDir(+blk, variant));
+      });
       t.append(tr);
     }
     box.append(el("h4", {}, "Blocks (hover a row for every step)"), t);
@@ -526,7 +535,7 @@ function renderStatus(info) {
     const heads = ["block", "thr", "mach", "size", "first", "turns", "better ago", "spent", "state"].concat(live ? [""] : []);
     const t = el("table", {}, el("tr", {}, ...heads.map((h) => el("th", {}, h))));
     for (const b of st.blocks) {
-      const name = "block_" + b.block;
+      const name = blockDir(b.block, b.variant);
       const id = b.variant > 0 ? `${b.block}:${b.variant}` : String(b.block);
       const label = b.variant > 0 ? `${b.block} ×${(+b.factor).toFixed(1)}` : String(b.block);
       const cells = [
@@ -544,7 +553,7 @@ function renderStatus(info) {
         cells.push(el("td", { class: "acts" }, focus, " ", skip));
       }
       const tr = el("tr", { class: "pick" + ($("#layoutPick").value === name ? " sel" : "") + (b.critical ? " crit" : ""),
-        title: b.critical ? "sets the factory's width or height" : "", onclick: () => { $("#layoutPick").value = name; drawPicked(); } }, ...cells);
+        title: b.critical ? "sets the factory's width or height" : "", onclick: () => pickLayout(name) }, ...cells);
       t.append(tr);
     }
     bb.append(el("details", { open: wasOpen }, el("summary", {}, `Blocks (${st.blocks.length}) — click a row to view, * sets the factory's size`), t));
@@ -566,12 +575,27 @@ function fmtTime(s) {
   return h ? `${h} h ${m} min` : m ? `${m} min ${x} s` : `${x} s`;
 }
 
+/** "block 4", or "block 4 ×0.6" for its first shape variant (the factor from the live status when there is one). */
+function blockLabel(name, info) {
+  const m = name.match(/^block_(\d+)(?:\/shape_(\d+))?$/);
+  if (!m) return name;
+  if (!m[2]) return "block " + m[1];
+  const st = info && info.status && (info.status.blocks || []).find((b) => b.block === +m[1] && b.variant === +m[2]);
+  return `block ${m[1]} ` + (st ? `×${(+st.factor).toFixed(1)}` : `shape ${m[2]}`);
+}
+/** The layout folder of a block row: block_N, or block_N/shape_K for a shape variant. */
+function blockDir(block, variant) { return "block_" + block + (variant > 0 ? "/shape_" + variant : ""); }
+function pickLayout(name) {
+  if (![...$("#layoutPick").options].some((o) => o.value === name)) { $("#runState").textContent = "no layout saved yet for " + name; return; }
+  $("#layoutPick").value = name; drawPicked();
+}
+
 function fillLayoutPick(info, first) {
   const sel = $("#layoutPick"); const old = sel.value; sel.textContent = "";
   const files = info.files || [];
   if (files.includes("best_blueprint.json")) sel.append(el("option", { value: "best" }, "best layout"));
   if (files.includes("test_output_string.txt")) sel.append(el("option", { value: "test" }, "test copy (with feeds)"));
-  for (const b of info.blocks || []) if (b.blueprint) sel.append(el("option", { value: b.name }, b.name.replace("_", " ")));
+  for (const b of info.blocks || []) if (b.blueprint) sel.append(el("option", { value: b.name }, blockLabel(b.name, info)));
   if (!sel.options.length) sel.append(el("option", { value: "" }, "no layout yet"));
   if (!first && [...sel.options].some((o) => o.value === old)) sel.value = old;
 }

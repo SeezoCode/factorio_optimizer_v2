@@ -184,11 +184,13 @@ class Server(private val root: File, private val port: Int) {
             put("log", log?.let { JsonPrimitive(tail(it, 200)) } ?: JsonNull)
             putJsonArray("files") { d.listFiles()?.filter { it.isFile }?.sortedBy { it.name }?.forEach { add(JsonPrimitive(it.name)) } }
             putJsonArray("blocks") {
+                // Each block, then its shape variants (blocks.shape_variants) saved in block_N/shape_K.
                 d.listFiles { f -> f.isDirectory && f.name.startsWith("block_") }?.sortedBy { it.name.removePrefix("block_").toIntOrNull() ?: 0 }?.forEach { b ->
-                    add(buildJsonObject {
-                        put("name", b.name)
-                        put("blueprint", File(b, "best_blueprint.json").isFile)
-                        put("image", File(b, "best.png").isFile)
+                    val shapes = b.listFiles { f -> f.isDirectory && f.name.startsWith("shape_") }?.sortedBy { it.name.removePrefix("shape_").toIntOrNull() ?: 0 }.orEmpty()
+                    for (dir in listOf(b) + shapes) add(buildJsonObject {
+                        put("name", if (dir == b) b.name else "${b.name}/${dir.name}")
+                        put("blueprint", File(dir, "best_blueprint.json").isFile)
+                        put("image", File(dir, "best.png").isFile)
                     })
                 }
             }
