@@ -108,6 +108,23 @@ data class ProductionPlan(
     val warnings: List<String>,
     /** Leaving the block per second: targets plus surplus by-products. */
     val outputs: Map<String, Double> = emptyMap(),
+    /** Belt stack size (Space Age belt stacking; 1 without). */
+    val beltStack: Int = 1,
+    /**
+     * Items that leave on a mixed belt (sushi), each to the name of its belt ("mixed-1"...): that name is the item of the
+     * belt's port, net and terminals; machines making them put them all on it with one inserter.
+     */
+    val mixed: Map<String, String> = emptyMap(),
+    /** The most of its full speed each recipe's machines are planned to run (planner.max_utilization, lower up the chain). */
+    val utilization: Map<String, Double> = emptyMap(),
+    /**
+     * The most of its full speed a machine making an intermediate may run to fill a belt, as the validator sees it
+     * (planner.max_utilization with planner.headroom_check, else 1): a belt that only producers flat out can fill
+     * comes up short in game as soon as anything upstream of it does. Machines making targets may run flat out.
+     */
+    val headroom: Double = 1.0,
+    /** Items launched in rocket silos per second (rocket parts; a rocket is rocket_parts_required of them). */
+    val launched: Map<String, Double> = emptyMap(),
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -121,17 +138,38 @@ data class ProductionPlan(
     fun write(path: String) = File(path).also { it.parentFile?.mkdirs() }.writeText(toJson())
 }
 
-/** Effective items/s of one inserter of [name], given hand size research and whether it picks from a belt. */
+/**
+ * Effective items/s of one inserter of [name], given hand size research and whether it picks from a belt. A bulk
+ * inserter picking from a belt also waits for its hand to fill from the items passing: one swing plus [hand] items
+ * at [BULK_PICKUP_SHARE] of the belt's throughput per cycle.
+ */
 fun inserterRate(name: String, config: RunConfiguration, fromBelt: Boolean): Double {
     val spec = GameConstants.inserter(name)
     val (normal, bulk) = GameConstants.handSizes(config.research.inserterCapacity)
     val hand = if (spec.bulk) bulk else normal
-    return spec.baseRate * hand * (if (fromBelt) config.inserters.beltPickupDerate else 1.0)
+    val rate = spec.baseRate * hand * (if (fromBelt) config.inserters.beltPickupDerate else 1.0)
+    if (!fromBelt || !spec.bulk || hand <= 1) return rate
+    val belt = runCatching { GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput }.getOrNull() ?: return rate
+    return minOf(rate, hand / (1.0 / spec.baseRate + hand / (BULK_PICKUP_SHARE * belt)))
 }
+
+/**
+ * Share of a belt's throughput a bulk inserter's hand fills at when it picks from the belt. Measured in game: one bulk
+ * inserter at hand size 12 took 13.5 iron/s from a full express belt into a beaconed gear assembler that wanted more
+ * (19.4/s with the plain belt derate): 12 / (1 / 2.31 + 12 / (0.58 x 45)).
+ */
+const val BULK_PICKUP_SHARE = 0.58
 
 /** Best rate among the allowed inserters that sit at d = 1 (long-handed only serves trick options). */
 fun bestInserterRate(config: RunConfiguration, fromBelt: Boolean): Double =
     config.inserters.allowed.maxOf { inserterRate(it, config, fromBelt) }
+
+/**
+ * Best rate of an inserter dropping onto a belt: it drops onto one lane, which holds half the belt (a bulk
+ * inserter at hand size 12 moves more than a fast belt's lane). The router's lane check keeps the same margin.
+ */
+fun beltDropRate(config: RunConfiguration): Double =
+    minOf(bestInserterRate(config, fromBelt = false), GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput / 2 * 0.98)
 
 fun inserterCount(rate: Double, perInserter: Double): Int = maxOf(1, ceil(rate / perInserter - 1e-9).toInt())
 
@@ -143,15 +181,76 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     val warnings = mutableListOf<String>()
     val warn: (String) -> Unit = { warnings += it; println("WARNING: $it") }
     val lp = solveRates(data, config, tuning.planner, warn)
-    val beltTier = GameConstants.beltTier(config.beltTier)
+    // Mixed outputs: surplus items no recipe of the plan uses leave together on one belt per group.
+    val used = lp.crafts.keys.flatMap { c -> c.recipe.ingredients.map { it.name } }.toSet()
+    val mixed = LinkedHashMap<String, String>()
+    config.mixedOutputs.forEachIndexed { k, g ->
+        g.items.forEach { item ->
+            when {
+                (lp.output[item] ?: 0.0) <= 1e-9 -> {}
+                item in lp.targets -> warn("mixed output: $item is a target; it leaves on a belt of its own")
+                item in used -> warn("mixed output: $item is also used inside the block; it leaves on a belt of its own")
+                item in lp.fluids -> warn("mixed output: $item is a fluid; it leaves through a pipe")
+                else -> mixed[item] = "mixed-${k + 1}"
+            }
+        }
+    }
+    val beltTier = GameConstants.beltTier(config.beltTier, config.beltStackSize)
     fun isFluid(name: String) = name in lp.fluids
 
     // 1. Machine instances: ceil(machine-seconds), each with an equal share of its recipe's crafts; more when one
     //    machine would need more inserters than fit around it (a foundry or electromagnetic plant is fast).
     val machines = mutableListOf<MachineInstance>()
     val pickRate0 = bestInserterRate(config, fromBelt = true)
-    val dropRate0 = bestInserterRate(config, fromBelt = false)
-    lp.crafts.entries.sortedBy { it.key.recipe.name }.forEach { (c, x) ->
+    val dropRate0 = beltDropRate(config)
+    val crafts = lp.crafts.entries.sortedBy { it.key.recipe.name }
+    // Direct-insertion clusters (planner.di_consumers_per_producer): producers of an item used only inside the block,
+    // at least one per that many consumer machines. Counts are the rate's, as below, before any extra for inserters.
+    // Utilization per recipe: max_utilization for what makes the targets, times upstream_utilization per level further
+    // up the chain (a recipe's level is its longest way down to a target), so a supplier flat out more than covers
+    // its consumers flat out.
+    val level = HashMap<String, Int>()
+    run {
+        val makes = crafts.associate { (c, _) -> c.recipe.name to c.recipe.products.map { it.name }.toSet() }
+        val uses = crafts.associate { (c, _) -> c.recipe.name to c.recipe.ingredients.map { it.name }.toSet() }
+        crafts.forEach { (c, _) -> if (makes.getValue(c.recipe.name).any { it in lp.targets }) level[c.recipe.name] = 0 }
+        repeat(12) {
+            crafts.forEach { (c, _) ->
+                val r = c.recipe.name
+                val down = crafts.mapNotNull { (d, _) -> level[d.recipe.name]?.takeIf { makes.getValue(r).any { it in uses.getValue(d.recipe.name) } } }
+                down.maxOrNull()?.let { l -> if ((level[r] ?: -1) < minOf(l + 1, 12)) level[r] = minOf(l + 1, 12) }
+            }
+        }
+    }
+    fun utilOf(recipe: String): Double = tuning.planner.maxUtilization * Math.pow(tuning.planner.upstreamUtilization, (level[recipe] ?: 0).toDouble())
+    val extraFor = HashMap<String, Int>()
+    val duos = tuning.place.duos && config.beacons == null && config.heat.mode == "off"
+    tuning.planner.diConsumersPerProducer.takeIf { it > 0 || duos }?.let { per ->
+        // Counts with the extra machines so far: more consumers above want more producers below (until stable).
+        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime / utilOf(c.recipe.name) - 1e-6).toInt()) }.toMutableMap()
+        repeat(crafts.size) { crafts.forEach { (c, _) ->
+            val main = c.recipe.mainProduct?.name ?: return@forEach
+            if (isFluid(main) || main in lp.targets || (lp.output[main] ?: 0.0) > 1e-9 || c.recipe.products.size > 1) return@forEach
+            val consumers = crafts.filter { (d, _) -> d.recipe.ingredients.any { it.name == main && !it.isFluid } }.sumOf { (d, _) -> count.getValue(d.recipe.name) }
+            var want = if (per > 0) ceil(consumers.toDouble() / per - 1e-9).toInt() else 0
+            // A producer that cannot feed two consumers (an engine for chemical science) gets one consumer to itself:
+            // shared, it would also put its spare on a belt for another, and that belt's inserter takes from the
+            // machine whenever the belt has room, starving the consumer beside it.
+            val users = crafts.filter { (d, _) -> d.recipe.ingredients.any { it.name == main && !it.isFluid } }
+            if (users.size == 1) {
+                val (d, xd) = users[0]
+                val nd = count.getValue(d.recipe.name)
+                val perConsumer = xd / nd * d.recipe.ingredients.filter { it.name == main }.sumOf { it.amount }
+                val full = (productsPerCraft(data, c, config)[main] ?: 0.0) / c.machineTime
+                if (per > 0 && perConsumer > full / 2 + 1e-9 && perConsumer <= full + 1e-9) want = maxOf(want, nd)
+                // A consumer that needs more than one producer's full output (a circuit assembler needs 1.5 cable
+                // assemblers) gets two of its own, one on each side: cable, circuit, cable.
+                else if (perConsumer > full + 1e-9 && perConsumer <= 2 * full + 1e-9) want = maxOf(want, 2 * nd)
+            }
+            if (want > count.getValue(c.recipe.name)) { extraFor[c.recipe.name] = want; count[c.recipe.name] = want }
+        } }
+    }
+    crafts.forEach { (c, x) ->
         val r = c.recipe
         val e = data.entities.getValue(c.machine)
         val fluidIngredients = r.ingredients.filter { it.isFluid }
@@ -162,19 +261,28 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val productsPer = productsPerCraft(data, c, config)
         val demandPer = r.ingredients.filter { !it.isFluid }.groupBy { it.name }.mapValues { (_, ings) -> ings.sumOf { it.amount } }
             .let { if (fuel > 0) it + (fuelItem!! to (it[fuelItem] ?: 0.0) + fuel) else it }
-        val itemOut = productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
+        // A rocket silo launches what it builds: no product leaves it.
+        val launched = GameConstants.launches(c.machine)
+        val itemOut0 = if (launched) emptyMap() else productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
+        // Products that go on one mixed belt leave through one inserter (count them as one).
+        val itemOut = itemOut0.entries.groupBy { mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }
         fun inserters(n: Int) = demandPer.values.sumOf { inserterCount(x * it / n, pickRate0) } + itemOut.values.sumOf { inserterCount(x * it / n, dropRate0) }
+        // A beaconed machine in the lattice has one side against its beacon row: no belt-fed inserter goes there.
+        val beaconSide = if (tuning.planner.beaconSide && config.beacons?.mode == "lattice" && plannedBeacons(data, config, r, c.machine) > 0)
+            maxOf(e.width, e.height) else 0
         val room = maxOf(demandPer.size + itemOut.size,
-            (tuning.planner.accessShare * (2 * (e.width + e.height) - fluidIngredients.size - fluidProducts.size)).toInt())
-        val base = maxOf(1, ceil(x * c.machineTime - 1e-6).toInt())
-        var n = base
+            (tuning.planner.accessShare * (2 * (e.width + e.height) - beaconSide - fluidIngredients.size - fluidProducts.size)).toInt())
+        val base = maxOf(1, ceil(x * c.machineTime / utilOf(c.recipe.name) - 1e-6).toInt())
+        val di = maxOf(base, extraFor[r.name] ?: 0)
+        if (di > base) warn("${r.name}: ${di - base} more ${c.machine} than its rate needs, for direct insertion")
+        var n = di
         while (inserters(n) > room && n < base * 20) n++
-        if (n > base) warn("${r.name}: ${n - base} more ${c.machine} than its rate needs, so each one's inserters fit around it")
+        if (n > di) warn("${r.name}: ${n - di} more ${c.machine} than its rate needs, so each one's inserters fit around it")
         val crafts = x / n
         val insCap = demandPer.values.filter { it > 1e-12 }.map { a -> inserterCount(crafts * a, pickRate0) * pickRate0 / a } +
             itemOut.values.map { a -> inserterCount(crafts * a, dropRate0) * dropRate0 / a }
         val maxCrafts = maxOf(crafts, minOf(1.0 / c.machineTime, insCap.minOrNull() ?: Double.MAX_VALUE))
-        val products = productsPer.mapValues { crafts * it.value }
+        val products = if (launched) emptyMap() else productsPer.mapValues { crafts * it.value }
         val demand = demandPer.mapValues { crafts * it.value }
         val beacons = plannedBeacons(data, config, r, c.machine)
         val beaconCrafts = if (beacons == 0) emptyList() else (0..beacons).map { k -> moduleSpeed(data, config, r, c.machine, k) / r.energy }
@@ -186,7 +294,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 w = e.width,
                 h = e.height,
                 needsFluid = fluidIngredients.firstOrNull()?.name,
-                outputRate = products.getValue(main),
+                outputRate = products[main] ?: 0.0,
                 product = main,
                 demand = demand,
                 products = products,
@@ -210,9 +318,17 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item))
     }
     val portMode = config.sinks.mode == "port"
-    lp.output.keys.sorted().filter { portMode || isFluid(it) }.forEach { item ->
+    // Launched in rocket silos (rocket parts): counted, but nothing to carry.
+    val launched = crafts.filter { (c, _) -> GameConstants.launches(c.machine) }
+        .flatMap { (c, _) -> c.recipe.products.map { it.name } }.associateWith { lp.output[it] ?: 0.0 }.filterValues { it > 1e-12 }
+    val outputs = lp.output.filterKeys { it !in launched }
+    outputs.keys.sorted().filter { (portMode || isFluid(it)) && it !in mixed }.forEach { item ->
         val specs = config.outputs.filter { it.name == item }
         ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item), output = true)
+    }
+    mixed.values.distinct().forEach { name ->
+        val k = name.removePrefix("mixed-").toInt() - 1
+        ports += Port(ports.size, name, listOf(ConfigSource(name, edge = config.mixedOutputs[k].edge)), output = true)
     }
     config.sources.map { it.name }.distinct().filter { it !in lp.supply }.forEach {
         warn("source '$it' is configured but not an input of this job")
@@ -221,18 +337,19 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     // 3. Terminals and nets per item and fluid.
     val terminals = mutableListOf<Terminal>()
     val nets = mutableListOf<Net>()
-    val dropRate = bestInserterRate(config, fromBelt = false)
+    val dropRate = beltDropRate(config)
     val pickRate = bestInserterRate(config, fromBelt = true)
 
     fun addTerminal(role: Role, item: String, rate: Double, k: Int, machine: Int? = null, port: Int? = null) =
         Terminal(terminals.size, role, item, rate, k, machine, port, isFluid(item)).also { terminals += it }
 
     val items = (machines.flatMap { it.products.keys } + machines.flatMap { it.demand.keys + it.fluidDemand.keys } + lp.supply.keys).distinct()
+        .filter { it !in mixed }
     items.forEach { item ->
         val fluid = isFluid(item)
         val producers = machines.filter { (it.products[item] ?: 0.0) > 1e-12 }
         val consumers = machines.filter { (it.demand[item] ?: it.fluidDemand[item] ?: 0.0) > 1e-12 }
-        val outTotal = lp.output[item] ?: 0.0
+        val outTotal = outputs[item] ?: 0.0
         val netTerminals = mutableListOf<Terminal>()
         val produced = producers.sumOf { it.products.getValue(item) }
 
@@ -264,6 +381,19 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         }
     }
 
+    // Each mixed belt: every machine making some of its items puts them all on it; it ends at its port.
+    mixed.values.distinct().forEach { name ->
+        val netTerminals = mutableListOf<Terminal>()
+        machines.forEach { m ->
+            val made = m.products.filterKeys { mixed[it] == name }.values.sum()
+            if (made > 1e-9) netTerminals += addTerminal(Role.PRODUCER, name, made, inserterCount(made, dropRate), machine = m.id)
+        }
+        val total = mixed.filterValues { it == name }.keys.sumOf { lp.output[it] ?: 0.0 }
+        netTerminals += addTerminal(Role.OUTPUT, name, total, 1, port = ports.first { it.item == name }.id)
+        val belts = maxOf(1, ceil(total / (tuning.net.beltUtilisation * beltTier.throughput) - 1e-9).toInt())
+        nets += Net(nets.size, name, total, netTerminals.map { it.id }, belts)
+    }
+
     return ProductionPlan(
         machines = machines,
         ports = ports,
@@ -273,7 +403,12 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         fluidRates = lp.supply.filterKeys { isFluid(it) },
         recipeRates = lp.crafts.entries.associate { (c, x) -> c.recipe.name to x * (c.recipe.mainProduct?.expectedAmount ?: 1.0) },
         beltTier = config.beltTier,
+        beltStack = config.beltStackSize,
         warnings = warnings,
-        outputs = lp.output,
+        outputs = outputs,
+        launched = launched,
+        mixed = mixed,
+        utilization = crafts.associate { (c, _) -> c.recipe.name to utilOf(c.recipe.name) },
+        headroom = if (tuning.planner.headroomCheck) tuning.planner.maxUtilization else 1.0,
     )
 }

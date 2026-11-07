@@ -1,0 +1,10 @@
+{
+  "targets": [{ "name": "cryogenic-science-pack", "amount": 0.5 }],
+  "machines": ["cryogenic-plant", "assembling-machine-3", "chemical-plant"],
+  "raw_resources": ["ice", "lithium-plate", "fluoroketone-cold"],
+  "sources": [{ "name": "ice", "edge": "west" }, { "name": "lithium-plate", "edge": "west" }, { "name": "fluoroketone-cold", "edge": "west" }],
+  "outputs": [{ "name": "cryogenic-science-pack", "edge": "east" }, { "name": "fluoroketone-hot", "edge": "east" }],
+  "heat": { "mode": "pipes", "lattice": 7 },
+  "blocks": { "max_machines": 3, "size_by": "machines", "compact_s": 60 },
+  "search": { "time_budget_s": 400, "threads": 2, "verbose": false }
+}

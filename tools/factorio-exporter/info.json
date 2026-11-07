@@ -1,0 +1,9 @@
+{
+  "name": "factorio-optimizer-exporter",
+  "version": "0.1.0",
+  "title": "Factorio optimizer data exporter",
+  "author": "Filip Hostinský",
+  "factorio_version": "2.1",
+  "dependencies": ["base >= 2.1.0"],
+  "description": "Writes script-output/factorio-optimizer-data.json for factorio_optimizer: recipes, items, fluids, quality, crafting machines with their fluid boxes, and belts, inserters, poles and pipes, for the base game and any mods loaded with it. It runs by itself a moment after a game starts, or with the console command /export_optimizer_data."
+}

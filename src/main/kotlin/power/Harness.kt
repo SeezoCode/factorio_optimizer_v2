@@ -1,5 +1,7 @@
 package power
 
+import kotlin.math.abs
+
 import config.RunConfiguration
 import data.GameConstants
 import geom.Dir
@@ -12,6 +14,27 @@ import validate.OutputSpec
 import validate.SourceSpec
 
 data class Harness(val entities: List<PlacedEntity>, val tiles: Set<Tile>, val warnings: List<String>)
+
+private val PIPE_KINDS = setOf(Kind.PIPE, Kind.PIPE_UG, Kind.INFINITY_PIPE)
+
+/**
+ * Sides of a fluid port tile holding [port] where a feed pipe connects, best first, out of the [outward] ones: a
+ * pipe-to-ground only on its open side (on a corner the first outward side may be its closed one), a plain pipe on
+ * any of them.
+ */
+internal fun fluidSides(port: PlacedEntity?, outward: List<Dir>): List<Dir> =
+    if (port?.kind == Kind.PIPE_UG) outward.filter { it == port.dir } else outward
+
+/**
+ * Sides of an item input tile holding [port] a feed can come from, best first, out of the [outward] ones: from
+ * behind first (a corner belt fed from its side gets one lane only), then from the sides for a plain belt, never
+ * head-on. Undergrounds and splitters only take items from behind.
+ */
+internal fun beltFeedSides(port: PlacedEntity?, outward: List<Dir>): List<Dir> = when {
+    port == null -> outward
+    port.kind == Kind.BELT -> outward.filter { it == port.dir.opposite } + outward.filter { it != port.dir && it != port.dir.opposite }
+    else -> outward.filter { it == port.dir.opposite }
+}
 
 /**
  * H1 (test mode): feed every source belt from outside the box with a straight feeder belt whose sides
@@ -38,7 +61,7 @@ fun buildHarness(
 
     fun fluidPort(at: Tile, fluid: String, drain: Boolean) {
         // A fluid port gets an infinity pipe just outside the box, next to its pipe.
-        val o = Dir.entries.firstOrNull { d -> !inBox(at + d) && free(at + d) }
+        val o = fluidSides(byTile[at], Dir.entries.filter { d -> !inBox(at + d) }).firstOrNull { d -> free(at + d) }
         if (o == null) { warnings += "no room for a fluid harness at $at ($fluid)"; return }
         val t = at + o
         out += PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, t.x, t.y, fluid = fluid, drain = drain)
@@ -54,7 +77,7 @@ fun buildHarness(
         // Outward direction: off the box, and not the way the first belt faces (it cannot take items head-on);
         // a laned belt must be fed straight from behind so its lanes stay as they are.
         val dirs = if (laned && first != null) listOf(first.dir.opposite).filter { !inBox(tile + it) }
-            else Dir.entries.filter { d -> !inBox(tile + d) && first?.dir != d }
+            else beltFeedSides(first, Dir.entries.filter { d -> !inBox(tile + d) })
         val o = dirs.firstOrNull { d -> free(tile + d) }
         if (o == null) { warnings += "no room for a harness at $tile (${group.map { it.item }})"; return@forEach }
         // Feeder heading o.opposite: inserters on its o.ccw side drop on the left lane, on o.cw the right lane.
@@ -140,16 +163,35 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
         Dir.W.takeIf { t.x <= 0 }, Dir.E.takeIf { t.x >= w - 1 }, Dir.N.takeIf { t.y <= 0 }, Dir.S.takeIf { t.y >= h - 1 },
     ).filter { !inBox(t + it) }
 
-    sources.filter { it.fluid }.forEach { s ->
-        val d = outward(s.tile).firstOrNull { free(s.tile + it) }
-        if (d == null) warnings += "no room to feed ${s.item} at ${s.tile}"
-        else (s.tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = s.item)) }
+    /** An infinity pipe of [fluid] could go on [t]: free, and touching no pipe of another fluid (but [except]). */
+    fun pipeFits(t: Tile, fluid: String, except: Tile): Boolean =
+        free(t) && Dir.entries.all { n -> (t + n == except) || byTile[t + n]?.let { it.kind !in PIPE_KINDS || it.fluid == fluid } ?: true } &&
+            out.none { it.kind in PIPE_KINDS && it.fluid != fluid && it.tile.manhattan(t) == 1 && (it.kind != Kind.PIPE_UG || it.tile + it.dir == t) }
+    // An infinity pipe next to a fluid port, on a side the port's pipe connects to, touching no pipe of another fluid.
+    // Where it would (two fluid ports side by side), a pipe-to-ground pair carries the feed out first: it touches
+    // nothing on its way, and the infinity pipe at its far end is clear of the neighbour's feed.
+    fun fluidFeed(tile: Tile, fluid: String, drain: Boolean): Boolean {
+        val sides = fluidSides(byTile[tile], outward(tile))
+        sides.firstOrNull { d -> pipeFits(tile + d, fluid, tile) }?.let { d ->
+            (tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = fluid, drain = drain)) }
+            return true
+        }
+        for (d in sides) {
+            val near = tile + d
+            if (!free(near)) continue
+            for (k in 2..GameConstants.PIPE_TO_GROUND_GAP + 1) {
+                val far = tile.step(d, k); val end = tile.step(d, k + 1)
+                if (!free(far) || !pipeFits(end, fluid, far)) continue
+                take(PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, near.x, near.y, d.opposite, fluid = fluid))
+                take(PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, far.x, far.y, d, fluid = fluid))
+                take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, end.x, end.y, fluid = fluid, drain = drain))
+                return true
+            }
+        }
+        return false
     }
-    outputs.filter { it.fluid }.forEach { o ->
-        val d = outward(o.tile).firstOrNull { free(o.tile + it) }
-        if (d == null) warnings += "no room to drain ${o.item} at ${o.tile}"
-        else (o.tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = o.item, drain = true)) }
-    }
+    sources.filter { it.fluid }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
+    outputs.filter { it.fluid }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
     // A loader on the two tiles out from the port, the chest on the third.
     fun loaderAt(port: Tile, d: Dir, into: Boolean): PlacedEntity? {
         val a = port + d; val b = port.step(d, 2); val c = port.step(d, 3)
@@ -162,9 +204,7 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     val laned = ArrayList<SourceSpec>()
     sources.filter { !it.fluid }.groupBy { it.tile }.forEach { (tile, group) ->
         if (group.map { it.item }.distinct().size > 1 || group.any { it.lane >= 0 }) { laned += group; return@forEach }
-        val first = byTile[tile]
-        // Not from the side the port belt heads to (it cannot take items head-on).
-        val d = outward(tile).filter { first?.dir != it }.firstOrNull { loaderAt(tile, it, true) != null }
+        val d = beltFeedSides(byTile[tile], outward(tile)).firstOrNull { loaderAt(tile, it, true) != null }
         if (d == null) { warnings += "no room to feed ${group[0].item} at $tile"; return@forEach }
         take(loaderAt(tile, d, true)!!)
         tile.step(d, 3).let { take(PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, it.x, it.y, item = group[0].item)) }
@@ -177,8 +217,32 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     }
     if (laned.isNotEmpty()) {
         val hz = buildHarness(laned, layout.entities + out, w, h, config)
-        out += hz.entities
+        hz.entities.forEach { take(it) }
         warnings += hz.warnings
     }
-    return TestCopy(layout.copy(entities = layout.entities + out, label = layout.label + " (test feeds)"), warnings)
+    // The feeders' inserters stand outside the box, beyond the factory's poles (loaders need no power, inserters
+    // do): each one out of reach gets a pole beside it, wired to the nearest pole within reach.
+    val poleName = GameConstants.pole(config.power.pole).takeIf { it.size == 1 }?.name ?: "medium-electric-pole"
+    val spec = GameConstants.pole(poleName)
+    val wires = ArrayList(layout.wires)
+    fun all() = layout.entities + out
+    fun poles() = all().withIndex().filter { (_, e) -> e.kind == Kind.POLE }
+    fun covers(p: PlacedEntity, t: Tile): Boolean {
+        val half = GameConstants.pole(p.name).supplyHalf
+        return abs(t.x + 0.5 - (p.x + p.w / 2.0)) <= half && abs(t.y + 0.5 - (p.y + p.h / 2.0)) <= half
+    }
+    out.filter { it.kind == Kind.INSERTER }.forEach { ins ->
+        if (poles().any { (_, p) -> covers(p, ins.tile) }) return@forEach
+        val spot = (1..3).asSequence().flatMap { r -> (-r..r).asSequence().flatMap { dy -> (-r..r).asSequence().map { dx -> Tile(ins.tile.x + dx, ins.tile.y + dy) } } }
+            .firstOrNull { free(it) } ?: run { warnings += "no room for a pole by the feeder at ${ins.tile}"; return@forEach }
+        val near = poles().minByOrNull { (_, p) -> p.tile.manhattan(spot) }
+        take(PlacedEntity(poleName, Kind.POLE, spot.x, spot.y))
+        val idx = layout.entities.size + out.size - 1
+        near?.let { (i, p) ->
+            val reach = minOf(spec.wireReach, GameConstants.pole(p.name).wireReach)
+            val dx = spot.x + 0.5 - (p.x + p.w / 2.0); val dy = spot.y + 0.5 - (p.y + p.h / 2.0)
+            if (kotlin.math.sqrt(dx * dx + dy * dy) <= reach) wires += i to idx
+        }
+    }
+    return TestCopy(layout.copy(entities = layout.entities + out, wires = wires, label = layout.label + " (test feeds)"), warnings)
 }

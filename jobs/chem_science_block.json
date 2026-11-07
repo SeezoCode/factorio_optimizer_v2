@@ -1,0 +1,19 @@
+{
+  "targets": [ { "name": "chemical-science-pack", "amount": 0.5 } ],
+  "machines": ["assembling-machine-3"],
+  "belt_tier": "fast",
+  "weave_tier": "none",
+  "lane_sharing": true,
+  "research": { "inserter_capacity": 4 },
+  "inserters": { "allowed": ["inserter", "long-handed-inserter", "fast-inserter"], "belt_pickup_derate": 0.7 },
+  "sources": [
+    { "name": "iron-plate", "edge": "west" },
+    { "name": "steel-plate", "edge": "west" },
+    { "name": "copper-plate", "edge": "west" },
+    { "name": "plastic-bar", "edge": "west" },
+    { "name": "electronic-circuit", "edge": "west" },
+    { "name": "sulfur", "edge": "west" }
+  ],
+  "outputs": [ { "name": "chemical-science-pack", "edge": "east" } ],
+  "search": { "time_budget_s": 180, "seeds_per_size": 10, "threads": 10, "seed": 7, "verbose": false }
+}

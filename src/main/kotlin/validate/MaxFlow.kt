@@ -19,6 +19,9 @@ class MaxFlow(private val n: Int) {
         return id
     }
 
+    /** Adds [extra] capacity to edge [id]; a later [run] pushes more flow over what is there. */
+    fun raise(id: Int, extra: Double) { cap[id] = cap[id] + extra }
+
     /** Flow pushed through edge [id] after [run]. */
     fun flowOn(id: Int): Double = cap[id xor 1]
 

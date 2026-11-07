@@ -1,0 +1,15 @@
+{
+ "targets": [{"name": "rocket-part", "amount": 0.1}],
+ "machines": ["rocket-silo", "assembling-machine-3", "chemical-plant"],
+ "belt_tier": "fast",
+ "sources": [
+  {"name": "iron-plate", "edge": "west"},
+  {"name": "copper-plate", "edge": "west"},
+  {"name": "steel-plate", "edge": "west"},
+  {"name": "plastic-bar", "edge": "west"},
+  {"name": "solid-fuel", "edge": "north"},
+  {"name": "light-oil", "edge": "north"},
+  {"name": "sulfuric-acid", "edge": "north"}
+ ],
+ "search": {"time_budget_s": 400, "seeds_per_size": 4, "threads": 8, "seed": 2026, "verbose": false}
+}

@@ -60,6 +60,8 @@ class Factory(
     val sources: List<SourceSpec>, val outputs: List<OutputSpec>, val notes: List<String>,
     /** Where each block's box ended up, its layout as placed there (turned) and its turn. */
     val blockRects: List<Rect> = emptyList(), val blockLayouts: List<TrialResult> = emptyList(), val blockRot: IntArray = IntArray(0),
+    /** Aquilo: the heat pipe tiles where heat must be brought in. */
+    val heatPorts: List<Tile> = emptyList(),
 ) {
     val success: Boolean get() = errors.isEmpty()
 }
@@ -105,22 +107,26 @@ fun runFactory(
         synchronized(sayLock) { if (view?.live != true) println(line); logFile.appendText(line + "\n") }
     }
     fun left() = (deadline - System.currentTimeMillis()) / 1000.0
-    val tier = GameConstants.beltTier(config.beltTier)
+    val tier = GameConstants.beltTier(config.beltTier, config.beltStackSize)
     fun recipes(p: ProductionPlan) = recipeCounts(p)
     val saved = if (resume) loadSplit(out) else null
     if (resume) say(when {
         saved == null -> "resume: nothing saved in $out; starting afresh"
-        recipes(saved.plan) != recipes(input) -> "resume: the saved split is of another plan; starting afresh"
+        !splitFits(saved.plan, input) -> "resume: the saved split is of another plan; starting afresh"
         else -> "resume: split of ${saved.blocks.size} blocks from $out/resume"
     })
-    var split = saved?.takeIf { recipes(it.plan) == recipes(input) }
-        ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved).also { saveSplit(out, config, it) }
+    // A saved split keeps its machines and links; how strictly blocks are validated comes from today's tuning.
+    var split = saved?.takeIf { splitFits(it.plan, input) }
+        ?.let { Split(it.blocks, it.links, it.warnings, it.geometry, it.plan.copy(headroom = input.headroom), it.partition, it.ports) }
+        ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved,
+            pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines, cfg.maxMachines / 2, cfg.templateColumns) else emptyMap(),
+            maxUtilization = tuning.planner.maxUtilization).also { saveSplit(out, config, it) }
     // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
     val plan = split.plan
     plan.write(File(out, "plan_rebalanced.json").path)
     split.warnings.forEach { say("WARNING: $it") }
     sayPlan(split, plan, ::say)
-    var bps = split.blocks.indices.map { blockPlan(plan, split, it, tuning) }
+    var bps = split.blocks.indices.map { blockPlan(plan, split, it, tuning, cfg.sharedOutputs) }
     val later = (if (cfg.repack) cfg.repackShare else 0.0) + (if (cfg.merge) cfg.mergeShare else 0.0)
     fun blockConfig(budget: Double, aspect: Double, startSize: Int? = null) = config.copy(
         blocks = null, testMode = false, reserved = emptyList(), forbiddenTiles = emptyList(),
@@ -128,9 +134,11 @@ fun runFactory(
         fluids = config.fluids.copy(surplusOnly = emptyMap()),
         box = config.box.copy(aspect = aspect, startSize = startSize, maxSize = null, fixedHeight = null, fixedWidth = null),
         search = config.search.copy(timeBudgetS = budget),
+        // Aquilo: a block takes heat from any side; the factory's heat network joins its pipes (see finishFactory).
+        heat = config.heat.copy(edge = "any"),
     )
 
-    val weights = machineWeights(plan, cfg)
+    val weights = machineWeights(plan, cfg, tier.throughput)
     val blockSize = BlockSize.of(plan, weights, cfg)
     fun weightOf(ms: List<Int>) = ms.sumOf { weights[it] }
     fun effort(b: Int) = weightOf(split.blocks[b]) + 0.5 * split.links.count { it.from == b || it.to == b }
@@ -165,8 +173,20 @@ fun runFactory(
 
     // 1. Blocks in turns (see Engine.kt): a first layout each and a preview factory, then smaller boxes, the blocks
     //    that set the factory's size first, until the time for blocks is up or the run is stopped.
-    val loaded = split.blocks.indices.map { if (resume) loadBlock(out, it) else emptyList() }
-    loaded.forEachIndexed { b, l -> if (l.isNotEmpty()) say("block ${b + 1}: ${l[0].w} x ${l[0].h}, resumed (${l.size} layout(s)); refining it") }
+    // A saved layout that cannot be stitched (one an older version made, see [unstitchable]) is left out; its slot
+    // stays empty so the others keep their shape variants, and an empty one is searched afresh.
+    val loaded: List<List<TrialResult?>> = split.blocks.indices.map { b ->
+        if (!resume) return@map emptyList()
+        loadBlock(out, b).mapIndexed { i, r ->
+            val why = unstitchable(bps[b], r) ?: return@mapIndexed r
+            say("block ${b + 1}: resumed layout ${i + 1} (${r.w} x ${r.h}) dropped: $why")
+            null
+        }
+    }
+    loaded.forEachIndexed { b, l ->
+        val first = l.firstOrNull() ?: return@forEachIndexed
+        say("block ${b + 1}: ${first.w} x ${first.h}, resumed (${l.count { it != null }} layout(s)); refining it")
+    }
     bps.forEach { bp ->
         val b = bp.index
         bp.plan.write(File(out, "block_${b + 1}/plan.json").path)
@@ -182,6 +202,19 @@ fun runFactory(
     val jobs = bps.map { Job(it.index, 0, 1.0) } +
         bps.flatMap { bp -> cfg.shapeVariants.mapIndexed { i, f -> Job(bp.index, i + 1, f) } }
     fun baseAspect(b: Int) = loaded[b].firstOrNull()?.let { it.w.toDouble() / it.h } ?: split.geometry.boxes[b].let { it.w.toDouble() / it.h }
+    // Ready-made layouts for simple blocks (a column of furnaces...), offered next to whatever the search finds.
+    // (Blocks in parallel: a wide column's header search takes a second or two.)
+    val templatePool = java.util.concurrent.Executors.newFixedThreadPool(config.search.threads.coerceAtLeast(1))
+    val templates = try {
+        bps.map { bp ->
+            templatePool.submit(java.util.concurrent.Callable {
+                if (!cfg.templates) emptyList() else runCatching {
+                    Templates.layouts(data, blockConfig(1e7, baseAspect(bp.index)), bp.plan)
+                }.getOrElse { e -> say("block ${bp.index + 1}: template failed with $e"); emptyList() }
+                    .also { ts -> if (ts.isNotEmpty()) say("block ${bp.index + 1}: template ${ts.joinToString(", ") { "${it.w} x ${it.h}" }} (${ts[0].notes.firstOrNull() ?: ""})") }
+            })
+        }.map { it.get() }
+    } finally { templatePool.shutdown() }
     val engine = BlockEngine(
         bps = bps,
         jobs = jobs,
@@ -207,6 +240,8 @@ fun runFactory(
             r?.first?.takeIf { it.success }?.let { f -> Triple(f.blockRects, f.layout.w, f.layout.h) }
         },
         corridor = cfg.corridor,
+        extras = templates,
+        extraShare = cfg.templateShare,
     )
     engine.onBetter = { b, ls -> saveBlock(out, b, ls) }
     engineRef = engine
@@ -294,7 +329,7 @@ fun runFactory(
             }, split.warnings, split.geometry, split.plan, split.partition, split.ports)
             val merged = mergeBlocks(turnedSplit, l, r)
             val m = min(l, r)
-            val bp = blockPlan(plan, merged, m, tuning)
+            val bp = blockPlan(plan, merged, m, tuning, cfg.sharedOutputs)
             // The two placements as they lie in the factory, in the box around both.
             val ul = boxes[l]; val ur = boxes[r]
             val ux = min(ul.x, ur.x); val uy = min(ul.y, ur.y)
@@ -318,7 +353,7 @@ fun runFactory(
             val gone = max(l, r)
             val newVariants = variants.filterIndexed { i, _ -> i != gone }.map { it.toMutableList() }.toMutableList()
             newVariants[m] = mutableListOf(res)
-            val newBps = merged.blocks.indices.map { i -> if (i == m) bp else blockPlan(plan, merged, i, tuning) }
+            val newBps = merged.blocks.indices.map { i -> if (i == m) bp else blockPlan(plan, merged, i, tuning, cfg.sharedOutputs) }
             val cand = assemble(merged, newBps, newVariants, st.without(gone), "merged ${l + 1}+${r + 1}", squeezeCap = quick)?.takeIf { it.first.success }
             if (cand != null && area(cand.first) < area(f)) {
                 say("merge blocks ${l + 1} and ${r + 1}: kept, ${cand.first.layout.w} x ${cand.first.layout.h} against ${f.layout.w} x ${f.layout.h} at the same stage")
@@ -335,6 +370,7 @@ fun runFactory(
         }
     }
     say("done: ${best?.let { "${it.layout.w} x ${it.layout.h} (${area(it)} tiles)" } ?: "no valid factory"}")
+    best?.notes?.forEach { say("  note: $it") }
     return best
     } finally { view?.detach() }
 }
@@ -453,14 +489,23 @@ private fun floorplanInput(
     val k = split.blocks.size
     val blocks = ArrayList<FpBlock>()
     val layouts = ArrayList<List<BlockShape>>()
+    fun edges(item: String, output: Boolean): Set<Dir> {
+        val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return emptySet()
+        return specs.flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
+    }
     for (b in 0 until k) {
-        val bs = if (soft) emptyList() else variants[b].flatMap { r -> (0 until if (cfg.rotate) 4 else 1).map { q -> BlockShape(turnLayout(r, q), q) } }
+        // A port that leaves the factory straight out of the block turns with it: only turns that keep each such port
+        // on an edge the job allows it (the search put it on one; a turned block would put a west input on the north).
+        val straight = split.links.filter { !it.throughCorridor && (it.from == b || it.to == b) && (it.from == EDGE || it.to == EDGE) }
+        fun turnKeepsEdges(q: Int) = straight.all { l -> l.side(b)?.let { Dir.fromName(it).turned(q) in edges(l.item, l.to == EDGE) } ?: true }
+        val turns = (0 until if (cfg.rotate) 4 else 1).filter { turnKeepsEdges(it) }.ifEmpty { listOf(0) }
+        val bs = if (soft) emptyList() else variants[b].flatMap { r -> turns.map { q -> BlockShape(turnLayout(r, q), q) } }
         val shapes = if (soft) softShapes(variants[b][0].area.toDouble()) else bs.map { sh ->
             val r = sh.layout
             val pins = HashMap<Int, Tile>()
-            val lp = bps!![b].linkOfPort
-            r.sources.forEach { s -> lp[s.port]?.let { pins[it] = s.tile } }
-            r.outputs.forEach { o -> lp[o.port]?.let { pins[it] = o.tile } }
+            val lp = bps!![b].linksOfPort
+            r.sources.forEach { s -> lp[s.port]?.forEach { pins[it] = s.tile } }
+            r.outputs.forEach { o -> lp[o.port]?.forEach { pins[it] = o.tile } }
             FpShape(r.w, r.h, pins, sh.rot)
         }
         layouts += bs
@@ -468,10 +513,6 @@ private fun floorplanInput(
     }
     config.reserved.forEachIndexed { i, r -> blocks += reservedBlock(r, i, cfg.corridor) }
     val nets = ArrayList<FpNet>()
-    fun edges(item: String, output: Boolean): Set<Dir> {
-        val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return emptySet()
-        return specs.flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
-    }
     split.links.filter { !it.hub }.forEach { l ->
         nets += when {
             l.inner -> FpNet(listOf(l.from to l.id, l.to to l.id))
@@ -576,6 +617,20 @@ fun assembleFactory(
         val f = finishFactory(data, config, plan, s)
         if (f.success) return f to st
         say("$what: ${f.layout.w} x ${f.layout.h} has ${f.errors.size} validation errors: ${f.errors.take(5)}")
+        // FACTORY_INVALID_DIR=<dir>: a render of each factory that failed validation, for finding out why.
+        System.getenv("FACTORY_INVALID_DIR")?.let { d ->
+            runCatching {
+                val name = "${what.replace(' ', '_')}_${f.layout.w}x${f.layout.h}_${System.currentTimeMillis() % 100000}"
+                viz.renderLayout(f.layout, File(d, "$name.png"),
+                    viz.RenderOptions(px = 12, errors = f.errors, title = "$what ${f.layout.w}x${f.layout.h} blocks ${f.blockRects}"))
+                File(d, "$name.json").writeText(f.layout.toBlueprint(config.buildQuality()).toJson())
+                // Each error with the block it lies in (1-based; 0: the corridors).
+                File(d, "$name.txt").writeText(f.errors.joinToString("\n") { e ->
+                    val b = f.blockRects.indexOfFirst { r -> e.tile.x in r.x until r.x + r.w && e.tile.y in r.y until r.y + r.h } + 1
+                    "block $b: $e"
+                })
+            }
+        }
         last = f to st
     }
     return last
@@ -601,6 +656,17 @@ private class Stitching(
     val routed get() = ok.isNotEmpty()
     val area get() = fp.area
     private val portSides = (0 until k).map { b -> split.links.filter { it.from == b || it.to == b }.mapNotNull { it.side(b) }.map { Dir.fromName(it).ordinal }.toSet() }
+    /**
+     * Sides (as searched) where some layout of the block has entities on the ring just outside its box (heat pipes, a
+     * pipe-to-ground port): they keep a tile of padding, or two blocks' rings would land on each other's tiles.
+     */
+    private val ringSides = (0 until k).map { b -> input.shapes[b].flatMap { sh ->
+        val l = sh.layout.layout ?: return@flatMap emptyList()
+        l.entities.flatMap { it.rect.tiles() }.mapNotNull { t -> when { t.y < 0 -> Dir.N; t.y >= l.h -> Dir.S; t.x < 0 -> Dir.W; t.x >= l.w -> Dir.E; else -> null } }
+            .map { it.turned(-sh.rot).ordinal }
+    }.toSet() }
+    /** Heated factories keep a tile around every block: heat pipes join the blocks' networks through it. */
+    private fun minPad(b: Int, d: Int) = if (d in portSides[b] || d in ringSides[b] || config.heat.mode != "off") 1 else 0
 
     fun layoutOf(p: FpPlan) = Arrangement(p.boxes.take(k), p.boxes.drop(k), p.w, p.h, IntArray(k) { p.state.shape[it] },
         IntArray(k) { input.blocks[it].shapes[p.state.shape[it]].rot })
@@ -644,7 +710,7 @@ private class Stitching(
         while (improved && System.currentTimeMillis() < deadline) {
             improved = false
             val order = (0 until k).flatMap { b -> (0..3).map { b to it } }
-                .filter { (b, d) -> pads[b][d] > (if (d in portSides[b]) 1 else 0) }.sortedByDescending { (b, d) -> pads[b][d] }
+                .filter { (b, d) -> pads[b][d] > minPad(b, d) }.sortedByDescending { (b, d) -> pads[b][d] }
             for ((b, d) in order) {
                 if (System.currentTimeMillis() >= deadline) break
                 val trial = pads.map { it.clone() }.also { it[b][d]-- }
@@ -664,7 +730,7 @@ private class Stitching(
         val (cx, cy) = planner.critical(fp.state, pads)
         fun rot(b: Int) = input.blocks[b].shapes[fp.state.shape[b]].rot
         fun idx(b: Int, d: Dir) = (d.ordinal - rot(b)).mod(4)
-        fun min(b: Int, i: Int) = if (i in portSides[b]) 1 else 0
+        fun min(b: Int, i: Int) = minPad(b, i)
         for ((blocks, sides) in listOf(cx to listOf(Dir.E, Dir.W), cy to listOf(Dir.N, Dir.S))) {
             val cands = blocks.mapNotNull { b -> sides.map { idx(b, it) }.filter { pads[b][it] > min(b, it) }.maxByOrNull { pads[b][it] }?.let { b to it } }
             if (cands.isEmpty()) continue
@@ -805,35 +871,51 @@ fun stitchRoute(
     // factory straight out must lie on its ring, on the side the job allows.
     val starts = HashMap<Int, Pair<Tile, Dir>>()
     val ends = HashMap<Int, Pair<Tile, Dir>>()
+    /** Groups of links leaving by one shared output port. */
+    val sharedStarts = ArrayList<List<Int>>()
+    /** Edge links whose port did not end up on its edge: they run through the corridors to it. */
+    val detoured = HashSet<Int>()
     val sources = ArrayList<SourceSpec>()
     val outputs = ArrayList<OutputSpec>()
     // (On the ring, or on the box's own edge row: fluid ports start with a pipe-to-ground there.)
     fun outsideOnSide(t: Tile, side: String?) = when (side) { "N" -> t.y <= 0; "S" -> t.y >= H - 1; "W" -> t.x <= 0; "E" -> t.x >= W - 1; else -> false }
     for (b in 0 until k) {
         results[b].outputs.forEach { o ->
-            val l = split.links[bps[b].linkOfPort[o.port] ?: return@forEach]
+            val group = bps[b].linksOfPort[o.port] ?: return@forEach
+            val l = split.links[group[0]]
             val t = Tile(o.tile.x + ox[b], o.tile.y + oy[b])
             if (!l.throughCorridor) {
-                if (!outsideOnSide(t, side(l.fromSide, b)?.name)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} output is not on the factory's edge")
-                outputs += o.copy(tile = t, port = -1); return@forEach
+                if (outsideOnSide(t, side(l.fromSide, b)?.name)) { outputs += o.copy(tile = t, port = -1); return@forEach }
+                // Not on its edge (a block that must touch two opposite edges is narrower than the factory, so it
+                // slid off one): its belt runs through the corridors to that edge instead.
+                if (o.fluid) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} output is not on the factory's edge")
+                detoured += l.id
             }
             // A pipe port joins on the side the block was searched with it (a corner tile alone does not say which).
             val d = if (o.fluid) side(l.fromSide, b)!! else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
-            starts[l.id] = (t + d) to d
+            // Links sharing the port all start there (one belt, branching in the corridors).
+            group.forEach { starts[it] = (t + d) to d }
+            if (group.size > 1) sharedStarts += group
         }
         results[b].sources.forEach { s ->
             val l = split.links[bps[b].linkOfPort[s.port] ?: return@forEach]
             val t = Tile(s.tile.x + ox[b], s.tile.y + oy[b])
             if (!l.throughCorridor) {
-                if (!outsideOnSide(t, side(l.toSide, b)?.name)) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} input is not on the factory's edge")
-                sources += s.copy(tile = t, port = -1); return@forEach
+                if (outsideOnSide(t, side(l.toSide, b)?.name)) { sources += s.copy(tile = t, port = -1); return@forEach }
+                if (s.fluid) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} input is not on the factory's edge")
+                detoured += l.id
             }
             val out = side(l.toSide, b) ?: sideOf(s.tile, results[b].w, results[b].h)
             ends[l.id] = (t + out) to out.opposite
         }
     }
-    val corridorLinks = split.links.filter { it.throughCorridor }
-    if (corridorLinks.any { (it.from >= 0 && it.id !in starts) || (it.to >= 0 && it.id !in ends) }) return StitchAttempt(null, emptyList(), "a block port is missing")
+    val corridorLinks = split.links.filter { it.throughCorridor || it.id in detoured }
+    corridorLinks.filter { (it.from >= 0 && it.id !in starts) || (it.to >= 0 && it.id !in ends) }.takeIf { it.isNotEmpty() }?.let { miss ->
+        return StitchAttempt(null, emptyList(), "a block port is missing: " + miss.take(3).joinToString { l ->
+            val b = if (l.from >= 0 && l.id !in starts) l.from else l.to
+            "block ${b + 1}'s ${l.item} ${if (b == l.from) "output" else "input"} (link ${l.id}, its layout: ${results[b].notes.firstOrNull() ?: "searched"})"
+        })
+    }
 
     // A pipe link whose first tile outside its port touches another fluid's pipe (ports of two fluids side by side)
     // or a machine starts with a pipe-to-ground pair out of the port instead: it joins only through its open sides.
@@ -874,12 +956,74 @@ fun stitchRoute(
         starts[l.id]?.let { (t, d) -> starts[l.id] = (dive(l, t, d) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot leave its port")) to d }
         ends[l.id]?.let { (t, d) -> ends[l.id] = (dive(l, t, d.opposite) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot reach its port")) to d }
     }
+    // A shared output port: splitters near it give each of its links a belt of its own (two or three), reached by a
+    // short belt from the port (the nearest spot with room, found by a small search).
+    val otherEnds = (starts.filterKeys { k -> sharedStarts.none { k in it } }.values + ends.values).map { it.first }.toSet()
+    // Tiles another group needs: the first tile outside each shared port, and what was handed out so far.
+    val claimed = sharedStarts.map { starts.getValue(it[0]).first }.toMutableSet()
+    val tier = GameConstants.beltTier(config.beltTier)
+    for (g in sharedStarts) {
+        val (s0, d0) = starts.getValue(g[0])
+        val item = split.links[g[0]].item
+        val net = netOfItem[item]
+        fun open(t: Tile) = free(t) && t !in otherEnds && (t == s0 || t !in claimed)
+        // Nothing may push into [t] but [from] (the belt or splitter meant to feed it).
+        fun quiet(t: Tile, from: Tile?) = Dir.entries.none { dd -> val u = t + dd; u != from && byTile[u]?.let { e -> e.kind.beltFamily && (e.outputTile == t || (e.kind == Kind.SPLITTER && e.rect.tiles().any { it + e.dir == t })) } == true }
+        fun splitter(a: Tile, b: Tile, h: Dir) = PlacedEntity(tier.splitter, Kind.SPLITTER, minOf(a.x, b.x), minOf(a.y, b.y), h, net = net)
+        /** Splitters with their trunk half on [p] heading [h] (fed from [from]), and the start tiles they hand out. */
+        fun tree(p: Tile, h: Dir, from: Tile?, used: Set<Tile>): Pair<List<PlacedEntity>, List<Tile>>? {
+            fun ok(t: Tile) = open(t) && t !in used
+            for (side in listOf(h.cw, h.ccw)) {
+                val half = p + side
+                if (!ok(p) || !ok(half) || !quiet(half, null) || !quiet(p, from)) continue
+                val a = p + h; val b = half + h
+                if (g.size == 2) { if (ok(a) && ok(b)) return listOf(splitter(p, half, h)) to listOf(a, b) else continue }
+                val half2 = a + side.opposite
+                val a2 = a + h; val b2 = half2 + h
+                if (listOf(a, half2, b, a2, b2).all { ok(it) } && quiet(half2, null)) return listOf(splitter(p, half, h), splitter(a, half2, h)) to listOf(a2, b2, b)
+            }
+            return null
+        }
+        // Breadth first over short belt paths from the port: each step a belt heading on, straight or turning.
+        data class St(val t: Tile, val h: Dir)
+        val prev = HashMap<St, St?>()
+        val queue = ArrayDeque(listOf(St(s0, d0))); prev[St(s0, d0)] = null
+        var found: Triple<St, List<PlacedEntity>, List<Tile>>? = null
+        while (queue.isNotEmpty() && found == null) {
+            val cur = queue.removeFirst()
+            val path = generateSequence(cur) { prev[it] }.toList()
+            if (path.size > 10) continue
+            val pathTiles = path.map { it.t }.toSet()
+            val from = prev[cur]?.t ?: (s0 + d0.opposite)
+            tree(cur.t, cur.h, from, pathTiles - cur.t)?.let { (es, ts) -> found = Triple(cur, es, ts) }
+            if (found != null) break
+            for (nh in listOf(cur.h, cur.h.cw, cur.h.ccw)) {
+                val n = St(cur.t + nh, nh)
+                // The belt on cur heads nh into n; only it may feed n.
+                if (n in prev || n.t in pathTiles || !open(n.t) || !quiet(n.t, cur.t)) continue
+                prev[n] = cur; queue += n
+            }
+        }
+        val (end, es, ts) = found ?: return StitchAttempt(null, listOf(s0), "no room for the splitters of a shared $item output")
+        // The belts on the way: each heads to the next tile (the last into the splitter).
+        val path = generateSequence(end) { prev[it] }.toList().reversed()
+        for (i in 0 until path.size - 1) {
+            val t = path[i].t
+            val e = PlacedEntity(tier.belt, Kind.BELT, t.x, t.y, path[i + 1].h, net = net)
+            entities += e; byTile[t] = e; claimed += t
+        }
+        es.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e; claimed += it } }
+        g.forEachIndexed { i, id -> starts[id] = ts[i] to end.h }
+        claimed += ts
+    }
 
     // The belts and pipes through the corridors.
     val ports = ArrayList<Port>(); val terminals = ArrayList<Terminal>(); val nets = ArrayList<Net>()
     val edgePorts = HashSet<Int>()
     val linksOfNet = HashMap<Int, List<Link>>()
     fun edgeSpecs(item: String, output: Boolean): List<ConfigSource> {
+        // Leftovers (a mixed belt) that cannot leave their block straight out leave at whichever edge is nearest.
+        if (output && item in plan.mixed.values) return listOf(ConfigSource(item, edge = "any"))
         val specs = plan.ports.first { it.item == item && it.output == output }.specs
         if (!config.testMode) return specs
         // Test mode: every fifth tile of the edge only, so each port's harness (a feeder with inserters and chests
@@ -1012,9 +1156,12 @@ fun stitchRoute(
     // Tiles a block belt points into from inside (chain ends at the block edge) must not get a corridor belt, nor
     // tiles a block's inserter reaches out to.
     val startTiles = starts.values.map { it.first }.toSet()
-    val pointedAt = entities.filter { it.kind.beltFamily }.mapNotNull { it.outputTile }.filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
+    val pointedAt = (entities.filter { it.kind.beltFamily }.mapNotNull { it.outputTile } +
+        entities.filter { it.kind == Kind.SPLITTER }.flatMap { sp -> sp.rect.tiles().map { it + sp.dir } })
+        .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
     val reached = entities.filter { it.kind == Kind.INSERTER }.flatMap { listOf(it.pickupTile, it.dropTile) }.filter { it !in blockTiles }
-    val stitchConfig = config.copy(blocks = null, laneSharing = false)
+    // (Heat stays on, so corridor belts keep a side free for a heat pipe, but the blocks' lattice is theirs alone.)
+    val stitchConfig = config.copy(blocks = null, laneSharing = false, heat = config.heat.copy(lattice = null))
     // Everything the blocks put outside their boxes (ring ports) is in the way too.
     val entityTiles = entities.flatMap { it.rect.tiles() }
     // A corridor pipe beside a block's pipe or machine would join it: keep those tiles free, except where a link ends.
@@ -1035,6 +1182,14 @@ fun stitchRoute(
             .flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
         val unrouted = routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }
         val badPairs = routed.failedNets.flatMap { n -> linksOfNet[n] ?: emptyList() }.filter { it.pair >= 0 }.map { minOf(it.id, it.pair) }.toSet()
+        // STITCH_DEBUG_DIR=<dir>: a render of each failed stitch, the trouble marked, for finding out why.
+        System.getenv("STITCH_DEBUG_DIR")?.let { d ->
+            runCatching {
+                val l = geom.Layout(W, H, entities + routed.entities)
+                viz.renderLayout(l, File(d, "stitch_${W}x${H}_${System.nanoTime() % 100000}.png"), viz.RenderOptions(px = 14,
+                    errors = trouble.map { validate.ValidationError(validate.ErrorType.UNSUPPORTED, it, "trouble") }, title = "stitch ${W}x$H: ${routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }}"))
+            }
+        }
         return StitchAttempt(null, trouble, "${routed.conflicts.size} conflicts, ${routed.failedNets.size} unrouted" +
             (if (unrouted.isNotEmpty()) " $unrouted; ${routed.log.filter { l -> unrouted.any { it in l } }.takeLast(2)}" else ""), edges, badPairs)
     }
@@ -1055,8 +1210,14 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         val ctl = route.addSurplusControl(ents, plan, config, w, h, rects)
         notes += ctl.notes
         val harness = if (config.testMode) buildHarness(srcs, ctl.entities, w, h, config, outs) else null
-        val all = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }
+        var all: List<PlacedEntity> = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }
         harness?.warnings?.let { notes += it }
+        // Aquilo: one heat network over the whole factory, joining every block's own pipes and heating the corridors
+        // (before the poles, unless heat.poles: then after them, so they are heated too).
+        fun heatOf(es: List<PlacedEntity>) = power.placeHeatPipes(es, w, h, search.heatPortTiles(config.heat.edge, w, h), config.heat.poles, maxPorts = config.heat.ports)
+            .also { r -> if (!r.ok) notes += "heat: ${r.cold.size} entities stay cold"; notes += "heat ports at ${r.ports}" }
+        var heat: power.HeatResult? = null
+        if (config.heat.mode != "off" && !config.heat.poles) { heat = heatOf(all); all = heat.entities + heat.pipes }
         var poles = emptyList<PlacedEntity>()
         var wires = emptyList<Pair<Int, Int>>()
         val keepFree = reserved.flatMap { it.tiles() }.toSet()
@@ -1066,16 +1227,24 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
             if (!ps.ok) notes += "power: ${ps.uncovered.size} entities not covered"
             poles = ps.poles; wires = ps.wires
         }
+        if (config.heat.mode != "off" && config.heat.poles) {
+            // Heat pipes go after the poles here; crossings keep every index, so the pole wires hold.
+            val withPoles = all + poles
+            heat = heatOf(withPoles)
+            all = heat.entities.take(all.size); poles = heat.entities.drop(all.size) + heat.pipes
+        }
         val offset = all.size
         // Block borders as floor tiles, so each block shows in the game.
         val marks = if (config.markerTile == "none") emptyList() else (rects + reserved).flatMap { geom.borderTiles(it, config.markerTile) }
         val layout = Layout(w, h, all + poles, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer factory ${w}x$h", marks, ctl.circuitWires)
         val outside = (harness?.tiles ?: emptySet()) + poles.flatMap { it.rect.tiles() }.filter { it.x !in 0 until w || it.y !in 0 until h } +
-            srcs.map { it.tile }   // ring ports (in test mode the harness feeds them instead of listing them)
+            srcs.map { it.tile } +   // ring ports (in test mode the harness feeds them instead of listing them)
+            (heat?.let { r -> r.ports + (r.entities + r.pipes).filter { it.kind == Kind.HEAT_PIPE }.map { it.tile }.filter { it.x !in 0 until w || it.y !in 0 until h } } ?: emptyList())
         val spec = validationSpec(data, plan, config, Placement(w, h, mach), if (config.testMode) emptyList() else srcs,
             requirePower = config.power.mode != "none", outsideAllowed = outside.toSet(), outputs = outs)
+            .copy(heat = heat?.let { validate.HeatSpec(it.ports.toSet(), config.heat.poles) })
         val errors = validate(layout, spec)
-        return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects, s.layouts, s.rot)
+        return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects, s.layouts, s.rot, heat?.ports ?: emptyList())
     }
 
     // Rows and columns that only straight belts and pipes cross go first; if that breaks anything (it should
@@ -1102,14 +1271,25 @@ private fun sideOf(t: Tile, w: Int, h: Int): Dir = when {
 
 private fun writeFactory(f: Factory, out: File, config: RunConfiguration) {
     val l = f.layout
-    File(out, "best_output_string.txt").writeText(l.toBlueprintString(config.quality))
-    File(out, "best_blueprint.json").writeText(l.toBlueprint(config.quality).toJson())
+    File(out, "best_output_string.txt").writeText(l.toBlueprintString(config.buildQuality()))
+    File(out, "best_blueprint.json").writeText(l.toBlueprint(config.buildQuality()).toJson())
     if (!config.testMode) power.testCopy(l, f.sources, f.outputs, config).let { tc ->
-        File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.quality))
+        File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.buildQuality()))
         File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
     }
     renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}"))
     File(out, "ports.json").writeText(strictJson.encodeToString(JsonObject.serializer(), factoryManifest(f)))
+    // Where each block ended up (tiles of the factory, as the blueprint's positions), for viewers.
+    File(out, "blocks.json").writeText(buildString {
+        append("[\n")
+        f.blockRects.forEachIndexed { b, r ->
+            append("""  {"block": ${b + 1}, "x": ${r.x}, "y": ${r.y}, "w": ${r.w}, "h": ${r.h}, "turn": ${f.blockRot.getOrElse(b) { 0 }}}""")
+            append(if (b < f.blockRects.size - 1) ",\n" else "\n")
+        }
+        append("]\n")
+    })
+    // What stitching could not do as asked (crackers without a tank, poles short, ...).
+    File(out, "factory_notes.txt").writeText(f.notes.joinToString("\n", postfix = if (f.notes.isEmpty()) "" else "\n"))
 }
 
 /** Where the factory's inputs and outputs are (box-relative tiles, edge, item, rate, lane for shared belts). */
@@ -1129,5 +1309,7 @@ fun factoryManifest(f: Factory): JsonObject {
         putJsonArray("outputs") {
             f.outputs.forEach { o -> addJsonObject { put("item", o.item); put("rate", o.rate); put("fluid", o.fluid); put("x", o.tile.x); put("y", o.tile.y); put("edge", edge(o.tile.x, o.tile.y)) } }
         }
+        // Aquilo: where heat must be brought in (heat pipe tiles on the ring).
+        if (f.heatPorts.isNotEmpty()) putJsonArray("heat_ports") { f.heatPorts.forEach { p -> addJsonObject { put("x", p.x); put("y", p.y); put("edge", edge(p.x, p.y)) } } }
     }
 }

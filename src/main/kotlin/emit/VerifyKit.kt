@@ -15,7 +15,7 @@ object VerifyKit {
 
     private fun pole(x: Int, y: Int) = e("medium-electric-pole", x, y)
 
-    data class Case(val id: String, val title: String, val check: String, val layout: Layout)
+    data class Case(val id: String, val title: String, val check: String, val layout: Layout, val quality: BuildQuality = BuildQuality())
 
     val cases: List<Case> = listOf(
         Case(
@@ -67,15 +67,27 @@ object VerifyKit {
             )),
         ),
         Case(
-            "v4-sideload-underground", "Sideloading into an underground entrance keeps one lane",
-            "Items arrive from the side onto the entrance at x=3. Note which lane comes out at the exit.",
-            Layout(10, 4, listOf(
-                e("infinity-chest", 3, 3, item = "iron-plate"), e("inserter", 3, 2, Dir.S),
-                e("transport-belt", 3, 1, Dir.N),
+            "v4-sideload-underground", "A belt run into the side of an underground end passes one lane",
+            "Top: a belt heading north (copper on its west lane, iron on its east lane) runs into the side of an " +
+                "east-facing entrance: expected only copper (the lane on the entrance's open back half) comes out at x=7, " +
+                "iron backs up (seen in game). Bottom: the same into the side of an exit at (4,6): expected only iron " +
+                "(the lane on the exit's open front half) joins the belt at x=5. Note which items pass in each row.",
+            Layout(10, 10, listOf(
+                // Entrance fed from the side.
+                e("infinity-chest", 1, 2, item = "iron-plate"), e("inserter", 2, 2, Dir.W),
+                e("infinity-chest", 5, 1, item = "copper-plate"), e("inserter", 4, 1, Dir.E),
+                e("transport-belt", 3, 3, Dir.N), e("transport-belt", 3, 2, Dir.N), e("transport-belt", 3, 1, Dir.N),
                 e("underground-belt", 3, 0, Dir.E, ug = "input"),
                 e("underground-belt", 6, 0, Dir.E, ug = "output"),
                 e("transport-belt", 7, 0, Dir.E), e("transport-belt", 8, 0, Dir.E),
-                pole(5, 2),
+                // Exit fed from the side; the main line through it carries nothing.
+                e("transport-belt", 0, 6, Dir.E), e("underground-belt", 1, 6, Dir.E, ug = "input"),
+                e("underground-belt", 4, 6, Dir.E, ug = "output"),
+                e("transport-belt", 5, 6, Dir.E), e("transport-belt", 6, 6, Dir.E),
+                e("transport-belt", 4, 9, Dir.N), e("transport-belt", 4, 8, Dir.N), e("transport-belt", 4, 7, Dir.N),
+                e("infinity-chest", 2, 8, item = "iron-plate"), e("inserter", 3, 8, Dir.W),
+                e("infinity-chest", 6, 7, item = "copper-plate"), e("inserter", 5, 7, Dir.E),
+                pole(1, 4), pole(7, 4),
             )),
         ),
         Case(
@@ -271,6 +283,127 @@ object VerifyKit {
         ),
     )
 
+    /** v22 and v23: recycler output and Aquilo heating (added with recyclers and heat pipes). */
+    val spaceAgeCases: List<Case> = listOf(
+        Case(
+            "v22-recycler-output", "A recycler puts its results onto a belt in front of its output end",
+            "A recycler (facing north, 2 x 4) is fed electronic circuits from the west. A belt runs east along the row " +
+                "just north of it. Expected: iron plates and copper cable appear on that belt without any inserter (seen " +
+                "in game). Note which of the two tiles above the recycler they land on, and which lane.",
+            Layout(8, 6, listOf(
+                e("infinity-chest", 0, 2, item = "electronic-circuit"), e("inserter", 1, 2, Dir.W),
+                e("recycler", 2, 1),
+                e("transport-belt", 1, 0, Dir.E), e("transport-belt", 2, 0, Dir.E), e("transport-belt", 3, 0, Dir.E),
+                e("transport-belt", 4, 0, Dir.E), e("transport-belt", 5, 0, Dir.E),
+                pole(4, 2),
+            )),
+        ),
+        Case(
+            "v24-blacklist-filter", "A blacklist-filtered inserter takes everything but the listed items",
+            "A recycler takes electronic circuits and returns iron plates and copper cable. Its top output inserter has a " +
+                "blacklist filter of iron plates (filter mode blacklist), the bottom one a whitelist of iron plates. " +
+                "Expected: the top chest gets only copper cable, the bottom one only iron plates. If the top chest gets " +
+                "iron plates, the blacklist format in Blueprint.kt (filter_mode) is wrong.",
+            Layout(6, 5, listOf(
+                e("infinity-chest", 0, 1, item = "electronic-circuit"), e("inserter", 1, 1, Dir.W),
+                e("recycler", 2, 0),
+                PlacedEntity("fast-inserter", geom.Kind.INSERTER, 4, 0, Dir.W, blacklist = listOf("iron-plate")), e("steel-chest", 5, 0),
+                e("fast-inserter", 4, 3, Dir.W, item = "iron-plate"), e("steel-chest", 5, 3),
+                pole(4, 1),
+            )),
+        ),
+        Case(
+            "v28-quality-chance", "Quality modules: chance of a better product, and the tiers above it",
+            "Research quality. The assembler makes gears from normal plates with four quality modules 3 (normal). Expected " +
+                "in its tooltip: quality +10% (an effect of 0.25 in recipes.json is 2.5 %, plan/Quality.kt qualityChance), " +
+                "speed -20%. Let it run a while (/c game.speed = 20): of its gears about 90 % come out normal, 9 % uncommon, " +
+                "0.9 % rare (each tier beyond the first at 10 % of the one below). Its output inserter, filtered to " +
+                "uncommon gears only, fills the right chest with them alone; the unfiltered one below takes the rest. The " +
+                "recycler (four quality modules 3) turns the normal gears fed to it into iron plates, now and then uncommon ones.",
+            Layout(12, 8, listOf(
+                e("infinity-chest", 0, 1, item = "iron-plate"), e("inserter", 1, 1, Dir.W),
+                e("assembling-machine-3", 2, 0, recipe = "iron-gear-wheel").copy(modules = List(4) { "quality-module-3" }),
+                e("fast-inserter", 5, 0, Dir.W, item = "iron-gear-wheel@uncommon"), e("steel-chest", 6, 0),
+                e("fast-inserter", 5, 2, Dir.W), e("steel-chest", 6, 2),
+                e("infinity-chest", 7, 5, item = "iron-gear-wheel"), e("inserter", 8, 5, Dir.W),
+                e("recycler", 9, 4).copy(modules = List(4) { "quality-module-3" }),
+                pole(5, 1), pole(8, 3),
+            )),
+        ),
+        Case(
+            "v27-quality-buildings", "Legendary machines, beacons and modules: speed, productivity and beacon effectivity",
+            "Research quality and place it with legendary machines, beacons and modules (the blueprint asks for them). " +
+                "The left assembler makes gears with four legendary productivity modules 3; the right one with none, two " +
+                "legendary beacons of two legendary speed modules 3 each reaching it. Expected in the tooltips: left " +
+                "productivity +100% (4 x 10% x 2.5), speed 3.125 x (1 - 4 x 15%) = 1.25; right speed 3.125 x (1 + 2.5 x " +
+                "sqrt 2 x 2 x 125%) (beacon effectivity 1.5 + 5 x 0.2, module bonus x2.5, penalties as they are). The " +
+                "machines craft normal gears from normal plates (recipe quality normal).",
+            Layout(12, 7, listOf(
+                e("assembling-machine-3", 0, 0, recipe = "iron-gear-wheel").copy(modules = List(4) { "productivity-module-3" }),
+                e("assembling-machine-3", 5, 0, recipe = "iron-gear-wheel"),
+                PlacedEntity("beacon", geom.Kind.BEACON, 8, 0, w = 3, h = 3, modules = List(2) { "speed-module-3" }),
+                PlacedEntity("beacon", geom.Kind.BEACON, 8, 3, w = 3, h = 3, modules = List(2) { "speed-module-3" }),
+                pole(4, 1), pole(11, 3),
+            )),
+            BuildQuality(machines = "legendary", beacons = "legendary", modules = "legendary"),
+        ),
+        Case(
+            "v26-spoilage", "Where spoilage goes: out of a machine through its output inserter, off a belt end by a filter",
+            "Build on Gleba (or anywhere in the editor). Two biochambers make nutrients from yumako mash, fed mash from the " +
+                "west and nutrients for fuel. Let them fill, then pick up the two mash infinity chests and speed time up " +
+                "(/c game.speed = 20; mash spoils in 3 minutes). Expected: the top biochamber's output inserter (no filter) " +
+                "takes the spoiled mash out with the nutrients into its chest; the middle one's, filtered to nutrients, leaves " +
+                "the spoilage in and the machine stops. On the belt at the bottom, mash that spoils rides to the end, where " +
+                "the filter inserter takes the spoilage into the chest below. Note where spoiled fuel goes (fuel slot, result " +
+                "or trash), and that yumako mash spoils into spoilage in 3 minutes (GameConstants.SPOILS).",
+            Layout(9, 13, listOf(
+                e("infinity-chest", 0, 0, item = "yumako-mash"), e("inserter", 1, 0, Dir.W),
+                e("infinity-chest", 0, 2, item = "nutrients"), e("inserter", 1, 2, Dir.W),
+                e("biochamber", 2, 0, recipe = "nutrients-from-yumako-mash"),
+                e("inserter", 5, 1, Dir.W), e("steel-chest", 6, 1),
+                e("infinity-chest", 0, 4, item = "yumako-mash"), e("inserter", 1, 4, Dir.W),
+                e("infinity-chest", 0, 6, item = "nutrients"), e("inserter", 1, 6, Dir.W),
+                e("biochamber", 2, 4, recipe = "nutrients-from-yumako-mash"),
+                e("fast-inserter", 5, 5, Dir.W, item = "nutrients"), e("steel-chest", 6, 5),
+                e("infinity-chest", 0, 9, item = "yumako-mash"), e("inserter", 0, 10, Dir.N),
+                *(0..5).map { e("transport-belt", it, 11, Dir.E) }.toTypedArray(),
+                e("fast-inserter", 6, 11, Dir.W, item = "spoilage"), e("steel-chest", 7, 11),
+                pole(5, 3), pole(5, 8), pole(4, 10),
+            )),
+        ),
+        Case(
+            "v25-belt-stacking", "A stack inserter drops items on a belt in stacks, other inserters one at a time",
+            "Research transport belt capacity 1 and 2 and inserter capacity (editor: research everything). The stack " +
+                "inserter at (0,1) drops iron plates onto the turbo belt along y=2, the fast inserter at (0,5) onto the one " +
+                "along y=6; both belts back up. Expected: the top belt's plates in stacks of 4 (GameConstants.MAX_BELT_STACK), " +
+                "the bottom one's single. Note the stack inserter's hand size (the code takes the bulk inserter's, 12 at full " +
+                "research) and whether a belt fed only stacks carries 4 times as many items (a belt reader on the last tile).",
+            Layout(8, 7, listOf(
+                e("infinity-chest", 0, 0, item = "iron-plate"), e("stack-inserter", 0, 1, Dir.N),
+                *(0..7).map { e("turbo-transport-belt", it, 2, Dir.E) }.toTypedArray(),
+                e("infinity-chest", 0, 4, item = "iron-plate"), e("fast-inserter", 0, 5, Dir.N),
+                *(0..7).map { e("turbo-transport-belt", it, 6, Dir.E) }.toTypedArray(),
+                pole(1, 3),
+            )),
+        ),
+        Case(
+            "v23-aquilo-heating", "On Aquilo, what touches a heat pipe edge-on stays warm",
+            "Build on Aquilo (editor). The heat interface (set it to 500 C) feeds a heat pipe running east along y=2. " +
+                "Expected warm: the belt and inserter at (1,1) and (2,1), the assembler under the pipe (seen in game). " +
+                "Expected frozen: the belt at (8,1), which touches the pipe only at a corner. Check: does the medium " +
+                "pole at (4,1), touching the pipe, and the one at (9,4), touching nothing, freeze?",
+            Layout(11, 7, listOf(
+                PlacedEntity("heat-interface", geom.Kind.HEAT_PIPE, 0, 2),
+                e("heat-pipe", 1, 2), e("heat-pipe", 2, 2), e("heat-pipe", 3, 2), e("heat-pipe", 4, 2), e("heat-pipe", 5, 2),
+                e("heat-pipe", 6, 2), e("heat-pipe", 7, 2),
+                e("transport-belt", 1, 1, Dir.E), e("inserter", 2, 1, Dir.N),
+                e("assembling-machine-2", 1, 3, recipe = "iron-gear-wheel"),
+                e("transport-belt", 8, 1, Dir.E),
+                pole(4, 1), pole(9, 4),
+            )),
+        ),
+    )
+
     /** Layouts one below the other, a tile apart. */
     private fun stack(vararg parts: Layout): Layout {
         val list = ArrayList<PlacedEntity>()
@@ -435,7 +568,7 @@ object VerifyKit {
     /** Writes one blueprint string per case, plus the hand-written T1 layout. */
     fun write(dir: File) {
         dir.mkdirs()
-        cases.forEach { c -> File(dir, "${c.id}.txt").writeText(c.layout.copy(label = c.title).toBlueprintString()) }
+        (cases + spaceAgeCases).forEach { c -> File(dir, "${c.id}.txt").writeText(c.layout.copy(label = c.title).toBlueprintString(c.quality)) }
         File(dir, "t1-hand.txt").writeText(t1Hand.toBlueprintString())
     }
 }

@@ -72,6 +72,8 @@ data class BpEntity(
     val type: String? = null,
     val recipe: String? = null,
     @SerialName("recipe_quality") val recipeQuality: String? = null,
+    /** The entity's own quality (omitted when normal). */
+    val quality: String? = null,
     @SerialName("infinity_settings") val infinitySettings: JsonObject? = null,
     @SerialName("use_filters") val useFilters: Boolean? = null,
     val filters: List<BpItemFilter>? = null,
@@ -87,8 +89,22 @@ data class BpEntity(
     val items: kotlinx.serialization.json.JsonArray? = null,
 )
 
+/** Quality of what a blueprint places: crafting machines, beacons, and the modules in either. Everything else is normal. */
+data class BuildQuality(val machines: String = "normal", val beacons: String = "normal", val modules: String = "normal")
+
+/**
+ * An item or recipe of a quality: "name@quality" (quality production, see plan/Quality.kt), else normal. Returns the
+ * game's name and the quality, null for normal.
+ */
+fun splitQuality(name: String): Pair<String, String?> =
+    name.indexOf('@').let { i -> if (i < 0) name to null else name.substring(0, i) to name.substring(i + 1) }
+
+/** [name] at [quality] (normal: the plain name). */
+fun withQuality(name: String, quality: String?): String = if (quality == null || quality == "normal") name else "$name@$quality"
+
 /** Layout -> 2.0 blueprint. Entity numbers are layout index + 1. */
-fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
+fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
+    fun filter(i: Int, item: String) = splitQuality(item).let { (n, ql) -> BpItemFilter(i, n, ql, if (ql != null) "=" else null) }
     val bpEntities = entities.mapIndexed { i, e ->
         BpEntity(
             entityNumber = i + 1,
@@ -97,8 +113,10 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
             // A storage tank has two orientations: north (as south) and east (as west).
             direction = if (e.kind == Kind.TANK) (if (e.dir.axis == 0) Dir.E.value16 else null) else e.dir.value16.takeIf { it != 0 && e.kind.hasDirection },
             type = when (e.kind) { Kind.UG_IN, Kind.LOADER_IN -> "input"; Kind.UG_OUT, Kind.LOADER_OUT -> "output"; else -> null },
-            recipe = e.recipe?.takeIf { GameConstants.takesRecipe(e.name) },
-            recipeQuality = if (e.recipe != null && GameConstants.takesRecipe(e.name)) quality else null,
+            recipe = e.recipe?.takeIf { GameConstants.takesRecipe(e.name) }?.let { splitQuality(it).first },
+            // The quality of what the recipe makes (and takes): normal unless it is a quality variant.
+            recipeQuality = if (e.recipe != null && GameConstants.takesRecipe(e.name)) splitQuality(e.recipe).second ?: "normal" else null,
+            quality = when (e.kind) { Kind.MACHINE -> q.machines; Kind.BEACON -> q.beacons; else -> null }?.takeIf { it != "normal" },
             mirror = if (e.mirror) true else null,
             infinitySettings = when (e.kind) {
                 // Without an item the chest deletes whatever it is given (test-mode output void).
@@ -121,14 +139,20 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
                 else -> null
             },
             // Filters leave out the quality, so they match an item of any quality.
-            useFilters = if (e.kind == Kind.INSERTER && e.item != null) true else null,
-            filters = if ((e.kind == Kind.CHEST || e.kind == Kind.INSERTER) && e.item != null) listOf(BpItemFilter(1, e.item)) else null,
+            useFilters = if (e.kind == Kind.INSERTER && (e.item != null || e.blacklist != null)) true else null,
+            filters = when {
+                (e.kind == Kind.CHEST || e.kind == Kind.INSERTER) && e.item != null -> listOf(filter(1, e.item))
+                e.kind == Kind.INSERTER && e.blacklist != null -> e.blacklist.mapIndexed { i, it -> filter(i + 1, it) }
+                else -> null
+            },
+            // A blacklist filter: takes everything but the listed items. VERIFY (v24)
+            filterMode = if (e.kind == Kind.INSERTER && e.item == null && e.blacklist != null) "blacklist" else null,
             items = e.modules?.takeIf { it.isNotEmpty() }?.let { ms ->
                 val inv = if (e.kind == Kind.BEACON) GameConstants.BEACON_MODULE_INVENTORY else GameConstants.MACHINE_MODULE_INVENTORY
                 buildJsonArray {
                     ms.withIndex().groupBy({ it.value }, { it.index }).forEach { (module, stacks) ->
                         add(buildJsonObject {
-                            put("id", buildJsonObject { put("name", module) })
+                            put("id", buildJsonObject { put("name", module); if (q.modules != "normal") put("quality", q.modules) })
                             put("items", buildJsonObject {
                                 put("in_inventory", buildJsonArray {
                                     stacks.forEach { st -> add(buildJsonObject { put("inventory", inv); put("stack", st) }) }
@@ -140,7 +164,8 @@ fun Layout.toBlueprint(quality: String = "normal"): Blueprint {
             },
             controlBehavior = e.circuit?.let { c ->
                 buildJsonObject {
-                    put("circuit_enable_disable", true)
+                    // 2.0's key (checked in game: a machine built from "circuit_enable_disable" ignores its condition).
+                    put("circuit_enabled", true)
                     put("circuit_condition", buildJsonObject {
                         put("first_signal", buildJsonObject { if (c.fluid) put("type", "fluid"); put("name", c.signal) })
                         put("constant", c.constant)
@@ -176,17 +201,18 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
             x = floor(b.position.x - ew / 2.0 + 1e-6).toInt(),
             y = floor(b.position.y - eh / 2.0 + 1e-6).toInt(),
             dir = dir,
-            recipe = b.recipe,
+            recipe = b.recipe?.let { withQuality(it, b.recipeQuality) },
             item = when (kind) {
                 Kind.INFINITY_CHEST -> b.infinitySettings?.get("filters")?.jsonArray?.firstOrNull()
                     ?.jsonObject?.get("name")?.jsonPrimitive?.content
-                Kind.CHEST -> b.filters?.firstOrNull()?.name
-                Kind.INSERTER -> if (b.useFilters == true && b.filterMode != "blacklist") b.filters?.firstOrNull()?.name else null
+                Kind.CHEST -> b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) }
+                Kind.INSERTER -> if (b.useFilters == true && b.filterMode != "blacklist") b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) } else null
                 else -> null
             },
             fluid = if (kind == Kind.INFINITY_PIPE) b.infinitySettings?.get("name")?.jsonPrimitive?.content else null,
             drain = kind == Kind.INFINITY_PIPE && b.infinitySettings?.get("mode")?.jsonPrimitive?.content == "exactly" &&
                 b.infinitySettings["percentage"]?.jsonPrimitive?.content?.toDoubleOrNull() == 0.0,
+            blacklist = if (kind == Kind.INSERTER && b.useFilters == true && b.filterMode == "blacklist") b.filters?.map { withQuality(it.name, it.quality) } else null,
             mirror = b.mirror == true,
             w = ew,
             h = eh,
@@ -223,4 +249,4 @@ fun encodeBlueprint(bp: Blueprint): String = compressAndEncode(bp.toJson())
 fun decodeBlueprint(s: String): Blueprint =
     blueprintJson.decodeFromString(BlueprintRoot.serializer(), decodeToJson(s)).blueprint
 
-fun Layout.toBlueprintString(quality: String = "normal"): String = encodeBlueprint(toBlueprint(quality))
+fun Layout.toBlueprintString(q: BuildQuality = BuildQuality()): String = encodeBlueprint(toBlueprint(q))

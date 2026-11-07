@@ -30,6 +30,7 @@ private data class SEntity(
     val name: String, val kind: String, val x: Int, val y: Int, val dir: String, val recipe: String? = null, val item: String? = null,
     val fluid: String? = null, val net: Int? = null, val mirror: Boolean = false, val drain: Boolean = false, val w: Int, val h: Int,
     val modules: List<String>? = null,
+    val blacklist: List<String>? = null,
 )
 
 @Serializable
@@ -82,7 +83,7 @@ fun saveSplit(out: File, config: RunConfiguration, split: Split) {
 fun saveBlock(out: File, b: Int, layouts: List<TrialResult>) {
     val ls = layouts.map { r ->
         SLayout(r.w, r.h, r.score, r.seed,
-            r.layout!!.entities.map { e -> SEntity(e.name, e.kind.name, e.x, e.y, e.dir.name, e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, e.modules) },
+            r.layout!!.entities.map { e -> SEntity(e.name, e.kind.name, e.x, e.y, e.dir.name, e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, e.modules, e.blacklist) },
             r.placement!!.machines.map { SMachine(it.id, it.x, it.y, it.rot.name, it.mirror) },
             r.sources.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, it.lane, it.port) },
             r.outputs.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, -1, it.port) })
@@ -103,13 +104,22 @@ fun savedJob(out: File): RunConfiguration? =
 /** Machines per recipe: a saved split fits a plan when these match. */
 fun recipeCounts(p: ProductionPlan): Map<String, Int> = p.machines.groupingBy { it.recipe }.eachCount()
 
+/**
+ * Whether a saved split's plan is of the job's [plan]: the same recipes, each with at least as many machines (the
+ * split may add machines so that the belts out of a block get whole machines, see [wholeMachines]).
+ */
+fun splitFits(saved: ProductionPlan, plan: ProductionPlan): Boolean {
+    val a = recipeCounts(saved); val b = recipeCounts(plan)
+    return a.keys == b.keys && b.all { (r, n) -> (a[r] ?: 0) >= n }
+}
+
 /** Why a run in [out] cannot be resumed for [plan] (the job's plan before the split), or null when it can. */
 fun resumeProblem(out: File, plan: ProductionPlan): String? {
     if (!out.isDirectory) return "$out does not exist"
     val saved = runCatching { loadSplit(out) }.getOrElse { return "$out/resume/split.json cannot be read (${it.message})" }
         ?: return "nothing saved in $out/resume (only a factory of blocks saves its split and blocks there, from its split on)"
     val a = recipeCounts(saved.plan); val b = recipeCounts(plan)
-    if (a != b) {
+    if (!splitFits(saved.plan, plan)) {
         val diff = (a.keys + b.keys).filter { a[it] != b[it] }.take(4).joinToString(", ") { "$it ${a[it] ?: 0} -> ${b[it] ?: 0}" }
         return "the job's plan changed since that run (machines: $diff); a resumed run keeps the old split, so start afresh instead"
     }
@@ -127,13 +137,29 @@ fun loadSplit(out: File): Split? {
     return Split(s.blocks, links, s.warnings, g, s.plan, part, s.ports)
 }
 
+/**
+ * Why layout [r] of block [bp] cannot be stitched, or null: it leaves out a port between blocks, or a lane pair's port
+ * has another port right beside it (where the pair's two belts may have to join). Layouts saved by older versions
+ * can be like that; the search and templates no longer make them.
+ */
+fun unstitchable(bp: BlockPlan, r: TrialResult): String? {
+    search.missingLinkPorts(bp.plan, r.sources, r.outputs).takeIf { it.isNotEmpty() }?.let { ps ->
+        return "missing its " + ps.joinToString { "${it.item} ${if (it.output) "output" else "input"} (link ${bp.linkOfPort[it.id]})" }
+    }
+    val tiles = r.sources.map { it.tile } + r.outputs.map { it.tile }
+    r.sources.filter { it.lane >= 0 }.forEach { s ->
+        if (tiles.any { it != s.tile && it.manhattan(s.tile) == 1 }) return "a port beside its ${s.item} lane pair's port"
+    }
+    return null
+}
+
 /** The layouts saved for block [b] in [out] (empty if none). */
 fun loadBlock(out: File, b: Int): List<TrialResult> {
     val f = File(out, "resume/block_${b + 1}.json").takeIf { it.exists() } ?: return emptyList()
     val ls = strictJson.decodeFromString(kotlinx.serialization.builtins.ListSerializer(SLayout.serializer()), f.readText())
     return ls.map { l ->
         val ents = l.entities.map { e ->
-            PlacedEntity(e.name, Kind.valueOf(e.kind), e.x, e.y, Dir.valueOf(e.dir), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, modules = e.modules)
+            PlacedEntity(e.name, Kind.valueOf(e.kind), e.x, e.y, Dir.valueOf(e.dir), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, modules = e.modules, blacklist = e.blacklist)
         }
         val placement = Placement(l.w, l.h, l.machines.map { PlacedMachine(it.id, it.x, it.y, Dir.valueOf(it.rot), it.mirror) })
         TrialResult(true, l.w, l.h, l.seed, Layout(l.w, l.h, ents), placement, emptyList(), null, l.score, "ok", 0.0, 0, listOf("resumed"),

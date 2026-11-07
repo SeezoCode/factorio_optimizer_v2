@@ -24,8 +24,8 @@ class RecipeIndex(
     init {
         val machineCategories = machine?.let { data.craftingCategories(it).toSet() }
         byItem = data.recipes.values
-            .filter { it.category in allowedCategories && it.name !in forbiddenRecipes }
-            .filter { machineCategories == null || it.category in machineCategories }
+            .filter { it.inAny(allowedCategories) && it.name !in forbiddenRecipes }
+            .filter { machineCategories == null || it.inAny(machineCategories) }
             .filter { it.mainProduct != null }
             .groupBy { it.mainProduct!!.name }
             .mapValues { (_, list) -> list.sortedBy { it.name } }

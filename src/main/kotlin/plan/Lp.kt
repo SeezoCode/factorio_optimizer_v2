@@ -13,8 +13,26 @@ import data.craftingCategories
 /** Resources the base game mines or pumps; they may always be supplied through a port. */
 val BASE_RAW = setOf("iron-ore", "copper-ore", "stone", "coal", "wood", "crude-oil", "water", "uranium-ore", "raw-fish")
 
-/** Categories no base crafting machine should take even if listed (placeholders, recycling). */
-private val EXCLUDED_CATEGORIES = setOf("parameters", "recycling", "recycling-or-hand-crafting")
+/** Categories no base crafting machine should take even if listed (placeholders; recycling unless the job asks). */
+private val EXCLUDED_CATEGORIES = setOf("parameters")
+internal val RECYCLING_CATEGORIES = setOf("recycling", "recycling-or-hand-crafting")
+
+/** A recycling recipe that turns an item into a quarter of itself (the way recyclers destroy items). */
+fun selfRecycling(r: Recipe): Boolean =
+    r.inAny(RECYCLING_CATEGORIES) && r.ingredients.size == 1 && r.products.size == 1 && r.products[0].name == r.ingredients[0].name
+
+/** Whether the job's [config.RecyclingConfig] allows recycling recipe [r] (true for any other recipe). */
+fun recyclingAllowed(r: Recipe, config: RunConfiguration): Boolean {
+    if (!r.inAny(RECYCLING_CATEGORIES)) return true
+    // Quality production climbs by recycling what is not wanted.
+    if (config.qualityProduction?.recycle == true && !selfRecycling(r)) return true
+    val rc = config.recycling
+    return when (rc.mode) {
+        "off" -> false
+        "void" -> selfRecycling(r) && r.ingredients[0].name in rc.voidItems
+        else -> if (selfRecycling(r)) r.ingredients[0].name in rc.voidItems else true
+    }
+}
 private val EXCLUDED_SUBGROUPS = setOf("fill-barrel", "empty-barrel")
 
 /** A recipe the planner may use, with the machine that will craft it. */
@@ -36,7 +54,8 @@ data class LpResult(
 
 /** The machines a job may use, in preference order (first machine able to craft a category wins). */
 fun effectiveMachines(config: RunConfiguration): List<String> =
-    config.machines ?: (listOf(config.machine) + listOf("electric-furnace", "chemical-plant", "oil-refinery", "centrifuge"))
+    (config.machines ?: (listOf(config.machine) + listOf("electric-furnace", "chemical-plant", "oil-refinery", "centrifuge")))
+        .let { if ((config.recycling.mode != "off" || config.qualityProduction?.recycle == true) && "recycler" !in it) it + "recycler" else it }
         .distinct()
 
 /**
@@ -49,9 +68,9 @@ fun fuelItem(data: RootData, machine: String, config: RunConfiguration): String?
     val burner = (e as? FurnaceEntity)?.energySource == "burner" || (e as? AssemblingMachineEntity)?.energySource == "burner"
     if (!burner) return null
     val cats = (e as? FurnaceEntity)?.fuelCategories ?: (e as? AssemblingMachineEntity)?.fuelCategories ?: listOf("chemical")
-    if (data.items[config.fuel]?.fuelCategory in cats) return config.fuel
-    cats.forEach { c -> if (data.items[c]?.fuelCategory == c) return c }
-    return data.items.values.filter { it.fuelCategory in cats && it.fuelValue > 0 }.minByOrNull { it.name }?.name
+    if (data.items[config.fuel]?.allFuelCategories?.any { it in cats } == true) return config.fuel
+    cats.forEach { c -> if (data.items[c]?.allFuelCategories?.contains(c) == true) return c }
+    return data.items.values.filter { it.allFuelCategories.any { c -> c in cats } && it.fuelValue > 0 }.minByOrNull { it.name }?.name
         ?: error("no fuel for '$machine' (fuel categories $cats)")
 }
 
@@ -73,7 +92,8 @@ fun productivity(data: RootData, c: RecipeChoice, config: RunConfiguration): Dou
     val e = data.entities[c.machine]
     val base = (e as? AssemblingMachineEntity)?.effectReceiver?.baseEffect?.get("productivity")
         ?: (e as? FurnaceEntity)?.effectReceiver?.baseEffect?.get("productivity") ?: 0.0
-    return minOf(base + (config.research.productivity[c.recipe.name] ?: 0.0) + moduleProductivity(data, config, c.recipe, c.machine),
+    val researched = config.research.productivity[emit.splitQuality(c.recipe.name).first] ?: 0.0
+    return minOf(base + researched + moduleProductivity(data, config, c.recipe, c.machine),
         c.recipe.maximumProductivity.toDouble())
 }
 
@@ -102,15 +122,16 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     val categoryFilter = config.recipeCategories?.toSet()
 
     val choices = data.recipes.values.mapNotNull { r ->
-        if (r.category in EXCLUDED_CATEGORIES || r.subgroup in EXCLUDED_SUBGROUPS || r.name in config.forbiddenRecipes) return@mapNotNull null
-        if (categoryFilter != null && r.category !in categoryFilter) return@mapNotNull null
+        if (r.inAny(EXCLUDED_CATEGORIES) || r.subgroup in EXCLUDED_SUBGROUPS || r.name in config.forbiddenRecipes) return@mapNotNull null
+        if (!recyclingAllowed(r, config)) return@mapNotNull null
+        if (categoryFilter != null && !r.inAny(categoryFilter)) return@mapNotNull null
         if (r.products.isEmpty()) return@mapNotNull null
         // Items the job supplies are not made inside the block.
         val main = r.mainProduct?.name
         if (main != null && main in sourced) return@mapNotNull null
         // recipe_overrides: only the chosen recipe may make that item.
         if (overrides.any { (item, chosen) -> chosen != r.name && r.products.any { it.name == item } }) return@mapNotNull null
-        val m = machines.firstOrNull { r.category in data.craftingCategories(it) } ?: return@mapNotNull null
+        val m = machines.firstOrNull { r.inAny(data.craftingCategories(it)) } ?: return@mapNotNull null
         // Modules and the planned beacons make the machine faster (see Modules.kt).
         RecipeChoice(r, m, moduleSpeed(data, config, r, m, plannedBeacons(data, config, r, m)))
     }
@@ -143,7 +164,9 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     val makeable = choices.flatMap { c -> c.recipe.products.map { it.name } }.toSet()
     val supplyAllowed = items.filter { it in sourced || (it in raw && !(it in targets && it in makeable)) }.toSet()
     val s = supplyAllowed.associateWith { solver.makeNumVar(0.0, inf, "s_$it") }
-    val out = items.associateWith { solver.makeNumVar(0.0, inf, "o_$it") }
+    // Items the job voids by recycling may not leave the block (unless they are targets): their surplus is destroyed.
+    val voided = if (config.recycling.mode == "off") emptySet() else config.recycling.voidItems.toSet()
+    val out = items.associateWith { solver.makeNumVar(0.0, if (it in voided && it !in targets) 0.0 else inf, "o_$it") }
     items.forEach { item ->
         val t = targets[item] ?: 0.0
         val row = solver.makeConstraint(t, t, "bal_$item")
@@ -157,7 +180,12 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         obj.setCoefficient(x.getValue(c), c.machineTime * e.width * e.height / 9.0)
     }
     s.forEach { (item, v) -> obj.setCoefficient(v, if (item in fluids) tun.supplyCostFluid else tun.supplyCostItem) }
-    out.forEach { (item, v) -> if (item !in targets) obj.setCoefficient(v, if (item in fluids) tun.surplusCostFluid else tun.surplusCostItem) }
+    // Items the job lets leave on a mixed belt (quality production's other qualities among them) leave almost free:
+    // otherwise the planner would rather turn them into something else that leaves in smaller numbers.
+    val mayLeave = config.mixedOutputs.flatMap { it.items }.toSet()
+    out.forEach { (item, v) ->
+        if (item !in targets) obj.setCoefficient(v, (if (item in fluids) tun.surplusCostFluid else tun.surplusCostItem) * (if (item in mayLeave) 0.01 else 1.0))
+    }
     obj.setMinimization()
     val status = solver.solve()
     if (status != MPSolver.ResultStatus.OPTIMAL && status != MPSolver.ResultStatus.FEASIBLE) {

@@ -13,10 +13,13 @@ is written as a blueprint string. Jobs too big for one block are built as a [fac
 blocks](#big-jobs-a-factory-of-blocks).
 
 **Space Age (experimental):** foundries, electromagnetic plants and biochambers work, with their built-in
-productivity, research productivity and space-platform jobs (see [Space Age](#space-age)). Others only partly:
-crushers only on space platforms, cryogenic plants without Aquilo's heating (heat pipes are not modelled), and
-recyclers not at all (the planner never uses recycling recipes). Gleba layouts are the hardest to route, since
-every biochamber also needs a nutrient belt, and spoilage is not modelled.
+productivity, research productivity and space-platform jobs (see [Space Age](#space-age)). Recyclers work when a
+job asks for them ([recycling](#recyclers-and-mixed-belts)), and leftovers can leave together on one mixed (sushi)
+belt; Aquilo's heating is laid with heat pipes ([heat](#aquilo-heat-pipes), dense blocks with a heat lattice,
+factories of blocks too). Crushers work only on space platforms. Gleba layouts are the hardest to route, since
+every biochamber also needs a nutrient belt; spoilage can be drained ([spoilage](#gleba-spoilage), opt-in).
+Machines, beacons and modules can be of any quality, and items of a better quality can be made with quality modules
+and recyclers ([quality production](#quality-production), opt-in).
 
 ## Examples
 
@@ -28,7 +31,9 @@ job file next to it, and most have a screenshot of the layout built in game. All
 Compared with my most compact hand-built layouts, the generated ones take 110–120% of their area. More compute
 closes only a little of that; the rest is the algorithm. Hand builds run one belt down a whole column of
 machines, put two inputs on one belt, and feed everything from a bus, while the router still treats each item
-as separate chains between scattered machines.
+as separate chains between scattered machines. [docs/COMMUNITY_BENCHMARK.md](docs/COMMUNITY_BENCHMARK.md) measures
+the same gap against 15 published community designs and lists what to copy; `tools/blueprints/analyze.py` prints
+any blueprint's footprint, parts, rate and layout patterns.
 
 | Example | Machines | Box | Search ran | Best layout found after | J*b |
 |---------|---------:|----:|-----------:|------------------------:|-----|
@@ -62,7 +67,8 @@ dots are poles.*
 
 *All six science packs at 2/s each from ore, coal, stone, crude oil and water: 1,220 machines (834 electric
 furnaces, 312 assemblers, 52 chemical plants, 22 oil refineries) in 64 blocks of at most 20 machines, 230 × 237 =
-54,510 tiles. It ran for 9 hours in game with everything working.*
+54,510 tiles. It ran for 9 hours in game, but measured it falls short: chemical science comes out at 1.62/s,
+production at 1.87/s and utility at 1.18/s (see below).*
 
 The search ran for 7 h 55 min on 10 threads (M5): 4 h 15 min for the blocks (about 4 minutes each), 2 h 12 min
 for two extra shapes of every block, then 14 floorplans and compaction; the smallest factory came out of
@@ -73,6 +79,34 @@ packs leave on the east edge.
 
 Twice the rate of the 1/s factories below took 1.97 times the machines and 1.90 times the area of the 28-block
 one: 44.7 tiles per machine against 46.4, so the factory of blocks does not lose density as it grows.
+
+**What the game makes of it.** Built and measured in a headless game, with every input fed without limit and
+every output taken at exactly its planned 2/s (as labs would; anything more backs up), automation, logistic
+and military science hold 2/s, but after a 3 h warm-up chemical comes out at 1.62/s, production at 1.87/s and
+utility at 1.18/s. Two causes:
+
+- **Producers split between belt chains.** The router splits a net into belt chains and gave a machine a
+  planned share on each. In the game a machine cannot steer its output: each inserter takes whenever its belt
+  has room, and one that drops ahead of its chain's other producers fills their gaps first. In block 55 a gear
+  assembler planned to send nearly all of its gears to the block's output sent a good part onto the block's own
+  belt, where the gear assembler downstream of it then stood with full output; gears for engine units ran
+  0.5/s short, and engine units with them. A pipe assembler in block 49, block 51's only pipe supply, was split
+  the same way. The validator now models this (`SPLIT_OUTPUT`: each chain pulls what its consumers take
+  running flat out, less what producers ahead of it bring, at most its inserters' share of the machine) and
+  flags those layouts; the router keeps such a producer whole on one chain when the other chain's producers have
+  spare speed, and otherwise drops its shares after its chains' other producers. Re-solving the flagged blocks
+  gives a factory (221 x 254) in which chemical science holds 2/s.
+- **Heavy oil for lubricant.** The heavy-oil crackers are meant to work only on oil lubricant leaves, through a
+  circuit condition, but every blueprint wrote the condition's switch as `circuit_enable_disable`, and 2.0 reads
+  `circuit_enabled`: in game the crackers ignored their condition, took the heavy oil, and lubricant ran at about
+  60%, so electric engines, robot frames and utility science fell short. The blueprint now writes 2.0's key. The
+  control also needed a storage tank, and the 2/s factory's oil block had no room for one; a wired pipe reads the
+  same fill level and needs no room, so one of the oil's pipes is wired instead.
+
+With both fixed (blocks 48, 49 and 55 re-solved, 221 x 254), taking exactly 2/s of each pack after a 3 h warm-up
+gives chemical 2.00/s, utility 1.99/s and the three others 2/s, but production 1.81/s: one of block 53's three
+electric-furnace assemblers stands with full output while production science waits for furnaces, not traced yet.
+The factory shown here is the original run.
 
 ![2 science/s factory, render](docs/examples/two_science_per_second/best.jpg)
 
@@ -186,6 +220,37 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
   time budget; the final factory is stitched after the stop.
 - `--plain`: line-by-line output instead of the live view.
 
+### The browser UI
+
+```sh
+./optimize --ui            # then open the address it prints: http://localhost:8765, or the next free port (--port=<n> to start elsewhere)
+```
+
+- **Jobs**: every job file in the repository, edited in a form built from the job and tuning types themselves:
+  each setting with its type, default and documentation (from the source), item and recipe names suggested from
+  the game data. Unchecked settings stay out of the file (the default applies). The JSON is beside it and can be
+  edited too. Save, check, and start a run (out folder, RAM, resume).
+- **Runs**: run folders (`solves/`, `out/`, ...) with live status, the block table and the log of a running
+  factory; the best layout, the test copy and each block drawn to scale (drag to pan, wheel to zoom, hover for
+  details), with the game's own icons when Factorio is installed (`FACTORIO_DATA` points elsewhere), blocks
+  outlined in a factory, and machines outlined by what they did in game once verified. Inputs and outputs are
+  marked on the edge and labelled with item and rate. **Verify in game** runs the in-game check below, and **Why
+  short?** traces any machine that starved there (`starve.py`). Drag the divider to widen the side panel.
+- **Steering a factory run** (while it runs, started here or in a terminal): pause and resume, stitch a preview,
+  move the time limit (−5, +5, +30 minutes, no limit, or minutes left from now), lanes up and down, **Finish**
+  (the turns running, then the final factory), **Stop now** (keeping the best factory so far) and **Kill** (runs
+  started from the UI); each block row has **focus** (every thread on it) and **skip**. These are the terminal's
+  keys, sent through the run's control file.
+- **Stages** at the top of the side panel: plan, first layouts, refining blocks, final factory, done, and the
+  in-game check, each done stage with how long it took, the current one with a running counter (and the time
+  left while blocks are refined), and the run's total time.
+- **History** of a factory run (from its `factory.txt`): each phase and how long it took, the factory's size at
+  each preview and save as a chart, every preview with how long its stitch took, each block's first and current
+  size with how often and when it last got smaller (hover a row for every step), and every steering action.
+
+The UI only reads and writes files and starts `./optimize` and the verifier as separate processes, so runs started
+from a terminal show up too, and the solver does not depend on it.
+
 ### Watching and steering a factory run
 
 (The live view needs the program in a terminal: start it with `./optimize`, not `./gradlew run`.)
@@ -258,21 +323,28 @@ Unknown keys are an error. Everything except `targets` has a default.
   "power": { "mode": "set-cover", "pole": "medium-electric-pole", "allow_outside_ring": true },
   "beacons": { "mode": "lattice", "beacon": "beacon", "modules": ["speed-module-3", "speed-module-3"], "per_machine": 2,
                "machine_modules": ["productivity-module-3", "productivity-module-3", "productivity-module-3", "productivity-module-3"],
-               "fallback_module": "speed-module-3", "recipes": null, "pitch": null },
+               "fallback_module": "speed-module-3", "recipes": null, "pitch": null,
+               "quality": "normal", "module_quality": "normal" },
   "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true },
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
+  "templates": true,
   "blocks": { "max_machines": 120, "size_by": "weight", "overflow_cost": 1.0, "hard_max": 1.5,
               "lanes": null, "park_after": 4, "restitch_share": 0.03,
               "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
-              "link_belt_share": 0.9, "split_at_weight": 0.1, "block_time_share": 0.9,
+              "link_belt_share": 0.9, "belt_weight": 0.0, "split_at_weight": 0.1, "block_time_share": 0.9,
               "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
               "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
               "compact_s": null, "shape_variants": [], "shape_variant_s": null,
-              "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3 },
+              "compact": true, "repack": false, "repack_share": 0.25, "merge": false, "merge_share": 0.3,
+              "templates": true, "template_share": 0.25, "template_ingredients": 4, "template_min_machines": 4, "template_columns": 1,
+              "shared_outputs": false },
   "reserved": [{ "w": 10, "h": 8, "corner": "south-east" }],
   "ports_on_ring": true,
   "marker_tile": "hazard-concrete-left",
+  "recycling": { "mode": "off", "void_items": [] },
+  "mixed_outputs": [{ "items": ["solid-fuel", "stone", "ice"], "edge": "south" }],
+  "heat": { "mode": "off", "edge": "any", "poles": false, "ports": 4 },
   "tuning": { "route": { "p_mult": 1.1 }, "place": { "beta2": 1.0 } }
 }
 ```
@@ -286,11 +358,13 @@ Unknown keys are an error. Everything except `targets` has a default.
   generator picks one and reports it in `ports.json`). `"sinks": {"mode": "chest"}` puts products into chests
   instead, as in v1.
 - Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
-  (lubricant, or oil leaving the block), a storage tank goes on that oil's pipes with a red wire to the cracking
-  plants, which work only while the tank is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns
-  it off; `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan
-  needs, starve lubricant and fill the petroleum pipes until the refineries stop. The tank reads its own contents,
-  which follow the fill level of the whole pipe network, so the threshold does not depend on pipe length.
+  (lubricant, or oil leaving the block), one of that oil's pipes gets a red wire to the cracking plants, which work
+  only while that pipe is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns it off;
+  `fluids.surplus_level`). Machine counts are rounded up, so uncontrolled crackers run faster than the plan needs,
+  starve lubricant and fill the petroleum pipes until the refineries stop. A wired pipe reads its own share of the
+  fluid, which follows the fill level of the whole pipe network (50 in a line of 10 pipes or of 40 half full), so
+  the threshold does not depend on pipe length, and nothing needs room (a storage tank, which reads the same, did
+  not fit in the 2/s factory's packed oil block).
 - `beacons` (optional) adds modules and beacons, placed much like electricity poles. `machine_modules` go in every
   electric machine's own slots; one the recipe refuses (productivity on belts, inserters…) becomes `fallback_module`,
   or the slot stays empty. Machines of `recipes` (default: every one that takes beacon effects) are planned with
@@ -303,6 +377,11 @@ Unknown keys are an error. Everything except `targets` has a default.
   that serve nobody go and machines still short get beacons on free tiles. `"set-cover"` places them only after
   routing (rerouting around machines left short, falling back to the lattice). Beacons are powered, the validator
   counts the beacons in range of every machine, and the blueprint requests the modules into their slots.
+- **Quality of the buildings.** `quality` is the crafting machines' quality (a legendary assembler 3 crafts at
+  3.125), `beacons.quality` the beacons' (distribution effectivity 1.5 + 0.2 a level, 2.5 legendary) and
+  `beacons.module_quality` every module's (bonuses × (1 + 0.3 · level), ×2.5 legendary; penalties as they are).
+  The plan counts machines with them, and the blueprint asks for machines, beacons and modules of that quality;
+  machines still craft normal items (recipe quality normal). The module rule is marked VERIFY (v27).
 - Fluids are routed in pipes and pipe-to-ground (`"fluids": {"mode": "infinity-pipe"}` puts an infinity pipe on
   every fluid connection instead, `"manual"` leaves the connection tiles free).
 - `box.max_size` caps the box (the side of a square of the box's area): the search starts there and, if it
@@ -311,6 +390,14 @@ Unknown keys are an error. Everything except `targets` has a default.
 - `weave_tier` is the second underground tier that may cross under the main tier's undergrounds ("auto":
   express under fast belts; "none" turns weaving off). `lane_sharing: true` lets two items share a belt, one
   per lane (opt-in until the drop-lane facts are checked in game, see docs/VERIFY.md).
+- `belt_stack_size` (Space Age, 1–4, default 1: off) stacks items on belts: every inserter dropping onto a belt is a
+  stack inserter and items coming in are taken as stacked, so a belt carries that many times its items (a lane
+  is counted in slots: a stack takes one, an item another inserter dropped takes one alone). See
+  [Belt stacking](#belt-stacking).
+- `spoilage.mode` (Gleba, "off" or "drain", default off) drains what spoils at belt ends and keeps machines from
+  clogging with it; see [Gleba: spoilage](#gleba-spoilage).
+- `quality_production` makes items of a better quality (targets like `"iron-gear-wheel@legendary"`), with quality
+  modules and recyclers; see [Quality production](#quality-production).
 - `research.inserter_capacity` (0–7) sets inserter hand sizes; `machines` picks one machine per recipe category.
 - `research.productivity` adds research productivity per recipe on top of the machine's own (+50% in a foundry,
   electromagnetic plant or biochamber), capped at the recipe's maximum. Rates and machine counts follow from it.
@@ -333,7 +420,17 @@ Unknown keys are an error. Everything except `targets` has a default.
 - `test_mode` builds the feeds into the search instead: inputs from infinity chests with inserters, outputs into
   void chests, ports spaced out so every feeder fits. The layout differs from the real one; the test copy above
   is usually what you want.
-- `tricks` toggles individual techniques (I1–I13, B1–B13, F1, F2, P1, P2, H1); v1 ones are on by default.
+- `templates` (on by default): a job of one recipe whose machines a ready-made column holds (see
+  [Templates](#templates-ready-made-columns)) starts with that column as its best layout, and the search then tries
+  smaller boxes only, so it never ends with a larger layout than the column. Not with `test_mode`, `reserved`,
+  `forbidden_tiles` or a fixed box width or height.
+- `tricks` toggles individual techniques (I1–I13, B1–B14, F1, F2, P1, P2, H1); v1 ones are on by default. B14, on by
+  default, is the dead-end splitter pickup: a splitter on a belt whose second half leads nowhere, so an inserter
+  beside the belt picks from that half (or a splitter at the end of a belt, picked from on both halves, up to five
+  inserters). It lets a chain serve a consumer without running past its access tile; `route.stub_cost` prices it on
+  top of `route.splitter_cost`. On chemical science at 37 x 37 it routed 2 of 6 seeds against 0 of 6 without it, at
+  38 x 38 6 of 6 against 3 of 6.
+- `recycling`, `mixed_outputs` and `heat`: see [Space Age](#space-age).
 - The old CP-SAT fields (`forbidden_places`, source `force`) are still accepted so old job files load, but do nothing.
 
 ### Big jobs: a factory of blocks
@@ -347,7 +444,10 @@ belts and pipes, in one blueprint:
    many-input assembler 2–3), and a block aims at `max_machines` machines of a typical recipe. It may grow past
    that at a price (`overflow_cost` ports for 20 % over, growing with the square) but never past `hard_max` times
    it. Simple blocks such as smelting columns grow, mixed ones stay about as they were, and each block's share of
-   the search time follows its weight. `"size_by": "machines"` keeps the old hard cap of `max_machines`
+   the search time follows its weight. `belt_weight` (default 0) adds that much weight per belt's worth of items a
+   machine takes or makes, for blocks of machines that fill belts (foundries casting cable); on a ten-science job
+   with foundries 1 to 2 changed the cable blocks little (6 foundries and 9 assemblers to 5 and 8), since the
+   typical recipe gets heavier too. `"size_by": "machines"` keeps the old hard cap of `max_machines`
    machines. The split pays for what it cuts: every item a block makes more or less of than it uses
    is a port on that block and a belt (or pipe) through the corridors, so it costs `link_cost` per belt
    (`fluid_link_cost` per pipe port), plus a little per belt's worth of rate, plus `block_cost` per block.
@@ -415,6 +515,19 @@ belts and pipes, in one blueprint:
    (a merged block weighs at most 2.5 times the target, or has at most `merge_max_machines` machines with
    `size_by` machines, default twice `max_machines`).
 
+8. **Templates.** With `templates` (on by default) a block of one recipe of machines (any size) with one to four
+   solid ingredients and one product (smelting, gears, science packs, engines…) is also offered as a ready-made
+   column, next to whatever the search finds; the floorplan picks the layout that packs best, so nothing is forced
+   (see [Templates](#templates-ready-made-columns)). The split keeps such recipes in blocks of their own (those with
+   at most `template_ingredients` ingredients and at least `template_min_machines` machines), each within what one
+   column's belts carry, and their search gets `template_share` of its share of the time, since the template is a
+   layout already.
+9. **Shared outputs (experimental, off).** With `shared_outputs` the links of one item leaving a block on one side
+   share one output port (two or three links, up to a belt's worth): the block has fewer ports to reach, and in the
+   corridors a short belt from the port leads to splitters that give each link its own belt. Small factories route
+   and validate with it (`FactoryTest`); on six science (28 blocks) it found no valid factory yet: the splitters and
+   their belt sit where the corridors are narrowest and wall off a consumer's port. Kept for further work.
+
 Inputs and outputs take the edges in `sources` and `outputs`, belts and pipes alike, as for a single block, with
 `from` and `to` counting tiles of the factory as stitched. Factory jobs take edges only, not `x` and `y`.
 Reserved areas are placed by the floorplan in their corners. `rows` is ignored now (old job files still load).
@@ -424,13 +537,112 @@ Every smaller valid factory is saved as it is found, so stopping the run early k
 The output folder holds the factory (`best_output_string.txt`, its test copy `test_output_string.txt`, `best.png`, `ports.json`, `factory.txt` with the
 split, the links, the pipe trees and every stitching step) and each block in `block_<n>/`.
 
+#### Templates: ready-made columns
+
+A block of one recipe whose machines take one to four solid ingredients (fuel counts) and make one product gets a
+ready-made column, whatever the machine's size (2x2 furnaces to 5x5). Machines stand in two columns (or one), a
+machine's height apart, with belts down the middle, in one of three styles (mw: the machine's width):
+
+```
+narrow (2 mw + 4):  |machine|in, out, pole|A|B|in, out, pole|machine|
+split  (2 mw + 7):  |B1|out|machine|in|A|in|machine|out|B2|
+wide   (2 mw + 8):  |B1|out|machine|in, in|A1|A2|in, in|machine|out|B2|
+```
+
+Narrow, for one or two ingredients: belt A carries the ingredients down the middle (two of them a lane each), belt B
+the product. On each side one inserter stands next to the belt it serves and a long-handed one reaches across to the
+other (left: short from A, long onto B; right: long from A, short onto B), and the third tile is free for a pole.
+Twenty electric furnaces take 30 x 10 = 300 tiles, against 441–484 for the searched smelting blocks of the 2/s
+factory; eight assembler 3s of red science 13 x 10.
+
+Split, also for one or two ingredients (a classic smelting column): A down the middle, each machine putting its
+product out of its other side onto an outer belt (a lane of it). Short inserters only, so it takes machines that
+outrun long-handed inserters, or jobs that allow none; and small machines, whose sides have no room for a pole next
+to two inserters (twenty stone furnaces, ore and coal a lane each: 22 x 11).
+
+Wide, for three or four ingredients (or two that each need more than a lane): two ingredient belts down the middle
+carry up to four items; each machine takes from the nearer with short inserters and from the farther with
+long-handed ones, and puts its product out of its other side onto an outer belt. A2 may run the other way to A1, so
+each has a header end of its own for its junction. Four engine units take 9 x 14, eight flying robot frames 14 x 17,
+four electromagnetic plants of advanced circuits 16 x 19.
+
+A machine gets as many inserters from a belt as its rates need (bulk inserters on a 4x4 electromagnetic plant, two
+fast inserters on a fast assembler) as long as they fit along its side, the cheapest that do; the side's other tiles
+take poles, and a machine whose sides keep no tile for one gets a row more. Each belt carries what its machines need
+of an item (a lane of it, two items to a belt), and each side's machines put no more on their product lane than it
+holds.
+
+When one column's belts would overflow, two stand side by side (a double column), sharing their outer product belt,
+or the beacons between them: thirty-two red science assemblers on basic belts take 20 x 28 as two narrow columns,
+where one wide column would be 14 x 50. A double column needs ports that divide between its columns: an item from
+one port goes onto one column's belt and branches off by a splitter to the other's; from several ports, either some
+of them bring each column what it needs, or they all merge into one trunk belt that branches after the last merge.
+Blocks of up to six machines are also offered one-sided (machines on one side of the belts only).
+
+Short headers above and below the column run the port belts to whichever sides the block's ports are on (a small
+belt search; an underground pair costs a tile more than belts over the same distance, so it only crosses other
+belts, and straight runs are left where splitters can go). A belt of two ingredients gets them sideloaded from
+either side of the belt just above its head, so each lands on a lane of its own whatever lanes it came on; so does
+a belt of one item fed from two ports, each within a lane (a port carrying more runs straight into the head, the
+others merging into it). Two ingredients coming on one belt already, a lane each (a factory's lane pair), run
+straight into their belt's head, lanes kept. More input ports merge into their item's belt through splitters (a
+merge only joins a side while it stays within a lane); more product ports branch off through splitters; product
+belts without a port of their own meet the others through a splitter or a sideload (or meet first and branch to the
+ports after, when the ports' rates are not what each belt carries). What the machines leave of an ingredient passes
+on to its output port: out of the end of a belt it has to itself, or branched off its input belt by a splitter (so
+any ingredient may pass through, also one sharing a belt; a factory with `pass_through` sends items on through
+blocks). When ports sit on both ends of the column a bypass lane along it (one tile wider) carries a belt past the
+machines. Every template is validated before it is offered.
+
+A recipe with one fluid ingredient (and no fluid product) gets a pipe down each column's outer side, narrow style
+(or a casting column, `|pipe|machine|out|B|out|machine|pipe|`, when the fluid is all it takes): each machine turned
+so that its used fluid input faces the pipe and no connection faces the machines above and below it, pipe-to-ground
+pairs passing its unused connections (which no pipe may touch), and the header piping the fluid from its port to the
+top of every pipe column (under the belts by pipe-to-ground). Six foundries casting iron plates from molten iron take
+16 x 15; chemical plants making plastic, batteries or explosives, and assemblers of electric engines (lubricant), get
+one too. Fast foundries soon fill a lane: beaconed ones casting cable put out more than a fast lane holds.
+
+Machines planned with beacons get a column of beacons outside each column of machines (16 wide narrow, 20 wide):
+units of beacon, pole row, beacon, placed so every machine has the beacons its rate needs (with the default two per
+machine, 2–4 each), the machines with their own modules. Biochambers take no column (their nutrients spoil).
+
+In a factory, `template_ingredients` (default 4) and `template_min_machines` (default 4) pick the recipes the split
+keeps in blocks of their own so they get a column; a block that happens to hold one recipe gets one anyway. The split
+also keeps each such block within what one column carries: a recipe whose belts would overflow one column is split
+over several blocks, each a column (57 beaconed advanced circuit assemblers on fast belts: blocks of at most 13, as
+copper cable fills a belt). A recipe whose column holds fewer than half of `max_machines` (and not all its machines)
+stays free to mix instead: many small blocks of it cost more links than their columns save. With `template_columns`
+2 (default 1) the split sizes them for a double column instead: fewer, larger blocks, which get a column only where
+their ports divide between the two (else they are searched). A job in one block starts
+from its column (top-level `templates`, on by default) and searches only smaller boxes.
+
+Six science at 1/s each from ore, 28 blocks sized by weight (`docs/status/six_science_ore_28_blocks.json`, 1600 s
+plus 600 s of compaction, 2 threads each, same machine): **26,544 and 26,712 tiles in two runs with templates
+against 29,928 without** (about 11 % smaller; an early version that gave a column to 7 of the 14 smelting blocks made
+27,722, and one before the validator fix below 26,970). That 26,970 run rejected 20 factories for an iron lane over
+capacity in front of a steel column fed by three smelting blocks: the validator split each upstream splitter by all
+the demand reachable below each side, which counted the steel column's whole draw behind every one of its three
+inputs. It now splits by what the max flow sends through to the consumers below each side, and the two runs since
+rejected none.
+
+With columns for two to four ingredients too (same job and machine, two runs at a time): **24,180 tiles** against
+26,880 with single-ingredient columns only (35 blocks against 28: the split keeps 16 recipes apart). With lane pairs
+(two ingredients on one belt from another block), input ports over a lane and the header search preferring belts,
+27 of the 35 blocks got a column (all single-recipe blocks but production science, whose rails outrun a long-handed
+inserter): **23,405 tiles**; a second run's final stitch did not route on any of its three floorplans (two corridor
+conflicts each) and kept a 25,428-tile preview, and resuming it (`--resume`, 200 s) stitched the same blocks into
+**23,103 tiles**. With columns for any machine (split, one-sided, double and piped columns, ingredients passing on,
+blocks kept within what one column carries): **22,356 tiles** (35 blocks again; the chemical plants making plastic
+get a piped column). Keeping every recipe a column holds apart, even with one or two machines, split the small T3 job
+into four blocks instead of two, hence `template_min_machines` 4. `TemplateDiagTest` (`TEMPLATE_DIAG=<factory output dir>`,
+`TEMPLATE_JOB=<job>`) says why a block got none; `TEMPLATE_DEBUG=1` traces the header search.
+
 ### Space Age
 
 The foundry, electromagnetic plant and biochamber are supported (their sizes and fluid connections come from
 the 2.0 game data). The crusher works on space platforms only. The cryogenic plant is placed like any other
-machine, but Aquilo's heating is not modelled. The recycler is not supported: recycling recipes are left out
-of the plan, so Fulgora jobs list what recyclers would deliver as raw resources instead. List them in
-`machines`, in the order you prefer them for recipes several machines can make. The planner counts their
+machine; Aquilo's heating comes from [heat pipes](#aquilo-heat-pipes). List them in `machines`, in the order you
+prefer them for recipes several machines can make. The planner counts their
 built-in productivity, a biochamber burns nutrients like a furnace burns coal, and a machine with several
 products (asteroid crushing returns part of its chunk) gets one filtered output inserter per product.
 
@@ -452,12 +664,169 @@ There is no special mode for space platforms; the normal options describe one:
 }
 ```
 
+#### Quality production
+
+With `"quality_production": {}` targets may name a quality, `"iron-gear-wheel@legendary"` (normal keeps the plain
+name), and so may `outputs`. Every machine making what they need takes `modules` (four quality modules 3 by default,
+of `module_quality`), so a craft comes out one tier better with its quality chance and each further tier with 10 %
+of that, the 2.0 way: four normal quality modules 3 give 10 %, so of a machine's gears 90 % are normal, 9 %
+uncommon, 0.9 % rare. Items of each quality are items of their own to the planner, the router and the validator
+("iron-plate@rare"), and every recipe in the targets' chain gets a variant per quality that takes ingredients of
+that quality. With `recycle` (default) recyclers with `recycler_modules` take what is not wanted back to a quarter of
+its ingredients, of that quality or better, and the planner loops items through them to climb. What leaves and is
+not a target (the other qualities) shares one mixed belt on `leftovers`; such leftovers leave almost free in the
+plan, or it would sooner turn them into something else. The blueprint sets each machine's recipe and recipe
+quality, and filters inserters by quality (only that quality).
+
+For 0.01 gears/s from normal plates (`QualityTest`): rare gears take 2.22 plates/s without recycling, 1.47 with
+(3 assemblers and a recycler); legendary gears 200 plates/s and 50 assemblers without, 43.6 plates/s, 15 assemblers
+and 3 recyclers with. A block of 0.2 uncommon gears/s routes and validates at 14 x 14, an inserter taking only the
+uncommon gears to the port. The quality chance of a module effect (0.25 is 2.5 %) is marked VERIFY (v28). In a
+factory of blocks each block hands its leftovers to the edge: straight out on `leftovers` where the block touches
+it, else through the corridors to the nearest edge (mixed belts of two blocks are not merged).
+
+Legendary gears at 0.01/s with recycling ([job](docs/examples/quality_legendary_gears.json)) route as one block at
+41 x 41 in 20 minutes: 11 assemblers make gears of every quality from normal plates, three recyclers take the
+uncommon, rare and epic ones back to plates of that quality or better, four assemblers (one per quality, legendary
+plates included) make gears from those, and the legendary gears leave east; the normal gears (19.6/s) and the rest leave on the mixed belt at the bottom left.
+
+![Legendary gears with recycling](docs/examples/quality_legendary_gears/best.png)
+
+#### Gleba: spoilage
+
+With `"spoilage": {"mode": "drain"}` what spoils is drained instead of being left to jam belts and machines. Items
+that spoil (fruit, mash, jelly, bioflux, nutrients, agricultural science, fish; bacteria spoil into ore; eggs hatch)
+are not in recipes.json, so their spoil results and times are in `GameConstants.SPOILS`, marked VERIFY (v26):
+
+- At every dead end of a belt that may carry something spoiling (its own item, a lane-shared one, or what a machine
+  holding something that spoils puts on it; the validator says which), a filter inserter takes the spoil result into
+  a chest (`spoilage.chest`, steel by default). Where there is no room beside the end, the belt runs on a few tiles to
+  where there is; where that fails too, the trial reroutes with room kept there (up to four times).
+- A machine whose ingredients, fuel (a biochamber's nutrients) or products spoil hands its output to a belt through
+  an inserter that takes the spoilage too: unfiltered, or, out of a machine with several products, a blacklist of the
+  other products. It never hands straight to another machine (which would not take the spoilage), and no dead-end
+  splitter stub holds a spoiling item.
+- The validator checks both: `SPOILAGE_STUCK` at a belt end where spoilage would collect, `SPOILAGE_CLOGS` at a
+  machine nothing can empty of it.
+
+A block making 2 nutrients/s from yumako routes with a drain at the end of the yumako and mash belts at 16 x 16
+(`SpoilageTest`). The Gleba example below (agricultural science and carbon fiber at 5/s each, 43 machines) with
+drains: 66 x 66 after 10 minutes on 4 threads, against 50 x 50 without them after 15 minutes on 10. Chests fill in the end; empty them, or replace them with a heating tower or recycler of your own.
+
+#### Belt stacking
+
+With `belt_stack_size: 4` a turbo belt carries 240 items/s: the planner counts belts at that rate, the router drops
+every product onto a belt through a stack inserter (no long-handed inserters there, as they would not stack) and
+the validator counts lane slots, a stack taking one and an item from any other inserter one of its own, so a lane
+mixing both holds less. Inputs are taken as arriving stacked. A block of 10 gears/s from plates takes its 20
+plates/s on one yellow belt. The stack inserter's hand size and the stack height are marked VERIFY (v25).
+
+#### Recyclers and mixed belts
+
+`recycling.mode` is `"off"` by default: the plan never recycles. `"void"` allows only an item recycled into a quarter
+of itself, for the items listed in `recycling.void_items`, which may then not leave the block: recyclers fed their
+own output destroy what is left over of them (nothing else is ever destroyed). `"full"` adds every recycling recipe
+(scrap on Fulgora, or taking items back apart into a quarter of their ingredients) to that. The recycler joins the
+machines when needed. A recycler puts its results straight onto a belt or container in front of its output end
+(seen in game), so the router keeps those tiles free and results leave through inserters; a recycler takes any item
+it is given, so its input inserters are filtered.
+
+`mixed_outputs` (a sushi belt): the listed surplus items leave together on one belt instead of a belt each, at an
+output port named `mixed-1` (`mixed-2`...) on `edge`. Each machine making some of them puts them all on it with one
+inserter, with a blacklist filter that leaves its other products in (Fulgora's scrap recycler makes twelve products;
+twelve filtered inserters do not fit around it). Only items no machine of the block uses go on it, and not targets.
+Whatever takes the belt must take everything on it, or the machines feeding it stop. Inside the block nothing picks
+from a mixed belt, so it cannot jam: the validator treats the group as one item.
+
+```json
+{
+  "targets": [{ "name": "iron-gear-wheel", "amount": 0.5 }],
+  "machines": ["recycler"], "raw_resources": [],
+  "sources": [{ "name": "scrap", "edge": "west" }],
+  "recycling": { "mode": "full" },
+  "mixed_outputs": [{ "items": ["solid-fuel", "concrete", "ice", "steel-plate", "battery", "stone", "holmium-ore"], "edge": "south" }]
+}
+```
+
+#### Aquilo: heat pipes
+
+With `"heat": {"mode": "pipes"}` everything that freezes (all but chests, test feeds and, unless `heat.poles`,
+electric poles) must share an edge with a heat pipe joined to a heat port; touching only at a corner does not count.
+Heat pipes are laid after routing: a tree grown from a port on the ring around the box (on `heat.edge`) over free
+tiles and the ring itself. Heat pipes have no underground, so where a belt line would wall an area off, a run may
+cross it where five belts go straight with nothing touching the middle three, which become an underground hop with
+the heat pipe on the freed tile; an area still walled off may get its own port (at most `heat.ports`; all are in the
+notes and the blueprint, bring heat to each). Heat goes in before the poles. In heat mode the router keeps a tile
+beside each inserter for a heat pipe, placement keeps more room around machines and belts keep off machine
+perimeters; a belt whose two side tiles are both taken costs the router more (`heat_wall_cost`), since a heat pipe
+could reach it only at its ends. Where something stays cold the trial reroutes with room kept around it, up to four
+times, and a box that still fails is retried bigger. A single gear assembler heats at 10 x 10. Denser blocks (three
+cable inserters side by side feeding circuits, T2) used to leave a few things cold at any size; `heat.lattice: 7`
+lays a row of heat pipe across the box every seven rows before placement, as Aquilo builds do: machines stay off
+the rows, belts pass under them, inserters beside one need no tile of their own, and the tree joins each row whole.
+T2 heats with it at 22 x 22 (every eight rows: 24 x 24; every five or six, too little room is left to route).
+
+In a factory of blocks each block is searched heated (its heat from any side, with the lattice if set; templates
+are off, as a column's inserters leave no tile for a pipe), the corridor router keeps a side of each belt free where
+it can, and after compaction one heat network is laid over the whole factory from ports on `heat.edge`: it joins
+every block's own pipes as they are and heats the corridors, crossing belt lines where it must. T3 as two blocks
+heats at 31 x 31 (`HeatTest`). `ports.json` lists the heat ports (`heat_ports`), where heat must be brought in.
+
+#### Space platforms
+
 `raw_resources: []` keeps ore from simply entering, so the crushers make it (here advanced crushing, the only
 platform source of copper); `sources` are where the chunks
 arrive (an edge, or exact tiles next to your collectors); `forbidden_recipes` and `recipe_overrides` decide
 which recipes may be used; `box`, `forbidden_tiles` and `reserved` fit the layout to the platform's shape and
 leave room for what you build by hand. Not modelled: spoilage, the stack inserter's belt stacking, quality
 outputs, and the space platform foundation itself.
+
+### Rocket silos
+
+Put `rocket-silo` in `machines` and ask for `rocket-part`: the silo (9 x 9) builds the parts from what its recipe
+takes (with Space Age: one processing unit, low-density structure and rocket fuel each) and launches a rocket every
+50 parts, so the parts leave through no port; the plan lists them under `launched`. One silo builds 1/3 part/s at
+crafting speed 1, and it builds the next rocket while one launches (seen in game: 400 parts and 8 rockets in 20
+minutes, flat out).
+
+```json
+{
+  "targets": [{"name": "rocket-part", "amount": 0.1}],
+  "machines": ["rocket-silo", "assembling-machine-3", "chemical-plant"],
+  "sources": [{"name": "iron-plate", "edge": "west"}, {"name": "copper-plate", "edge": "west"},
+              {"name": "steel-plate", "edge": "west"}, {"name": "plastic-bar", "edge": "west"},
+              {"name": "solid-fuel", "edge": "north"}, {"name": "light-oil", "edge": "north"},
+              {"name": "sulfuric-acid", "edge": "north"}]
+}
+```
+
+That job (`jobs/rocket_silo_chain.json`): 20 x 20 with 9 assemblers making the parts' ingredients; in game 0.104
+parts/s, 3 rockets in 20 minutes. The in-game check launches each finished rocket and counts the parts built. In a
+real Space Age save the silo launches when a platform asks for something (or by hand); without Space Age, satellites
+and space science are not modelled.
+
+### Game data and mods
+
+`src/main/resources/recipes.json` is Factorio 2.1 with Space Age, written by the exporter mod in
+`tools/factorio-exporter`: recipes, items, fluids, quality, every crafting machine with its fluid boxes, and the
+belts, inserters, poles and pipes of the game. To export a game with mods, install them in Factorio (Mods ->
+Install; they may stay disabled there) and run
+
+```
+python3 tools/factorio-exporter/export.py data/krastorio2.json --mods Krastorio2
+```
+
+It enables those mods and their dependencies in a mod folder of its own (your mod list stays as it is), starts a
+new game, waits for the file and closes the game. A job uses it with `"data": "data/krastorio2.json"`.
+
+What a mod brings is then known as the job is read: its crafting machines (size, speed, categories, modules and
+fluid connections, from their fluid boxes), its belt tiers (`belt_tier` is the belt's name, e.g.
+`"kr-advanced-transport-belt"`), its inserters (`inserters.allowed`; rate from the swing speed) and its poles
+(`power.pole`). What a mod changes of the base game counts too: with Krastorio 2 express undergrounds reach 20 tiles
+and substations supply 20 x 20. Krastorio 2 (exported with `--no-space-age`) routes 40 plastic/s from three of its
+7 x 7 advanced chemical plants on its advanced belts in 19 x 19. This is basic support: a machine's fluid box with
+several connections uses its first, mining drills, boilers, heat and mod-specific mechanics are not modelled, and
+nothing modded has been checked in game.
 
 ### Tuning knobs
 
@@ -486,6 +855,11 @@ values it used as `tuning.json` in its output folder. The ones that matter most:
 | `place.belt_cost`, `place.path_weight` | hpwl, 1.0 | How a net's belt length is estimated: bounding box x q(k), or "path" (bounding box plus the detours of a path between the machines). |
 | `search.grow_factor`, `search.grow_rounds` | 1.25, 2 | Box growth after a failed size, and seed rounds per size before growing. |
 | `planner.access_share` | 0.75 | Share of the tiles around a machine its inserters may take; a recipe that would need more gets extra machines (fast Space Age machines with productivity hit this). |
+| `planner.max_utilization` | 0.97 | The most of its full speed a machine is planned to run: machine counts round up past it, and block rebalancing stops there. A chain of machines planned at exactly 100% loses for good whatever one inserter swing costs (green science 1/s from plates made 0.92/s in game at 1; the 2/s six-science factory's rail and stick machines at 100% left production science 10% short). 1 plans the fewest machines. |
+| `planner.upstream_utilization` | 1 | A further factor per level up the production chain (0.98: targets at 0.97, plates at 0.88), so suppliers flat out more than cover consumers flat out. Being tried on the 2/s six-science factory, whose remaining shortfalls are suppliers at 100% while the same recipe stands idle in other blocks. |
+| `place.duos` | true | Cable into circuits by direct insertion: a consumer that needs one to two producers' output gets two of its own and sits between them (cable, circuit, cable). Electronic circuits 30/s: 47 x 46 instead of 53 x 52, 517 belt tiles instead of 919, 2 inserters per machine instead of 3.9. Changes nothing where no consumer needs it (science). |
+| `planner.di_consumers_per_producer`, `place.clusters`, `place.cells` | 0, false, true | Direct-insertion clusters of every kind: producers per consumer (2 is a good value), consumers around their producers as fixed groups (sandwich, stack, duo, and cells: a row between two clusters). Measured on science jobs they cost more area than the belts they save (red + green 1.5/s: 44 x 44 against 32 x 32); worth it for circuits, where `place.duos` alone does the same. |
+| `planner.beacon_side` | true | A machine planned with beacons in the lattice has one side against its beacon row, so `access_share` counts the other three. Beaconed assembler 3s making circuits from cable (9 inserters at hand size 2) get 5 each instead (10 machines for 45/s instead of 6); a single block of them then routed at 40 x 40 at once, against 50 x 50 after 3 minutes, and a block of 6 such machines with 5 cable machines did not route at all in a factory. |
 
 The full list with explanations is in `src/main/kotlin/config/Tuning.kt`; measurements in
 [docs/TUNING.md](docs/TUNING.md). The block options `link_belt_share` (a link between blocks above this share
@@ -520,7 +894,7 @@ narrow, fluids pinned side by side) rather than the box.
 | 3 | `route` | Negotiated-congestion routing: belt chains leg by leg with A* over (tile, heading, belt/underground), splitter branches, pipe trees with pipe-to-ground, and a rip-up-and-reroute endgame around the last conflicts |
 | 4 | `power` | Beacon lattice and set cover, pole set cover and MST wiring (lattice fallback), test-mode harness |
 | 5 | `search` | Box size search (gentle growth to a first success, then bisection), K seeds per size in parallel, warm starts, anytime outputs, calibration |
-| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone |
+| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone; a machine putting one item onto separate belts divides it as the game does (by inserter speed, wherever there is room), not as planned |
 | — | `emit`, `viz` | Blueprint 2.0 encode/decode, PNG renders |
 
 Two things go beyond the original plan and are described in [docs/TUNING.md](docs/TUNING.md): nets with many
@@ -542,7 +916,9 @@ runs single trials and prints why routing fails (`DIAG_ITEM=<item>` lists the pl
 parallel for parameter sweeps (see [docs/TUNING.md](docs/TUNING.md)); `JobFuzzTest` (`FUZZ=<minutes>`, with
 `FUZZ_THREADS`, `FUZZ_SEED`, `FUZZ_OUT`) makes random jobs (base game, Space Age, space platform), builds each at
 a roomy size and records every planner or trial exception, invalid layout or failed blueprint round trip in
-`results.tsv`, saving the job for `DiagTest`. Run them with `--rerun -i`.
+`results.tsv`, saving the job for `DiagTest`; `TemplateDiagTest` (see [Templates](#templates-ready-made-columns)).
+Run them with `--rerun -i`. A factory run with `FACTORY_INVALID_DIR=<dir>` set renders every stitched factory that
+fails validation there (it is skipped for the next smallest).
 
 ## Status
 
@@ -552,12 +928,13 @@ validates at 36 × 36 in about 5 minutes, and red + green + chemical science at 
 64 × 64 within 20 minutes. Six science at 1/s each from ore (618 machines) is built with the 2D floorplanner, rotation, lane pairs
 and compaction as a factory of 44 blocks of at most 15 machines at 165 × 182, and as 28 blocks sized by
 weight at 163 × 176. Six science from plates is 92 × 107 in 13 blocks. Six science at 2/s each from ore (1,220 machines) is
-230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours); at 10/s each with
+230 × 237 in 64 blocks and [ran for 9 hours in game](#in-game-2-sciences-for-9-hours) (measured, three of its six
+packs fall short, see there); at 10/s each with
 productivity modules and beacons (959 machines, 956 beacons) it is 279 × 291 in 34 blocks. See [More
 layouts](#more-layouts).
 
 Space Age layouts for Vulcanus, Fulgora and Gleba are in [More layouts](#more-layouts). Cryogenic science is
-not shown: Aquilo needs heat pipes to keep machines warm, and the generator does not place them.
+in [More layouts](#more-layouts), heated ([Aquilo: heat pipes](#aquilo-heat-pipes)) as a factory of two blocks.
 
 ## When the planner outsmarts you
 
@@ -578,13 +955,99 @@ and practically useless:
 - **Fulgora plastic.** Electromagnetic science needs superconductors, superconductors need plastic, plastic
   needs coal, and Fulgora has none: no plan at all until plastic (from recycling) was allowed in.
 
+- **Fulgora leftovers.** With recycling on, scrap made gears as asked, and the planner then turned holmium ore and
+  stone into holmium solution and ice into water in chemical plants (a fluid leaving costs it less than an item), and
+  with only recyclers allowed it took batteries, concrete and circuits back apart, a quarter at a time, to shrink
+  what leaves. List what may leave in `mixed_outputs`, or keep the machines (and `forbidden_recipes`) to what you
+  want built.
+
+## Considered and left out
+
+- **One assembler switching between two recipes** (circuit-set recipe) where two recipes each use less than half a
+  machine. In the six-science plan only seven solid assembler recipes have a last machine under half used (pipe
+  0.07, piercing rounds 0.20, grenades 0.20, transport belts 0.22, electric furnaces 0.33, robot frames 0.33,
+  inserters 0.40): pairing them saves 3–4 assemblers, 60–100 tiles of about 27,000, and only where both end up in
+  the same block. A recipe change also leaves the old ingredients in the machine's trash slots, which its output
+  inserter then puts on the product belt. Not worth it for space.
+- **Ingredients in recipe ratio on one lane** (sushi feeding a column of one recipe, so a science pack's three
+  ingredients take one lane instead of three). Science blocks would shrink by about a third, a few percent of the
+  factory. On a dead-end lane it is not safe: once the lane backs up, gaps open at the feed at the rate the
+  machines consume, and the merge's priority decides which item fills them, not the recipe, so the mix drifts until
+  every machine waits for an item stuck behind the others. Done safely it is a loop with one inserter per item
+  allowed to add only while the loop holds fewer than N of it (belts read their contents into a circuit); that needs
+  loops in the validator and an in-game check first.
+- **Searching identical blocks once.** In the six-science split no two blocks are alike: the four copper columns
+  have 32 furnaces each but different ore rates, port sides and outputs. It would take a split that makes blocks
+  alike on purpose.
+- **The underground side feed as a lane filter in the router.** The validator models it (only the lane on the
+  entrance's open half gets in, the other backs up), so a hand-made one checks out, but the router does not build
+  one: lane pairs already put two items on one belt at a sideload junction.
+
 ## Not verified in game yet
 
 Some 2.0 facts are marked `VERIFY` in `data/GameConstants.kt` (inserter rates, underground pairing details,
-fluid input side, wire format, Space Age fluid connections, inserter filters, beacon profile and module requests). [docs/VERIFY.md](docs/VERIFY.md)
+fluid input side, wire format, Space Age fluid connections, inserter filters, beacon profile and module requests,
+which tile and lane a recycler drops on, whether poles freeze on Aquilo, blacklist filters). [docs/VERIFY.md](docs/VERIFY.md)
 has a blueprint for each.
 
+### Checking a layout in the real game
+
+`tools/factorio-verify/verify.py` runs a layout in Factorio itself, with no window and no clicking:
+
+```
+python3 tools/factorio-verify/verify.py out                          # a run's out folder
+python3 tools/factorio-verify/verify.py out --warmup 600 --measure 300
+python3 tools/factorio-verify/verify.py out --job my_job.json         # a single-block run (no resume/job.json)
+```
+
+It takes the run's test copy (`test_output_string.txt`: the layout plus a loader from an infinity chest on every
+input and into one on every output) and starts Factorio as a headless server, with a mod folder and data folder of
+its own as the exporter does (your saves, settings and mod list stay as they are; it runs beside an open game). The
+verify mod in that folder builds the blueprint on a lab-tile surface (every ghost revived, modules put in), gives
+each electric network an energy interface, and runs the game as fast as it goes (`game.speed`, driven over RCON):
+a warm-up (default 300 game seconds), then a measured window (default 300). It reports:
+
+- every machine: its usual status, crafts and crafts/min while measured, and crafting progress (grouped by recipe;
+  all listed when there are 40 or fewer, or with `--machines`);
+- items per second leaving at each output port and taken at each input port, next to the plan in `ports.json`
+  (fluids drained at fluid outputs too; quality items as `name@quality`, mixed belts by what is on them);
+- inserters that never moved while holding an item, and belts whose items never moved.
+
+Outputs are taken at their planned rate (`--uncapped` empties the output chests without limit), so a factory cannot
+look good by over-making one item while starving another. `--dump` adds every belt's lanes, every inserter and pipe
+to the report, and then `python3 tools/factorio-verify/starve.py out` explains each machine that waited for an
+ingredient: the belts that bring it traced upstream, who makes it there and in what state, who else takes it on
+the way, and whether a producer standing with full output can reach the machine at all.
+
+`tools/factorio-verify/bench.py` does both for a set of jobs: solves each (optionally with tuning overrides, a time
+budget and threads), checks it in game, and writes one line per job (box, belts, undergrounds, inserters, what came
+out, PASS or why not) to `results.tsv`, for comparing a change on, say, `docs/community_benchmark/jobs/*.json`.
+
+It passes when everything was built, every machine crafted something, each output item reached its planned rate
+(within `--tolerance`, default 5%) and no inserter stayed stuck. Belts that stand still are listed but do not fail
+it: the end of a belt past its last inserter stands still in a working factory too. The full report, every machine
+included, goes to `<out>/verify_report.json`. Mods come from the job's `data` file (`--mods`, `--no-space-age`
+to override), and the job's `research` and `belt_stack_size` are applied to the game.
+
+Tried so far: small vanilla test runs (red and green science, circuits from ore, plastic from oil with cracking,
+uncommon gears with quality modules and a mixed output belt, processing units) pass, and so does the Krastorio 2
+plastic job (40/s planned from three advanced chemical plants; the game makes 45/s, as every machine runs flat out).
+It caught faults the validator missed. In the `acid_east` test copy the water feed sits east of a corner port
+whose pipe-to-ground faces north, so the chemical plant gets no water (fed from the north it makes its 50/s). The
+2/s six science factory above builds completely (21,572 entities, about 70 times real time) but falls short in
+game: after an hour, chemical science comes out at 1.6/s, production at 1.9/s and utility at 1.1/s, with some 50
+machines idle, some furnaces' output full, and output inserters stuck holding plates over full belts. Why is not
+known yet.
+
 ## More layouts
+
+Cryogenic science at 0.5/s (Space Age, Aquilo), heated: five cryogenic plants in two blocks fed ice, lithium plates
+and cold fluoroketone, hot fluoroketone leaving. Each block was searched with a heat lattice every seven rows, and
+one heat network over the factory joins their pipes and keeps every corridor belt and pipe warm: 29 x 35 in about
+6 minutes ([job](docs/examples/aquilo_cryogenic_science.json)). Heat comes in at one heat pipe on the east side,
+listed as `heat_ports` in [ports.json](docs/examples/aquilo_cryogenic_science/ports.json). Not built in game yet.
+
+![Cryogenic science, heated](docs/examples/aquilo_cryogenic_science/best.png)
 
 Electromagnetic science at 1.5/s (Space Age, Fulgora): electromagnetic plants with assemblers, chemical plants
 and an oil refinery, no machines from other planets. Fulgora's real input is scrap, and a recycler turns it

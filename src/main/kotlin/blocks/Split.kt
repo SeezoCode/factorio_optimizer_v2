@@ -11,6 +11,7 @@ import plan.Net
 import plan.Port
 import plan.ProductionPlan
 import plan.Role
+import plan.MachineInstance
 import plan.Terminal
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -118,17 +119,21 @@ private fun centreDistance(a: Rect, b: Rect): Double =
 fun splitPlan(
     input: ProductionPlan, cfg: BlocksConfig, beltThroughput: Double, seed: Long = 1L,
     aspect: Double = 1.0, reserved: List<ReservedArea> = emptyList(),
+    /** Recipes kept in blocks of their own (machine columns, see Templates.kt), each with the most machines per block. */
+    pure: Map<String, Int> = emptyMap(),
+    /** How far rebalancing may push a machine toward full speed (planner.max_utilization). */
+    maxUtilization: Double = 1.0,
 ): Split {
     val warnings = ArrayList<String>()
-    val part = partitionPlan(input, cfg, beltThroughput, seed)
+    val part = partitionPlan(input, cfg, beltThroughput, seed, pure)
     // Each candidate split with its machine rates rebalanced (see [rebalance]); the cheapest after that wins.
     val depth = machineDepth(input)
     data class Candidate(val blocks: List<List<Int>>, val blockOf: IntArray, val plan: ProductionPlan, val ports: Int, val cost: Double)
     val chosen = part.candidates.distinct().map { c ->
         val bl = c.map { it.sorted() }.sortedBy { ms -> ms.map { depth[it] }.average() }
         val bo = IntArray(input.machines.size).also { a -> bl.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
-        val p = rebalance(input, bl)
-        val model = PartitionModel(p, cfg, beltThroughput)
+        val p = rebalance(input, bl, maxUtilization)
+        val model = PartitionModel(p, cfg, beltThroughput, pure)
         Candidate(bl, bo, p, model.ports(bo, bl.size), model.cost(bo, bl.size))
     }.minBy { it.cost }
     val blocks = chosen.blocks
@@ -160,7 +165,79 @@ fun splitPlan(
     val fp = Floorplanner(fpBlocks, fpNets, FpParams(aspect = aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = seed)).optimise()
     val geometry = BlockGeometry(fp.boxes.take(k), fp.w, fp.h, fp.touches.take(k), fp.state)
     val links = linksFor(plan, cfg, beltThroughput, blocks, geometry, warnings)
-    return Split(blocks, links, warnings, geometry, plan, part, tradePorts)
+    val (plan2, blocks2) = wholeMachines(plan, blocks, links, warnings)
+    return Split(blocks2, links, warnings, geometry, plan2, part, tradePorts)
+}
+
+/**
+ * Machines enough to feed each belt an item leaves a block on. A machine putting its output on two belts divides it
+ * by inserter speed (see the validator's split producers), about half each, so a belt gets whole or half machines:
+ * 5 circuit assemblers of 8.82/s at most cannot fill belts of 19.36, 19.93 and 3.51/s (5 + 5 + 1 halves, 6 machines).
+ * Where a block's machines of an item fall short of that (per belt: its rate over half a machine's most, rounded up;
+ * plus what the block itself uses, where the belts' spare cannot cover it), copies of its producer join the block
+ * and the block's machines of that recipe share its work equally: the block makes the same, each machine a little
+ * slower. Items made by more than one recipe in a block are left as they are.
+ */
+fun wholeMachines(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Link>, warnings: MutableList<String>): Pair<ProductionPlan, List<List<Int>>> {
+    val machines = plan.machines.toMutableList()
+    val terminals = plan.terminals.toMutableList()
+    val netTerms = plan.nets.map { it.terminals.toMutableList() }
+    val netOf = HashMap<Int, Int>().also { m -> plan.nets.forEach { n -> n.terminals.forEach { t -> m[t] = n.id } } }
+    val newBlocks = blocks.map { it.toMutableList() }
+    var changed = false
+    blocks.forEachIndexed { b, ms ->
+        val items = ms.flatMap { plan.machines[it].itemProducts.keys }.distinct()
+        for (item in items) {
+            val out = links.filter { it.from == b && it.item == item && !it.fluid }
+            if (out.size < 2) continue
+            val producers = ms.filter { (plan.machines[it].itemProducts[item] ?: 0.0) > 1e-12 }
+            val recipes = producers.map { plan.machines[it].recipe }.distinct()
+            if (recipes.size != 1) continue
+            val m0 = plan.machines[producers[0]]
+            // One machine's most of the item: at full speed (as the validator allows), or held to the plan's headroom.
+            val per = m0.itemProducts.getValue(item) / m0.crafts
+            val top = maxOf(m0.crafts, plan.headroom * m0.maxCrafts) * per
+            if (top <= 1e-12) continue
+            val inside = plan.terminals.filter { it.role == Role.CONSUMER && it.item == item && it.machine in ms }.sumOf { it.rate }
+            // In halves: a machine whose inserters drop on two belts gives each about half (equal inserters).
+            val half = top / 2
+            val perBelt = out.map { ceil(it.rate / half - 1e-6).toInt() }
+            val spare = out.indices.sumOf { perBelt[it] * half - out[it].rate }
+            val halves = perBelt.sum() + ceil(maxOf(0.0, inside - spare) / half - 1e-6).toInt()
+            val need = (halves + 1) / 2
+            val extra = need - producers.size
+            if (extra <= 0) continue
+            // The block's machines of the recipe (and the copies) share its crafts equally.
+            val all = ms.filter { plan.machines[it].recipe == m0.recipe }
+            val total = all.sumOf { plan.machines[it].crafts }
+            val share = total / (all.size + extra)
+            fun scaled(m: MachineInstance, id: Int): MachineInstance {
+                val f = share / m.crafts
+                return m.copy(id = id, outputRate = m.outputRate * f, demand = m.demand.mapValues { it.value * f },
+                    products = m.products.mapValues { it.value * f }, fluidDemand = m.fluidDemand.mapValues { it.value * f }, crafts = share,
+                    maxCrafts = maxOf(m.maxCrafts, share))
+            }
+            all.forEach { id ->
+                val f = share / machines[id].crafts
+                machines[id] = scaled(machines[id], id)
+                terminals.indices.filter { terminals[it].machine == id }.forEach { t -> terminals[t] = terminals[t].copy(rate = terminals[t].rate * f) }
+            }
+            repeat(extra) {
+                val id = machines.size
+                machines += scaled(plan.machines[all[0]], id).copy(id = id)
+                plan.terminals.filter { it.machine == all[0] }.forEach { t ->
+                    val nt = terminals.size
+                    terminals += t.copy(id = nt, machine = id, rate = t.rate * share / plan.machines[all[0]].crafts)
+                    netOf[t.id]?.let { n -> netTerms[n] += nt }
+                }
+                newBlocks[b] += id
+            }
+            changed = true
+            warnings += "block ${b + 1}: $extra more ${m0.machine} (${m0.recipe}) so that its ${out.size} belts of $item can be fed"
+        }
+    }
+    if (!changed) return plan to blocks
+    return plan.copy(machines = machines, terminals = terminals, nets = plan.nets.mapIndexed { i, n -> n.copy(terminals = netTerms[i]) }) to newBlocks
 }
 
 /** A reserved area as a floorplan block: fixed size, on its corner (by default the corners in turn). */
@@ -202,6 +279,16 @@ fun linksFor(
     val k = blocks.size
     val blockOf = IntArray(plan.machines.size).also { a -> blocks.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
     val bal = balances(plan, blocks, blockOf)
+    // Per net and block: how much more of it the block's producers could make at full speed (for slivers, below).
+    val spare = HashMap<Int, HashMap<Int, Double>>()
+    plan.nets.forEach { net ->
+        val m = HashMap<Int, Double>()
+        plan.netTerminals(net).filter { it.role == Role.PRODUCER && it.machine != null }.forEach { t ->
+            val mi = plan.machines[t.machine!!]
+            m.merge(blockOf[t.machine], t.rate * (maxOf(mi.crafts, plan.headroom * mi.maxCrafts) / mi.crafts - 1), Double::plus)
+        }
+        spare[net.id] = m
+    }
     val raw = ArrayList<Link>()
     fun pieces(r: Double) = maxOf(1, ceil(r / (cfg.linkBeltShare * beltThroughput) - 1e-9).toInt())
 
@@ -254,6 +341,22 @@ fun linksFor(
             if (r < 1e-9) return@forEach
             giveLeft[a] = giveLeft.getValue(a) - r; takeLeft[b] = takeLeft.getValue(b) - r
             flows.merge(a to b, r, Double::plus)
+        }
+        // Slivers: a flow of a few hundredths of a belt from a supplier whose output goes mostly elsewhere goes instead
+        // with the consumer's largest other supplier, if that one can make it (spare below full speed); the first
+        // supplier just makes that much less. A sliver link gets a belt of its own, and in game a hungry consumer
+        // takes from it whatever the machines feeding that belt make (block 19's 0.15/s link to block 29 took half a
+        // furnace column, and the block it was planned for starved).
+        val sliver = minOf(1.0, 0.03 * beltThroughput)
+        flows.entries.filter { (ab, r) -> r < sliver && ab.first >= 0 && ab.second >= 0 }.sortedBy { it.value }.forEach { e ->
+            val (a, b) = e.key
+            val r = flows[a to b] ?: return@forEach
+            if (flows.filterKeys { it.first == a && it.second != b }.values.sum() < r) return@forEach   // a's main output is this one
+            val s = flows.filterKeys { it.second == b && it.first != a && it.first >= 0 }
+                .filter { (sb, _) -> (spare[net.id]?.get(sb.first) ?: 0.0) >= r }.maxByOrNull { it.value }?.key?.first ?: return@forEach
+            flows.remove(a to b)
+            flows.merge(s to b, r, Double::plus)
+            spare[net.id]!![s] = spare[net.id]!!.getValue(s) - r
         }
         fun emit(a: Int, b: Int, r: Double) {
             when {
@@ -350,12 +453,35 @@ private fun pairLanes(links: List<Link>, laneCap: Double): List<Link> {
 }
 
 /** One block as a plan of its own: local machine ids, a port per link, and which link each port serves. */
-class BlockPlan(val index: Int, val plan: ProductionPlan, val globalIds: List<Int>, val linkOfPort: Map<Int, Int>)
+class BlockPlan(
+    val index: Int, val plan: ProductionPlan, val globalIds: List<Int>,
+    /** The link of each port (of a shared output port, its first link). */
+    val linkOfPort: Map<Int, Int>,
+    /** Every link of each port: more than one where links share an output port ([blockPlan]'s shared). */
+    val linksOfPort: Map<Int, List<Int>> = linkOfPort.mapValues { listOf(it.value) },
+)
 
 /** The plan of block [b]: its machines, their terminals, and an input or output port per link it is part of. */
-fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning): BlockPlan = blockPlan(full, split.blocks[b], split.links, b, tuning)
+fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning, shared: Boolean = false): BlockPlan =
+    blockPlan(full, split.blocks[b], split.links, b, tuning, shared)
 
-fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, tuning: Tuning): BlockPlan {
+/**
+ * Belt links leaving block [b] that share one output port: those to other blocks of one item on one side, packed into
+ * groups of two or three of at most a belt's worth (largest first). Splitters right outside the port give each its
+ * own belt.
+ */
+fun sharedOutputs(full: ProductionPlan, links: List<Link>, b: Int, tuning: Tuning): List<List<Link>> {
+    val cap = tuning.net.beltUtilisation * data.GameConstants.beltTier(full.beltTier, full.beltStack).throughput
+    return links.filter { it.from == b && it.inner && !it.fluid && it.pair < 0 }.groupBy { it.item to it.fromSide }.values.flatMap { ls ->
+        val groups = ArrayList<MutableList<Link>>()
+        ls.sortedByDescending { it.rate }.forEach { l ->
+            groups.firstOrNull { g -> g.size < 3 && g.sumOf { it.rate } + l.rate <= cap + 1e-9 }?.add(l) ?: groups.add(mutableListOf(l))
+        }
+        groups
+    }.filter { it.size > 1 }
+}
+
+fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, tuning: Tuning, shared: Boolean = false): BlockPlan {
     val local = ids.withIndex().associate { (i, g) -> g to i }
     val machines = ids.map { full.machines[it].copy(id = local.getValue(it)) }
     val terminals = ArrayList<Terminal>()
@@ -364,23 +490,28 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     }
     val ports = ArrayList<Port>()
     val linkOfPort = HashMap<Int, Int>()
+    val linksOfPort = HashMap<Int, List<Int>>()
     val portOfLink = HashMap<Int, Int>()
+    val groupOf = (if (shared) sharedOutputs(full, links, b, tuning) else emptyList()).flatMap { g -> g.map { it.id to g } }.toMap()
     links.filter { it.from == b || it.to == b }.forEach { l ->
+        if (l.id in portOfLink) return@forEach
         val out = l.from == b
         val side = l.side(b) ?: error("link ${l.id} has no side on block $b")
         val edge = when (side) { "N" -> "north"; "E" -> "east"; "S" -> "south"; else -> "west" }
         val port = Port(ports.size, l.item, listOf(ConfigSource(l.item, edge = edge)), fluid = l.fluid, output = out, single = l.throughCorridor)
         ports += port
+        val group = groupOf[l.id] ?: listOf(l)
         linkOfPort[port.id] = l.id
-        portOfLink[l.id] = port.id
-        terminals += Terminal(terminals.size, if (out) Role.OUTPUT else Role.SOURCE, l.item, l.rate, 1, port = port.id, fluid = l.fluid)
+        linksOfPort[port.id] = group.map { it.id }
+        group.forEach { portOfLink[it.id] = port.id }
+        terminals += Terminal(terminals.size, if (out) Role.OUTPUT else Role.SOURCE, l.item, group.sumOf { it.rate }, 1, port = port.id, fluid = l.fluid)
     }
     // Input ports of a lane pair know each other.
     ports.replaceAll { p ->
         val l = links[linkOfPort.getValue(p.id)]
         if (!p.output && l.pair >= 0) portOfLink[l.pair]?.let { p.copy(pairWith = it) } ?: p else p
     }
-    val tier = data.GameConstants.beltTier(full.beltTier)
+    val tier = data.GameConstants.beltTier(full.beltTier, full.beltStack)
     val nets = ArrayList<Net>()
     terminals.filter { it.role != Role.SINK }.groupBy { it.item }.forEach { (item, ts) ->
         val takers = ts.filter { it.role == Role.CONSUMER || it.role == Role.OUTPUT }
@@ -394,6 +525,9 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     val inputs = mine.filter { it.to == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
     val outputs = mine.filter { it.from == b }.groupBy { it.item }.mapValues { (_, ls) -> ls.sumOf { it.rate } }
     val plan = ProductionPlan(machines, ports, terminals, nets, inputs, inputs.filterKeys { k -> mine.any { it.item == k && it.fluid } },
-        emptyMap(), full.beltTier, emptyList(), outputs)
-    return BlockPlan(b, plan, ids, linkOfPort)
+        emptyMap(), full.beltTier, emptyList(), outputs, beltStack = full.beltStack,
+        // Leftovers sharing a mixed belt: the block hands its share on to the factory's edge like any item.
+        mixed = full.mixed.filterKeys { item -> machines.any { item in it.itemProducts } },
+        utilization = full.utilization.filterKeys { r -> machines.any { it.recipe == r } }, headroom = full.headroom)
+    return BlockPlan(b, plan, ids, linkOfPort, linksOfPort)
 }

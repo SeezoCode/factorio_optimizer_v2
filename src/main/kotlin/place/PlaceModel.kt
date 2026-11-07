@@ -15,7 +15,8 @@ import kotlin.math.min
 /**
  * Placement state and the annealing cost, updated incrementally per move:
  *   C = alpha * sum_n w_n q(k_n) HPWL_n + beta * sum_bins max(0, D - S)^2 + gamma * sum_m A_m
- *       - delta * DI + beta2 * sum_bins h * D
+ *       - delta * DI + beta2 * sum_bins h * D - netRemoval * E
+ * where E credits the nets direct insertion removes altogether ([netRemovalCredit]).
  * Every move costs O(touched nets + touched bins), never a routing call.
  */
 class PlaceModel(
@@ -101,6 +102,15 @@ class PlaceModel(
     private val diScore: DoubleArray
     private val machinePairs: Array<IntArray>
 
+    // ---- nets direct insertion can remove: inside the block (no port), items only ----
+    /** Consumer terminals of each removable net (empty: the net cannot go away). */
+    private val netConsumers: Array<IntArray>
+    /** Direct-insertion pairs feeding each consumer terminal. */
+    private val consumerPairs: HashMap<Int, IntArray>
+    /** Net of each direct-insertion pair (-1 when not removable). */
+    private val pairNet: IntArray
+    private val netCredit: DoubleArray
+
     // ---- beacons: lattice spots in range of each machine size at each position, and each machine's need ----
     private val beaconNeed = IntArray(nM) { m -> if (beaconSpec == null || beacons.isEmpty()) 0 else needOf(plan.machines[m].crafts, plan.machines[m].beaconCrafts) }
     private val beaconCov: Map<Pair<Int, Int>, IntArray> = if (beaconNeed.all { it == 0 }) emptyMap() else
@@ -144,11 +154,14 @@ class PlaceModel(
     var pin = 0.0; private set
     /** Belt inserters the fitting direct-insertion pairs save. */
     var di = 0.0; private set
+    /** Credit for the nets direct insertion covers (wholly or partly), see [netRemovalCredit]. */
+    var elim = 0.0; private set
     var fb = 0.0; private set
     var bcn = 0.0; private set
     var beta2 = 0.0
 
-    val cost: Double get() = tun.alpha * wl + tun.beta * cong + tun.gamma * pin - tun.delta * di + beta2 * fb + tun.beaconWeight * bcn
+    val cost: Double get() = tun.alpha * wl + tun.beta * cong + tun.gamma * pin - tun.delta * di + beta2 * fb + tun.beaconWeight * bcn -
+        tun.netRemoval * elim
 
     init {
         obstacles.forEach { if (it.x in 0 until w && it.y in 0 until h) occ[it.y * w + it.x] = -1 }
@@ -201,6 +214,18 @@ class PlaceModel(
         val pick = bestInserterRate(config, fromBelt = true)
         diGain = DoubleArray(pairs.size) { min(plan.terminals[diPT[it]].rate, plan.terminals[diCT[it]].rate) / pick }
         machinePairs = Array(nM) { m -> pairs.indices.filter { diA[it] == m || diB[it] == m }.toIntArray() }
+        val termNet = HashMap<Int, Int>()
+        nets.forEachIndexed { n, net -> net.terminals.forEach { termNet[it] = n } }
+        netConsumers = Array(nNets) { n ->
+            val ts = plan.netTerminals(nets[n])
+            val removable = !nets[n].fluid && ts.none { it.port != null || it.machine == null || it.role == Role.SINK } &&
+                ts.any { it.role == Role.PRODUCER } && ts.any { it.role == Role.CONSUMER }
+            if (removable) ts.filter { it.role == Role.CONSUMER }.map { it.id }.toIntArray() else IntArray(0)
+        }
+        consumerPairs = HashMap()
+        pairs.indices.groupBy { diCT[it] }.forEach { (c, ps) -> consumerPairs[c] = ps.toIntArray() }
+        pairNet = IntArray(pairs.size) { i -> termNet[diCT[i]]?.takeIf { netConsumers[it].isNotEmpty() } ?: -1 }
+        netCredit = DoubleArray(nNets)
         machineTerms = Array(nM) { m -> plan.terminals.filter { it.machine == m && it.role != Role.SOURCE && !it.fluid }.map { it.id }.toIntArray() }
 
         for (by in 0 until bh) for (bx in 0 until bw) {
@@ -505,6 +530,23 @@ class PlaceModel(
     }
 
     /**
+     * Credit for net [n] when direct insertion covers its consumers: a consumer is covered when one of the net's
+     * producers fits next to it. All covered: the router builds no belt for it, so its whole wirelength term and
+     * [PlaceTuning.netRemovalBonus] come back. Partly covered: half of that times the squared covered share.
+     */
+    private fun netRemovalCredit(n: Int): Double {
+        val cs = netConsumers[n]
+        if (cs.isEmpty() || tun.netRemoval == 0.0) return 0.0
+        var covered = 0
+        for (c in cs) { val ps = consumerPairs[c] ?: continue; if (ps.any { diFit[it] }) covered++ }
+        if (covered == 0) return 0.0
+        val full = tun.alpha * netWeight[n] * netHpwl[n] + tun.netRemovalBonus
+        if (covered == cs.size) return full
+        val f = covered.toDouble() / cs.size
+        return 0.5 * f * f * full
+    }
+
+    /**
      * Credit for a direct-insertion pair: 1 when the gap fits (I5/I6), otherwise a small share that fades
      * over a few tiles, so the annealer feels which way to move. Only exact fits remove inserter slots.
      */
@@ -570,6 +612,8 @@ class PlaceModel(
         for (b in binD.indices) { binCong[b] = congOf(b); cong += binCong[b]; binFb[b] = binHist[b] * binD[b]; fb += binFb[b] }
         di = 0.0
         for (i in diA.indices) { diFit[i] = fits(diA[i], diB[i]); diScore[i] = closeness(diA[i], diB[i]); di += diGain[i] * diScore[i] }
+        elim = 0.0
+        for (n in 0 until nNets) { netCredit[n] = netRemovalCredit(n); elim += netCredit[n] }
         pin = 0.0
         for (m in 0 until nM) { pinPen[m] = pinPenalty(m); pin += pinPen[m] }
         bcn = 0.0
@@ -603,12 +647,14 @@ class PlaceModel(
 
         val pairs = HashSet<Int>()
         ms.forEach { m -> machinePairs[m].forEach { pairs += it } }
+        val creditNets = HashSet<Int>(touchedNets)
         pairs.forEach { i ->
             val f = fits(diA[i], diB[i])
-            if (f != diFit[i]) { diFit[i] = f; pinMachines += diA[i]; pinMachines += diB[i] }
+            if (f != diFit[i]) { diFit[i] = f; pinMachines += diA[i]; pinMachines += diB[i]; if (pairNet[i] >= 0) creditNets += pairNet[i] }
             val c = closeness(diA[i], diB[i])
             if (c != diScore[i]) { di += diGain[i] * (c - diScore[i]); diScore[i] = c }
         }
+        creditNets.forEach { n -> elim -= netCredit[n]; netCredit[n] = netRemovalCredit(n); elim += netCredit[n] }
         pinMachines.forEach { m -> pin -= pinPen[m]; pinPen[m] = pinPenalty(m); pin += pinPen[m] }
         ms.forEach { m -> bcn -= beaconPen[m]; beaconPen[m] = beaconPenalty(m); bcn += beaconPen[m] }
     }
@@ -624,6 +670,14 @@ class PlaceModel(
     fun placement(): Placement = Placement(w, h, (0 until nM).map { PlacedMachine(it, px[it], py[it], Dir.entries[rot[it] % 4], rot[it] >= 4) })
 
     fun diPairsFitting(): List<Pair<Int, Int>> = diA.indices.filter { diFit[it] }.map { diA[it] to diB[it] }
+
+    /** Number of producer-consumer pairs that may use direct insertion; pair [i] is machines [diProducer] and [diConsumer]. */
+    val diPairCount: Int get() = diA.size
+    fun diProducer(i: Int) = diA[i]
+    fun diConsumer(i: Int) = diB[i]
+    fun diFits(i: Int) = diFit[i]
+    /** Whether long-handed direct insertion (a 3-tile gap) is on. */
+    val diLong: Boolean get() = config.trick("I6") && "long-handed-inserter" in config.inserters.allowed
 
     fun netCount() = nNets
 }

@@ -11,16 +11,16 @@ import plan.Role
  * block with two of nine cable assemblers can make exactly the cable it uses instead of a sliver more, which would
  * otherwise cost a belt and two ports for 0.06 cable/s. A linear program keeps each recipe's total, keeps every
  * machine between a quarter of its planned rate and what its crafting speed and planned inserters allow
- * ([plan.MachineInstance.maxCrafts]), and minimises the sum over blocks and items of |made - used| (each item
+ * ([plan.MachineInstance.maxCrafts], times [maxUtilization]), and minimises the sum over blocks and items of |made - used| (each item
  * relative to its total flow). Solutions of such programs sit on vertices, so most balances come out exactly zero.
  * Returns [plan] itself if nothing changes.
  */
-fun rebalance(plan: ProductionPlan, blocks: List<List<Int>>): ProductionPlan {
+fun rebalance(plan: ProductionPlan, blocks: List<List<Int>>, maxUtilization: Double = 1.0): ProductionPlan {
     if (blocks.size < 2) return plan
     Loader.loadNativeLibraries()
     val solver = MPSolver.createSolver("GLOP") ?: return plan
     val ms = plan.machines
-    val c = ms.map { m -> solver.makeNumVar(0.25 * m.crafts, maxOf(m.crafts, m.maxCrafts), "c${m.id}") }
+    val c = ms.map { m -> solver.makeNumVar(0.25 * m.crafts, maxOf(m.crafts, (plan.utilization[m.recipe] ?: maxUtilization) * m.maxCrafts), "c${m.id}") }
     ms.groupBy { it.recipe }.forEach { (r, group) ->
         val total = group.sumOf { it.crafts }
         val row = solver.makeConstraint(total, total, "r_$r")

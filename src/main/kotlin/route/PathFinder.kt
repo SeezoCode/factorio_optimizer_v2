@@ -16,6 +16,7 @@ import plan.Net
 import plan.ProductionPlan
 import plan.Role
 import plan.Terminal
+import plan.beltDropRate
 import plan.bestInserterRate
 import plan.inserterCount
 import plan.inserterRate
@@ -92,7 +93,7 @@ class PathFinder(internal val p: RouteProblem) {
     val dims = GridDims(W, H, MARGIN)
     internal val N = dims.size
     internal val FW = dims.fullW
-    internal val tier = GameConstants.beltTier(config.beltTier)
+    internal val tier = GameConstants.beltTier(config.beltTier, config.beltStackSize)
     private val maxJ = tier.maxUndergroundGap + 1
     private val ugAllowed = config.trick("B2")
     /** Tiles undergrounds may not pass under ([RouteProblem.noTunnel]). */
@@ -126,9 +127,14 @@ class PathFinder(internal val p: RouteProblem) {
      * A chain's share of a plan terminal. Nets with many inserter visits (or more flow than one belt) are
      * split into several chains after direct insertion, so one producer may feed two chains.
      */
-    private class VT(val id: Int, val base: Terminal, val rate: Double, val k: Int, var net: Int) {
+    private class VT(val id: Int, val base: Terminal, var rate: Double, var k: Int, var net: Int) {
         /** Which of its chain's items this is: 0, or 1 for the second item of a shared belt (its lane). */
         var slot = 0
+        /**
+         * Where a share of a producer split over chains drops among its chain's producers of the item: 0 anywhere
+         * (not split), 1 after those (its producer's largest share), 2 after those and the largest shares too.
+         */
+        var rank = 0
         val role get() = base.role
         val machine get() = base.machine
     }
@@ -187,6 +193,8 @@ class PathFinder(internal val p: RouteProblem) {
         val ugTier = ArrayList<Int>()
         val chans = ArrayList<Int>()      // tier * 2N + axis * N + tile
         val claims = ArrayList<Int>()     // option ids
+        /** Per claim, the tile kept free beside its inserter for a heat pipe (Aquilo), or -1. */
+        val heatSlots = ArrayList<Int>()
         /** Where the chain's leaves point (the final head, and heads left behind by branches): tile * 4 + dir. */
         val deadEnds = ArrayList<Int>()
         /** Splitters inserted for branches: [trunk tile, branch tile, direction]. */
@@ -243,6 +251,36 @@ class PathFinder(internal val p: RouteProblem) {
     private val startOpt = IntArray(N) { -1 }
     private val doneState = ArrayList<Int>()
     private val doneOpt = ArrayList<Int>()
+    /** Dead-end splitter stub tile of each done entry (B14), or -1: the goal option picks from that tile. */
+    private val doneStub = ArrayList<Int>()
+    /** Tiles beside an option's belt tile, where a dead-end splitter stub could reach it (B14). */
+    private val stubStamp = IntArray(N)
+    /** Dead-end splitter pickups (B14): a splitter on a straight belt whose second half leads nowhere. */
+    private val stubsOn = config.trick("B14") && config.spoilage.mode == "off"   // a stub holds what spoils there
+    /** Aquilo: each inserter keeps a tile beside it for a heat pipe; belts and inserters there are conflicts. */
+    private val heatOn = config.heat.mode != "off"
+    /** Names of the plan's mixed belts (sushi): their producers' inserters take every product that goes there. */
+    private val mixedNames = plan.mixed.values.toSet()
+    private val occHeat = IntArray(N)
+    /** Heat lattice rows (heat pipes laid first): an inserter beside one needs no slot of its own. */
+    private val heatRow = BooleanArray(N).also { a -> power.heatLatticeTiles(config, W, H).forEach { if (dims.inFull(it.x, it.y)) a[dims.idx(it)] = true } }
+
+    /**
+     * The tile kept free beside option [o]'s inserter for a heat pipe: one of the two beside it across its swing (or,
+     * for a long-handed one, the tile it reaches over), not a machine or obstacle; one another inserter already keeps
+     * is shared, else the least used. -1 without heating or when none is possible.
+     */
+    private fun heatSlotFor(o: Int): Int {
+        if (!heatOn) return -1
+        val ins = optIns[o]
+        val d = options[o].insDir
+        // Beside a lattice row it is heated already.
+        if ((0..3).any { k -> (ins + dIdx[k]).let { it in 0 until N && heatRow[it] } }) return -1
+        val cands = ArrayList<Int>()
+        for (side in listOf(d.cw, d.ccw)) { val t = ins + dIdx[side.ordinal]; if (t in 0 until N && allowNet[t] != -2) cands += t }
+        if (optLong[o]) { val t = (ins + optBelt[o]) / 2; if (t in 0 until N && allowNet[t] != -2) cands += t }
+        return cands.minByOrNull { t -> (if (occHeat[t] > 0) -10 else 0) + occTile[t] * 3 + (if (occBelt[t] > 0) 1 else 0) } ?: -1
+    }
     internal val minStep: Float
     internal val hWeight = tun.heuristicWeight.toFloat()
     var expansions = 0L
@@ -254,6 +292,11 @@ class PathFinder(internal val p: RouteProblem) {
         for (y in 0 until H) for (x in 0 until W) allowNet[dims.idx(x, y)] = -1
         val machineRects = placement.machines.map { placement.rect(plan, it) }
         machineRects.forEach { r -> r.tiles().forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 } }
+        // A recycler puts its results onto a belt in front of its output end: nothing goes there.
+        placement.machines.forEach { m ->
+            if (plan.machines[m.id].machine != "recycler") return@forEach
+            GameConstants.recyclerOutputTiles(placement.rect(plan, m), m.rot).forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }
+        }
         // Used fluid connection tiles hold a pipe end; belts never go there.
         placement.machines.forEach { m -> placement.connections(plan, m).filter { it.fluid != null }.forEach { c -> if (dims.inFull(c.tile.x, c.tile.y)) allowNet[dims.idx(c.tile)] = -2 } }
         p.obstacles.forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }
@@ -272,7 +315,7 @@ class PathFinder(internal val p: RouteProblem) {
         // Nets that still have a producer side and a consumer side, split into chains where needed.
         val rectOf = placement.machines.associate { it.id to placement.rect(plan, it) }
         fun center(t: Terminal): Pair<Double, Double> = rectOf.getValue(t.machine!!).let { (it.x + it.w / 2.0) to (it.y + it.h / 2.0) }
-        val dropRate = bestInserterRate(config, fromBelt = false)
+        val dropRate = beltDropRate(config)
         val beltCap = tier.throughput * tun.chainBeltShare
         plan.beltNets.forEach { net ->
             val ts = net.terminals.mapNotNull { eff[it] }
@@ -302,8 +345,7 @@ class PathFinder(internal val p: RouteProblem) {
             // Each chain ends at the output port when there is one, so chains need not have consumers.
             val g = if (output != null) g0 else g0.coerceAtMost(consumers.size)
             val groups: List<List<EffectiveTerminal>> = when {
-                g == 1 -> listOf(consumers)
-                consumers.size >= g -> groupConsumers(consumers, g, ::center)
+                consumers.size >= g -> groupWithin(consumers, g, ::center) { n -> (output?.rate ?: 0.0) / n }
                 else -> consumers.map { listOf(it) } + List(g - consumers.size) { emptyList() }
             }
             val outShare = (output?.rate ?: 0.0) / groups.size
@@ -324,17 +366,11 @@ class PathFinder(internal val p: RouteProblem) {
                     val around = group.ifEmpty { remaining.filter { it.value > 1e-9 }.keys.toList().ifEmpty { producers } }
                     val gx = around.map { center(it.base).first }.average()
                     val gy = around.map { center(it.base).second }.average()
-                    var left = demand
-                    while (left > 1e-9) {
-                        val pr = remaining.filter { it.value > 1e-9 }.keys
-                            .minByOrNull { val (x, y) = center(it.base); abs(x - gx) + abs(y - gy) } ?: break
-                        val take = minOf(left, remaining.getValue(pr))
-                        remaining[pr] = remaining.getValue(pr) - take
-                        left -= take
-                        // A producer whose whole spare goes here keeps its k; a share gets its own count.
-                        val k = if (abs(take - pr.rate) < 1e-9) pr.k else inserterCount(take, dropRate)
-                        members += VT(vts.size + members.size, pr.base, take, k, idx)
+                    val (takes, left) = laneTakes(demand, remaining, dropRate) {
+                        remaining.filter { it.value > 1e-9 }.keys.minByOrNull { val (x, y) = center(it.base); abs(x - gx) + abs(y - gy) }
                     }
+                    // A producer whose whole spare goes here in one piece keeps its k; a share gets its own count.
+                    takes.forEach { (pr, take, k) -> members += VT(vts.size + members.size, pr.base, take, if (abs(take - pr.rate) < 1e-9 && k <= pr.k) pr.k else k, idx) }
                     if (left > 1e-6) log += "net ${net.id} (${net.item}): chain short of ${"%.2f".format(left)}/s supply"
                 }
                 vts += members
@@ -363,6 +399,7 @@ class PathFinder(internal val p: RouteProblem) {
                     srcPort = source?.base?.port ?: -1, outPort = output?.base?.port ?: -1)
             }
         }
+        keepProducersWhole(dropRate, beltCap)
         if (config.laneSharing || plan.ports.any { it.pairWith >= 0 }) pairChains()
         routed = arrayOfNulls(nets.size)
         netOrder = arrayOfNulls(nets.size)
@@ -408,6 +445,64 @@ class PathFinder(internal val p: RouteProblem) {
         minStep = if (ugAllowed) minOf(tun.beltBase.toFloat(), ugStep) else tun.beltBase.toFloat()
     }
 
+    /**
+     * A producer the chains split (a share of its output on each of several chains) goes whole to the chain with
+     * the largest share. In the game a machine cannot steer its output: each of its inserters takes whenever its
+     * belt has room, so it divides by inserter speed, not as planned (a gear assembler planned to send nearly
+     * everything to its block's output sent half each way, and the factory starved). The other chains get what
+     * they lose from their own producers running faster than planned (machine counts are rounded up, so most have
+     * spare speed). A producer stays split when its chains' other producers lack the spare speed, or its whole
+     * output would overfill the chain it goes to. Its shares then drop after their chains' other producers (see
+     * [claimable]; on a chain several split producers feed, the ones whose largest share it is go first): those
+     * fill each belt first, so each takes from it only what its consumers still lack; ahead of them it would fill
+     * their gaps and leave them waiting while its other chain starves. The validator checks what the game makes of
+     * each split.
+     */
+    private fun keepProducersWhole(dropRate: Double, beltCap: Double) {
+        val spare = HashMap<Pair<Int, String>, Double>()
+        fun spareOf(v: VT): Double {
+            val m = plan.machines[v.machine ?: return 0.0]
+            return spare.getOrPut(m.id to v.base.item) {
+                if (m.crafts <= 1e-12) 0.0 else max(0.0, (m.products[v.base.item] ?: 0.0) * (m.maxCrafts / m.crafts - 1))
+            }
+        }
+        fun chainFlow(net: Int) = nets[net].sourceRate + nets[net].terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate }
+        val split = vts.filter { it.role == Role.PRODUCER && it.machine != null }.groupBy { it.base.id }.values.filter { ps -> ps.map { it.net }.distinct().size > 1 }
+        for (parts in split) {
+            val major = parts.maxByOrNull { it.rate }!!
+            val minors = parts.filter { it !== major }
+            fun holdBack() { major.rank = 1; minors.forEach { it.rank = 2 } }
+            if (chainFlow(major.net) + minors.sumOf { it.rate } > beltCap + 1e-9) { holdBack(); continue }
+            // Who covers each minor chain's loss: its other producers, by spare speed.
+            val cover = ArrayList<Pair<VT, Double>>()
+            val ok = minors.all { minor ->
+                var left = minor.rate
+                nets[minor.net].terms.map { vts[it] }
+                    .filter { it.role == Role.PRODUCER && it !== minor && it.machine != major.machine && split.none { ps -> it in ps } }
+                    .sortedByDescending { spareOf(it) }
+                    .forEach { o ->
+                        val take = minOf(left, spareOf(o) - cover.filter { it.first.machine == o.machine && it.first.base.item == o.base.item }.sumOf { it.second })
+                        if (take > 1e-9) { cover += o to take; left -= take }
+                    }
+                left <= 1e-9
+            }
+            if (!ok) { holdBack(); continue }
+            cover.forEach { (o, take) ->
+                o.rate += take
+                o.k = maxOf(o.k, inserterCount(o.rate, dropRate))
+                spare[o.machine!! to o.base.item] = spareOf(o) - take
+            }
+            minors.forEach { minor ->
+                val n = nets[minor.net]
+                nets[minor.net] = n.copy(terms = n.terms.filter { it != minor.id }.toIntArray())
+                major.rate += minor.rate
+                minor.rate = 0.0
+            }
+            major.k = maxOf(major.k, inserterCount(major.rate, dropRate))
+            log += "${major.base.item}: a producer split over ${parts.size} chains goes whole to one; ${"%.2f".format(cover.sumOf { it.second })}/s more from producers with spare speed"
+        }
+    }
+
     private fun isRing1(t: Tile) = !dims.inBox(t.x, t.y) && t.x >= -1 && t.y >= -1 && t.x <= W && t.y <= H
 
     // ---- cost functions ----
@@ -418,11 +513,30 @@ class PathFinder(internal val p: RouteProblem) {
 
     /** Cost of a belt-family entity on [q] that would take items from [deadTaken] chain ends pointing into it. */
     private fun beltCost(q: Int, deadTaken: Int = deadEndAt[q]): Float =
-        (tun.beltBase.toFloat() + hist[q]) * (1f + pFac * (occTile[q] + deadTaken)) +
+        (tun.beltBase.toFloat() + hist[q]) * (1f + pFac * (occTile[q] + deadTaken + occHeat[q])) +
             (if (pinCount[q] > 0) tun.pinReservation.toFloat() else 0f) + bias[q]
 
+    /** Taken for heating: off the grid, a machine or obstacle, or used. */
+    private fun walled(t: Int): Boolean = t !in 0 until N || allowNet[t] == -2 || occTile[t] > 0
+
+    /**
+     * Aquilo: a belt on [q] heading [nd] with both side tiles taken can only be heated at its ends; one beside it whose
+     * other side is taken loses its last side tile. Without heating, 0.
+     */
+    private fun heatWall(q: Int, nd: Int): Float {
+        if (!heatOn) return 0f
+        val l = (nd + 3) % 4; val r = (nd + 1) % 4
+        var c = if (walled(q + dIdx[l]) && walled(q + dIdx[r])) heatWallCost else 0f
+        for (side in intArrayOf(l, r)) {
+            val n = q + dIdx[side]
+            if (n in 0 until N && occBelt[n] > 0 && walled(n + dIdx[side])) c += heatWallCost / 2
+        }
+        return c
+    }
+    private val heatWallCost = tun.heatWallCost.toFloat()
+
     private fun insCost(q: Int, long: Boolean): Float =
-        ((if (long) tun.longInserterBase else tun.inserterBase).toFloat() + hist[q]) * (1f + pFac * occTile[q])
+        ((if (long) tun.longInserterBase else tun.inserterBase).toFloat() + hist[q]) * (1f + pFac * (occTile[q] + occHeat[q]))
 
     private fun chestCost(q: Int): Float = (tun.chestBase.toFloat() + hist[q]) * (1f + pFac * occTile[q])
 
@@ -480,7 +594,22 @@ class PathFinder(internal val p: RouteProblem) {
     private var paired = false
 
     private fun share(v: Int) = vts[v].rate / vts[v].k
-    private fun claimable(v: Int) = need[v] > 0 && (vts[v].role == Role.PRODUCER || surplus[vts[v].slot] >= share(v) - 1e-9)
+    private fun claimable(v: Int) = need[v] > 0 && (vts[v].role == Role.PRODUCER || surplus[vts[v].slot] >= share(v) - 1e-9) &&
+        (vts[v].rank == 0 || !orderLast[termNet[v]] || nets[termNet[v]].terms.all { t ->
+            vts[t].rank >= vts[v].rank || vts[t].role != Role.PRODUCER || vts[t].base.item != vts[v].base.item || need[t] <= 0 })
+
+    /** Chains that still order split producers' shares after their other producers (one that cannot route so drops it). */
+    private val orderLast by lazy { BooleanArray(nets.size) { true } }
+
+    /** Routes chain [w]; if it fails with split producers' shares held back ([VT.rank]), once more without that. */
+    private fun routeChain(w: Int): Boolean {
+        if (routeNet(nets[w])) return true
+        if (!orderLast[w] || nets[w].terms.none { vts[it].rank > 0 }) return false
+        orderLast[w] = false
+        log += "chain $w (${nets[w].item}): routes only with its split producers' shares among its other producers"
+        ripUp(w)
+        return routeNet(nets[w])
+    }
 
     /** Items/s on each lane of the chain at its head (0 left, 1 right of the belt's heading). */
     private val laneLoad = DoubleArray(2)
@@ -530,7 +659,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun searchOnce(n: RNet, starts: List<Start>, final: Boolean, leg1: Boolean, banned: Set<Int>): Int {
         gen++
         heap.clear()
-        doneState.clear(); doneOpt.clear()
+        doneState.clear(); doneOpt.clear(); doneStub.clear()
         var repaired = false
         // Goal tiles and the L1 distance transform for the heuristic.
         goalGen++
@@ -539,7 +668,11 @@ class PathFinder(internal val p: RouteProblem) {
         if (outputLeg) n.outTiles.forEachIndexed { i, t -> goalStamp[t] = goalGen; outDirAt[t] = n.outOut[i]; anyGoal = true }
         else n.terms.forEach { t ->
             if (!claimable(t) || (legTarget >= 0 && t != legTarget)) return@forEach
-            termOpts[t].forEach { o -> if (goalUsable(o, leg1)) { goalStamp[optBelt[o]] = goalGen; anyGoal = true } }
+            termOpts[t].forEach { o ->
+                if (!goalUsable(o, leg1)) return@forEach
+                goalStamp[optBelt[o]] = goalGen; anyGoal = true
+                if (stubsOn && vts[t].role == Role.CONSUMER) for (dd in 0..3) { val x = optBelt[o] + dIdx[dd]; if (x in 0 until N) stubStamp[x] = goalGen }
+            }
         }
         if (!anyGoal) return -1
         // Leg 1: a start option whose inserter tile is a goal's belt tile would void itself on the way.
@@ -567,7 +700,7 @@ class PathFinder(internal val p: RouteProblem) {
             val s = heap.pop()
             if (s >= S) {
                 val di = s - S
-                val bad = validDone(n, doneState[di], doneOpt[di], final, leg1)
+                val bad = validDone(n, doneState[di], doneOpt[di], final, leg1, doneStub[di])
                 if (bad == -1) return di
                 if (bad >= 0 && forbidStamp[bad] != forbidGen) { forbidStamp[bad] = forbidGen; repaired = true }
                 continue
@@ -583,7 +716,7 @@ class PathFinder(internal val p: RouteProblem) {
 
             // Output leg: a belt on a port tile facing out of the box.
             if (outputLeg && kind == BELT && goalStamp[t] == goalGen && par[s] != -1 && s !in banned && (outDirAt[t] < 0 || outDirAt[t] == d)) {
-                doneState += s; doneOpt += -1
+                doneState += s; doneOpt += -1; doneStub += -1
                 heap.push(gS + deadEndCost(t + dIdx[d], d), S + doneState.size - 1)
             }
             // Goal: a belt on an option's belt tile (not the very start state).
@@ -604,10 +737,14 @@ class PathFinder(internal val p: RouteProblem) {
                         if (!placeable(t2) || t2 == ins || !canContinue(t, d, t2)) continue
                         0f
                     }
-                    doneState += s; doneOpt += o
+                    doneState += s; doneOpt += o; doneStub += -1
                     heap.push(gS + insCost(ins, optLong[o]) + extra, S + doneState.size - 1)
                 }
             }
+            // Goal through a dead-end splitter stub (B14): this belt becomes a splitter whose other half, beside
+            // it, leads nowhere; a consumer's inserter picks from that half. Items must enter from behind.
+            if (stubsOn && !outputLeg && kind == BELT && stubStamp[t] == goalGen && par[s] != -1 && s !in banned &&
+                ((par[s] ushr 1) and 3) == d) stubGoals(n, s, t, d, gS, final, leg1)
 
             // Belt step (B1).
             val q = t + dIdx[d]
@@ -616,7 +753,7 @@ class PathFinder(internal val p: RouteProblem) {
             for (nd in 0..3) {
                 if (nd == (d + 2) % 4) continue
                 if (kind == UG_EXIT && nd != d && !tun.turnAfterUgExit) continue
-                relax(st(q, nd, BELT), s, gS + beltCost(q, deadEndsTaken(q, AK_BELT, nd)) + resQ + (if (nd != d) tun.turnPenalty.toFloat() else 0f))
+                relax(st(q, nd, BELT), s, gS + beltCost(q, deadEndsTaken(q, AK_BELT, nd)) + resQ + (if (nd != d) tun.turnPenalty.toFloat() else 0f) + heatWall(q, nd))
             }
 
             // Underground (B2, B3): entrance on q facing d, exit j tiles further.
@@ -644,6 +781,44 @@ class PathFinder(internal val p: RouteProblem) {
             }
         }
         return if (repaired) REPAIR else -1
+    }
+
+    /**
+     * Goals reached through a dead-end splitter stub (B14) beside belt [t], which heads [d] (state [s], cost so far
+     * [gS]): the splitter's second half goes on a free tile beside [t], its output leads nowhere, and a consumer's
+     * inserter picks from it. The trunk half keeps the chain going straight on (or ends it, on the final leg: a
+     * splitter at the end of a belt, picked from on both halves).
+     */
+    private fun stubGoals(n: RNet, s: Int, t: Int, d: Int, gS: Float, final: Boolean, leg1: Boolean) {
+        val t2 = t + dIdx[d]
+        for (side in intArrayOf((d + 1) and 3, (d + 3) and 3)) {
+            val b = t + dIdx[side]
+            if (b !in 0 until N || !placeable(b) || !dims.inBox(dims.x(b), dims.y(b))) continue
+            val front = b + dIdx[d]; val back = b - dIdx[d]
+            // The stub's front stays a dead end, and nothing of this chain may feed its back.
+            if (front in 0 until N && (ownBeltStamp[front] == stamp || front == t2)) continue
+            if (back in 0 until N && ownBeltStamp[back] == stamp && ownDir[back] == d) continue
+            // Anything belt-like behind the stub would feed foreign items into the splitter.
+            val foreign = if (back in 0 until N && occBelt[back] > 0) tun.deadEndConflict.toFloat() * 10 else 0f
+            val half = beltCost(b, deadEndsTaken(b, AK_SPLITTER, d)) + tun.splitterCost.toFloat() + tun.stubCost.toFloat() + foreign +
+                (if (front in 0 until N) deadEndCost(front, d) else 0f)
+            for (k in atBeltStart[b] until atBeltStart[b + 1]) {
+                val o = atBeltList[k]
+                val term = optTerm[o]
+                if (vts[term].role != Role.CONSUMER || termNet[term] != n.idx || !claimable(term) || (legTarget >= 0 && term != legTarget)) continue
+                val ins = optIns[o]
+                if (!goalUsable(o, leg1) || ins == t || ins == t2 || ins == front) continue
+                val extra: Float = if (final) {
+                    if (t2 in 0 until N && ownBeltStamp[t2] == stamp) continue
+                    deadEndCost(t2, d)
+                } else {
+                    if (!placeable(t2) || !canContinue(t, d, t2)) continue
+                    0f
+                }
+                doneState += s; doneOpt += o; doneStub += b
+                heap.push(gS + insCost(ins, optLong[o]) + half + extra, S + doneState.size - 1)
+            }
+        }
     }
 
     /** A goal option is usable if its inserter tile is free of this net and, in leg 1, not a start tile. */
@@ -714,7 +889,7 @@ class PathFinder(internal val p: RouteProblem) {
      * the inserter tiles it claims, or end pointing back into itself. Returns -1 if valid, else a path
      * state to forbid before searching again (-2 if there is none to blame).
      */
-    private fun validDone(n: RNet, s: Int, o: Int, final: Boolean, leg1: Boolean): Int {
+    private fun validDone(n: RNet, s: Int, o: Int, final: Boolean, leg1: Boolean, stub: Int = -1): Int {
         pathGen++
         val states = pathStates(s)
         // Later legs start on the previous head (already committed) or on a new branch tile (not yet).
@@ -756,6 +931,12 @@ class PathFinder(internal val p: RouteProblem) {
         val t2 = (last ushr 3) + dIdx[(last ushr 1) and 3]
         if (pathStamp[t2] == pathGen) return pathFirst[t2]
         if (!final && t2 == ins) return -2
+        if (stub >= 0) {
+            // The stub and the dead end in front of it must stay off this leg's own path.
+            if (pathStamp[stub] == pathGen) return pathFirst[stub]
+            val front = stub + dIdx[(last ushr 1) and 3]
+            if (front in 0 until N && pathStamp[front] == pathGen) return pathFirst[front]
+        }
         return -1
     }
 
@@ -769,6 +950,7 @@ class PathFinder(internal val p: RouteProblem) {
 
     private fun claim(r: Routed, o: Int, d: Int, into: Int = d) {
         r.claims += o
+        r.heatSlots += heatSlotFor(o).also { if (it >= 0) occHeat[it]++ }
         occupy(r, optIns[o], false)
         val v = optTerm[o]
         need[v]--
@@ -787,6 +969,7 @@ class PathFinder(internal val p: RouteProblem) {
         r.ugIn.forEach { e -> val t = e shr 2; occTile[t]--; occBelt[t]--; accept(t, AK_UG_IN, e and 3, -1) }
         r.ugOut.forEach { e -> val t = e shr 2; occTile[t]--; occBelt[t]--; accept(t, AK_UG_OUT, e and 3, -1) }
         r.claims.forEach { o -> occTile[optIns[o]]-- }
+        r.heatSlots.forEach { if (it >= 0) occHeat[it]-- }
         r.chans.forEach { occChan[it]-- }
         r.splitters.forEach { sp -> occTile[sp[1]]--; occBelt[sp[1]]--; accept(sp[1], AK_SPLITTER, sp[2], -1) }
         r.deadEnds.forEach { removeDeadEnd(it) }
@@ -800,6 +983,7 @@ class PathFinder(internal val p: RouteProblem) {
         r.ugIn.forEach { e -> val t = e shr 2; occTile[t]++; occBelt[t]++; accept(t, AK_UG_IN, e and 3, 1) }
         r.ugOut.forEach { e -> val t = e shr 2; occTile[t]++; occBelt[t]++; accept(t, AK_UG_OUT, e and 3, 1) }
         r.claims.forEach { o -> occTile[optIns[o]]++ }
+        r.heatSlots.forEach { if (it >= 0) occHeat[it]++ }
         r.chans.forEach { occChan[it]++ }
         r.splitters.forEach { sp -> occTile[sp[1]]++; occBelt[sp[1]]++; accept(sp[1], AK_SPLITTER, sp[2], 1) }
         r.deadEnds.forEach { e -> deadEndDir[e]++; deadEndAt[e shr 2]++ }
@@ -825,7 +1009,7 @@ class PathFinder(internal val p: RouteProblem) {
     }
 
     /** Commits a found leg: belts, undergrounds, the goal option and options the path passed on the way. */
-    private fun commitLeg(n: RNet, r: Routed, s: Int, goalOpt: Int, leg1: Boolean) {
+    private fun commitLeg(n: RNet, r: Routed, s: Int, goalOpt: Int, leg1: Boolean, stub: Int = -1) {
         val states = pathStates(s)
         // 1. Occupy every path tile first, so no claim below can take a tile the belt runs over.
         for ((i, st) in states.withIndex()) {
@@ -853,6 +1037,14 @@ class PathFinder(internal val p: RouteProblem) {
         }
         val last = states.last()
         val next = (last ushr 3) + dIdx[(last ushr 1) and 3]   // where the chain continues (or dead-ends)
+        if (stub >= 0) {
+            // Dead-end splitter (B14): the head belt becomes a splitter; its second half leads nowhere.
+            val hd = (last ushr 1) and 3
+            r.splitters += intArrayOf(last ushr 3, stub, hd)
+            occupy(r, stub, true); ownDir[stub] = hd; accept(stub, AK_SPLITTER, hd, 1)
+            val front = stub + dIdx[hd]
+            if (front in 0 until N) { addDeadEnd(r, front, hd); if (ownStamp[front] != stamp) { ownStamp[front] = stamp; r.reserved += front } }
+        }
         // Passing claims skip an inserter tile another net holds when the terminal has a free option further on.
         val lastFree = HashMap<Int, Int>()
         for ((i, st) in states.withIndex()) {
@@ -879,10 +1071,24 @@ class PathFinder(internal val p: RouteProblem) {
                 val o = atBeltList[k]
                 val term = optTerm[o]
                 if (termNet[term] != n.idx || !claimable(term) || !laneOk(o, d, into)) continue
+                // Nothing drops onto the splitter a stub turns the head into.
+                if (stub >= 0 && i == states.size - 1 && vts[term].role != Role.CONSUMER) continue
                 val ins = optIns[o]
                 if (ownStamp[ins] == stamp || allowNet[ins] == -2 || ins == next) continue
                 if (occTile[ins] > 0 && (lastFree[term] ?: -1) >= i) continue
                 claim(r, o, d, into)
+            }
+        }
+        // More consumers may pick from the stub's half.
+        if (stub >= 0) {
+            val hd = (last ushr 1) and 3
+            for (k in atBeltStart[stub] until atBeltStart[stub + 1]) {
+                val o = atBeltList[k]
+                val term = optTerm[o]
+                if (o == goalOpt || vts[term].role != Role.CONSUMER || termNet[term] != n.idx || !claimable(term)) continue
+                val ins = optIns[o]
+                if (ownStamp[ins] == stamp || allowNet[ins] == -2 || ins == next || occTile[ins] > 0) continue
+                claim(r, o, hd, hd)
             }
         }
     }
@@ -919,9 +1125,13 @@ class PathFinder(internal val p: RouteProblem) {
     private fun routeNetFrom(n: RNet, startTerm: Int, startOpts: List<Int>?): Boolean {
         stamp++
         cur = n.idx
-        // Weaving undergrounds of a slower tier only on chains whose flow fits that tier.
-        weaveOk = weave != null && ugAllowed &&
-            n.sourceRate + n.terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate } <= weave.throughput * tun.weaveBeltShare
+        // Weaving undergrounds of a slower tier only on chains whose flow fits one of its lanes (each item its own
+        // lane on a lane pair): which lane the items ride on is up to the inserters and belts upstream, so a chain
+        // that only fits the slower tier with its lanes evenly loaded overflows a lane as soon as they are not (in a
+        // factory of blocks, 40/s copper cable links through express undergrounds carried 24/16 and 26/14).
+        val chainFlow = n.sourceRate + n.terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate }
+        val laneMost = if (n.item2 != null) maxOf(n.sourceRate, n.sourceRate2) else chainFlow
+        weaveOk = weave != null && ugAllowed && laneMost <= weave.throughput / 2 * tun.weaveBeltShare
         n.terms.forEach { need[it] = termK[it] }
         paired = n.item2 != null
         surplus[0] = n.sourceRate; surplus[1] = n.sourceRate2
@@ -1011,7 +1221,7 @@ class PathFinder(internal val p: RouteProblem) {
             // A leg that starts on a branch leaves the old head as a leaf.
             var first = s; while (par[first] != -1) first = par[first]
             val branched = !leg1 && (first ushr 3) != (head ushr 3)
-            commitLeg(n, r, s, doneOpt[found], leg1)
+            commitLeg(n, r, s, doneOpt[found], leg1, doneStub[found])
             if (branched) {
                 val hd = (head ushr 1) and 3
                 val t2 = (head ushr 3) + dIdx[hd]
@@ -1071,6 +1281,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun undoLeg(r: Routed, belts: Int, ugIn: Int, ugOut: Int, chans: Int, claims: Int, tiles: Int) {
         while (r.claims.size > claims) {
             val o = r.claims.removeAt(r.claims.size - 1)
+            r.heatSlots.removeAt(r.heatSlots.size - 1).let { if (it >= 0) occHeat[it]-- }
             val v = optTerm[o]
             need[v]++
             surplus[vts[v].slot] -= if (vts[v].role == Role.PRODUCER) share(v) else -share(v)
@@ -1163,7 +1374,7 @@ class PathFinder(internal val p: RouteProblem) {
 
     // ---- iteration loop ----
     internal fun overuseAt(t: Int): Int =
-        max(0, occTile[t] - 1) + deadEndConflicts(t) + (pipes?.adjacencyOveruse(t) ?: 0)
+        max(0, occTile[t] - 1) + deadEndConflicts(t) + (pipes?.adjacencyOveruse(t) ?: 0) + (if (occHeat[t] > 0) occTile[t] else 0)
 
     private fun totalOveruse(): Int {
         var o = 0
@@ -1209,7 +1420,7 @@ class PathFinder(internal val p: RouteProblem) {
                 !ok(w) || (if (w >= 0) touchesOveruse(w) else pr!!.touchesOveruse(-1 - w, ::overuseAt))
             }
             todo.forEach { w ->
-                if (w >= 0) { ripUp(w); routeNet(nets[w]) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) }
+                if (w >= 0) { ripUp(w); routeChain(w) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) }
             }
             solveSinks()
             unrouted = nets.filter { routed[it.idx]?.ok != true }.map { it.idx }
@@ -1375,7 +1586,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun endgame(order: List<Int>, ok: (Int) -> Boolean, deadline: Long): Int {
         val pr = pipes
         val rnd = java.util.Random(31L * N + nets.size + 1_000_003L * p.endgameSeed)
-        fun reroute(w: Int) { if (w >= 0) { ripUp(w); routeNet(nets[w]) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) } }
+        fun reroute(w: Int) { if (w >= 0) { ripUp(w); routeChain(w) } else { pr!!.ripUp(-1 - w); pr.route(-1 - w) } }
         fun overused(w: Int) = !ok(w) || (if (w >= 0) touchesOveruse(w) else pr!!.touchesOveruse(-1 - w, ::overuseAt))
         fun seeds(): List<Int> {
             val s = ArrayList<Int>()
@@ -1408,7 +1619,7 @@ class PathFinder(internal val p: RouteProblem) {
             val saved = victims.associateWith { w -> if (w >= 0) routed[w] else pr!!.saved(-1 - w) }
             victims.forEach { w -> if (w >= 0) ripUp(w) else pr!!.ripUp(-1 - w) }
             victims.shuffle(rnd)
-            victims.forEach { w -> if (w >= 0) routeNet(nets[w]) else pr!!.route(-1 - w) }
+            victims.forEach { w -> if (w >= 0) routeChain(w) else pr!!.route(-1 - w) }
             for (k in 0 until tun.endgameIterations) {
                 solveSinks()
                 val todo = victims.filter { overused(it) }
@@ -1429,8 +1640,10 @@ class PathFinder(internal val p: RouteProblem) {
     }
 
     // ---- emission ----
-    private fun chooseInserter(share: Double, fromBelt: Boolean, long: Boolean): String {
+    private fun chooseInserter(share: Double, fromBelt: Boolean, long: Boolean, ontoBelt: Boolean = false): String {
         if (long) return "long-handed-inserter"
+        // Belt stacking: what goes onto a belt goes in stacks.
+        if (ontoBelt && config.beltStackSize > 1) return GameConstants.STACK_INSERTER
         val allowed = config.inserters.allowed.filter { it != "long-handed-inserter" }
             .sortedBy { GameConstants.inserter(it).tierCost }
         return allowed.firstOrNull { inserterRate(it, config, fromBelt) >= share - 1e-9 }
@@ -1476,9 +1689,23 @@ class PathFinder(internal val p: RouteProblem) {
             r.claims.forEach { o ->
                 val opt = options[o]
                 val v = vts[optTerm[o]]
-                val name = chooseInserter(v.rate / v.k, fromBelt = v.role == Role.CONSUMER, long = opt.long)
-                val item = if (v.role == Role.CONSUMER) null else filterFor(v.machine, v.base.item)
-                out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId)
+                val name = chooseInserter(v.rate / v.k, fromBelt = v.role == Role.CONSUMER, long = opt.long, ontoBelt = v.role == Role.PRODUCER)
+                // A recycler takes whatever it is given: its inserters are filtered to what it should recycle.
+                val mixedOut = v.role == Role.PRODUCER && v.base.item in mixedNames
+                val item = if (v.role == Role.CONSUMER) v.base.item.takeIf { v.machine != null && plan.machines[v.machine!!].machine == "recycler" }
+                    else if (mixedOut) null else filterFor(v.machine, v.base.item)
+                // Onto a mixed belt: one inserter takes every product that goes there, the machine's others left out.
+                val blacklist = if (!mixedOut) null else plan.machines[v.machine!!].itemProducts.keys.filter { plan.mixed[it] != v.base.item }.sorted().ifEmpty { null }
+                // Spoilage: out of a machine of several products that holds something spoiling, an inserter leaves the
+                // other products in (a blacklist) and so takes its own and the spoilage.
+                val spoilOut = blacklist == null && item != null && v.role == Role.PRODUCER && config.spoilage.mode == "drain" &&
+                    v.machine != null && spoilProne(plan.machines[v.machine!!])
+                if (spoilOut) {
+                    val others = plan.machines[v.machine!!].itemProducts.keys.filter { it != item }.sorted()
+                    out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, net = n.planId, blacklist = others)
+                    return@forEach
+                }
+                out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId, blacklist = blacklist)
             }
         }
         pipes?.let { out += it.entities() }
@@ -1613,23 +1840,15 @@ class PathFinder(internal val p: RouteProblem) {
         val prodLeft = LinkedHashMap<EffectiveTerminal, Double>().apply { producers.forEach { put(it, it.rate) } }
         val srcLeft = LinkedHashMap<EffectiveTerminal, Double>().apply { sources.forEach { put(it, it.rate) } }
         fun fromProducers(amount: Double, at: Pair<Double, Double>): Pair<List<EffectiveTerminal>, Double> {
-            var left = amount
-            val parts = ArrayList<EffectiveTerminal>()
-            while (left > 1e-9) {
-                val pr = prodLeft.filter { it.value > 1e-9 }.keys.minByOrNull { dist(center(it.base), at) } ?: break
-                val take = min(left, prodLeft.getValue(pr))
-                prodLeft[pr] = prodLeft.getValue(pr) - take
-                left -= take
-                parts += part(pr, take, dropRate)
-            }
-            return parts to left
+            val (takes, left) = laneTakes(amount, prodLeft, dropRate) { prodLeft.filter { it.value > 1e-9 }.keys.minByOrNull { dist(center(it.base), at) } }
+            return takes.map { (pr, take, k) -> if (abs(take - pr.rate) < 1e-9 && k <= pr.k) pr else EffectiveTerminal(pr.base, take, k) } to left
         }
         /** Chains for [parts], at most [room] by visits (one per tile of the port they start from). */
         fun chainsOf(parts: List<EffectiveTerminal>, room: Int = Int.MAX_VALUE): List<List<EffectiveTerminal>> {
             if (parts.isEmpty()) return emptyList()
             val g = maxOf(minOf(ceilDiv(parts.sumOf { it.k }, tun.maxChainVisits), room), kotlin.math.ceil(parts.sumOf { it.rate } / beltCap - 1e-9).toInt(), 1)
                 .coerceAtMost(parts.size)
-            return if (g == 1) listOf(parts) else groupConsumers(parts, g, center)
+            return groupWithin(parts, g, center)
         }
         // 1. Output ports. An output chain fed from a single-belt input port (an item passing through a block of a
         // factory) waits for step 2: the consumers that port feeds join it, so the port stays one belt.
@@ -1643,7 +1862,11 @@ class PathFinder(internal val p: RouteProblem) {
                 var src: EffectiveTerminal? = null
                 var srcRate = 0.0
                 if (missing > 1e-6) {
-                    src = srcLeft.filter { it.value > 1e-9 }.keys.maxByOrNull { srcLeft.getValue(it) }
+                    // A one-belt input port carries one item passing through: a second output takes another input
+                    // port (one that covers it first), else it would need a second belt at that port.
+                    fun free(s: EffectiveTerminal) = !plan.ports[s.base.port!!].single || s !in pending
+                    src = srcLeft.filter { it.value > 1e-9 }.keys.maxWithOrNull(
+                        compareBy<EffectiveTerminal> { srcLeft.getValue(it) >= missing - 1e-9 }.thenBy { free(it) }.thenBy { srcLeft.getValue(it) })
                     if (src != null) { srcRate = min(missing, srcLeft.getValue(src)); srcLeft[src] = srcLeft.getValue(src) - srcRate }
                 }
                 if (missing - srcRate > 1e-6) log += "net ${net.id} (${net.item}): output chain short of ${"%.2f".format(missing - srcRate)}/s"
@@ -1668,9 +1891,13 @@ class PathFinder(internal val p: RouteProblem) {
             // A link port is one belt: one chain (branches serve many consumers), so it pairs with its other end; an item
             // passing through runs past these consumers on to its output port.
             if (plan.ports[s.base.port!!].single) {
-                val through = pending.remove(s)?.firstOrNull()
+                val ps = pending.remove(s).orEmpty()
+                val through = ps.firstOrNull()
                 if (through != null) addChain(net, mine + through.parts, s, through.srcRate + mine.sumOf { it.rate }, through.out, through.outRate, rectOf)
                 else if (mine.isNotEmpty()) addChain(net, mine, s, mine.sumOf { it.rate }, null, 0.0, rectOf)
+                // More outputs passing through this port still get chains: their output ports must exist (a second
+                // belt at the port fails the trial's one-belt check rather than leaving an output out).
+                ps.drop(1).forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) }
             } else chainsOf(mine, portTilesOf(s.base.port).size).forEach { group -> addChain(net, group, s, group.sumOf { it.rate }, null, 0.0, rectOf) }
         }
         // Pass-through chains whose port fed no consumers here.
@@ -1688,6 +1915,49 @@ class PathFinder(internal val p: RouteProblem) {
     }
 
     /** Capacity-balanced k-means of consumers into [g] chains, seeded with far-apart consumers. */
+    /**
+     * What a chain needing [amount] takes from producers ([nearest] first, out of [remaining]), in pieces that each fit
+     * the room left on one of its two lanes (a piece is what one inserter, or a few slow ones, drop there): the drops
+     * then always split over the lanes as the lane check asks (three drops of 9.6/s from one foundry need two lanes, not
+     * 19.2/s on one). A take that fits a lane whole goes there. Per piece: its producer, take and inserters; and what is
+     * short.
+     */
+    private fun laneTakes(amount: Double, remaining: MutableMap<EffectiveTerminal, Double>, dropRate: Double,
+                          nearest: () -> EffectiveTerminal?): Pair<List<Triple<EffectiveTerminal, Double, Int>>, Double> {
+        val bins = DoubleArray(2)
+        val got = ArrayList<Triple<EffectiveTerminal, Double, Int>>()
+        var left = amount
+        while (left > 1e-9) {
+            val pr = nearest() ?: break
+            val whole = minOf(left, remaining.getValue(pr))
+            val lane = (0..1).filter { laneCap - bins[it] >= whole - 1e-9 }.minByOrNull { bins[it] } ?: (if (bins[0] <= bins[1]) 0 else 1)
+            val room = laneCap - bins[lane]
+            // Lanes full as packed (consumers between the drops free room on the way): the rest whole, as one take.
+            val take = if (room >= minOf(whole, 1.0)) minOf(whole, room) else whole
+            remaining[pr] = remaining.getValue(pr) - take
+            bins[lane] += take
+            left -= take
+            // Each piece a terminal of its own, so its inserters drop what the lane it was packed on has room for (one
+            // terminal of two pieces would split them evenly, 22 + 16 as 19 + 19, and the next producer's fits neither lane).
+            got += Triple(pr, take, inserterCount(take, dropRate))
+        }
+        return got to left
+    }
+
+    /**
+     * [cs] in [g] chains by position ([groupConsumers]), or more where a chain would carry more than a belt holds
+     * (what it takes plus [extra] for that many chains): consumers are not split, so six foundries of 15.8 ore/s each
+     * take six fast belts, not the four their sum asks for.
+     */
+    private fun groupWithin(cs: List<EffectiveTerminal>, g: Int, center: (Terminal) -> Pair<Double, Double>, extra: (Int) -> Double = { 0.0 }): List<List<EffectiveTerminal>> {
+        var n = g
+        while (true) {
+            val groups = if (n <= 1) listOf(cs) else groupConsumers(cs, n, center)
+            if (n >= cs.size || groups.all { gr -> gr.sumOf { it.rate } + extra(groups.size) <= tier.throughput + 1e-9 }) return groups
+            n++
+        }
+    }
+
     private fun groupConsumers(cs: List<EffectiveTerminal>, g: Int, center: (Terminal) -> Pair<Double, Double>): List<List<EffectiveTerminal>> {
         val pts = cs.map { center(it.base) }
         val mx = pts.map { it.first }.average(); val my = pts.map { it.second }.average()

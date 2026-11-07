@@ -1,0 +1,9 @@
+{
+  "name": "factorio-optimizer-verify",
+  "version": "0.1.0",
+  "title": "Factorio optimizer layout verifier",
+  "author": "Filip Hostinský",
+  "factorio_version": "2.1",
+  "dependencies": ["base >= 2.1.0"],
+  "description": "Builds a factorio_optimizer test blueprint for real on a lab-tile surface, powers it, runs it and writes script-output/factorio-optimizer-verify.json: per machine its status, crafts and progress, items per second at each output and input, and inserters and belts that stay stuck. Driven over RCON by verify.py (commands /verify_clear, /verify_append, /verify_start, /verify_status)."
+}

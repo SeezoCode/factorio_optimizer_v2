@@ -44,14 +44,22 @@ object GameConstants {
         val throughput: Double,
     )
 
-    val BELT_TIERS: Map<String, BeltTier> = listOf(
+    /** The base game's values (hand-checked); loaded exporter data may change them ([register]). */
+    internal val BASE_BELT_TIERS: Map<String, BeltTier> = listOf(
         BeltTier("basic", "transport-belt", "underground-belt", "splitter", 4, 15.0),
         BeltTier("fast", "fast-transport-belt", "fast-underground-belt", "fast-splitter", 6, 30.0),
         BeltTier("express", "express-transport-belt", "express-underground-belt", "express-splitter", 8, 45.0),
         BeltTier("turbo", "turbo-transport-belt", "turbo-underground-belt", "turbo-splitter", 10, 60.0),
     ).associateBy { it.key }
 
+    /** Belt tiers by key: the base game's, then those of loaded exporter data (keyed by their belt's name). */
+    @Volatile var BELT_TIERS: Map<String, BeltTier> = BASE_BELT_TIERS
+        private set
+
     fun beltTier(key: String): BeltTier = BELT_TIERS[key] ?: error("Unknown belt tier '$key' (known: ${BELT_TIERS.keys})")
+
+    /** [key]'s tier carrying items stacked [stack] high (Space Age belt stacking): [BeltTier.throughput] times [stack]. */
+    fun beltTier(key: String, stack: Int): BeltTier = beltTier(key).let { if (stack > 1) it.copy(throughput = it.throughput * stack) else it }
 
     /** Which tier a belt-family entity name belongs to, or null. */
     fun tierOfEntity(name: String): BeltTier? =
@@ -70,16 +78,27 @@ object GameConstants {
         val tierCost: Int,
     )
 
-    val INSERTERS: Map<String, InserterSpec> = listOf(
+    /** The base game's values (hand-checked); loaded exporter data may change them ([register]). */
+    internal val BASE_INSERTERS: Map<String, InserterSpec> = listOf(
         InserterSpec("inserter", 1, false, 0.83, tierCost = 1),
         InserterSpec("long-handed-inserter", 2, false, 1.2, tierCost = 2),
         InserterSpec("fast-inserter", 1, true, 2.31, tierCost = 3),
         // Same swing speed as the fast inserter; its larger hand comes from [handSizes].
         InserterSpec("bulk-inserter", 1, true, 2.31, bulk = true, tierCost = 4),
+        // Space Age: the bulk inserter's swing and hand, and it stacks what it drops on a belt. [W] VERIFY (v25)
+        InserterSpec("stack-inserter", 1, true, 2.31, bulk = true, tierCost = 5),
     ).associateBy { it.name }
+
+    /** Inserters by name: the base game's (measured), then those of loaded exporter data. */
+    @Volatile var INSERTERS: Map<String, InserterSpec> = BASE_INSERTERS
+        private set
 
     /** Hand sizes (non-bulk, bulk) per inserter capacity research level 0..7. [W6] */
     val HAND_SIZES: List<Pair<Int, Int>> = listOf(1 to 2, 1 to 3, 2 to 4, 2 to 5, 2 to 6, 2 to 8, 2 to 10, 3 to 12)
+
+    /** Space Age: the stack inserter drops items on belts in stacks of up to this many (with research). [W] VERIFY (v25) */
+    const val MAX_BELT_STACK = 4
+    const val STACK_INSERTER = "stack-inserter"
 
     fun handSizes(level: Int): Pair<Int, Int> = HAND_SIZES[level.coerceIn(0, HAND_SIZES.size - 1)]
 
@@ -93,12 +112,17 @@ object GameConstants {
         val wireReach: Double,
     )
 
-    val POLES: Map<String, PoleSpec> = listOf(
+    /** The base game's values (hand-checked); loaded exporter data may change them ([register]). */
+    internal val BASE_POLES: Map<String, PoleSpec> = listOf(
         PoleSpec("small-electric-pole", 1, 2.5, 7.5),
         PoleSpec("medium-electric-pole", 1, 3.5, 9.0),
-        PoleSpec("big-electric-pole", 2, 2.0, 30.0),
+        PoleSpec("big-electric-pole", 2, 2.0, 32.0),   // 30 before Factorio 2.1
         PoleSpec("substation", 2, 9.0, 18.0),
     ).associateBy { it.name }
+
+    /** Electric poles by name: the base game's, then those of loaded exporter data. */
+    @Volatile var POLES: Map<String, PoleSpec> = BASE_POLES
+        private set
 
     fun pole(name: String): PoleSpec = POLES[name] ?: error("Unknown pole '$name' (known: ${POLES.keys})")
 
@@ -109,7 +133,37 @@ object GameConstants {
         "infinity-chest",
     )
 
+    /**
+     * Space Age: items that spoil, with what they spoil into (null: it hatches into an enemy, nothing to remove) and in
+     * how many seconds. Not in recipes.json. [W] VERIFY (v26)
+     */
+    val SPOILS: Map<String, Pair<String?, Int>> = mapOf(
+        "yumako" to ("spoilage" to 3600), "jellynut" to ("spoilage" to 3600),
+        "yumako-mash" to ("spoilage" to 180), "jelly" to ("spoilage" to 240),
+        "bioflux" to ("spoilage" to 7200), "nutrients" to ("spoilage" to 300),
+        "agricultural-science-pack" to ("spoilage" to 3600), "raw-fish" to ("spoilage" to 7200),
+        "iron-bacteria" to ("iron-ore" to 60), "copper-bacteria" to ("copper-ore" to 60),
+        "pentapod-egg" to (null to 900), "biter-egg" to (null to 1800),
+    )
+
+    /** Quality tiers, lowest first. */
+    val QUALITIES = listOf("normal", "uncommon", "rare", "epic", "legendary")
+
+    /**
+     * A module's bonuses (not its penalties) times this at a quality [level] (legendary is level 5: x2.5). Not in
+     * recipes.json. [W] VERIFY (v27)
+     */
+    fun moduleBonusMultiplier(level: Int): Double = 1.0 + 0.3 * level
+
+    /** Whether [item] spoils. */
+    fun spoils(item: String): Boolean = item in SPOILS
+
+    /** What [item] spoils into, or null (it does not spoil, or it hatches). */
+    fun spoilResult(item: String): String? = SPOILS[item]?.first
+
     const val INFINITY_CHEST = "infinity-chest"
+    /** Aquilo: heat pipes warm whatever shares an edge with them (see power/Heat.kt). */
+    const val HEAT_PIPE = "heat-pipe"
     const val INFINITY_PIPE = "infinity-pipe"
 
     /**
@@ -132,6 +186,18 @@ object GameConstants {
      * the top-middle tile. [P] VERIFY (v9, v14)
      */
     const val FLUID_INPUT_ON_FACING_SIDE = true
+
+    /**
+     * A belt heading [feed] that runs into the side of an underground end facing [ug] passes only one of its lanes
+     * (0 left, 1 right of [feed]): the one on the end's open half, away from the hood. An entrance's hood covers
+     * its front half (towards the tunnel), so the lane on its back half passes: a belt heading north into the side
+     * of an east-facing entrance passes its left (west) lane, seen in game. An exit's hood covers its back half,
+     * so the lane on its front half passes. [G] entrance; [P] exit VERIFY (v4)
+     */
+    fun ugSideFeedPasses(feed: geom.Dir, ug: geom.Dir, exit: Boolean): Int {
+        val open = if (exit) ug else ug.opposite
+        return if (feed.ccw == open) 0 else 1
+    }
 
     /** Lane an inserter drops onto when it stands in line with the belt (0 left, 1 right). [P] VERIFY (v2) */
     const val PARALLEL_DROP_LANE = 1
@@ -173,6 +239,8 @@ object GameConstants {
     const val STORAGE_TANK = "storage-tank"
     /** Fluid a storage tank holds; it reads out its contents on a circuit wire. [P] VERIFY (v19) */
     const val STORAGE_TANK_CAPACITY = 25000.0
+    /** Fluid one pipe (or pipe-to-ground) holds; wired, it reads its own share of its network's fluid. */
+    const val PIPE_CAPACITY = 100.0
     /**
      * A storage tank's (3 x 3) fluid connections: tile inside it (from its top-left) and the side it opens to. Facing
      * north the top-left corner opens north and west and the bottom-right corner south and east; facing east the
@@ -235,40 +303,142 @@ object GameConstants {
         ) to true),
     )
 
-    /** Assembling machines expose their connections only while set to a recipe with fluids. */
-    fun connectionsOnlyWithFluidRecipe(machine: String): Boolean = FLUID_TABLE[machine]?.second ?: false
+    /** Fluid connections of machines the built-in table lacks, from loaded exporter data (see [register]). */
+    @Volatile private var exportedFluids: Map<String, Pair<List<FluidConnection>, Boolean>> = emptyMap()
 
-    /** Fluid connections of a base machine facing north (empty for machines without fluids). */
-    fun baseFluidConnections(machine: String): List<FluidConnection> = FLUID_TABLE[machine]?.first ?: emptyList()
+    /** Exported fluid boxes first (a mod may change a base machine's), else the built-in table. */
+    private fun fluidsOf(machine: String) = exportedFluids[machine] ?: FLUID_TABLE[machine]
+
+    /** The built-in (hand-checked) fluid connections of a base machine, whatever data is loaded. */
+    internal fun tableFluidConnections(machine: String): List<FluidConnection> = FLUID_TABLE[machine]?.first ?: emptyList()
+    internal fun tableOnlyWithFluidRecipe(machine: String): Boolean = FLUID_TABLE[machine]?.second ?: false
+
+    /** Assembling machines expose their connections only while set to a recipe with fluids. */
+    fun connectionsOnlyWithFluidRecipe(machine: String): Boolean = fluidsOf(machine)?.second ?: false
+
+    /** Fluid connections of a machine facing north (empty for machines without fluids). */
+    fun baseFluidConnections(machine: String): List<FluidConnection> = fluidsOf(machine)?.first ?: emptyList()
+
+    /**
+     * A machine's fluid connections from its exported fluid boxes ([w] x [h], facing north): per box, its first
+     * plain connection, numbered among boxes of the same flow in box order. A box both ways counts as an input.
+     */
+    fun fluidConnectionsOf(w: Int, h: Int, boxes: List<FluidBoxData>): List<FluidConnection> {
+        val out = ArrayList<FluidConnection>()
+        var inputs = 0; var outputs = 0
+        boxes.sortedBy { it.index }.forEach { fb ->
+            if (fb.productionType == "none") return@forEach
+            val c = fb.connections.orEmpty().firstOrNull { it.connectionType == "normal" && it.direction != null && it.positions.isNotEmpty() } ?: return@forEach
+            val d = Dir.fromName(c.direction!!)
+            val p = c.positions[0]
+            val tx = kotlin.math.floor(p.x + w / 2.0 + 1e-6).toInt(); val ty = kotlin.math.floor(p.y + h / 2.0 + 1e-6).toInt()
+            val flow = if (fb.productionType == "output") Flow.OUTPUT else Flow.INPUT
+            out += FluidConnection(flow, if (flow == Flow.INPUT) ++inputs else ++outputs, tx + d.dx, ty + d.dy, d)
+        }
+        return out
+    }
 
     private fun assemblerFluids() = listOf(FluidConnection(Flow.INPUT, 1, 1, -1, Dir.N), FluidConnection(Flow.OUTPUT, 1, 1, 3, Dir.S))
 
     /** Footprints of crafting machines, for layouts read without recipes.json (decoded blueprints). */
-    val MACHINE_SIZES: Map<String, Pair<Int, Int>> = mapOf(
+    /** The base game's values (hand-checked); loaded exporter data may change them ([register]). */
+    internal val BASE_MACHINE_SIZES: Map<String, Pair<Int, Int>> = mapOf(
         "assembling-machine-1" to (3 to 3), "assembling-machine-2" to (3 to 3), "assembling-machine-3" to (3 to 3),
         "stone-furnace" to (2 to 2), "steel-furnace" to (2 to 2), "electric-furnace" to (3 to 3),
         "chemical-plant" to (3 to 3), "oil-refinery" to (5 to 5), "centrifuge" to (3 to 3),
         "foundry" to (5 to 5), "electromagnetic-plant" to (4 to 4), "cryogenic-plant" to (5 to 5),
-        "biochamber" to (3 to 3), "crusher" to (2 to 3), "recycler" to (2 to 4),
+        "biochamber" to (3 to 3), "crusher" to (2 to 3), "recycler" to (2 to 4), "rocket-silo" to (9 to 9),
     )
 
+    /** Crafting machine footprints: the base game's, then those of loaded exporter data. */
+    @Volatile var MACHINE_SIZES: Map<String, Pair<Int, Int>> = BASE_MACHINE_SIZES
+        private set
+
+    /**
+     * Tiles just beyond the end a recycler faces ([dir], its blueprint direction): it puts its results straight onto
+     * a belt or into a container there (seen in game), so nothing of that kind may stand there unless meant to take
+     * them. Both tiles of that end, to be safe about which one it drops on. [G]; exact tile and lane [P] VERIFY (v22)
+     */
+    fun recyclerOutputTiles(r: geom.Rect, dir: geom.Dir): List<Tile> = r.sideTiles(dir, 1)
+
     /** Machines whose blueprint entity carries a recipe (furnaces and the recycler pick theirs from their input). */
-    fun takesRecipe(name: String) = !name.endsWith("furnace") && name != "recycler"
+    fun takesRecipe(name: String) = machineTypes[name]?.let { it != "furnace" && it != "rocket-silo" } ?: (!name.endsWith("furnace") && name != "recycler")
+
+    /**
+     * A rocket silo: it builds rocket parts from its ingredients and launches them (one rocket per
+     * rocket_parts_required parts), so what it makes never leaves it.
+     */
+    fun launches(name: String) = machineTypes[name] == "rocket-silo"
+
+    /**
+     * Prototype type of each crafting machine of the loaded data: a "furnace" picks its recipe from its input, anything
+     * else needs one set (Krastorio makes the base furnaces assembling machines).
+     */
+    @Volatile private var machineTypes: Map<String, String> = emptyMap()
 
     /** Base-game crafting machines. */
     val BASE_MACHINES = listOf(
         "assembling-machine-1", "assembling-machine-2", "assembling-machine-3",
-        "stone-furnace", "steel-furnace", "electric-furnace", "chemical-plant", "oil-refinery", "centrifuge",
+        "stone-furnace", "steel-furnace", "electric-furnace", "chemical-plant", "oil-refinery", "centrifuge", "rocket-silo",
     )
 
     /** Space Age crafting machines (the crusher and recycler have no fluid connections). */
     val SPACE_AGE_MACHINES = listOf("foundry", "electromagnetic-plant", "cryogenic-plant", "biochamber", "crusher", "recycler")
 
-    val SUPPORTED_MACHINES = BASE_MACHINES + SPACE_AGE_MACHINES
+    /** Machines a job may use: the base game's and Space Age's, then the crafting machines of loaded exporter data. */
+    @Volatile var SUPPORTED_MACHINES: List<String> = BASE_MACHINES + SPACE_AGE_MACHINES
+        private set
+
+    /**
+     * Sets the tables from [data] (each call starts again from the base game's): crafting machines (footprint, fluid
+     * connections from their fluid boxes, furnace or not), belt tiers (new ones keyed by their belt's name, with the
+     * underground it pairs with and a splitter of its speed), inserters and electric poles. What the data says of a
+     * base-game entity wins too (mods change them: Krastorio's undergrounds reach further), except the measured
+     * inserter rates, kept while the swing speed is the base game's. Data without exporter sections (an old
+     * recipes.json) leaves the base tables. Basic mod support: heat, odd fluid boxes and mod-specific rules are not
+     * covered.
+     */
+    @Synchronized
+    fun register(data: RootData) {
+        val machines = data.entities.values.filterIsInstance<CraftingEntity>().filter { it.hidden != true }
+        val extra = machines.filter { it.name !in BASE_MACHINE_SIZES }
+        MACHINE_SIZES = BASE_MACHINE_SIZES + machines.associate { it.name to (it.width to it.height) }
+        exportedFluids = machines.filter { it.fluidBoxes != null }.associate {
+            it.name to (fluidConnectionsOf(it.width, it.height, it.fluidBoxes!!) to (it.fluidBoxesOffWhenNoFluidRecipe == true))
+        }
+        machineTypes = data.entities.values.filterIsInstance<CraftingEntity>().associate { it.name to it.type }
+        SUPPORTED_MACHINES = (BASE_MACHINES + SPACE_AGE_MACHINES + extra.map { it.name }).distinct()
+
+        val lg = data.logistics
+        if (lg == null) { BELT_TIERS = BASE_BELT_TIERS; INSERTERS = BASE_INSERTERS; POLES = BASE_POLES; return }
+        val belts = lg.belts.orEmpty().filter { it.hidden != true }.associateBy { it.name }
+        val undergrounds = lg.undergrounds.orEmpty().filter { it.hidden != true }.associateBy { it.name }
+        val splitters = lg.splitters.orEmpty().filter { it.hidden != true }
+        val base = BASE_BELT_TIERS.values.map { t ->
+            t.copy(throughput = belts[t.belt]?.itemsPerSecond ?: t.throughput, maxUndergroundGap = undergrounds[t.underground]?.maxDistance?.minus(1) ?: t.maxUndergroundGap)
+        }
+        val baseNames = BASE_BELT_TIERS.values.flatMap { listOf(it.belt, it.underground, it.splitter) }.toSet()
+        val added = belts.values.filter { it.name !in baseNames }.mapNotNull { b ->
+            val ug = b.underground?.let { undergrounds[it] } ?: undergrounds.values.firstOrNull { it.speed == b.speed && it.name !in baseNames }
+            val sp = splitters.firstOrNull { it.speed == b.speed && it.name !in baseNames }
+            if (ug == null || sp == null) null else BeltTier(b.name, b.name, ug.name, sp.name, ug.maxDistance - 1, b.itemsPerSecond)
+        }
+        BELT_TIERS = (base + added).associateBy { it.key }
+        // An inserter's rate: a swing there and back at its rotation speed (turns per tick), one hand per swing.
+        INSERTERS = BASE_INSERTERS + lg.inserters.orEmpty().filter { it.hidden != true && it.energySource != "burner" }.map { i ->
+            val reach = kotlin.math.round(kotlin.math.abs(i.pickup.y)).toInt().coerceAtLeast(1)
+            val swing = i.rotationSpeed * 60
+            val known = BASE_INSERTERS[i.name]
+            if (known != null) known.copy(reach = reach, baseRate = if (kotlin.math.abs(swing - known.baseRate) <= 0.15) known.baseRate else swing)
+            else InserterSpec(i.name, reach, (i.filterCount ?: 0) > 0, swing, bulk = i.bulk == true, tierCost = 10 + (i.rotationSpeed * 100).toInt())
+        }.associateBy { it.name }
+        POLES = BASE_POLES + lg.poles.orEmpty().filter { it.hidden != true }.map { PoleSpec(it.name, it.width, it.supplyAreaDistance, it.maxWireDistance) }.associateBy { it.name }
+    }
+
 
     fun machineGeom(data: RootData, name: String): MachineGeom {
         val e = data.entities[name] ?: error("Unknown machine '$name'")
-        val (conns, onlyFluid) = FLUID_TABLE[name] ?: (emptyList<FluidConnection>() to false)
+        val (conns, onlyFluid) = fluidsOf(name) ?: (emptyList<FluidConnection>() to false)
         return MachineGeom(name, e.width, e.height, conns, onlyFluid, (e as? FurnaceEntity)?.energySource == "burner" ||
             (e as? AssemblingMachineEntity)?.energySource == "burner")
     }

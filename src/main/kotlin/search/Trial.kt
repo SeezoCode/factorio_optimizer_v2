@@ -44,6 +44,7 @@ import validate.recipeInfoFrom
 import validate.validate
 import java.util.SplittableRandom
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /** What the validator should expect of this plan on this placement. */
@@ -58,11 +59,13 @@ fun validationSpec(
     outputs: List<OutputSpec> = emptyList(),
 ): ValidationSpec {
     val recipeInfo = recipeInfoFrom(data)
+    val targets = config.targets.map { it.name }.toSet()
     val machines = placement.machines.associate { pm ->
         val inst = plan.machines[pm.id]
         val info = recipeInfo(inst.recipe)!!
-        // Inserters move only item products; fluids leave through pipes.
-        val items = inst.itemProducts
+        // Inserters move only item products; fluids leave through pipes. Products that leave on a mixed belt count as
+        // one product, the belt's name: one inserter takes them all.
+        val items = inst.itemProducts.entries.groupBy { plan.mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }
         Tile(pm.x, pm.y) to MachineSpec(
             product = items.maxByOrNull { it.value }?.key ?: inst.product,
             // Fuel counts as an ingredient (coal for stone furnaces, nutrients for biochambers).
@@ -76,6 +79,10 @@ fun validationSpec(
             products = items.takeIf { it.size > 1 } ?: emptyMap(),
             sinks = plan.terminals.filter { it.machine == pm.id && it.role == Role.SINK }.groupBy { it.item }.mapValues { (_, ts) -> ts.sumOf { it.rate } },
             beaconNeed = beaconNeed(inst.crafts, inst.beaconCrafts),
+            // Intermediates up to [ProductionPlan.headroom] of full speed, targets flat out (outputs to the edge are
+            // interchangeable: a port fed by one machine fewer is made up by the other port).
+            fullRates = (if (inst.itemProducts.keys.any { it in targets }) 1.0 else plan.headroom).let { u -> max(inst.crafts, u * inst.maxCrafts) }.let { top ->
+                if (inst.crafts > 1e-12 && top > inst.crafts + 1e-12) items.mapValues { it.value * top / inst.crafts } else emptyMap() },
         )
     }
     val sourceOutside = (sources.map { it.tile } + outputs.map { it.tile }).filter { it.x !in 0 until placement.w || it.y !in 0 until placement.h }
@@ -91,7 +98,18 @@ fun validationSpec(
         inserterRate = { name, fromBelt -> inserterRate(name, config, fromBelt) },
         recipeInfo = recipeInfo,
         beacon = beaconSpec(data, config),
+        beltStack = config.beltStackSize,
+        spoilage = config.spoilage.mode == "drain",
     )
+}
+
+/**
+ * One-belt ports of [plan] (links between blocks of a factory) that [sources] and [outputs] leave out: a block
+ * layout without one cannot be stitched.
+ */
+fun missingLinkPorts(plan: ProductionPlan, sources: List<SourceSpec>, outputs: List<OutputSpec>): List<plan.Port> {
+    val have = (sources.map { it.port } + outputs.map { it.port }).toSet()
+    return plan.ports.filter { it.single && it.id !in have }
 }
 
 fun layoutOf(placement: Placement, entities: List<PlacedEntity>, wires: List<Pair<Int, Int>> = emptyList(), label: String = "factorio-optimizer") =
@@ -124,6 +142,8 @@ class TrialResult(
     val outputs: List<OutputSpec> = emptyList(),
     /** How routing went, for progress output. */
     val summary: AttemptSummary? = null,
+    /** Aquilo: the heat pipe tiles (on the ring) where heat must be brought in. */
+    val heatPorts: List<Tile> = emptyList(),
 ) {
     val area get() = w * h
 }
@@ -162,12 +182,22 @@ fun runTrial(
     /** Keep beacon spots free before placement (beacons.mode lattice, or set-cover falling back). */
     beaconLatticeOn: Boolean = config.beacons?.mode == "lattice",
 ): TrialResult {
+    // Aquilo: everything needs a heat pipe beside it, so machines keep more room around them and belts keep off the
+    // tiles around machines (where inserters stand and heat pipes go between them).
+    val given = tuning
+    @Suppress("NAME_SHADOWING")
+    val tuning = if (config.heat.mode == "off") given else given.copy(
+        place = given.place.copy(accessDemand = given.place.accessDemand * 2),
+        route = given.route.copy(pinReservation = given.route.pinReservation * 4),
+    )
     val t0 = System.currentTimeMillis()
     val notes = ArrayList<String>()
     val latticeTiles = if (lattice) poleLattice(w, h, config.power.pole) else emptyList()
     val poleSize = GameConstants.pole(config.power.pole).size
     val latticeCover = latticeTiles.flatMap { t -> (0 until poleSize).flatMap { dy -> (0 until poleSize).map { dx -> Tile(t.x + dx, t.y + dy) } } }
-    val static = staticObstacles(config, plan, w, h) + latticeCover
+    // Aquilo heat lattice: rows of heat pipe laid first; machines and belts keep off them (belts pass under).
+    val heatRows = power.heatLatticeTiles(config, w, h)
+    val static = staticObstacles(config, plan, w, h) + latticeCover + heatRows
     // Beacons: spots kept free like the pole lattice, machines pulled next to them (see Beacons.kt).
     val bspec = beaconSpec(data, config)?.takeIf { plan.machines.any { it.beacons > 0 } }
     val beaconSpots = if (bspec != null && beaconLatticeOn) beaconLattice(w, h, bspec, plan, config.beacons!!.perMachine, config.beacons.pitch, static) else emptyList()
@@ -199,8 +229,17 @@ fun runTrial(
     // others start warm from a larger box's best placement when there is one, else at random.
     val pt = tuning.place
     require(pt.initial in setOf("random", "columns", "mixed")) { "place.initial must be random, columns or mixed" }
-    val columns = (pt.initial == "columns" || (pt.initial == "mixed" && seed % 2 == 0L)) && annealer.initialColumns(plan)
-    val warmed = !columns && warm != null && annealer.initialFrom(legalize(warm, model))
+    val clusters = when {
+        pt.clusters -> place.diClusters(plan, config.trick("I6") && "long-handed-inserter" in config.inserters.allowed, pt.cells)
+        pt.duos && config.beacons == null && config.heat.mode == "off" -> place.diClusters(plan, duosOnly = true)
+        else -> emptyList()
+    }
+    if (clusters.isNotEmpty()) {
+        annealer.setClusters(clusters)
+        notes += "${clusters.size} direct-insertion clusters (${clusters.groupingBy { it.kind }.eachCount()})"
+    }
+    val columns = clusters.isEmpty() && (pt.initial == "columns" || (pt.initial == "mixed" && seed % 2 == 0L)) && annealer.initialColumns(plan)
+    val warmed = clusters.isEmpty() && !columns && warm != null && annealer.initialFrom(legalize(warm, model))
     val started = columns || warmed || annealer.initialRandom() || annealer.initialRows(plan)
     if (!started) return fail("placement")
     if (columns) notes += "column start"
@@ -269,13 +308,15 @@ fun runTrial(
 
     // Harness (test mode) and power, with up to two warm reroutes that keep tiles free near unpowered entities.
     var bias = HashMap<Tile, Double>()
-    for (attempt in 0..2) {
+    // Power and beacons get two reroutes; heating (Aquilo) and spoilage drains (Gleba) up to four.
+    val attempts = if (config.heat.mode == "off" && config.spoilage.mode == "off") 2 else 4
+    for (attempt in 0..attempts) {
         val ringed = if (config.portsOnRing) ringPorts(result.entities, result.sources, result.outputs, w, h, GameConstants.beltTier(config.beltTier).belt)
             else RingedPorts(result.entities, result.sources, result.outputs)
         // Crackers work only on what other machines leave of their oil (a tank and red wires, see addSurplusControl).
         val ctl0 = route.addSurplusControl(ringed.entities, plan, config, w, h, listOf(geom.Rect(0, 0, w, h)))
         // Modules in the machines' own slots (same order, so circuit wire indices stay valid).
-        val ctl = if (config.beacons == null) ctl0 else route.SurplusControl(ctl0.entities.map { e ->
+        val ctl = if (config.beacons == null && config.qualityProduction == null) ctl0 else route.SurplusControl(ctl0.entities.map { e ->
             val r = e.recipe?.let { data.recipes[it] }
             if (e.kind == Kind.MACHINE && r != null) e.copy(modules = machineModules(data, config, r, e.name).takeIf { it.isNotEmpty() }) else e
         }, ctl0.circuitWires, ctl0.notes)
@@ -299,19 +340,47 @@ fun runTrial(
             }
             if (!beaconLatticeOn) {
                 notes += "beacons by set cover failed; falling back to the beacon lattice"
-                return runTrial(data, plan, config, tuning, w, h, seed, placement, annealer.lastT0, deadline, lattice, debugDir, beaconLatticeOn = true)
+                return runTrial(data, plan, config, given, w, h, seed, placement, annealer.lastT0, deadline, lattice, debugDir, beaconLatticeOn = true)
             }
         }
-        val entities = ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList())
+        // Gleba: a drain (filter inserter into a chest) at every belt end where spoilage could collect; where one has no
+        // room, reroute keeping room there, as for unpowered entities.
+        val drains = if (config.spoilage.mode != "drain") null else route.placeDrains(
+            ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList()), config, w, h, obstacles + reservedTiles + outside,
+            validationSpec(data, plan, config, placement, if (config.testMode) emptyList() else ringed.sources, requirePower = false, outputs = ringed.outputs))
+        if (drains != null && !drains.ok && attempt < attempts) {
+            notes += "spoilage attempt $attempt: ${drains.stuck.size} belt end(s) without room for a drain"
+            drains.stuck.forEach { u -> for (dy in -2..2) for (dx in -2..2) bias.merge(Tile(u.x + dx, u.y + dy), 1.0, Double::plus) }
+            val again = route(RouteProblem(plan, config, tuning.route, placement, obstacles, tileBias = bias, warmHistory = result.rawHistory))
+            if (again.success) result = again
+            continue
+        }
+        val built = ctl.entities + (harness?.entities ?: emptyList()) + (beacons?.beacons ?: emptyList()) + (drains?.drains ?: emptyList())
+        // Aquilo: heat pipes beside everything that freezes, joined to the heat port (see power/Heat.kt); where some
+        // stay cold, reroute keeping room around them, as for unpowered entities. Before the poles, which do not
+        // freeze (unless heat.poles: then after them, so they are heated too).
+        val heatFirst = config.heat.mode != "off" && !config.heat.poles
+        fun heatOf(es: List<PlacedEntity>) = power.placeHeatPipes(es, w, h, heatPortTiles(config.heat.edge, w, h), config.heat.poles, maxPorts = config.heat.ports, seeds = heatRows)
+        val heat0 = if (heatFirst) heatOf(built) else null
+        if (heat0 != null && !heat0.ok && attempt < attempts) {
+            notes += "heat attempt $attempt: ${heat0.cold.size} entities cold"
+            heat0.cold.forEach { u -> for (dy in -2..2) for (dx in -2..2) bias.merge(Tile(u.x + dx, u.y + dy), 1.0, Double::plus) }
+            val again = route(RouteProblem(plan, config, tuning.route, placement, obstacles, tileBias = bias, warmHistory = result.rawHistory))
+            if (again.success) result = again
+            continue
+        }
+        // Crossings may have turned belt runs into underground hops (same list order, so wire indices hold).
+        val entities = heat0?.entities ?: built
+        val heatPipes0 = heat0?.pipes ?: emptyList()
         val sources = if (config.testMode) emptyList() else ringed.sources
         val (poles, wires, ok, uncovered) = when (config.power.mode) {
             "none" -> Quad(emptyList(), emptyList(), true, emptyList())
             else -> if (lattice) {
-                val ps = placePoles(entities, emptyList(), config.power.pole, fixedPoles = latticeTiles)
+                val ps = placePoles(entities + heatPipes0, emptyList(), config.power.pole, fixedPoles = latticeTiles)
                 Quad(ps.poles, ps.wires, ps.ok, ps.uncovered.map { it.tile })
             } else {
                 val extra = outside.flatMap { t -> (-2..2).flatMap { dy -> (-2..2).map { dx -> Tile(t.x + dx, t.y + dy) } } }
-                val ps = placePoles(entities, poleCandidates(w, h, config.power.allowOutsideRing, extra).filter { it !in reservedTiles }, config.power.pole)
+                val ps = placePoles(entities + heatPipes0, poleCandidates(w, h, config.power.allowOutsideRing, extra).filter { it !in reservedTiles }, config.power.pole)
                 Quad(ps.poles, ps.wires, ps.ok, ps.uncovered.map { it.tile })
             }
         }
@@ -324,28 +393,42 @@ fun runTrial(
         }
         if (!ok && config.power.mode == "set-cover" && !lattice) {
             notes += "set cover failed twice; falling back to the pole lattice"
-            return runTrial(data, plan, config, tuning, w, h, seed, placement, annealer.lastT0, deadline, lattice = true, debugDir = debugDir, beaconLatticeOn = beaconLatticeOn)
+            return runTrial(data, plan, config, given, w, h, seed, placement, annealer.lastT0, deadline, lattice = true, debugDir = debugDir, beaconLatticeOn = beaconLatticeOn)
         }
+        val heat1 = if (config.heat.mode != "off" && !heatFirst) heatOf(entities + poles) else null
+        if (heat1 != null && !heat1.ok && attempt < attempts) {
+            notes += "heat attempt $attempt: ${heat1.cold.size} entities cold"
+            heat1.cold.forEach { u -> for (dy in -2..2) for (dx in -2..2) bias.merge(Tile(u.x + dx, u.y + dy), 1.0, Double::plus) }
+            val again = route(RouteProblem(plan, config, tuning.route, placement, obstacles, tileBias = bias, warmHistory = result.rawHistory))
+            if (again.success) result = again
+            continue
+        }
+        val heat = heat0 ?: heat1
         val offset = entities.size
-        val all = entities + poles
+        val all = (heat1?.entities ?: (entities + poles)) + heatPipes0 + (heat1?.pipes ?: emptyList())
         val marks = if (config.markerTile == "none") emptyList() else config.reservedRects(w, h).flatMap { borderTiles(it, config.markerTile) }
         val layout = Layout(w, h, all, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer ${w}x$h seed $seed", marks, ctl.circuitWires)
         // Outside the box: harness, poles in the ring, and ring ports (in test mode the inputs are fed, not listed).
         val outsideAllowed = outside + poles.flatMap { it.rect.tiles() }.filter { it.x !in 0 until w || it.y !in 0 until h } +
-            ringed.sources.map { it.tile }
+            ringed.sources.map { it.tile } + (heat?.ports ?: emptyList()) + (heat?.pipes?.map { it.tile }?.filter { it.x !in 0 until w || it.y !in 0 until h } ?: emptyList())
         val spec = validationSpec(data, plan, config, placement, sources, requirePower = config.power.mode != "none", outsideAllowed = outsideAllowed,
-            outputs = ringed.outputs)
+            outputs = ringed.outputs).copy(heat = heat?.let { validate.HeatSpec(it.ports.toSet(), config.heat.poles) })
+        if (heat != null && !heat.ok) notes += "heat: ${heat.cold.size} entities stay cold"
+        if (heat != null) notes += "heat ports at ${heat.ports}"
         // A port that must be one belt (a link between blocks of a factory) is one belt: its other end is one belt.
         val split = (ringed.sources.map { it.port to it.tile } + ringed.outputs.map { it.port to it.tile })
             .filter { (p, _) -> p >= 0 && plan.ports[p].single }.groupBy({ it.first }, { it.second })
             .filter { (_, ts) -> ts.distinct().size > 1 }
             .map { (p, ts) -> ValidationError(validate.ErrorType.UNSUPPORTED, ts.first(), "${plan.ports[p].item} must be one belt at its port, uses ${ts.distinct().size}") }
-        val errors = validate(layout, spec) + split
+        // ... and it is there at all: stitching joins every link between blocks at its ports.
+        val missing = missingLinkPorts(plan, ringed.sources, ringed.outputs)
+            .map { p -> ValidationError(validate.ErrorType.UNSUPPORTED, Tile(0, 0), "${p.item} ${if (p.output) "output" else "input"} port ${p.id} has no belt") }
+        val errors = validate(layout, spec) + split + missing
         if (beacons != null && !beacons.ok) return fail("beacons", result, errors, layout)
         if (!ok) return fail("power", result, errors, layout)
         if (errors.isNotEmpty()) return fail("validate", result, errors, layout)
         return TrialResult(true, w, h, seed, layout, placement, errors, result, score(layout, config), "ok", annealer.lastT0,
-            System.currentTimeMillis() - t0, notes, ringed.sources, ringed.outputs, summary())
+            System.currentTimeMillis() - t0, notes, ringed.sources, ringed.outputs, summary(), heat?.ports ?: emptyList())
     }
     return fail("power", result)
 }
@@ -449,4 +532,17 @@ fun legalize(p: Placement, model: PlaceModel): Placement {
     }
     model.clear()
     return Placement(model.w, model.h, out.sortedBy { it.id })
+}
+
+/** Ring tiles a heat port may take on [edge] ("any": every side) of a [w] x [h] box. */
+fun heatPortTiles(edge: String, w: Int, h: Int): List<Tile> {
+    val sides = if (edge == "any") listOf("north", "east", "south", "west") else listOf(edge)
+    return sides.flatMap { side ->
+        when (side) {
+            "north" -> (0 until w).map { Tile(it, -1) }
+            "south" -> (0 until w).map { Tile(it, h) }
+            "west" -> (0 until h).map { Tile(-1, it) }
+            else -> (0 until h).map { Tile(w, it) }
+        }
+    }
 }

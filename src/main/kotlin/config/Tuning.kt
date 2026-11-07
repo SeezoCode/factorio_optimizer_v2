@@ -58,6 +58,40 @@ data class PlannerTuning(
      * gets more machines, each with a smaller share (fast machines with productivity need this most).
      */
     @SerialName("access_share") val accessShare: Double = 0.75,
+    /**
+     * A machine planned with beacons in the lattice stands with one side against its beacon row, so only the other
+     * three count for [accessShare].
+     */
+    @SerialName("beacon_side") val beaconSide: Boolean = true,
+    /**
+     * Direct-insertion clusters: an item made and used only inside the block gets at least one producer per this many
+     * consumer machines, so each producer can sit next to its consumers and feed them by direct insertion instead of a
+     * belt (players trade a spare assembler for a belt). A producer that cannot feed two consumers gets one per
+     * consumer, so none shares its output between direct insertion and a belt. 0 keeps the fewest machines.
+     */
+    @SerialName("di_consumers_per_producer") val diConsumersPerProducer: Int = 0,
+    /**
+     * The most of its full speed a machine is planned to run (machine counts round up past it; block rebalancing
+     * stops there). A chain of machines planned at exactly full speed loses for good whatever one inserter swing or
+     * belt gap costs: in game the 2/s six-science factory's rail and iron-stick machines, planned at 100%, left
+     * production science 10% short; green science 1/s from plates made 0.92/s at 1 and 1/s at 0.97. 1: no headroom.
+     */
+    @SerialName("max_utilization") val maxUtilization: Double = 0.97,
+    /**
+     * Further utilization factor per level up the production chain (a recipe's level: its longest way down to a
+     * target), so suppliers flat out more than cover their consumers flat out: with equal headroom everywhere, a
+     * consumer whose own output is short runs flat out and takes more than its share of a shared input, and in a
+     * factory of blocks the spare capacity of another block cannot help. 1: the same headroom everywhere.
+     */
+    @SerialName("upstream_utilization") val upstreamUtilization: Double = 1.0,
+    /**
+     * The validator lets a machine making an intermediate run at most [maxUtilization] of its full speed to fill a
+     * belt, so a belt only producers flat out can fill is rejected (a gear belt fed by two assemblers flat out left
+     * automation science 7% short in game). Off by default: where a block sends one item out on several belts, the
+     * whole machines it has may not split between them at that speed (19 advanced-circuit assemblers for 8.79/s and
+     * 4.76/s need 20), and such a block never gets a layout.
+     */
+    @SerialName("headroom_check") val headroomCheck: Boolean = false,
 )
 
 @Serializable
@@ -77,6 +111,35 @@ data class PlaceTuning(
     val gamma: Double = 12.0,
     /** Direct-insertion bonus per belt inserter a fitting pair saves, in units of one belt tile. */
     val delta: Double = 6.0,
+    /**
+     * Weight of the belts direct insertion removes: a net inside the block (no port) whose every consumer has a
+     * fitting direct-insertion pair needs no belt at all, so its whole wirelength term and [netRemovalBonus] are
+     * credited back; a net partly covered gets the square of the covered share of half that, so the annealer feels
+     * the way to the whole cluster. 0 turns it off.
+     */
+    @SerialName("net_removal") val netRemoval: Double = 0.0,
+    /** Belt tiles a removed net saves beyond its wirelength estimate: its belt inserters, ends and crossings. */
+    @SerialName("net_removal_bonus") val netRemovalBonus: Double = 12.0,
+    /**
+     * Share of annealing moves that put one machine of a direct-insertion pair that does not fit yet right beside the
+     * other (a 1-tile gap, or 3 for long-handed inserters, on a random side), so clusters form in one step. 0: off.
+     */
+    @SerialName("di_snap_share") val diSnapShare: Double = 0.0,
+    /**
+     * Direct-insertion clusters (place/Clusters.kt): consumers placed around the producers of the items they need at
+     * fixed offsets, each cluster moved and turned whole, so the belts between them are never built. Starts are
+     * random (no column or warm starts). Best with planner.di_consumers_per_producer 2.
+     */
+    val clusters: Boolean = false,
+    /** With [clusters]: also cells (a row of machines between two clusters). Off keeps sandwiches, stacks and duos. */
+    val cells: Boolean = true,
+    /**
+     * Duos only (without [clusters]): a consumer that needs more than one producer's output, and at most two, gets two
+     * producers of its own and sits between them (cable, circuit, cable). Electronic circuits 30/s: 47 x 46 against
+     * 53 x 52, 517 belt tiles against 919, 2 inserters per machine against 3.9. Nothing changes where no consumer
+     * needs that (science). Off with beacons and with heat (the cluster ignores beacon rows and heat pipe lattices).
+     */
+    val duos: Boolean = true,
     /** Weight of the squared beacon shortfall per machine (beacons in lattice mode, see BeaconConfig). */
     @SerialName("beacon_weight") val beaconWeight: Double = 15.0,
     @SerialName("rudy_bin") val rudyBin: Int = 4,
@@ -186,6 +249,16 @@ data class RouteTuning(
     @SerialName("weave_penalty") val weavePenalty: Double = 1.0,
     /** Extra cost of a splitter that starts a belt branch (B9). */
     @SerialName("splitter_cost") val splitterCost: Double = 2.0,
+    /**
+     * Extra cost of a dead-end splitter pickup (B14) on top of [splitterCost]: a splitter on the chain whose second
+     * half, beside it, leads nowhere, so an inserter can pick from that half.
+     */
+    @SerialName("stub_cost") val stubCost: Double = 0.0,
+    /**
+     * Aquilo (heat on): extra cost of a belt whose two side tiles are both taken (no heat pipe could touch it but at
+     * its ends), and half of it for a belt that takes the last free side tile of a belt beside it.
+     */
+    @SerialName("heat_wall_cost") val heatWallCost: Double = 3.0,
     /** While visiting producers, extra cost on the access tiles of the same net's consumers. */
     @SerialName("own_consumer_reservation") val ownConsumerReservation: Double = 3.0,
     /** Start producers tried per net and iteration before the net counts as unrouted. */
@@ -230,7 +303,7 @@ data class RouteTuning(
     @SerialName("endgame_time_factor") val endgameTimeFactor: Double = 2.0,
     /** A net's flow above this share of a belt is split over several belt chains. */
     @SerialName("chain_belt_share") val chainBeltShare: Double = 0.9,
-    /** A chain's flow may use up to this share of the weaving (second) underground tier's throughput. */
+    /** A chain may weave through the second underground tier while its flow (on a lane pair, each item's) fits this share of one of that tier's lanes. */
     @SerialName("weave_belt_share") val weaveBeltShare: Double = 0.98,
     /** How many tile conflicts one unrouted chain counts as when comparing routing iterations and rounds. */
     @SerialName("unrouted_penalty") val unroutedPenalty: Int = 10,

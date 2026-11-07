@@ -1,4 +1,5 @@
 import config.RunConfiguration
+import config.Tuning
 import data.RootData
 import data.loadRootData
 import data.readResourceOrFile
@@ -11,3 +12,9 @@ object TestData {
 
     fun text(name: String): String = readResourceOrFile(name)
 }
+
+/**
+ * Tuning for tests whose machine counts are worked out by hand (and fixtures placed for them): machines may run
+ * at full speed, no headroom (planner.max_utilization 1), and no extra producers for duos.
+ */
+val handTuning: Tuning = Tuning().let { it.copy(planner = it.planner.copy(maxUtilization = 1.0), place = it.place.copy(duos = false)) }

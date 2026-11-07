@@ -8,6 +8,7 @@ import place.Placement
 import plan.ProductionPlan
 import plan.Role
 import plan.Terminal
+import plan.beltDropRate
 import plan.bestInserterRate
 import plan.inserterCount
 import plan.inserterRate
@@ -53,7 +54,9 @@ fun accessOptions(
     val out = mutableListOf<AccessOption>()
     val consumer = t.role == Role.CONSUMER
     val sink = t.role == Role.SINK
+    // With belt stacking a producer drops through a stack inserter (a long-handed one would not stack).
     val longAllowed = !sink && config.trick("I3") && "long-handed-inserter" in config.inserters.allowed &&
+        !(config.beltStackSize > 1 && t.role == Role.PRODUCER) &&
         inserterRate("long-handed-inserter", config, fromBelt = consumer) * k >= rate - 1e-9
     val normalAllowed = config.inserters.allowed.any { it != "long-handed-inserter" }
     for (side in Dir.entries) {
@@ -87,8 +90,11 @@ fun assignDirectInsertion(
     val rectOf = placement.machines.associate { it.id to placement.rect(plan, it) }
     val producerRate = HashMap<Int, Double>()   // terminal id -> spare
     val consumerNeed = HashMap<Int, Double>()
+    val spoilDrain = config.spoilage.mode == "drain"
     plan.terminals.forEach { t ->
         if (t.fluid) return@forEach
+        // A machine holding something that spoils hands its spoilage out with its products: not into another machine.
+        if (spoilDrain && t.machine != null && spoilProne(plan.machines[t.machine])) return@forEach
         when (t.role) {
             Role.PRODUCER -> producerRate[t.id] = t.rate
             Role.CONSUMER -> consumerNeed[t.id] = t.rate
@@ -103,8 +109,8 @@ fun assignDirectInsertion(
         val cap get() = tiles.size * (if (long) longRate else normalRate)
     }
     val cands = mutableListOf<Cand>()
-    val producers = plan.terminals.filter { it.role == Role.PRODUCER && !it.fluid }
-    val consumers = plan.terminals.filter { it.role == Role.CONSUMER && it.machine != null && !it.fluid }
+    val producers = plan.terminals.filter { it.role == Role.PRODUCER && !it.fluid && it.id in producerRate }
+    val consumers = plan.terminals.filter { it.role == Role.CONSUMER && it.machine != null && !it.fluid && it.id in consumerNeed }
     for (p in producers) for (c in consumers) {
         if (p.item != c.item || p.machine == c.machine) continue
         val a = rectOf.getValue(p.machine!!)
@@ -187,7 +193,7 @@ private fun gapTiles(a: Rect, b: Rect, gap: Int): Pair<List<Tile>, Dir>? {
 
 /** Terminal rates after direct insertion; terminals fully served by it are dropped. */
 fun effectiveTerminals(plan: ProductionPlan, links: List<DiLink>, config: RunConfiguration): Map<Int, EffectiveTerminal> {
-    val drop = bestInserterRate(config, fromBelt = false)
+    val drop = beltDropRate(config)
     val pick = bestInserterRate(config, fromBelt = true)
     val out = HashMap<Int, EffectiveTerminal>()
     plan.terminals.forEach { t ->

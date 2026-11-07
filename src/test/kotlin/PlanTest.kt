@@ -48,7 +48,7 @@ class PlanTest {
 
     @Test
     fun `T2 gives one circuit machine, two cable machines and one cable net`() {
-        val plan = buildPlan(data, TestData.job("t2"))
+        val plan = buildPlan(data, TestData.job("t2"), handTuning)
         assertEquals(1, plan.machines.count { it.recipe == "electronic-circuit" })
         assertEquals(2, plan.machines.count { it.recipe == "copper-cable" })
         assertEquals(3, plan.machines.size)
@@ -71,7 +71,7 @@ class PlanTest {
         assertTrue(plan.terminals.none { it.role == Role.SINK })
 
         // Chest mode: no product net, one chest sink instead.
-        val chests = buildPlan(data, TestData.job("t2").copy(sinks = config.SinkConfig("chest")))
+        val chests = buildPlan(data, TestData.job("t2").copy(sinks = config.SinkConfig("chest")), handTuning)
         assertTrue(chests.nets.none { it.item == "electronic-circuit" }, "the final product has no consumers, so no net")
         val sinks = chests.terminals.filter { it.role == Role.SINK }
         assertEquals(1, sinks.size)
@@ -80,7 +80,7 @@ class PlanTest {
 
     @Test
     fun `T3 nets match the hand calculation`() {
-        val plan = buildPlan(data, TestData.job("t3"))
+        val plan = buildPlan(data, TestData.job("t3"), handTuning)
         val expected = Json.parseToJsonElement(TestData.text("jobs/t3_expected.json")).jsonObject
 
         expected.getValue("machines").jsonObject.forEach { (recipe, n) ->
@@ -111,7 +111,7 @@ class PlanTest {
 
     @Test
     fun `T4 takes acid through a fluid port into both processing unit machines`() {
-        val plan = buildPlan(data, TestData.job("t4"))
+        val plan = buildPlan(data, TestData.job("t4"), handTuning)
         val pu = plan.machines.filter { it.recipe == "processing-unit" }
         assertEquals(2, pu.size)
         assertTrue(pu.all { it.needsFluid == "sulfuric-acid" && it.fluidIn == mapOf("sulfuric-acid" to 1) })
@@ -127,7 +127,7 @@ class PlanTest {
     @Test
     fun `terminal inserter counts cover their rate`() {
         val config = TestData.job("t4")
-        val plan = buildPlan(data, config)
+        val plan = buildPlan(data, config, handTuning)
         plan.terminals.filter { it.machine != null }.forEach { t ->
             val perInserter = plan.bestRate(config, t.role)
             assertTrue(t.k * perInserter >= t.rate - 1e-9, "terminal ${t.id} (${t.item}, ${t.role}) k=${t.k}")
@@ -174,7 +174,7 @@ class PlanTest {
     @Test
     fun `plastic from crude oil balances, with refineries and chemical plants`() {
         val config = RunConfiguration(targets = listOf(ConfigTarget("plastic-bar", 5.0)))
-        val plan = buildPlan(data, config)
+        val plan = buildPlan(data, config, handTuning)
         assertBalanced(plan)
         assertTrue(plan.machines.any { it.machine == "oil-refinery" })
         assertTrue(plan.machines.filter { it.recipe == "plastic-bar" }.all { it.machine == "chemical-plant" && it.fluidIn == mapOf("petroleum-gas" to 1) })
@@ -187,7 +187,7 @@ class PlanTest {
     @Test
     fun `advanced oil processing with cracking leaves no by-products`() {
         val config = RunConfiguration(targets = listOf(ConfigTarget("plastic-bar", 5.0)), forbiddenRecipes = listOf("basic-oil-processing"))
-        val plan = buildPlan(data, config)
+        val plan = buildPlan(data, config, handTuning)
         assertBalanced(plan)
         assertTrue(plan.machines.any { it.recipe == "advanced-oil-processing" })
         assertTrue(plan.machines.any { it.recipe == "heavy-oil-cracking" } && plan.machines.any { it.recipe == "light-oil-cracking" })
@@ -197,7 +197,7 @@ class PlanTest {
     @Test
     fun `by-products without a use leave the block`() {
         val config = RunConfiguration(targets = listOf(ConfigTarget("uranium-238", 0.5)), forbiddenRecipes = listOf("kovarex-enrichment-process"))
-        val plan = buildPlan(data, config)
+        val plan = buildPlan(data, config, handTuning)
         assertBalanced(plan)
         assertTrue((plan.outputs["uranium-235"] ?: 0.0) > 0.0, "U-235 must leave the block: ${plan.outputs}")
         assertTrue(plan.machines.all { it.machine == "centrifuge" })
@@ -207,7 +207,7 @@ class PlanTest {
     fun `listed sources are not made inside the block`() {
         val config = RunConfiguration(targets = listOf(ConfigTarget("electronic-circuit", 1.0)),
             sources = listOf(ConfigSource("iron-plate", edge = "west")))
-        val plan = buildPlan(data, config)
+        val plan = buildPlan(data, config, handTuning)
         assertBalanced(plan)
         assertTrue(plan.machines.none { it.product == "iron-plate" })
         assertTrue(plan.machines.any { it.product == "copper-plate" && it.machine == "electric-furnace" }, "copper is smelted from ore")
@@ -217,7 +217,7 @@ class PlanTest {
     @Test
     fun `burner furnaces get coal as an input`() {
         val config = RunConfiguration(targets = listOf(ConfigTarget("iron-plate", 2.0)), machines = listOf("stone-furnace"))
-        val plan = buildPlan(data, config)
+        val plan = buildPlan(data, config, handTuning)
         assertBalanced(plan)
         val f = plan.machines.first()
         assertEquals("stone-furnace", f.machine)
@@ -226,7 +226,7 @@ class PlanTest {
 
     @Test
     fun `plan json round trips`() {
-        val plan = buildPlan(data, TestData.job("t3"))
+        val plan = buildPlan(data, TestData.job("t3"), handTuning)
         val again = config.strictJson.decodeFromString(ProductionPlan.serializer(), plan.toJson())
         assertEquals(plan, again)
     }

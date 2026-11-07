@@ -4,6 +4,7 @@ import config.RunConfiguration
 import data.AssemblingMachineEntity
 import data.BeaconEntity
 import data.FurnaceEntity
+import data.GameConstants
 import data.ModuleEffects
 import data.Recipe
 import data.RootData
@@ -42,7 +43,10 @@ fun beaconSpec(data: RootData, config: RunConfiguration): BeaconSpec? {
         val off = effectKeys(fx).filter { it !in e.allowedEffects }
         require(off.isEmpty()) { "a ${b.beacon} does not take '$m' (effects $off)" }
     }
-    return BeaconSpec(b.beacon, e.width, e.supplyAreaDistance["normal"] ?: 3, e.distributionEffectivity, e.moduleInventorySize, b.modules)
+    // A better beacon passes on more (distribution effectivity per quality level, from recipes.json).
+    val level = data.quality[b.quality]?.level ?: 0
+    return BeaconSpec(b.beacon, e.width, e.supplyAreaDistance[b.quality] ?: e.supplyAreaDistance["normal"] ?: 3,
+        e.distributionEffectivity + e.distributionEffectivityBonusPerQualityLevel * level, e.moduleInventorySize, b.modules)
 }
 
 /** A module's effects. */
@@ -80,6 +84,13 @@ private fun fits(data: RootData, recipe: Recipe, rc: Receiver, module: String) =
 
 /** The modules in a machine's own slots: [config.BeaconConfig.machineModules], one the recipe refuses replaced by the fallback. */
 fun machineModules(data: RootData, config: RunConfiguration, recipe: Recipe, machine: String): List<String> {
+    // Quality production: quality modules in every machine that takes them (recyclers their own), whatever else.
+    config.qualityProduction?.let { qp ->
+        val rc = receiver(data, machine)?.takeIf { it.modules && it.slots > 0 } ?: return emptyList()
+        if (!recipe.allowedEffects.quality || "quality" !in rc.allowed) return emptyList()
+        val mods = if (recipe.inAny(RECYCLING_CATEGORIES)) qp.recyclerModules else qp.modules
+        return mods.take(rc.slots).filter { m -> (moduleEffects(data, m).speed ?: 0.0) == 0.0 || ("speed" in rc.allowed && recipe.allowedEffects.speed) }
+    }
     val b = config.beacons ?: return emptyList()
     val rc = receiver(data, machine)?.takeIf { it.modules && it.slots > 0 } ?: return emptyList()
     return b.machineModules.take(rc.slots).mapNotNull { m ->
@@ -100,20 +111,28 @@ fun plannedBeacons(data: RootData, config: RunConfiguration, recipe: Recipe, mac
     return if (useful) b.perMachine else 0
 }
 
-private fun sumEffect(data: RootData, modules: List<String>, key: String, recipe: Recipe, rc: Receiver): Double =
+/** What a module of the job's module quality does more than a normal one: its bonuses times this. */
+private fun moduleMultiplier(data: RootData, config: RunConfiguration): Double =
+    GameConstants.moduleBonusMultiplier(data.quality[config.moduleQuality()]?.level ?: 0)
+
+/** [key]'s effect of [modules], bonuses (more speed or productivity, less consumption) times [mult], penalties as they are. */
+private fun sumEffect(data: RootData, modules: List<String>, key: String, recipe: Recipe, rc: Receiver, mult: Double = 1.0): Double =
     if (key !in rc.allowed || !recipeAllows(recipe, key)) 0.0 else modules.sumOf { m ->
         val fx = moduleEffects(data, m)
-        when (key) { "speed" -> fx.speed; "productivity" -> fx.productivity; else -> fx.consumption } ?: 0.0
+        val v = when (key) { "speed" -> fx.speed; "productivity" -> fx.productivity; else -> fx.consumption } ?: 0.0
+        val bonus = if (key == "consumption") v < 0 else v > 0
+        if (bonus) v * mult else v
     }
 
 /** Crafting speed of [machine] on [recipe] with its modules and [beacons] beacons in range. */
 fun moduleSpeed(data: RootData, config: RunConfiguration, recipe: Recipe, machine: String, beacons: Int): Double {
     val base = data.craftingSpeed(machine, config.quality)
     val rc = receiver(data, machine) ?: return base
-    var bonus = sumEffect(data, machineModules(data, config, recipe, machine), "speed", recipe, rc)
+    val mult = moduleMultiplier(data, config)
+    var bonus = sumEffect(data, machineModules(data, config, recipe, machine), "speed", recipe, rc, mult)
     if (beacons > 0 && rc.beacons) {
         val spec = beaconSpec(data, config) ?: return base * maxOf(0.2, 1 + bonus)
-        bonus += spec.effectivity * sqrt(beacons.toDouble()) * sumEffect(data, spec.modules, "speed", recipe, rc)
+        bonus += spec.effectivity * sqrt(beacons.toDouble()) * sumEffect(data, spec.modules, "speed", recipe, rc, mult)
     }
     return base * maxOf(0.2, 1 + bonus)
 }
@@ -121,7 +140,7 @@ fun moduleSpeed(data: RootData, config: RunConfiguration, recipe: Recipe, machin
 /** Productivity the machine's own modules add. */
 fun moduleProductivity(data: RootData, config: RunConfiguration, recipe: Recipe, machine: String): Double {
     val rc = receiver(data, machine) ?: return 0.0
-    return sumEffect(data, machineModules(data, config, recipe, machine), "productivity", recipe, rc)
+    return sumEffect(data, machineModules(data, config, recipe, machine), "productivity", recipe, rc, moduleMultiplier(data, config))
 }
 
 /** Fewest beacons, of at most [MachineInstance.beacons], that let [m] run its planned crafts. */

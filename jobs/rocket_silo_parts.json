@@ -1,0 +1,11 @@
+{
+ "targets": [{"name": "rocket-part", "amount": 0.25}],
+ "machines": ["rocket-silo", "assembling-machine-3"],
+ "belt_tier": "fast",
+ "sources": [
+  {"name": "processing-unit", "edge": "west"},
+  {"name": "low-density-structure", "edge": "west"},
+  {"name": "rocket-fuel", "edge": "west"}
+ ],
+ "search": {"time_budget_s": 120, "seeds_per_size": 3, "threads": 4, "seed": 2026, "verbose": false}
+}
