@@ -44,12 +44,16 @@ class Server(private val root: File, private val port: Int) {
     private val compact = Json { encodeDefaults = true }
     private val runs = ConcurrentHashMap<String, Process>()
 
+    /** Serves on [port], or the next free one of the 20 after it when it is taken (another UI already running). */
     fun start() {
-        val server = HttpServer.create(InetSocketAddress("127.0.0.1", port), 0)
+        val (server, used) = (port until port + 20).firstNotNullOfOrNull { p ->
+            runCatching { HttpServer.create(InetSocketAddress("127.0.0.1", p), 0) to p }.getOrNull()
+        } ?: error("ports $port to ${port + 19} are all in use; pick another with --port=<n>")
         server.executor = Executors.newFixedThreadPool(8)
         server.createContext("/") { ex -> handle(ex) }
         server.start()
-        println("UI at http://localhost:$port (serving ${root.canonicalPath}); Ctrl+C stops it")
+        if (used != port) println("port $port is in use")
+        println("UI at http://localhost:$used (serving ${root.canonicalPath}); Ctrl+C stops it")
     }
 
     private fun handle(ex: HttpExchange) {
