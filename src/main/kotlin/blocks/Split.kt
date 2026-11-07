@@ -11,6 +11,7 @@ import plan.Net
 import plan.Port
 import plan.ProductionPlan
 import plan.Role
+import plan.MachineInstance
 import plan.Terminal
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -164,7 +165,79 @@ fun splitPlan(
     val fp = Floorplanner(fpBlocks, fpNets, FpParams(aspect = aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = seed)).optimise()
     val geometry = BlockGeometry(fp.boxes.take(k), fp.w, fp.h, fp.touches.take(k), fp.state)
     val links = linksFor(plan, cfg, beltThroughput, blocks, geometry, warnings)
-    return Split(blocks, links, warnings, geometry, plan, part, tradePorts)
+    val (plan2, blocks2) = wholeMachines(plan, blocks, links, warnings)
+    return Split(blocks2, links, warnings, geometry, plan2, part, tradePorts)
+}
+
+/**
+ * Machines enough to feed each belt an item leaves a block on. A machine putting its output on two belts divides it
+ * by inserter speed (see the validator's split producers), about half each, so a belt gets whole or half machines:
+ * 5 circuit assemblers of 8.82/s at most cannot fill belts of 19.36, 19.93 and 3.51/s (5 + 5 + 1 halves, 6 machines).
+ * Where a block's machines of an item fall short of that (per belt: its rate over half a machine's most, rounded up;
+ * plus what the block itself uses, where the belts' spare cannot cover it), copies of its producer join the block
+ * and the block's machines of that recipe share its work equally: the block makes the same, each machine a little
+ * slower. Items made by more than one recipe in a block are left as they are.
+ */
+fun wholeMachines(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Link>, warnings: MutableList<String>): Pair<ProductionPlan, List<List<Int>>> {
+    val machines = plan.machines.toMutableList()
+    val terminals = plan.terminals.toMutableList()
+    val netTerms = plan.nets.map { it.terminals.toMutableList() }
+    val netOf = HashMap<Int, Int>().also { m -> plan.nets.forEach { n -> n.terminals.forEach { t -> m[t] = n.id } } }
+    val newBlocks = blocks.map { it.toMutableList() }
+    var changed = false
+    blocks.forEachIndexed { b, ms ->
+        val items = ms.flatMap { plan.machines[it].itemProducts.keys }.distinct()
+        for (item in items) {
+            val out = links.filter { it.from == b && it.item == item && !it.fluid }
+            if (out.size < 2) continue
+            val producers = ms.filter { (plan.machines[it].itemProducts[item] ?: 0.0) > 1e-12 }
+            val recipes = producers.map { plan.machines[it].recipe }.distinct()
+            if (recipes.size != 1) continue
+            val m0 = plan.machines[producers[0]]
+            // One machine's most of the item: at full speed (as the validator allows), or held to the plan's headroom.
+            val per = m0.itemProducts.getValue(item) / m0.crafts
+            val top = maxOf(m0.crafts, plan.headroom * m0.maxCrafts) * per
+            if (top <= 1e-12) continue
+            val inside = plan.terminals.filter { it.role == Role.CONSUMER && it.item == item && it.machine in ms }.sumOf { it.rate }
+            // In halves: a machine whose inserters drop on two belts gives each about half (equal inserters).
+            val half = top / 2
+            val perBelt = out.map { ceil(it.rate / half - 1e-6).toInt() }
+            val spare = out.indices.sumOf { perBelt[it] * half - out[it].rate }
+            val halves = perBelt.sum() + ceil(maxOf(0.0, inside - spare) / half - 1e-6).toInt()
+            val need = (halves + 1) / 2
+            val extra = need - producers.size
+            if (extra <= 0) continue
+            // The block's machines of the recipe (and the copies) share its crafts equally.
+            val all = ms.filter { plan.machines[it].recipe == m0.recipe }
+            val total = all.sumOf { plan.machines[it].crafts }
+            val share = total / (all.size + extra)
+            fun scaled(m: MachineInstance, id: Int): MachineInstance {
+                val f = share / m.crafts
+                return m.copy(id = id, outputRate = m.outputRate * f, demand = m.demand.mapValues { it.value * f },
+                    products = m.products.mapValues { it.value * f }, fluidDemand = m.fluidDemand.mapValues { it.value * f }, crafts = share,
+                    maxCrafts = maxOf(m.maxCrafts, share))
+            }
+            all.forEach { id ->
+                val f = share / machines[id].crafts
+                machines[id] = scaled(machines[id], id)
+                terminals.indices.filter { terminals[it].machine == id }.forEach { t -> terminals[t] = terminals[t].copy(rate = terminals[t].rate * f) }
+            }
+            repeat(extra) {
+                val id = machines.size
+                machines += scaled(plan.machines[all[0]], id).copy(id = id)
+                plan.terminals.filter { it.machine == all[0] }.forEach { t ->
+                    val nt = terminals.size
+                    terminals += t.copy(id = nt, machine = id, rate = t.rate * share / plan.machines[all[0]].crafts)
+                    netOf[t.id]?.let { n -> netTerms[n] += nt }
+                }
+                newBlocks[b] += id
+            }
+            changed = true
+            warnings += "block ${b + 1}: $extra more ${m0.machine} (${m0.recipe}) so that its ${out.size} belts of $item can be fed"
+        }
+    }
+    if (!changed) return plan to blocks
+    return plan.copy(machines = machines, terminals = terminals, nets = plan.nets.mapIndexed { i, n -> n.copy(terminals = netTerms[i]) }) to newBlocks
 }
 
 /** A reserved area as a floorplan block: fixed size, on its corner (by default the corners in turn). */

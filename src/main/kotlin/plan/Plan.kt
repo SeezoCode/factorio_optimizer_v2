@@ -119,8 +119,8 @@ data class ProductionPlan(
     val utilization: Map<String, Double> = emptyMap(),
     /**
      * The most of its full speed a machine making an intermediate may run to fill a belt, as the validator sees it
-     * (planner.max_utilization): a belt that only producers flat out can fill comes up short in game as soon as
-     * anything upstream of it does. Machines making targets may run flat out.
+     * (planner.max_utilization with planner.headroom_check, else 1): a belt that only producers flat out can fill
+     * comes up short in game as soon as anything upstream of it does. Machines making targets may run flat out.
      */
     val headroom: Double = 1.0,
     /** Items launched in rocket silos per second (rocket parts; a rocket is rocket_parts_required of them). */
@@ -409,6 +409,6 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         launched = launched,
         mixed = mixed,
         utilization = crafts.associate { (c, _) -> c.recipe.name to utilOf(c.recipe.name) },
-        headroom = tuning.planner.maxUtilization,
+        headroom = if (tuning.planner.headroomCheck) tuning.planner.maxUtilization else 1.0,
     )
 }

@@ -104,13 +104,22 @@ fun savedJob(out: File): RunConfiguration? =
 /** Machines per recipe: a saved split fits a plan when these match. */
 fun recipeCounts(p: ProductionPlan): Map<String, Int> = p.machines.groupingBy { it.recipe }.eachCount()
 
+/**
+ * Whether a saved split's plan is of the job's [plan]: the same recipes, each with at least as many machines (the
+ * split may add machines so that the belts out of a block get whole machines, see [wholeMachines]).
+ */
+fun splitFits(saved: ProductionPlan, plan: ProductionPlan): Boolean {
+    val a = recipeCounts(saved); val b = recipeCounts(plan)
+    return a.keys == b.keys && b.all { (r, n) -> (a[r] ?: 0) >= n }
+}
+
 /** Why a run in [out] cannot be resumed for [plan] (the job's plan before the split), or null when it can. */
 fun resumeProblem(out: File, plan: ProductionPlan): String? {
     if (!out.isDirectory) return "$out does not exist"
     val saved = runCatching { loadSplit(out) }.getOrElse { return "$out/resume/split.json cannot be read (${it.message})" }
         ?: return "nothing saved in $out/resume (only a factory of blocks saves its split and blocks there, from its split on)"
     val a = recipeCounts(saved.plan); val b = recipeCounts(plan)
-    if (a != b) {
+    if (!splitFits(saved.plan, plan)) {
         val diff = (a.keys + b.keys).filter { a[it] != b[it] }.take(4).joinToString(", ") { "$it ${a[it] ?: 0} -> ${b[it] ?: 0}" }
         return "the job's plan changed since that run (machines: $diff); a resumed run keeps the old split, so start afresh instead"
     }

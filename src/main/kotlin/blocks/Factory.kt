@@ -112,10 +112,12 @@ fun runFactory(
     val saved = if (resume) loadSplit(out) else null
     if (resume) say(when {
         saved == null -> "resume: nothing saved in $out; starting afresh"
-        recipes(saved.plan) != recipes(input) -> "resume: the saved split is of another plan; starting afresh"
+        !splitFits(saved.plan, input) -> "resume: the saved split is of another plan; starting afresh"
         else -> "resume: split of ${saved.blocks.size} blocks from $out/resume"
     })
-    var split = saved?.takeIf { recipes(it.plan) == recipes(input) }
+    // A saved split keeps its machines and links; how strictly blocks are validated comes from today's tuning.
+    var split = saved?.takeIf { splitFits(it.plan, input) }
+        ?.let { Split(it.blocks, it.links, it.warnings, it.geometry, it.plan.copy(headroom = input.headroom), it.partition, it.ports) }
         ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved,
             pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines, cfg.maxMachines / 2, cfg.templateColumns) else emptyMap(),
             maxUtilization = tuning.planner.maxUtilization).also { saveSplit(out, config, it) }

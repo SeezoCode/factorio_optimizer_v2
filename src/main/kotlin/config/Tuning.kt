@@ -84,6 +84,14 @@ data class PlannerTuning(
      * factory of blocks the spare capacity of another block cannot help. 1: the same headroom everywhere.
      */
     @SerialName("upstream_utilization") val upstreamUtilization: Double = 1.0,
+    /**
+     * The validator lets a machine making an intermediate run at most [maxUtilization] of its full speed to fill a
+     * belt, so a belt only producers flat out can fill is rejected (a gear belt fed by two assemblers flat out left
+     * automation science 7% short in game). Off by default: where a block sends one item out on several belts, the
+     * whole machines it has may not split between them at that speed (19 advanced-circuit assemblers for 8.79/s and
+     * 4.76/s need 20), and such a block never gets a layout.
+     */
+    @SerialName("headroom_check") val headroomCheck: Boolean = false,
 )
 
 @Serializable
