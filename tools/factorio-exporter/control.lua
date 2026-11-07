@@ -112,18 +112,35 @@ local function export(player)
       name = i.name, type = i.type, order = i.order, group = group_entry(groups, i.group), subgroup = group_entry(groups, i.subgroup),
       stack_size = i.stack_size, weight = i.weight, fuel_categories = i.fuel_categories, fuel_value = i.fuel_value,
       module_effects = i.module_effects, rocket_launch_products = i.rocket_launch_products, flags = keys(i.flags),
-      place_result = name_of(i.place_result),
+      place_result = name_of(i.place_result), burnt_result = name_of(i.burnt_result),
     }
+    if i.type == "module" then data.items[i.name].category = i.category end
     translate(player, i.localised_name, data.items[i.name])
   end
 
   data.fluids = {}
   for _, f in pairs(prototypes.fluid) do
-    data.fluids[f.name] = { name = f.name, order = f.order, group = group_entry(groups, f.group), subgroup = group_entry(groups, f.subgroup), fuel_value = f.fuel_value }
+    data.fluids[f.name] = { name = f.name, order = f.order, group = group_entry(groups, f.group), subgroup = group_entry(groups, f.subgroup), fuel_value = f.fuel_value,
+      default_temperature = f.default_temperature, max_temperature = f.max_temperature }
     translate(player, f.localised_name, data.fluids[f.name])
   end
 
   data.entities = {}
+  -- What can be mined or pumped (raw resources): each resource with what mining it gives and what it needs.
+  data.resources = {}
+  for _, e in pairs(prototypes.entity) do
+    if e.type == "resource" and not e.hidden then
+      local mp = e.mineable_properties
+      data.resources[e.name] = { name = e.name, category = e.resource_category, infinite = e.infinite_resource,
+        products = mp and mp.products, required_fluid = mp and mp.required_fluid, fluid_amount = mp and mp.fluid_amount }
+    end
+  end
+  -- Mod data (2.0 mod-data prototypes) as the mods wrote it, e.g. Pyanodon's farm buildings and their modules.
+  data.mod_data = {}
+  for name, md in pairs(prototypes.mod_data or {}) do
+    local ok, d = pcall(function() return md.data end)
+    if ok then data.mod_data[name] = { data_type = md.data_type, data = d } end
+  end
   local logistics = { belts = {}, undergrounds = {}, splitters = {}, inserters = {}, poles = {}, pipes = {}, pipes_to_ground = {} }
   data.logistics = logistics
   for _, e in pairs(prototypes.entity) do
@@ -141,7 +158,7 @@ local function export(player)
         name = e.name, type = t, order = e.order, group = name_of(e.group), subgroup = name_of(e.subgroup),
         crafting_speed = {}, supply_area_distance = {},
         crafting_categories = keys(e.crafting_categories), allowed_effects = keys(e.allowed_effects),
-        module_inventory_size = e.module_inventory_size, fixed_recipe = name_of(e.fixed_recipe), effect_receiver = e.effect_receiver,
+        module_inventory_size = e.module_inventory_size, allowed_module_categories = keys(e.allowed_module_categories), fixed_recipe = name_of(e.fixed_recipe), effect_receiver = e.effect_receiver,
         rocket_parts_required = e.rocket_parts_required,
         distribution_effectivity = e.distribution_effectivity,
         distribution_effectivity_bonus_per_quality_level = e.distribution_effectivity_bonus_per_quality_level,
