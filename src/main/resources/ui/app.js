@@ -386,8 +386,12 @@ async function drawPicked() {
     let report = null, blocks = null;
     if (v === "test" && (runInfo.files || []).includes("verify_report.json")) report = await api("/api/file?path=" + encodeURIComponent(runDir + "/verify_report.json"));
     if (v === "best" && (runInfo.files || []).includes("blocks.json")) blocks = await api("/api/file?path=" + encodeURIComponent(runDir + "/blocks.json"));
-    viewer.set(bp, report, blocks, v !== $("#view").dataset.shown);
-    $("#view").dataset.shown = v;
+    // Port labels: the run's own for its best layout, a block's from its folder (the test copy has its harness instead).
+    let ports = null;
+    if (v === "best") ports = runInfo.ports || null;
+    else if (v !== "test") ports = await api("/api/file?path=" + encodeURIComponent(runDir + "/" + v + "/ports.json")).catch(() => null);
+    viewer.set(bp, report, blocks, runDir + "|" + v !== $("#view").dataset.shown, ports);
+    $("#view").dataset.shown = runDir + "|" + v;
   } catch (e) { viewer.set(null); $("#runState").textContent = e.message; }
 }
 
@@ -432,7 +436,7 @@ function tierOf(name) {
 
 const viewer = (() => {
   const cv = $("#view"); const ctx = cv.getContext("2d");
-  let ents = [], bounds = null, grid = new Map(), report = null, blocks = null;
+  let ents = [], bounds = null, grid = new Map(), report = null, blocks = null, ports = [];
   let scale = 16, ox = 0, oy = 0;
 
   function size(e) {
@@ -444,8 +448,10 @@ const viewer = (() => {
     return [w, h];
   }
 
-  function set(bp, rep, blk, fit) {
+  /** [prt]: ports.json of the layout (inputs and outputs on its edge, drawn and labelled), or null. */
+  function set(bp, rep, blk, fit, prt) {
     report = rep || null; blocks = blk || null;
+    ports = prt ? [...(prt.inputs || []).map((p) => ({ ...p, out: false })), ...(prt.outputs || []).map((p) => ({ ...p, out: true }))] : [];
     ents = []; grid = new Map();
     const list = bp && bp.blueprint ? bp.blueprint.entities || [] : [];
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -463,6 +469,7 @@ const viewer = (() => {
         if (it) it.status = m;
       }
     }
+    for (const p of ports) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x + 1); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y + 1); }
     bounds = ents.length ? { x0, y0, x1, y1 } : null;
     if (fit || !bounds) fitView();
     draw();
@@ -472,9 +479,19 @@ const viewer = (() => {
     resize();
     if (!bounds) return;
     const W = cv.clientWidth, H = cv.clientHeight;
-    scale = Math.max(1, Math.min(W / (bounds.x1 - bounds.x0 + 2), H / (bounds.y1 - bounds.y0 + 2)));
-    ox = W / 2 - ((bounds.x0 + bounds.x1) / 2) * scale;
-    oy = H / 2 - ((bounds.y0 + bounds.y1) / 2) * scale;
+    // Room in pixels for the port labels beside the box.
+    ctx.font = "12px sans-serif";
+    const pad = { west: 8, east: 8, north: 8, south: 8 };
+    for (const p of ports) {
+      const e = edgeOf(p);
+      const w = ctx.measureText(portLabel(p)).width + 30;   // room for "n ×" when grouped
+      if (e === "west" || e === "east") pad[e] = Math.max(pad[e], w + 10);
+      else pad[e] = Math.min(H / 4, pad[e] + 15);
+    }
+    const aw = Math.max(50, W - pad.west - pad.east), ah = Math.max(50, H - pad.north - pad.south);
+    scale = Math.max(0.2, Math.min(aw / (bounds.x1 - bounds.x0 + 2), ah / (bounds.y1 - bounds.y0 + 2)));
+    ox = pad.west + aw / 2 - ((bounds.x0 + bounds.x1) / 2) * scale;
+    oy = pad.north + ah / 2 - ((bounds.y0 + bounds.y1) / 2) * scale;
   }
 
   function resize() {
@@ -559,6 +576,7 @@ const viewer = (() => {
         }
       }
     }
+    drawPorts();
     if (blocks) {
       ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
       for (const b of blocks) {
@@ -569,6 +587,91 @@ const viewer = (() => {
         }
       }
       ctx.setLineDash([]);
+    }
+  }
+
+  function portLabel(p) { return `${p.out ? "out" : "in"}: ${p.item} ${(+p.rate).toFixed(2)}/s`; }
+  function groupLabel(g) {
+    if (g.ports.length === 1) return portLabel(g.ports[0]);
+    const total = g.ports.reduce((a, p) => a + +p.rate, 0);
+    return `${g.out ? "out" : "in"}: ${g.item} ${g.ports.length} × ${(total / g.ports.length).toFixed(2)}/s`;
+  }
+  const EDGES = ["west", "east", "north", "south"];
+  const edgeOf = (p) => EDGES.includes(p.edge) ? p.edge : "west";
+
+  /**
+   * Labels for one edge: one per port, or one per item (with a line to each of its ports) when one per port would
+   * not fit beside the box.
+   */
+  function edgeGroups(edge) {
+    const mine = ports.filter((p) => edgeOf(p) === edge);
+    const side = edge === "west" || edge === "east";
+    const room = side ? (bounds.y1 - bounds.y0) * scale + 60 : Infinity;
+    const single = mine.map((p) => ({ item: p.item, out: p.out, ports: [p] }));
+    if (!side || single.length * 15 <= room) return single;
+    const by = new Map();
+    for (const p of mine) { const k = (p.out ? "o:" : "i:") + p.item; if (!by.has(k)) by.set(k, { item: p.item, out: p.out, ports: [] }); by.get(k).ports.push(p); }
+    return [...by.values()];
+  }
+
+  /**
+   * Inputs (green) and outputs (orange): a marked tile where the item crosses the edge, its icon, and a label beside
+   * the box; labels close together are spread apart, each with a line to its port(s).
+   */
+  function drawPorts() {
+    const fs = 12, gap = fs + 3;
+    ctx.font = `${fs}px sans-serif`; ctx.textBaseline = "middle";
+    const bg = getComputedStyle(document.body).getPropertyValue("--bg") || "#fff";
+    for (const p of ports) {
+      const px = ox + p.x * scale, py = oy + p.y * scale, col = p.out ? "#d9822b" : "#2e9b4f";
+      const s = Math.max(scale, 3);
+      ctx.fillStyle = col; ctx.globalAlpha = 0.35; ctx.fillRect(px, py, s, s); ctx.globalAlpha = 1;
+      ctx.strokeStyle = col; ctx.lineWidth = scale >= 6 ? 2 : 1; ctx.strokeRect(px + 0.5, py + 0.5, s - 1, s - 1);
+      const img = sprite(p.item);
+      if (img && scale >= 10) ctx.drawImage(img, 0, 0, 64, 64, px + scale * 0.1, py + scale * 0.1, scale * 0.8, scale * 0.8);
+    }
+    for (const edge of EDGES) {
+      const side = edge === "west" || edge === "east";
+      const gs = edgeGroups(edge).map((g) => {
+        const cx = g.ports.reduce((a, p) => a + ox + (p.x + 0.5) * scale, 0) / g.ports.length;
+        const cy = g.ports.reduce((a, p) => a + oy + (p.y + 0.5) * scale, 0) / g.ports.length;
+        const label = groupLabel(g);
+        return { ...g, cx, cy, label, tw: ctx.measureText(label).width };
+      });
+      if (!gs.length) continue;
+      if (side) {
+        // Spread down from where each label wants to be, then back up if the last runs past the box.
+        gs.sort((a, b) => a.cy - b.cy);
+        gs.forEach((g, i) => { g.ly = i ? Math.max(g.cy, gs[i - 1].ly + gap) : g.cy; });
+        const bottom = oy + bounds.y1 * scale + 30;
+        for (let i = gs.length - 1; i >= 0; i--) {
+          const lim = i === gs.length - 1 ? bottom : gs[i + 1].ly - gap;
+          if (gs[i].ly > lim) gs[i].ly = lim;
+        }
+        gs.forEach((g) => { g.align = edge === "west" ? "right" : "left"; g.lx = edge === "west" ? ox + bounds.x0 * scale - 10 : ox + bounds.x1 * scale + 10; });
+      } else {
+        gs.sort((a, b) => a.cx - b.cx);
+        const rows = [];
+        for (const g of gs) {
+          const want = g.cx - g.tw / 2;
+          let r = rows.findIndex((end) => end + 6 <= want);
+          if (r < 0) { r = rows.length; rows.push(-Infinity); }
+          rows[r] = want + g.tw;
+          g.align = "center"; g.lx = g.cx;
+          g.ly = edge === "north" ? oy + bounds.y0 * scale - 10 - r * gap : oy + bounds.y1 * scale + 10 + r * gap;
+        }
+      }
+      for (const g of gs) {
+        const col = g.out ? "#d9822b" : "#2e9b4f";
+        const ex = g.align === "right" ? g.lx + 2 : g.align === "left" ? g.lx - 2 : g.lx;
+        const ey = g.align === "center" ? g.ly + (edge === "north" ? fs / 2 : -fs / 2) : g.ly;
+        ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.globalAlpha = 0.6; ctx.beginPath();
+        for (const p of g.ports) { ctx.moveTo(ox + (p.x + 0.5) * scale, oy + (p.y + 0.5) * scale); ctx.lineTo(ex, ey); }
+        ctx.stroke(); ctx.globalAlpha = 1;
+        const bx = g.align === "right" ? g.lx - g.tw : g.align === "left" ? g.lx : g.lx - g.tw / 2;
+        ctx.fillStyle = bg; ctx.globalAlpha = 0.9; ctx.fillRect(bx - 2, g.ly - fs * 0.65, g.tw + 4, fs * 1.3); ctx.globalAlpha = 1;
+        ctx.textAlign = g.align; ctx.fillStyle = col; ctx.fillText(g.label, g.lx, g.ly);
+      }
     }
   }
 
@@ -607,7 +710,7 @@ const viewer = (() => {
     ev.preventDefault();
     const r = cv.getBoundingClientRect(); const mx = ev.clientX - r.left, my = ev.clientY - r.top;
     const f = Math.exp(-ev.deltaY * 0.0015);
-    const ns = Math.max(0.5, Math.min(120, scale * f));
+    const ns = Math.max(0.2, Math.min(120, scale * f));
     ox = mx - (mx - ox) * (ns / scale); oy = my - (my - oy) * (ns / scale); scale = ns;
     draw();
   }, { passive: false });
