@@ -388,7 +388,10 @@ Unknown keys are an error. Everything except `targets` has a default.
   fails, keeps trying new seeds at that size instead of growing. `box.start_size` sets where it starts
   (default: `max_size`, else twice the estimate from machine area). Either way it then shrinks the box.
 - `weave_tier` is the second underground tier that may cross under the main tier's undergrounds ("auto":
-  express under fast belts; "none" turns weaving off). `lane_sharing: true` lets two items share a belt, one
+  express under fast belts; "none" turns weaving off). A belt chain weaves only while its flow (each item's, on
+  a lane pair) fits one lane of the weaving tier (`route.weave_belt_share`): nothing keeps both lanes evenly
+  loaded, and a 40/s cable chain woven through express undergrounds carried 26/s on one 22.5/s lane.
+  `lane_sharing: true` lets two items share a belt, one
   per lane (opt-in until the drop-lane facts are checked in game, see docs/VERIFY.md).
 - `belt_stack_size` (Space Age, 1–4, default 1: off) stacks items on belts: every inserter dropping onto a belt is a
   stack inserter and items coming in are taken as stacked, so a belt carries that many times its items (a lane
@@ -459,6 +462,13 @@ belts and pipes, in one blueprint:
    one recipe in different blocks run at different rates (within their crafting speed and planned inserters) so
    each block makes what it uses, instead of trading slivers like 0.06 cable/s on a belt of their own. The split
    kept is the one (greedy or annealed) that is cheapest after this; `plan_rebalanced.json` has its rates.
+   Two fixes follow on the links. A link of a few hundredths of a belt (under 3 %) from a supplier whose output
+   goes mostly elsewhere moves to the consumer's largest other supplier, if that one has the spare at full speed:
+   in game a hungry consumer takes whatever the machines feeding its belt make, so a sliver belt drained half a
+   furnace column (on the 2/s six-science split six such links go). And a block gets the machines its output
+   belts need: every belt an item leaves on is fed by whole machines (a machine dropping on two belts counts as
+   two halves), so a block whose machines cannot cover its belts (5 circuit assemblers for 19.36, 19.93 and
+   3.51/s) gets copies of the producer, and the block's machines of that recipe share the work.
 2. **Plan the floorplan.** The blocks, with shapes estimated from their machines' area, are arranged by
    simulated annealing over sequence pairs: any arrangement, not just rows. It minimises the factory's area,
    its distance from the job's `box.aspect` (`aspect_weight`), and the length of the belts between blocks
@@ -856,6 +866,8 @@ values it used as `tuning.json` in its output folder. The ones that matter most:
 | `search.grow_factor`, `search.grow_rounds` | 1.25, 2 | Box growth after a failed size, and seed rounds per size before growing. |
 | `planner.access_share` | 0.75 | Share of the tiles around a machine its inserters may take; a recipe that would need more gets extra machines (fast Space Age machines with productivity hit this). |
 | `planner.max_utilization` | 0.97 | The most of its full speed a machine is planned to run: machine counts round up past it, and block rebalancing stops there. A chain of machines planned at exactly 100% loses for good whatever one inserter swing costs (green science 1/s from plates made 0.92/s in game at 1; the 2/s six-science factory's rail and stick machines at 100% left production science 10% short). 1 plans the fewest machines. |
+| `planner.headroom_check` | false | The validator lets a machine making an intermediate fill a belt at no more than `max_utilization` of its speed, so a belt only producers flat out can fill is rejected (a gear belt fed by two assemblers flat out left automation science 7% short in game). Off by default: where a block sends one item out on several belts, its whole machines may not divide between them at that speed (19 advanced-circuit assemblers for 8.79/s and 4.76/s need 20), and such a block never gets a layout. Targets are exempt. |
+| `route.weave_belt_share` | 0.98 | A chain may weave through the second underground tier while its flow fits this share of one of that tier's lanes. |
 | `planner.upstream_utilization` | 1 | A further factor per level up the production chain (0.98: targets at 0.97, plates at 0.88), so suppliers flat out more than cover consumers flat out. Being tried on the 2/s six-science factory, whose remaining shortfalls are suppliers at 100% while the same recipe stands idle in other blocks. |
 | `place.duos` | true | Cable into circuits by direct insertion: a consumer that needs one to two producers' output gets two of its own and sits between them (cable, circuit, cable). Electronic circuits 30/s: 47 x 46 instead of 53 x 52, 517 belt tiles instead of 919, 2 inserters per machine instead of 3.9. Changes nothing where no consumer needs it (science). |
 | `planner.di_consumers_per_producer`, `place.clusters`, `place.cells` | 0, false, true | Direct-insertion clusters of every kind: producers per consumer (2 is a good value), consumers around their producers as fixed groups (sandwich, stack, duo, and cells: a row between two clusters). Measured on science jobs they cost more area than the belts they save (red + green 1.5/s: 44 x 44 against 32 x 32); worth it for circuits, where `place.duos` alone does the same. |
@@ -894,7 +906,7 @@ narrow, fluids pinned side by side) rather than the box.
 | 3 | `route` | Negotiated-congestion routing: belt chains leg by leg with A* over (tile, heading, belt/underground), splitter branches, pipe trees with pipe-to-ground, and a rip-up-and-reroute endgame around the last conflicts |
 | 4 | `power` | Beacon lattice and set cover, pole set cover and MST wiring (lattice fallback), test-mode harness |
 | 5 | `search` | Box size search (gentle growth to a first success, then bisection), K seeds per size in parallel, warm starts, anytime outputs, calibration |
-| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone; a machine putting one item onto separate belts divides it as the game does (by inserter speed, wherever there is room), not as planned |
+| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone; a machine putting one item onto separate belts divides it as the game does (by inserter speed, wherever there is room), not as planned. Lanes are checked per item and belt chain with a lane-true split (inserters drop on the far lane, sideloads on the near one); only an item whose draws that split cannot meet falls back to one that ignores lanes |
 | — | `emit`, `viz` | Blueprint 2.0 encode/decode, PNG renders |
 
 Two things go beyond the original plan and are described in [docs/TUNING.md](docs/TUNING.md): nets with many
@@ -910,15 +922,19 @@ supply upstream already covers a consumer.
 The suite covers Stage 1 counts (T1–T4), blueprint round trips, one fixture per validator check, router
 fixtures and random belt and fluid instances, placer properties, full trials and the search loop.
 
-Three diagnostics are skipped unless their environment variable is set: `DiagTest` (`DIAG=<job>,<size>,<seeds>`)
+Five diagnostics are skipped unless their environment variable is set: `DiagTest` (`DIAG=<job>,<size>,<seeds>`)
 runs single trials and prints why routing fails (`DIAG_ITEM=<item>` lists the plan's terminals of an item,
 `DIAG_AT=<x>,<y>,<radius>` the entities around a tile); `SweepTest` (`SWEEP=<spec file>`) runs many trials in
 parallel for parameter sweeps (see [docs/TUNING.md](docs/TUNING.md)); `JobFuzzTest` (`FUZZ=<minutes>`, with
 `FUZZ_THREADS`, `FUZZ_SEED`, `FUZZ_OUT`) makes random jobs (base game, Space Age, space platform), builds each at
 a roomy size and records every planner or trial exception, invalid layout or failed blueprint round trip in
-`results.tsv`, saving the job for `DiagTest`; `TemplateDiagTest` (see [Templates](#templates-ready-made-columns)).
+`results.tsv`, saving the job for `DiagTest`; `TemplateDiagTest` (see [Templates](#templates-ready-made-columns));
+`BlockCheckTest` (`BLOCKCHECK=<job>,<run folder>,<block>`, block counted from 1) validates every layout a factory
+run saved for one block, against the block's own plan and against the whole factory's, and prints the errors of
+each, for a block that keeps failing in the factory but not alone.
 Run them with `--rerun -i`. A factory run with `FACTORY_INVALID_DIR=<dir>` set renders every stitched factory that
-fails validation there (it is skipped for the next smallest).
+fails validation there (it is skipped for the next smallest), and `LANE_DEBUG=1` prints each belt chain that has no
+lane-true split, with what it carries and what its draws need.
 
 ## Status
 
@@ -1018,6 +1034,10 @@ look good by over-making one item while starving another. `--dump` adds every be
 to the report, and then `python3 tools/factorio-verify/starve.py out` explains each machine that waited for an
 ingredient: the belts that bring it traced upstream, who makes it there and in what state, who else takes it on
 the way, and whether a producer standing with full output can reach the machine at all.
+`python3 tools/factorio-verify/chains.py out iron-plate` lists the belt networks of one item as built: which
+producers reach which consumers, what each made and took in game against the plan, and the blocks each network
+runs through (`--all` includes networks that kept up), so a network whose producers run flat out while a consumer
+starves shows up as short.
 
 `tools/factorio-verify/bench.py` does both for a set of jobs: solves each (optionally with tuning overrides, a time
 budget and threads), checks it in game, and writes one line per job (box, belts, undergrounds, inserters, what came
