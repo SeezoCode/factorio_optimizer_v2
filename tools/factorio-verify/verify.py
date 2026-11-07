@@ -12,7 +12,8 @@ builds it on a lab-tile surface of a fresh game (every ghost revived, modules in
 energy interface, lets it warm up, then measures: per machine its usual status, crafts and crafting progress, the items
 per second leaving at each output and taken at each input, fluids drained at fluid outputs, and inserters and belts
 that never moved. It passes when everything was built, every machine crafted, each output reached its planned rate
-(ports.json, within --tolerance) and no inserter stayed stuck holding an item. Belts that never moved are listed but do
+(ports.json, within --tolerance) and no inserter stayed stuck holding an item (waiting for room on a backed-up belt
+or in a machine that has enough does not count: surplus backs up). Belts that never moved are listed but do
 not fail it: a belt's end past its last inserter stands still in a working factory too.
 
 The game runs as a headless server (no window) with a data folder and mod folder of its own, like export.py next door,
@@ -377,8 +378,12 @@ def judge(report, ports, args):
     print(f"\nInserters: {report['inserters']}, stuck holding an item: {len(stuck)}, never moved with an empty hand: {report['idle_inserters']}")
     for s in stuck[:30]:
         print(f"  ({s['x']:g},{s['y']:g}) {s['name']} holding {s.get('holding')} for {s.get('drop_target')} ({s.get('status')})")
-    if stuck:
-        fails.append(f"{len(stuck)} inserters stuck holding an item")
+    # Waiting for room (a backed-up belt, or direct insertion into a machine that has enough) is by design.
+    real = [s for s in stuck if not s.get("waiting")]
+    if len(real) < len(stuck):
+        print(f"  ({len(stuck) - len(real)} of them wait for room where they drop: surplus backing up, not a fault)")
+    if real:
+        fails.append(f"{len(real)} inserters stuck holding an item")
     belts = report["stuck_belts"]
     print(f"Belts: {report['belts']}, never moved while holding items: {len(belts)}")
     for s in belts[:args.belts]:

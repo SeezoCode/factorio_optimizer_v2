@@ -654,6 +654,17 @@ private class Stitching(
     val routed get() = ok.isNotEmpty()
     val area get() = fp.area
     private val portSides = (0 until k).map { b -> split.links.filter { it.from == b || it.to == b }.mapNotNull { it.side(b) }.map { Dir.fromName(it).ordinal }.toSet() }
+    /**
+     * Sides (as searched) where some layout of the block has entities on the ring just outside its box (heat pipes, a
+     * pipe-to-ground port): they keep a tile of padding, or two blocks' rings would land on each other's tiles.
+     */
+    private val ringSides = (0 until k).map { b -> input.shapes[b].flatMap { sh ->
+        val l = sh.layout.layout ?: return@flatMap emptyList()
+        l.entities.flatMap { it.rect.tiles() }.mapNotNull { t -> when { t.y < 0 -> Dir.N; t.y >= l.h -> Dir.S; t.x < 0 -> Dir.W; t.x >= l.w -> Dir.E; else -> null } }
+            .map { it.turned(-sh.rot).ordinal }
+    }.toSet() }
+    /** Heated factories keep a tile around every block: heat pipes join the blocks' networks through it. */
+    private fun minPad(b: Int, d: Int) = if (d in portSides[b] || d in ringSides[b] || config.heat.mode != "off") 1 else 0
 
     fun layoutOf(p: FpPlan) = Arrangement(p.boxes.take(k), p.boxes.drop(k), p.w, p.h, IntArray(k) { p.state.shape[it] },
         IntArray(k) { input.blocks[it].shapes[p.state.shape[it]].rot })
@@ -697,7 +708,7 @@ private class Stitching(
         while (improved && System.currentTimeMillis() < deadline) {
             improved = false
             val order = (0 until k).flatMap { b -> (0..3).map { b to it } }
-                .filter { (b, d) -> pads[b][d] > (if (d in portSides[b]) 1 else 0) }.sortedByDescending { (b, d) -> pads[b][d] }
+                .filter { (b, d) -> pads[b][d] > minPad(b, d) }.sortedByDescending { (b, d) -> pads[b][d] }
             for ((b, d) in order) {
                 if (System.currentTimeMillis() >= deadline) break
                 val trial = pads.map { it.clone() }.also { it[b][d]-- }
@@ -717,7 +728,7 @@ private class Stitching(
         val (cx, cy) = planner.critical(fp.state, pads)
         fun rot(b: Int) = input.blocks[b].shapes[fp.state.shape[b]].rot
         fun idx(b: Int, d: Dir) = (d.ordinal - rot(b)).mod(4)
-        fun min(b: Int, i: Int) = if (i in portSides[b]) 1 else 0
+        fun min(b: Int, i: Int) = minPad(b, i)
         for ((blocks, sides) in listOf(cx to listOf(Dir.E, Dir.W), cy to listOf(Dir.N, Dir.S))) {
             val cands = blocks.mapNotNull { b -> sides.map { idx(b, it) }.filter { pads[b][it] > min(b, it) }.maxByOrNull { pads[b][it] }?.let { b to it } }
             if (cands.isEmpty()) continue

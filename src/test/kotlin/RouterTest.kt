@@ -42,7 +42,7 @@ object RouteSupport {
     fun fixture(name: String, debug: Boolean = false): Routed {
         val fx = PlacementFixture.load("placements/$name.json")
         val config = RunConfiguration.load(fx.job)
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         return routeAndValidate(name, config, plan, fx.toPlacement(plan), debug = debug)
     }
 }
@@ -87,7 +87,7 @@ class RouterTest {
     fun `two nets that must cross succeed through negotiation with an underground`() {
         val fx = PlacementFixture.load("placements/cross.json")
         val config = RunConfiguration.load(fx.job)
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val placement = fx.toPlacement(plan)
         // Expensive undergrounds and the fast 1.5 present-cost schedule, under which a detour does not win.
         val tuning = RouteTuning(ugPenalty = 8.0, pMult = 1.5, maxIterations = 60, stagnationStop = 25)
@@ -110,7 +110,7 @@ class RouterTest {
         // Without B9 the same fixture still routes, as one longer chain.
         val fx = PlacementFixture.load("placements/fork.json")
         val config = RunConfiguration.load(fx.job).let { it.copy(tricks = it.tricks + ("B9" to false)) }
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val chain = RouteSupport.routeAndValidate("fork_chain", config, plan, fx.toPlacement(plan))
         assertRoutedClean(chain)
         assertTrue(chain.result.entities.none { it.kind == Kind.SPLITTER })

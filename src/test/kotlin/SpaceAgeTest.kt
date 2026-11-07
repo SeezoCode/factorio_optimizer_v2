@@ -27,7 +27,7 @@ class SpaceAgeTest {
     fun `a foundry casts with its +50 percent productivity`() {
         val job = RunConfiguration(targets = listOf(ConfigTarget("iron-plate", 6.0)), machines = listOf("foundry"),
             sources = listOf(ConfigSource("calcite", edge = "north")))
-        val plan = buildPlan(data, job)
+        val plan = buildPlan(data, job, handTuning)
         assertTrue(plan.machines.all { it.machine == "foundry" })
         assertEquals(6.0, total(plan, "iron-plate"), 1e-6)
         // 20 molten iron make 2 * 1.5 plates; 50 ore make 500 * 1.5 molten iron.
@@ -41,7 +41,7 @@ class SpaceAgeTest {
         val job = RunConfiguration.parse("""{"targets": [{"name": "iron-plate", "amount": 6.0}], "machines": ["foundry"],
             "sources": [{"name": "calcite", "edge": "north"}],
             "research": {"productivity": {"casting-iron": 0.1, "iron-ore-melting": 5.0}}}""")
-        val plan = buildPlan(data, job)
+        val plan = buildPlan(data, job, handTuning)
         // Casting at 1.6 (2 -> 3.2 plates); melting capped at +300% (500 -> 2000 molten iron).
         assertEquals(6.0 * 20 / 3.2 * 50 / 2000, plan.rawRates.getValue("iron-ore"), 1e-6)
     }
@@ -50,7 +50,7 @@ class SpaceAgeTest {
     fun `a biochamber burns nutrients`() {
         val job = RunConfiguration(targets = listOf(ConfigTarget("nutrients", 1.0)), machines = listOf("biochamber"),
             sources = listOf(ConfigSource("spoilage", edge = "west")), recipeOverrides = mapOf("nutrients" to "nutrients-from-spoilage"))
-        val plan = buildPlan(data, job)
+        val plan = buildPlan(data, job, handTuning)
         val m = plan.machines.single()
         assertEquals("biochamber", m.machine)
         // 1.5 nutrients a craft (+50%), 0.25 burnt (500 kW for 1 s at 2 MJ each): 1 / 1.25 crafts/s.
@@ -67,7 +67,7 @@ class SpaceAgeTest {
 
     @Test
     fun `a platform job takes only its listed sources`() {
-        val plan = buildPlan(data, platform)
+        val plan = buildPlan(data, platform, handTuning)
         assertEquals(setOf("metallic-asteroid-chunk"), plan.rawRates.keys)
         // 4 ore/s from crushing at 20 ore a craft; a craft keeps 0.3 of its chunk (0.2 before Factorio 2.1).
         assertEquals(4.0 / 20 * 0.7,plan.rawRates.getValue("metallic-asteroid-chunk"), 1e-6)
@@ -75,7 +75,7 @@ class SpaceAgeTest {
     }
 
     private fun anySeed(name: String, job: RunConfiguration, size: Int): TrialResult {
-        val plan = buildPlan(data, job)
+        val plan = buildPlan(data, job, handTuning)
         var last: TrialResult? = null
         for (seed in 1L..8L) {
             val r = runTrial(data, plan, job, Tuning(), size, size, seed)
@@ -136,7 +136,7 @@ class SpaceAgeTest {
             machines = listOf("crusher", "assembling-machine-3", "electric-furnace", "chemical-plant", "foundry"), rawResources = emptyList(),
             sources = listOf(ConfigSource("metallic-asteroid-chunk", edge = "west"), ConfigSource("oxide-asteroid-chunk", edge = "north")),
             forbiddenRecipes = listOf("metallic-asteroid-reprocessing", "oxide-asteroid-reprocessing"))
-        val plan = buildPlan(data, job)
+        val plan = buildPlan(data, job, handTuning)
         (1L..3L).forEach { seed ->
             val r = runTrial(data, plan, job, Tuning(), 24, 24, seed)
             assertTrue(r.stage != "validate", "seed $seed: ${r.errors.take(3)}")
@@ -148,7 +148,7 @@ class SpaceAgeTest {
         // Found by JobFuzzTest: one electromagnetic plant made all 4 poles/s and needed 17 inserters.
         val job = RunConfiguration(targets = listOf(ConfigTarget("medium-electric-pole", 4.0)), machines = listOf("electromagnetic-plant"),
             sources = listOf(ConfigSource("iron-stick", edge = "west"), ConfigSource("steel-plate", edge = "west"), ConfigSource("copper-plate", edge = "west")))
-        val plan = buildPlan(data, job)
+        val plan = buildPlan(data, job, handTuning)
         assertTrue(plan.machines.size > 1)
         // A 4 x 4 machine has 16 tiles around it; at most three quarters hold belt inserters.
         plan.machines.forEach { m -> assertTrue(plan.terminals.filter { it.machine == m.id }.sumOf { it.k } <= 12, "machine ${m.id}") }
@@ -158,7 +158,7 @@ class SpaceAgeTest {
     fun `a target that is also a raw resource is made, not passed through`() {
         val job = RunConfiguration(targets = listOf(ConfigTarget("sulfuric-acid", 10.0)),
             rawResources = listOf("sulfuric-acid", "water", "iron-ore", "sulfur"))
-        val plan = buildPlan(data, job)
+        val plan = buildPlan(data, job, handTuning)
         assertTrue(plan.machines.any { it.recipe == "sulfuric-acid" })
         assertTrue("sulfuric-acid" !in plan.rawRates, "supplied: ${plan.rawRates}")
     }

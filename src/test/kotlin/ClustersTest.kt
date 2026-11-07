@@ -81,7 +81,7 @@ class ClustersTest {
     fun `a circuit assembler sits between two cable assemblers of its own`() {
         val circuits = RunConfiguration.parse("""{"targets": [{"name": "electronic-circuit", "amount": 12}], "machines": ["assembling-machine-2"],
             "sources": [{"name": "iron-plate", "edge": "west"}, {"name": "copper-plate", "edge": "west"}]}""")
-        val p = buildPlan(TestData.data, circuits, tuning)
+        val p = buildPlan(TestData.data, circuits, tuning.copy(planner = tuning.planner.copy(maxUtilization = 1.0)))
         // A circuit assembler 2 needs 1.5 cable assemblers' cable: two each.
         assertEquals(8, p.machines.count { it.recipe == "electronic-circuit" })
         assertEquals(16, p.machines.count { it.recipe == "copper-cable" })

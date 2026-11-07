@@ -396,8 +396,17 @@ local function finish(run)
       if i.held_all then
         local h = i.e.held_stack
         local p = bp_pos(run, i.e.position)
+        -- Machine to machine (direct insertion) into a machine that is not short of anything: it waits because the
+        -- consumer holds enough, as it should when the producer is faster than the consumer needs.
+        local dt, pt = i.e.drop_target, i.e.pickup_target
+        local crafting = { ["assembling-machine"] = true, ["furnace"] = true }
+        local waiting = dt ~= nil and pt ~= nil and crafting[dt.type] == true and crafting[pt.type] == true
+          and dt.status ~= defines.entity_status.item_ingredient_shortage
+        -- Waiting for room where it drops (a backed-up belt: outputs are taken at their planned rate, so surplus
+        -- backs up by design).
+        if i.e.status == defines.entity_status.waiting_for_space_in_destination then waiting = true end
         report.stuck_inserters[#report.stuck_inserters + 1] = { name = i.e.name, x = p.x, y = p.y, status = i.status,
-          holding = h.valid_for_read and h.name or nil, drop_target = i.e.drop_target and i.e.drop_target.name or nil }
+          holding = h.valid_for_read and h.name or nil, drop_target = dt and dt.name or nil, waiting = waiting }
       else
         report.idle_inserters = report.idle_inserters + 1
       end

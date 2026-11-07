@@ -62,7 +62,7 @@ class FloorplanTest {
 
     @Test
     fun `the partition cuts fewer links than the greedy split it starts from and respects the size limit`() {
-        val plan = buildPlan(TestData.data, TestData.job("t4"))
+        val plan = buildPlan(TestData.data, TestData.job("t4"), handTuning)
         val cfg = BlocksConfig(maxMachines = 6, sizeBy = "machines")
         val p = partitionPlan(plan, cfg, 30.0, seed = 3)
         assertTrue(p.blocks.all { it.size <= 6 }, "${p.blocks}")
@@ -78,7 +78,7 @@ class FloorplanTest {
             targets = listOf(config.ConfigTarget("automation-science-pack", 1.0), config.ConfigTarget("logistic-science-pack", 1.0)),
             sources = listOf(config.ConfigSource("iron-ore", edge = "west"), config.ConfigSource("copper-ore", edge = "west")),
         )
-        val plan = buildPlan(TestData.data, job)
+        val plan = buildPlan(TestData.data, job, handTuning)
         val cfg = BlocksConfig(maxMachines = 8)
         val w = machineWeights(plan, cfg)
         val furnace = plan.machines.indices.filter { plan.machines[it].recipe == "iron-plate" }
@@ -101,7 +101,7 @@ class FloorplanTest {
     @Test
     fun `machines joined by pipes may go to different blocks, joined by one pipe tree per fluid`() {
         // Plastic from crude oil: refineries pipe petroleum gas to chemical plants. Three machines per block forces cuts.
-        val plan = buildPlan(TestData.data, plasticJob)
+        val plan = buildPlan(TestData.data, plasticJob, handTuning)
         val split = splitPlan(plan, BlocksConfig(maxMachines = 3, sizeBy = "machines"), 30.0)
         assertTrue(split.blocks.all { it.size <= 3 })
         val hub = split.links.filter { it.hub }
@@ -138,7 +138,7 @@ class FloorplanTest {
     @Test
     fun `rebalancing machine rates keeps every recipe's total and machine limits and never adds ports`() {
         val job = TestData.job("t4")
-        val plan = buildPlan(TestData.data, job)
+        val plan = buildPlan(TestData.data, job, handTuning)
         val cfg = BlocksConfig(maxMachines = 4, sizeBy = "machines")
         val blocks = partitionPlan(plan, cfg, 30.0, seed = 3).blocks
         val r = rebalance(plan, blocks)

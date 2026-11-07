@@ -45,7 +45,7 @@ class TemplateTest {
     fun `a smelting block becomes a furnace column with ports on any sides`() {
         for ((inEdge, outEdge) in listOf("west" to "east", "north" to "north", "south" to "west", "east" to "east")) {
             val config = job("iron-plate", 12.5, "iron-ore", inEdge, outEdge)
-            val plan = buildPlan(TestData.data, config)
+            val plan = buildPlan(TestData.data, config, handTuning)
             assertEquals(20, plan.machines.size)
             val ts = checkAll("iron_${inEdge}_$outEdge", config, plan)
             // Ten wide and three tiles per pair of furnaces, plus at most a few header rows (or the same lying down).
@@ -60,7 +60,7 @@ class TemplateTest {
     @Test
     fun `what the furnaces leave of the ore passes on through an output port`() {
         val config = job("copper-plate", 10.0, "copper-ore", "north", "east")
-        val base = buildPlan(TestData.data, config)
+        val base = buildPlan(TestData.data, config, handTuning)
         // Six more ore per second come in and leave on the south side, as a pass-through link of a factory would.
         val inPort = base.ports.first { !it.output }
         val pass = Port(base.ports.size, "copper-ore", listOf(ConfigSource("copper-ore", edge = "south")), output = true)
@@ -86,7 +86,7 @@ class TemplateTest {
     @Test
     fun `two product ports leave through a splitter, two input ports join through one`() {
         val config = job("iron-plate", 12.5, "iron-ore", "west", "north")
-        val base = buildPlan(TestData.data, config)
+        val base = buildPlan(TestData.data, config, handTuning)
         val twoOut = withSplitPort(base, "iron-plate", true, "east", 5.0)
         assertTrue(checkAll("iron_two_out", config, twoOut).all { t -> t.layout!!.entities.any { it.kind == Kind.SPLITTER } })
         val twoIn = withSplitPort(base, "iron-ore", false, "south", 6.0)
@@ -94,12 +94,12 @@ class TemplateTest {
         checkAll("iron_two_in_two_out", config, withSplitPort(twoIn, "iron-plate", true, "east", 5.0))
         // Plates to three blocks: ore from the west, plates out east and north.
         val three0 = job("iron-plate", 18.0, "iron-ore", "west", "east")
-        var many = buildPlan(TestData.data, three0)
+        var many = buildPlan(TestData.data, three0, handTuning)
         listOf("north" to 3.0, "east" to 2.5).forEach { (e, r) -> many = withSplitPort(many, "iron-plate", true, e, r) }
         checkAll("iron_three_out", three0, many)
         // Three input ports on one side, three outputs on two others (a steel block fed by three smelting blocks).
         val steel = job("steel-plate", 2.5, "iron-plate", "east", "west")
-        var three = buildPlan(TestData.data, steel)
+        var three = buildPlan(TestData.data, steel, handTuning)
         listOf("east" to 4.0, "east" to 3.0).forEach { (e, r) -> three = withSplitPort(three, "iron-plate", false, e, r) }
         listOf("south" to 0.8, "west" to 0.5).forEach { (e, r) -> three = withSplitPort(three, "steel-plate", true, e, r) }
         checkAll("steel_three_in", steel, three)
@@ -113,12 +113,12 @@ class TemplateTest {
         // An assembler 3 makes 2.5 gears/s from 5 plates/s: no inserter takes that from a belt without research.
         val slow = job("iron-gear-wheel", 5.0, "iron-plate", "west", "south")
         val notes = ArrayList<String>()
-        assertTrue(Templates.layouts(TestData.data, slow, buildPlan(TestData.data, slow)) { notes += it }.isEmpty())
+        assertTrue(Templates.layouts(TestData.data, slow, buildPlan(TestData.data, slow, handTuning)) { notes += it }.isEmpty())
         assertTrue(notes.any { "no inserter takes" in it }, "$notes")
         // Assembler 1 at full inserter capacity research: long-handed inserters move 1.2 x 3 a second.
         val config = slow.copy(machine = "assembling-machine-1", machines = listOf("assembling-machine-1", "electric-furnace"),
             research = ResearchConfig(inserterCapacity = 7))
-        checkAll("gears", config, buildPlan(TestData.data, config))
+        checkAll("gears", config, buildPlan(TestData.data, config, handTuning))
     }
 
     @Test
@@ -127,7 +127,7 @@ class TemplateTest {
             // Beaconed furnaces take 1.67 ore/s each: inserters keep up with capacity research.
             val config = job("iron-plate", 24.0, "iron-ore", inEdge, outEdge).copy(research = ResearchConfig(inserterCapacity = 7),
                 beacons = config.BeaconConfig(machineModules = listOf("productivity-module-3", "productivity-module-3")))
-            val plan = buildPlan(TestData.data, config)
+            val plan = buildPlan(TestData.data, config, handTuning)
             assertTrue(plan.machines.all { it.beacons == 2 }, "${plan.machines.map { it.beacons }}")
             val ts = checkAll("iron_beacons_${inEdge}_$outEdge", config, plan)
             // (Double columns, two side by side, are offered too.)
@@ -150,7 +150,7 @@ class TemplateTest {
     @Test
     fun `a two-ingredient recipe gets the narrow column, an ingredient a lane`() {
         val config = assembly("automation-science-pack", 2.0, listOf("copper-plate" to "west", "iron-gear-wheel" to "north"), "east")
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         assertEquals(setOf("automation-science-pack"), plan.machines.map { it.recipe }.toSet())
         val ts = checkAll("red_science", config, plan)
         ts.forEach { t ->
@@ -167,7 +167,7 @@ class TemplateTest {
     @Test
     fun `two ingredients coming on one belt, a lane each, run straight into the column`() {
         val config = assembly("automation-science-pack", 2.0, listOf("copper-plate" to "west", "iron-gear-wheel" to "west"), "east")
-        val base = buildPlan(TestData.data, config)
+        val base = buildPlan(TestData.data, config, handTuning)
         // A factory's lane pair: the two ports pair up (one belt into the block, an item a lane).
         val cu = base.ports.first { it.item == "copper-plate" }; val gear = base.ports.first { it.item == "iron-gear-wheel" }
         val plan = base.copy(ports = base.ports.map { p -> when (p.id) { cu.id -> p.copy(pairWith = gear.id); gear.id -> p.copy(pairWith = cu.id); else -> p } })
@@ -183,7 +183,7 @@ class TemplateTest {
     @Test
     fun `an input port carrying more than a lane runs straight in, the other merging into it`() {
         val steel = job("steel-plate", 4.4, "iron-plate", "west", "east")
-        val base = buildPlan(TestData.data, steel)
+        val base = buildPlan(TestData.data, steel, handTuning)
         val plan = withSplitPort(base, "iron-plate", false, "south", 2.0)
         assertTrue(plan.terminals.any { it.role == Role.SOURCE && it.rate > 15.0 }, "${plan.terminals.filter { it.role == Role.SOURCE }}")
         checkAll("steel_big_port", steel, plan).forEach { t -> assertTrue(t.layout!!.entities.any { it.kind == Kind.SPLITTER }) }
@@ -192,7 +192,7 @@ class TemplateTest {
     @Test
     fun `three and four ingredients get the wide column, products out of the outer sides`() {
         val engine = assembly("engine-unit", 0.5, listOf("steel-plate" to "west", "iron-gear-wheel" to "west", "pipe" to "north"), "east")
-        val plan = buildPlan(TestData.data, engine)
+        val plan = buildPlan(TestData.data, engine, handTuning)
         assertEquals(setOf("engine-unit"), plan.machines.map { it.recipe }.toSet())
         // (Small blocks are also offered one-sided: machines on one side of the belts only.)
         checkAll("engines", engine, plan).filter { t -> t.notes.none { "one-sided" in it } }.forEach { t ->
@@ -203,7 +203,7 @@ class TemplateTest {
         checkAll("engines_two_out", engine, withSplitPort(plan, "engine-unit", true, "south", 0.2))
         val frames = assembly("flying-robot-frame", 0.5,
             listOf("electric-engine-unit" to "west", "battery" to "west", "steel-plate" to "north", "electronic-circuit" to "east"), "south")
-        val fp = buildPlan(TestData.data, frames)
+        val fp = buildPlan(TestData.data, frames, handTuning)
         assertEquals(setOf("flying-robot-frame"), fp.machines.map { it.recipe }.toSet())
         checkAll("robot_frames", frames, fp)
     }
@@ -213,7 +213,7 @@ class TemplateTest {
         // Copper and gears at 8/s each: over a yellow lane (7.5/s), so each gets a belt of its own in the wide column.
         val config = assembly("automation-science-pack", 8.0, listOf("copper-plate" to "west", "iron-gear-wheel" to "west"), "east")
             .copy(beltTier = "basic")
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         // Or two narrow columns side by side, each machine's share a lane each.
         checkAll("red_science_wide", config, plan).forEach { t -> assertTrue(t.notes.any { "wide machine column" in it || "2 columns" in it }, "${t.notes}") }
     }
@@ -222,7 +222,7 @@ class TemplateTest {
     fun `a single block starts from its column and searches smaller boxes only`() {
         val config = job("iron-plate", 12.5, "iron-ore", "west", "east").copy(
             search = SearchConfig(timeBudgetS = 4.0, seedsPerSize = 2, threads = 2, seed = 3))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val column = Templates.layouts(TestData.data, config, plan).minBy { it.area }
         val out = File("build/search/template_single")
         out.deleteRecursively()
@@ -246,7 +246,7 @@ class TemplateTest {
         val config = RunConfiguration(targets = listOf(ConfigTarget("iron-plate", 6.0)), machines = listOf("stone-furnace"),
             sources = listOf(ConfigSource("iron-ore", edge = "west"), ConfigSource("coal", edge = "north")),
             outputs = listOf(ConfigSource("iron-plate", edge = "east")))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         assertTrue(plan.machines.all { it.machine == "stone-furnace" && it.w == 2 && it.demand.size == 2 }, "${plan.machines.take(2)}")
         val ts = checkAll("stone_furnaces", config, plan)
         // Ore and coal a lane each down the middle, plates out of both outer sides: 11 wide, two rows a furnace pair.
@@ -262,7 +262,7 @@ class TemplateTest {
             rawResources = listOf("plastic-bar", "copper-cable", "electronic-circuit"), research = ResearchConfig(inserterCapacity = 7),
             sources = listOf(ConfigSource("plastic-bar", edge = "west"), ConfigSource("copper-cable", edge = "west"), ConfigSource("electronic-circuit", edge = "north")),
             outputs = listOf(ConfigSource("advanced-circuit", edge = "east")))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         assertTrue(plan.machines.all { it.machine == "electromagnetic-plant" && it.w == 4 }, "${plan.machines.take(2)}")
         // Four rows a machine, 16 wide (two 4 x 4 machines, their tracks and four belts).
         checkAll("em_plants", config, plan).filter { t -> t.notes.none { "one-sided" in it || "columns" in it } }.forEach { t ->
@@ -274,7 +274,7 @@ class TemplateTest {
     @Test
     fun `an ingredient sharing a belt passes on through a splitter off its input belt`() {
         val config = assembly("automation-science-pack", 2.0, listOf("copper-plate" to "west", "iron-gear-wheel" to "north"), "east")
-        val base = buildPlan(TestData.data, config)
+        val base = buildPlan(TestData.data, config, handTuning)
         // Three more gears per second come in and leave on the south side, as a pass-through link of a factory would.
         val inPort = base.ports.first { !it.output && it.item == "iron-gear-wheel" }
         val pass = Port(base.ports.size, "iron-gear-wheel", listOf(ConfigSource("iron-gear-wheel", edge = "south")), output = true)
@@ -292,7 +292,7 @@ class TemplateTest {
     @Test
     fun `without long-handed inserters a split column takes over`() {
         val config = job("iron-plate", 12.5, "iron-ore", "west", "east").copy(inserters = config.InserterConfig(allowed = listOf("inserter", "fast-inserter")))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         checkAll("iron_short_only", config, plan).forEach { t ->
             assertTrue(t.notes.any { "split machine column" in it }, "${t.notes}")
             assertTrue(t.layout!!.entities.none { it.name == "long-handed-inserter" })
@@ -305,7 +305,7 @@ class TemplateTest {
             rawResources = listOf("molten-iron"), research = ResearchConfig(inserterCapacity = 7),
             inserters = config.InserterConfig(allowed = listOf("inserter", "long-handed-inserter", "fast-inserter", "bulk-inserter")),
             sources = listOf(ConfigSource("molten-iron", edge = "west")), outputs = listOf(ConfigSource("iron-plate", edge = "east")))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         assertTrue(plan.machines.all { it.machine == "foundry" && it.fluidDemand.keys == setOf("molten-iron") && it.demand.isEmpty() }, "${plan.machines.take(2)}")
         checkAll("foundry_cast", config, plan).forEach { t ->
             assertTrue(t.notes.any { "casting column" in it }, "${t.notes}")
@@ -319,14 +319,14 @@ class TemplateTest {
             rawResources = listOf("petroleum-gas", "coal"),
             sources = listOf(ConfigSource("petroleum-gas", edge = "north"), ConfigSource("coal", edge = "west")),
             outputs = listOf(ConfigSource("plastic-bar", edge = "east")))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         assertTrue(plan.machines.all { it.machine == "chemical-plant" && it.fluidDemand.keys == setOf("petroleum-gas") }, "${plan.machines.take(2)}")
         checkAll("plastic", config, plan).forEach { t -> assertTrue(t.notes.any { "machine column" in it }, "${t.notes}") }
     }
 
     @Test
     fun `mixed blocks get no template`() {
-        val plan = buildPlan(TestData.data, TestData.job("t3"))
+        val plan = buildPlan(TestData.data, TestData.job("t3"), handTuning)
         val notes = ArrayList<String>()
         assertTrue(Templates.layouts(TestData.data, TestData.job("t3"), plan) { notes += it }.isEmpty())
         assertTrue(notes.any { "more than one recipe" in it }, "$notes")

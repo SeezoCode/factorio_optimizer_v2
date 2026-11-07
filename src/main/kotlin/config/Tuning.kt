@@ -74,9 +74,9 @@ data class PlannerTuning(
      * The most of its full speed a machine is planned to run (machine counts round up past it; block rebalancing
      * stops there). A chain of machines planned at exactly full speed loses for good whatever one inserter swing or
      * belt gap costs: in game the 2/s six-science factory's rail and iron-stick machines, planned at 100%, left
-     * production science 10% short. 1: no headroom (the default; 0.97 is worth it for factories of blocks).
+     * production science 10% short; green science 1/s from plates made 0.92/s at 1 and 1/s at 0.97. 1: no headroom.
      */
-    @SerialName("max_utilization") val maxUtilization: Double = 1.0,
+    @SerialName("max_utilization") val maxUtilization: Double = 0.97,
 )
 
 @Serializable

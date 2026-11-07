@@ -869,7 +869,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             }
             fixed.forEachIndexed { k, (b, item, r) -> g.edge(0, fBase + k, r); connect(fBase + k, b, item) }
             g.run(0, 1)
-            producers.forEachIndexed { k, m -> if (m !in split) g.raise(prodEdge[k], (beltFull[m] ?: 0.0) - beltOut.getValue(m)) }
+            producers.forEachIndexed { k, m -> g.raise(prodEdge[k], (beltFull[m] ?: 0.0) - beltOut.getValue(m)) }
             g.run(0, 1)
             insList.forEachIndexed { k, (_, ins) -> beltRate[ins] = g.flowOn(insEdge[k]) }
             allRoutes.forEach { it.flow = g.flowOn(it.edge) }
@@ -940,7 +940,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 val want = myDraws.map { it.value.second } + myOuts.map { it.value.second }
                 fun short() = sink.indices.any { g.flowOn(sink[it]) < want[it] - 1e-6 }
                 if (short()) {
-                    mine.forEachIndexed { k, m -> if (m !in split) g.raise(prodEdge[k], (beltFull[m] ?: 0.0) - beltOut.getValue(m)) }
+                    mine.forEachIndexed { k, m -> g.raise(prodEdge[k], (beltFull[m] ?: 0.0) - beltOut.getValue(m)) }
                     g.run(0, 1)
                 }
                 if (short()) { failed += item; continue }
@@ -980,7 +980,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         fun dropOf(ins: Int) = indexAt(ents[ins].dropTile)
         val mine = toBelt.getValue(m)
         val byChain = mine.groupBy { dropOf(it)?.let { d -> comp[d] } }
-        val total = beltOut.getValue(m)
+        // A machine whose outputs are all taken runs as fast as it can: the split only bites at full speed.
+        val total = max(beltOut.getValue(m), beltFull[m] ?: 0.0)
         val allCap = mine.sumOf { cap(it) }
         val pull = byChain.mapValues { (c, list) ->
             val down = list.mapNotNull { dropOf(it) }.flatMap { downstream(it) }.toSet()

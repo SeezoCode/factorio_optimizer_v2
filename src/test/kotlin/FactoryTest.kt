@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 class FactoryTest {
     @Test
     fun `the split keeps blocks within the limit and balances every item`() {
-        val plan = buildPlan(TestData.data, TestData.job("t3"))
+        val plan = buildPlan(TestData.data, TestData.job("t3"), handTuning)
         val split = splitPlan(plan, BlocksConfig(maxMachines = 5, sizeBy = "machines"), 30.0)
         assertTrue(split.blocks.size >= 2)
         assertTrue(split.blocks.all { it.size <= 5 }, "${split.blocks}")
@@ -42,7 +42,7 @@ class FactoryTest {
         listOf(false, true).forEach { test ->
             val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"), testMode = test,
                 search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
-            val plan = buildPlan(TestData.data, config)
+            val plan = buildPlan(TestData.data, config, handTuning)
             val out = File("build/factory/t3${if (test) "_test" else ""}")
             out.deleteRecursively()
             val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
@@ -61,7 +61,7 @@ class FactoryTest {
 
     @Test
     fun `edge links leave straight out of blocks on an allowed edge, the rest run through the corridors`() {
-        val west = buildPlan(TestData.data, TestData.job("t3"))
+        val west = buildPlan(TestData.data, TestData.job("t3"), handTuning)
         val split = splitPlan(west, BlocksConfig(maxMachines = 5, sizeBy = "machines"), 30.0)
         val inputs = split.links.filter { it.from == EDGE }
         assertTrue(inputs.isNotEmpty())
@@ -70,7 +70,7 @@ class FactoryTest {
         assertTrue(split.links.filter { it.routed && !it.fluid }.all { it.rate <= 0.9 * 30.0 + 1e-9 })
         // Any edge (the default): two blocks both touch some edge, so every edge link leaves its block directly.
         val any = TestData.job("t3").let { c -> c.copy(sources = c.sources.map { ConfigSource(it.name, edge = "any") }) }
-        assertTrue(splitPlan(buildPlan(TestData.data, any), BlocksConfig(maxMachines = 5, sizeBy = "machines"), 30.0).links.none { it.routed })
+        assertTrue(splitPlan(buildPlan(TestData.data, any, handTuning), BlocksConfig(maxMachines = 5, sizeBy = "machines"), 30.0).links.none { it.routed })
     }
 
     @Test
@@ -80,7 +80,7 @@ class FactoryTest {
             outputs = listOf(ConfigSource("processing-unit", edge = "east")), blocks = BlocksConfig(maxMachines = 6, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 40.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val out = File("build/factory/t4_edges")
         out.deleteRecursively()
         val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
@@ -101,7 +101,7 @@ class FactoryTest {
             outputs = listOf(ConfigSource("sulfuric-acid", edge = "east")), blocks = BlocksConfig(maxMachines = 2, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val out = File("build/factory/acid_east")
         out.deleteRecursively()
         val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
@@ -116,7 +116,7 @@ class FactoryTest {
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
         val out = File("build/factory/t3_shared")
         out.deleteRecursively()
-        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), buildPlan(TestData.data, config), out))
+        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), buildPlan(TestData.data, config, handTuning), out))
         assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
     }
 
@@ -124,7 +124,7 @@ class FactoryTest {
     fun `machines joined by pipes may sit in different blocks, joined by a pipe tree through the corridors`() {
         val config = plasticJob.copy(blocks = BlocksConfig(maxMachines = 3, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 40.0, seedsPerSize = 2, threads = 4, seed = 7))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val out = File("build/factory/plastic_split")
         out.deleteRecursively()
         val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
@@ -139,7 +139,7 @@ class FactoryTest {
             sources = listOf(ConfigSource("iron-ore", edge = "west"), ConfigSource("copper-ore", edge = "west")),
             blocks = BlocksConfig(maxMachines = 20),
         )
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val pure = blocks.Templates.columnRecipes(plan, config)
         // Furnaces fit a column (and so do the cable and gear assembler 3s, in split columns of short inserters).
         assertTrue(pure.keys.containsAll(setOf("iron-plate", "copper-plate")), "${pure.keys}")
@@ -162,7 +162,7 @@ class FactoryTest {
             blocks = BlocksConfig(maxMachines = 8, splitAt = listOf("iron-plate", "copper-plate")),
             search = SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val out = File("build/factory/circuits_from_ore")
         out.deleteRecursively()
         val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
@@ -182,7 +182,7 @@ class FactoryTest {
             blocks = BlocksConfig(maxMachines = 6, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         // Red science (copper and gears, a lane each) fits a column.
         assertTrue("automation-science-pack" in blocks.Templates.columnRecipes(plan, config))
         val out = File("build/factory/red_science_column")
@@ -204,7 +204,7 @@ class FactoryTest {
             blocks = BlocksConfig(maxMachines = 6, sizeBy = "machines", sharedOutputs = true),
             search = SearchConfig(timeBudgetS = 60.0, seedsPerSize = 2, threads = 4, seed = 7),
         )
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val split = splitPlan(plan, config.blocks!!, 30.0)
         val groups = split.blocks.indices.flatMap { blocks.sharedOutputs(split.plan, split.links, it, Tuning.defaults()) }
         assertTrue(groups.isNotEmpty(), "no block sends one item to two others: ${split.links.map { "${it.from}->${it.to} ${it.item}" }}")
@@ -224,7 +224,7 @@ class FactoryTest {
     fun `a resumed run keeps the saved split and refines the saved blocks`() {
         val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines"),
             search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
-        val plan = buildPlan(TestData.data, config)
+        val plan = buildPlan(TestData.data, config, handTuning)
         val out = File("build/factory/t3_resume")
         out.deleteRecursively()
         val first = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
