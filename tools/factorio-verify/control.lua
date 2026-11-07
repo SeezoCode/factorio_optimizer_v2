@@ -293,7 +293,9 @@ local function flows(run, counting)
   end
   if caps then
     run.budget = run.budget or {}
-    for k, r in pairs(caps) do run.budget[k] = math.min((run.budget[k] or 0) + r / 60, 50) end
+    -- At most a second's worth (5 items for slow outputs) carried over, so the measured rate is the planned one
+    -- when the factory keeps up, not the plan plus a stored-up burst.
+    for k, r in pairs(caps) do run.budget[k] = math.min((run.budget[k] or 0) + r / 60, math.max(5, r)) end
   end
   for _, d in pairs(run.drains) do
     if d.e.valid then
