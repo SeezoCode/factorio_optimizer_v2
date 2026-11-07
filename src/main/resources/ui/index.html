@@ -71,6 +71,8 @@
         <select id="layoutPick" title="Which layout to draw"></select>
         <label class="toggle" title="Colour machines by what they did in the game (verify_report.json)"><input type="checkbox" id="showVerify" checked> in-game status</label>
         <button id="stopRun" disabled>Stop</button>
+        <button id="verifyRun" title="Build the test copy in the real game and measure it (needs Factorio; takes minutes)">Verify in game</button>
+        <button id="starveRun" title="Why machines starved in the last in-game check">Why short?</button>
         <span id="runState" class="msg"></span>
       </div>
       <div class="run-body">
@@ -82,6 +84,8 @@
         <div class="run-side">
           <div id="statusBox"></div>
           <div id="blocksBox"></div>
+          <details id="starveBox" hidden open><summary>Why short</summary><pre id="starveText"></pre></details>
+          <details id="verifyBox" hidden><summary>In-game check</summary><pre id="verifyText"></pre></details>
           <details open><summary>Log</summary><pre id="logBox"></pre></details>
         </div>
       </div>

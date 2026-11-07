@@ -261,6 +261,8 @@ $("#refreshRuns").addEventListener("click", loadRuns);
 async function openRun(dir) {
   runDir = dir; store.set("run", dir);
   $("#runTitle").textContent = dir;
+  runInfo = null; viewer.set(null); $("#statusBox").textContent = ""; $("#starveBox").hidden = true; $("#blocksBox").textContent = ""; $("#logBox").textContent = "";
+  delete $("#view").dataset.shown;
   loadRuns();
   await refreshRun(true);
 }
@@ -276,13 +278,28 @@ async function refreshRun(first) {
   $("#stopRun").disabled = !info.running && !(info.status && !info.status.stopping && info.status.left > 0);
   $("#runState").textContent = info.running ? "running" : (info.status && info.status.left > 0 && !info.status.stopping ? "running (started elsewhere?)" : "");
   renderStatus(info);
+  $("#verifyRun").disabled = info.verifying || !(info.files || []).includes("test_output_string.txt");
+  $("#verifyBox").hidden = !info.verifyLog;
+  if (info.verifyLog) { $("#verifyText").textContent = info.verifyLog; if (info.verifying) $("#verifyBox").open = true; }
+  if (info.verifying) $("#runState").textContent = "verifying in game…";
   if (first || changed) fillLayoutPick(info, first);
   if (first) await drawPicked();
   else if (changed && $("#layoutPick").value === "best") await drawPicked();
-  const live = info.running || (info.status && info.status.left > 0);
+  const live = info.running || info.verifying || (info.status && info.status.left > 0);
   runTimer = setTimeout(() => refreshRun(false), live ? 2500 : 15000);
 }
 
+$("#verifyRun").addEventListener("click", async () => {
+  if (!runDir) return;
+  try { await api("/api/verify?dir=" + encodeURIComponent(runDir), { method: "POST" }); $("#runState").textContent = "verifying in game…"; refreshRun(false); }
+  catch (e) { $("#runState").textContent = e.message; }
+});
+$("#starveRun").addEventListener("click", async () => {
+  if (!runDir) return;
+  $("#starveBox").hidden = false; $("#starveText").textContent = "tracing…";
+  const r = await api("/api/starve?dir=" + encodeURIComponent(runDir));
+  $("#starveText").textContent = r.text;
+});
 $("#stopRun").addEventListener("click", async () => {
   if (!runDir) return;
   await api("/api/stop?dir=" + encodeURIComponent(runDir), { method: "POST" });

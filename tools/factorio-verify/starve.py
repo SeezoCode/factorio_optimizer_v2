@@ -5,8 +5,8 @@
     python3 tools/factorio-verify/starve.py out                # every starving machine
     python3 tools/factorio-verify/starve.py out --item rail    # only machines short of rail
 
-For each machine whose usual status is an ingredient shortage (or that crafted under --share of the busiest machine
-of its recipe), it finds the ingredients it holds less than one craft of, then for each such item the belts its
+For each machine whose usual status is an ingredient shortage (with --slow also each that crafted under --share of
+the busiest machine of its recipe), it finds the ingredients it holds less than one craft of, then for each such item the belts its
 inserters take it from and everything upstream of them (belts, undergrounds, splitters). It lists who puts the item
 there (producer machines and their status: a producer standing with full output while a consumer downstream starves
 means its output does not reach that consumer, or the belt is blocked between them) and who else takes it on the way
@@ -116,7 +116,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("out", help="a run's out folder with verify_report.json (made with verify.py --dump), or the report")
     ap.add_argument("--item", help="only machines short of this item")
-    ap.add_argument("--share", type=float, default=0.9, help="also machines that crafted under this share of the busiest of their recipe")
+    ap.add_argument("--slow", action="store_true", help="also machines that crafted under --share of the busiest of their recipe (planned rates differ, so these need not be short)")
+    ap.add_argument("--share", type=float, default=0.9, help="with --slow: the share (default 0.9)")
     ap.add_argument("--recipes", default=os.path.join(REPO, "src/main/resources/recipes.json"), help="game data (recipes.json)")
     args = ap.parse_args()
     path = args.out if args.out.endswith(".json") else os.path.join(args.out, "verify_report.json")
@@ -129,7 +130,8 @@ def main():
     for m in report["machines"]:
         best[m["recipe"]] = max(best[m["recipe"]], m["crafts"])
     starving = [m for m in report["machines"]
-                if m["usual_status"] == "item_ingredient_shortage" or (best[m["recipe"]] > 0 and m["crafts"] < args.share * best[m["recipe"]])]
+                if m["usual_status"] == "item_ingredient_shortage"
+                or (args.slow and best[m["recipe"]] > 0 and m["crafts"] < args.share * best[m["recipe"]])]
     by_item = defaultdict(list)
     for m in report["machines"]:
         for it in makes.get(m["recipe"], ()):

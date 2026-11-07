@@ -69,6 +69,8 @@ class Server(private val root: File, private val port: Int) {
                 path == "/api/run" && ex.requestMethod == "GET" -> send(ex, run(q.getValue("dir")))
                 path == "/api/run" && ex.requestMethod == "POST" -> startRun(ex)
                 path == "/api/stop" -> stopRun(ex, q.getValue("dir"))
+                path == "/api/verify" -> startVerify(ex, q.getValue("dir"))
+                path == "/api/starve" -> starve(ex, q.getValue("dir"))
                 path.startsWith("/api/sprite/") -> sprite(ex, path.removePrefix("/api/sprite/"))
                 else -> error(ex, 404, "no such page: $path")
             }
@@ -156,6 +158,8 @@ class Server(private val root: File, private val port: Int) {
         return buildJsonObject {
             put("dir", d.relativeOrAbsolute())
             put("running", runs[d.canonicalPath]?.isAlive == true)
+            put("verifying", runs[d.canonicalPath + "#verify"]?.isAlive == true)
+            File(d, "verify.log").takeIf { it.isFile }?.let { put("verifyLog", tail(it, 60)) }
             read("status.json")?.let { put("status", it) }
             read("ports.json")?.let { put("ports", it) }
             read("verify_report.json")?.let { r -> put("verify", buildJsonObject {
@@ -201,6 +205,26 @@ class Server(private val root: File, private val port: Int) {
         val p = runs[d.canonicalPath]
         if (p != null && !File(d, "status.json").isFile) p.destroy()
         send(ex, buildJsonObject { put("stopping", d.relativeOrAbsolute()) })
+    }
+
+    /** Builds the run's test copy in the real game (tools/factorio-verify/verify.py, with belt dumps for starve.py). */
+    private fun startVerify(ex: HttpExchange, dir: String) {
+        val d = inside(dir) ?: return error(ex, 403, "outside the project")
+        val key = d.canonicalPath + "#verify"
+        if (runs[key]?.isAlive == true) return error(ex, 409, "already verifying")
+        if (!File(d, "test_output_string.txt").isFile) return error(ex, 400, "the run has no test copy yet")
+        val cmd = listOf("python3", File(root, "tools/factorio-verify/verify.py").path, d.path, "--dump")
+        runs[key] = ProcessBuilder(cmd).directory(root).redirectErrorStream(true).redirectOutput(File(d, "verify.log")).start()
+        send(ex, buildJsonObject { put("verifying", d.relativeOrAbsolute()) })
+    }
+
+    /** Why machines starved in game (tools/factorio-verify/starve.py on the run's verify_report.json). */
+    private fun starve(ex: HttpExchange, dir: String) {
+        val d = inside(dir) ?: return error(ex, 403, "outside the project")
+        val p = ProcessBuilder("python3", File(root, "tools/factorio-verify/starve.py").path, d.path).directory(root).redirectErrorStream(true).start()
+        val text = p.inputStream.readBytes().decodeToString()
+        p.waitFor()
+        send(ex, buildJsonObject { put("text", text) })
     }
 
     // --- game data and sprites ---------------------------------------------------------------------------------

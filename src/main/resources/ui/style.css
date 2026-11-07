@@ -84,7 +84,7 @@ fieldset .field { grid-template-columns: minmax(70px, 32%) minmax(0, 1fr); }
 .run-side tr.pick { cursor: pointer; }
 .run-side tr.pick:hover { background: var(--bg); }
 .run-side tr.sel { background: var(--bg); }
-#logBox { font: 11px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; max-height: 360px; overflow: auto; background: var(--code); padding: 6px; border-radius: 6px; }
+#logBox, #starveText, #verifyText { font: 11px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; max-height: 360px; overflow: auto; background: var(--code); padding: 6px; border-radius: 6px; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin-bottom: 10px; }
 .kv span:nth-child(odd) { color: var(--muted); }
 details summary { cursor: pointer; color: var(--muted); margin: 8px 0 4px; }
