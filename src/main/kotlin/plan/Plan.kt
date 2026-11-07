@@ -197,14 +197,15 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     // Direct-insertion clusters (planner.di_consumers_per_producer): producers of an item used only inside the block,
     // at least one per that many consumer machines. Counts are the rate's, as below, before any extra for inserters.
     val extraFor = HashMap<String, Int>()
-    tuning.planner.diConsumersPerProducer.takeIf { it > 0 }?.let { per ->
+    val duos = tuning.place.duos && config.beacons == null
+    tuning.planner.diConsumersPerProducer.takeIf { it > 0 || duos }?.let { per ->
         // Counts with the extra machines so far: more consumers above want more producers below (until stable).
         val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime / tuning.planner.maxUtilization - 1e-6).toInt()) }.toMutableMap()
         repeat(crafts.size) { crafts.forEach { (c, _) ->
             val main = c.recipe.mainProduct?.name ?: return@forEach
             if (isFluid(main) || main in lp.targets || (lp.output[main] ?: 0.0) > 1e-9 || c.recipe.products.size > 1) return@forEach
             val consumers = crafts.filter { (d, _) -> d.recipe.ingredients.any { it.name == main && !it.isFluid } }.sumOf { (d, _) -> count.getValue(d.recipe.name) }
-            var want = ceil(consumers.toDouble() / per - 1e-9).toInt()
+            var want = if (per > 0) ceil(consumers.toDouble() / per - 1e-9).toInt() else 0
             // A producer that cannot feed two consumers (an engine for chemical science) gets one consumer to itself:
             // shared, it would also put its spare on a belt for another, and that belt's inserter takes from the
             // machine whenever the belt has room, starving the consumer beside it.
@@ -214,7 +215,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 val nd = count.getValue(d.recipe.name)
                 val perConsumer = xd / nd * d.recipe.ingredients.filter { it.name == main }.sumOf { it.amount }
                 val full = (productsPerCraft(data, c, config)[main] ?: 0.0) / c.machineTime
-                if (perConsumer > full / 2 + 1e-9 && perConsumer <= full + 1e-9) want = maxOf(want, nd)
+                if (per > 0 && perConsumer > full / 2 + 1e-9 && perConsumer <= full + 1e-9) want = maxOf(want, nd)
                 // A consumer that needs more than one producer's full output (a circuit assembler needs 1.5 cable
                 // assemblers) gets two of its own, one on each side: cable, circuit, cable.
                 else if (perConsumer > full + 1e-9 && perConsumer <= 2 * full + 1e-9) want = maxOf(want, 2 * nd)
@@ -244,7 +245,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
             (tuning.planner.accessShare * (2 * (e.width + e.height) - beaconSide - fluidIngredients.size - fluidProducts.size)).toInt())
         val base = maxOf(1, ceil(x * c.machineTime / tuning.planner.maxUtilization - 1e-6).toInt())
         val di = maxOf(base, extraFor[r.name] ?: 0)
-        if (di > base) warn("${r.name}: ${di - base} more ${c.machine} than its rate needs, one per ${tuning.planner.diConsumersPerProducer} consumers for direct insertion")
+        if (di > base) warn("${r.name}: ${di - base} more ${c.machine} than its rate needs, for direct insertion")
         var n = di
         while (inserters(n) > room && n < base * 20) n++
         if (n > di) warn("${r.name}: ${n - di} more ${c.machine} than its rate needs, so each one's inserters fit around it")

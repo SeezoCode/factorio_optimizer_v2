@@ -89,4 +89,19 @@ class ClustersTest {
         assertEquals(List(8) { "duo" }, cs.map { it.kind })
         cs.forEach { c -> assertEquals(listOf("copper-cable", "electronic-circuit", "copper-cable"), c.members.map { p.machines[it].recipe }) }
     }
+
+    @Test
+    fun `duos alone change only what needs them`() {
+        val duos = Tuning.defaults().let { t -> t.copy(planner = t.planner.copy(maxUtilization = 1.0), place = t.place.copy(duos = true)) }
+        val plain = Tuning.defaults().let { t -> t.copy(planner = t.planner.copy(maxUtilization = 1.0)) }
+        val circuits = RunConfiguration.parse("""{"targets": [{"name": "electronic-circuit", "amount": 12}], "machines": ["assembling-machine-2"],
+            "sources": [{"name": "iron-plate", "edge": "west"}, {"name": "copper-plate", "edge": "west"}]}""")
+        val p = buildPlan(TestData.data, circuits, duos)
+        assertEquals(16, p.machines.count { it.recipe == "copper-cable" })
+        assertEquals(List(8) { "duo" }, diClusters(p, duosOnly = true).map { it.kind })
+        // Chemical science: no consumer needs more than one producer, so the plan is the plain one and nothing clusters.
+        val chem = buildPlan(TestData.data, job, duos)
+        assertEquals(buildPlan(TestData.data, job, plain).machines.groupingBy { it.recipe }.eachCount(), chem.machines.groupingBy { it.recipe }.eachCount())
+        assertEquals(emptyList(), diClusters(chem, duosOnly = true))
+    }
 }

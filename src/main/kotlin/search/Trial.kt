@@ -224,7 +224,11 @@ fun runTrial(
     // others start warm from a larger box's best placement when there is one, else at random.
     val pt = tuning.place
     require(pt.initial in setOf("random", "columns", "mixed")) { "place.initial must be random, columns or mixed" }
-    val clusters = if (pt.clusters) place.diClusters(plan, config.trick("I6") && "long-handed-inserter" in config.inserters.allowed, pt.cells) else emptyList()
+    val clusters = when {
+        pt.clusters -> place.diClusters(plan, config.trick("I6") && "long-handed-inserter" in config.inserters.allowed, pt.cells)
+        pt.duos && config.beacons == null -> place.diClusters(plan, duosOnly = true)
+        else -> emptyList()
+    }
     if (clusters.isNotEmpty()) {
         annealer.setClusters(clusters)
         notes += "${clusters.size} direct-insertion clusters (${clusters.groupingBy { it.kind }.eachCount()})"

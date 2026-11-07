@@ -118,6 +118,13 @@ data class PlaceTuning(
     val clusters: Boolean = false,
     /** With [clusters]: also cells (a row of machines between two clusters). Off keeps sandwiches, stacks and duos. */
     val cells: Boolean = true,
+    /**
+     * Duos only (without [clusters]): a consumer that needs more than one producer's output, and at most two, gets two
+     * producers of its own and sits between them (cable, circuit, cable). Electronic circuits 30/s: 47 x 46 against
+     * 53 x 52, 517 belt tiles against 919, 2 inserters per machine against 3.9. Nothing changes where no consumer
+     * needs that (science). Off with beacons (the cluster ignores beacon rows).
+     */
+    val duos: Boolean = false,
     /** Weight of the squared beacon shortfall per machine (beacons in lattice mode, see BeaconConfig). */
     @SerialName("beacon_weight") val beaconWeight: Double = 15.0,
     @SerialName("rudy_bin") val rudyBin: Int = 4,

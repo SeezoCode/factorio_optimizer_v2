@@ -20,7 +20,7 @@ data class Cluster(val members: IntArray, val dx: IntArray, val dy: IntArray, va
  * are left out (their orientation or fit is not fixed). A consumer that needs two producers' output sits between
  * them (`duo`: cable, circuit, cable). Consumers of items from the bottom of the chain go first.
  */
-fun diClusters(plan: ProductionPlan, longHanded: Boolean = false, cells: Boolean = true): List<Cluster> {
+fun diClusters(plan: ProductionPlan, longHanded: Boolean = false, cells: Boolean = true, duosOnly: Boolean = false): List<Cluster> {
     val ms = plan.machines
     val producersOf = HashMap<String, MutableList<Int>>()
     plan.terminals.filter { it.role == Role.PRODUCER && it.machine != null && !it.fluid }.forEach { producersOf.getOrPut(it.item) { ArrayList() } += it.machine!! }
@@ -44,6 +44,7 @@ fun diClusters(plan: ProductionPlan, longHanded: Boolean = false, cells: Boolean
         if (used[c]) continue
         val s = ms[c].w
         if (items.size >= 2) {
+            if (duosOnly) continue
             // Stack: producers of the first two items one over the other, consumers left and right, overlapping both.
             val (a, b) = items.take(2)
             val pa = free(a, s) ?: continue
@@ -77,6 +78,7 @@ fun diClusters(plan: ProductionPlan, longHanded: Boolean = false, cells: Boolean
                 out += Cluster(intArrayOf(p, c, p2), intArrayOf(0, s + 1, 2 * (s + 1)), IntArray(3), "duo")
                 continue
             }
+            if (duosOnly) continue
             used[p] = true; used[c] = true
             val c2 = mates(c).firstOrNull { m -> output(p, item) + 1e-9 >= (ms[c].demand[item] ?: 0.0) + (ms[m].demand[item] ?: 0.0) }
             c2?.let { used[it] = true }
@@ -85,7 +87,7 @@ fun diClusters(plan: ProductionPlan, longHanded: Boolean = false, cells: Boolean
             out += Cluster(members.toIntArray(), dx.toIntArray(), IntArray(members.size), "sandwich")
         }
     }
-    return if (cells) cells(plan, out, used, if (longHanded) 3 else 1) else out
+    return if (cells && !duosOnly) cells(plan, out, used, if (longHanded) 3 else 1) else out
 }
 
 /**
