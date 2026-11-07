@@ -72,9 +72,13 @@ internal class PipeRouter(private val pf: PathFinder) {
         }
         fluidNets.forEachIndexed { idx, net ->
             val ts = plan.netTerminals(net)
+            // A producer joins through its output connections of the fluid, a consumer through its inputs: a machine
+            // that takes and gives the same fluid (a catalyst: Py's formamide returns its methanol) needs both piped.
             val groups = ts.filter { it.machine != null }.map { t ->
                 val pm = placement.machines.first { it.id == t.machine }
-                placement.connections(plan, pm).filter { it.fluid == net.item }.map { dims.idx(it.tile) }.toIntArray()
+                val flow = if (t.role == Role.PRODUCER) GameConstants.Flow.OUTPUT else GameConstants.Flow.INPUT
+                val cs = placement.connections(plan, pm).filter { it.fluid == net.item }
+                (cs.filter { it.flow == flow }.ifEmpty { cs }).map { dims.idx(it.tile) }.toIntArray()
             }.filter { it.isNotEmpty() }.toMutableList()
             // Several ports (a fluid's pipe tree between the blocks of a factory): the first source is the root, an
             // output on an edge is reached last, and every other port is a terminal the tree must reach like a

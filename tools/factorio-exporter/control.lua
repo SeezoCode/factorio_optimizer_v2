@@ -59,6 +59,92 @@ local function fluid_boxes(e)
   return out
 end
 
+
+-- Which fluid box the game gives each fluid of a recipe. A recipe without fluidbox_index leaves that to the game, and
+-- it does not simply take the machine's boxes in order (Py's fbreactor puts formamide's three fluids in input boxes 1,
+-- 3 and 4 of 4). Each machine with several fluid boxes of a kind is built on a scratch surface with each recipe it can
+-- craft; where a fluid's box is not the one the optimizer assumes (fluidbox_index, else the n-th fluid in the n-th box
+-- of its kind), data.fluid_box_assignment[recipe][machine][fluid] = the box's 1-based number among its kind
+-- ("in" or "out" prefix: "in:3").
+local function probe_fluid_boxes(player)
+  local by_category = {}
+  for _, r in pairs(prototypes.recipe) do
+    local fluids = 0
+    for _, i in pairs(r.ingredients) do if i.type == "fluid" then fluids = fluids + 1 end end
+    for _, p in pairs(r.products) do if p.type == "fluid" then fluids = fluids + 1 end end
+    if fluids > 0 then
+      for c, _ in pairs(r.categories or { [r.category] = true }) do
+        local cat = type(c) == "number" and r.categories[c] or c
+        by_category[cat] = by_category[cat] or {}
+        table.insert(by_category[cat], r)
+      end
+    end
+  end
+  local ok_surface, surface = pcall(function() return game.create_surface("optimizer-fluid-probe", { width = 64, height = 64 }) end)
+  if not ok_surface then return end
+  surface.generate_with_lab_tiles = true
+  surface.request_to_generate_chunks({ 0, 0 }, 2)
+  surface.force_generate_chunk_requests()
+  player.force.enable_all_recipes()
+  local out, probed = {}, 0
+  for _, e in pairs(prototypes.entity) do
+    if e.type == "assembling-machine" and not e.hidden and e.crafting_categories then
+      -- Boxes per kind, in prototype order: [proto index] = number among its kind.
+      local kind_no, count = {}, { input = 0, output = 0 }
+      for _, fb in pairs(e.fluidbox_prototypes or {}) do
+        local k = fb.production_type == "output" and "output" or "input"
+        count[k] = count[k] + 1
+        kind_no[fb.index] = count[k]
+      end
+      if count.input > 1 or count.output > 1 then
+        local ok, ent = pcall(function() return surface.create_entity { name = e.name, position = { 0, 0 }, force = player.force } end)
+        if ok and ent then
+          local seen = {}
+          for cat, _ in pairs(e.crafting_categories) do
+            for _, r in pairs(by_category[cat] or {}) do
+              if not seen[r.name] then
+                seen[r.name] = true
+                if pcall(function() ent.set_recipe(r.name) end) then
+                  probed = probed + 1
+                  -- What the optimizer assumes: fluidbox_index, else order among the recipe's fluids of that kind.
+                  local assumed = {}
+                  local n = 0
+                  for _, i in pairs(r.ingredients) do
+                    if i.type == "fluid" then n = n + 1; assumed["in:" .. i.name] = i.fluidbox_index or n end
+                  end
+                  n = 0
+                  for _, p in pairs(r.products) do
+                    if p.type == "fluid" then n = n + 1; assumed["out:" .. p.name] = assumed["out:" .. p.name] or p.fluidbox_index or n end
+                  end
+                  for i = 1, (ent.fluids_count or 0) do
+                    local f = ent.get_fluid_filter(i)
+                    local okp, proto = pcall(function() return ent.get_fluid_box_prototype(i) end)
+                    if f and okp and proto then
+                      if proto.index == nil and proto[1] then proto = proto[1] end
+                      local k = proto.production_type == "output" and "out" or "in"
+                      local no = kind_no[proto.index]
+                      local key = k .. ":" .. f.name
+                      if no and assumed[key] ~= nil and assumed[key] ~= no then
+                        out[r.name] = out[r.name] or {}
+                        out[r.name][e.name] = out[r.name][e.name] or {}
+                        out[r.name][e.name][key] = no
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+          ent.destroy()
+        end
+      end
+    end
+  end
+  data.fluid_box_assignment = out
+  log("factorio-optimizer-exporter: probed " .. probed .. " machine and recipe pairs for fluid boxes")
+  game.delete_surface(surface)
+end
+
 local CRAFTING = { ["assembling-machine"] = true, ["furnace"] = true, ["rocket-silo"] = true, ["beacon"] = true, ["boiler"] = true }
 
 local function export(player)
@@ -202,6 +288,7 @@ local function export(player)
       logistics.pipes_to_ground[#logistics.pipes_to_ground + 1] = { name = e.name, max_distance = max, hidden = e.hidden }
     end
   end
+  probe_fluid_boxes(player)
   if pending_count == 0 then write() end
 end
 

@@ -3,6 +3,7 @@ import data.gameName
 import data.recipeGson
 import data.temperatureOf
 import data.withFluidTemperatures
+import data.fluidBoxes
 import emit.splitQuality
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -58,5 +59,21 @@ class TemperaturesTest {
         val d = game(defaults = false)
         assertEquals(setOf("boil", "boil-hot", "cool", "use-warm"), d.recipes.keys)
         assertEquals("steam", d.recipes.getValue("cool").ingredients.single().name)
+    }
+
+    @Test
+    fun `fluids go to the boxes the game measured, else fluidbox_index, else in order`() {
+        val json = """{"game_version": "2.1", "groups": {}, "quality": {}, "quality_names": ["normal"], "items": {}, "entities": {}, "fluids": {},
+            "recipes": {${recipe("formamide", """{"type": "fluid", "name": "carbon-dioxide", "amount": 100}, {"type": "fluid", "name": "methanol", "amount": 100},
+                {"type": "fluid", "name": "ammonia", "amount": 100, "fluidbox_index": 2}""",
+                """{"type": "fluid", "name": "formamide", "amount": 100}, {"type": "fluid", "name": "methanol", "amount": 100}""")}},
+            "fluid_box_assignment": {"formamide": {"fbreactor-mk01": {"in:methanol": 3, "out:methanol": 3}}}}"""
+        val d = recipeGson.fromJson(json, RootData::class.java)
+        val r = d.recipes.getValue("formamide")
+        val (ins, outs) = d.fluidBoxes(r, "fbreactor-mk01")
+        assertEquals(mapOf("carbon-dioxide" to 1, "methanol" to 3, "ammonia" to 2), ins)
+        assertEquals(mapOf("formamide" to 1, "methanol" to 3), outs)
+        // Another machine: no measurement, so in order.
+        assertEquals(mapOf("carbon-dioxide" to 1, "methanol" to 2, "ammonia" to 2), d.fluidBoxes(r, "chemical-plant").first)
     }
 }

@@ -97,6 +97,10 @@ fun productivity(data: RootData, c: RecipeChoice, config: RunConfiguration): Dou
         c.recipe.maximumProductivity.toDouble())
 }
 
+/** What burning [fuel] of [fuelItem] per craft leaves behind (Py's ash), or null: the fuel's burnt result, one per fuel item. */
+fun burntPerCraft(data: RootData, fuelItem: String?, fuel: Double): Pair<String, Double>? =
+    if (fuel <= 0 || fuelItem == null) null else data.items[fuelItem]?.burntResult?.let { it to fuel }
+
 /**
  * Products per craft with productivity. The bonus applies to the part of a product above the same item's
  * ingredient amount, so catalysts (Kovarex, asteroid chunks) gain nothing from it. [P] VERIFY
@@ -151,6 +155,7 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         val fuelItem = fuelItem(data, c.machine, config)
         val fuel = fuelPerCraft(data, c, fuelItem)
         if (fuel > 0) m.merge(fuelItem!!, -fuel, Double::plus)
+        burntPerCraft(data, fuelItem, fuel)?.let { (b, n) -> m.merge(b, n, Double::plus) }
         m
     }
     val items = (net.values.flatMap { it.keys } + targets.keys + sourced).toSortedSet()

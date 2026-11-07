@@ -7,6 +7,7 @@ import config.strictJson
 import data.GameConstants
 import data.RootData
 import data.craftingSpeed
+import data.fluidBoxes
 import kotlinx.serialization.Serializable
 import java.io.File
 import kotlin.math.ceil
@@ -64,6 +65,12 @@ data class Port(
     val single: Boolean = false,
     /** Another input port whose item should arrive on the same belt, one item per lane (-1: none). */
     val pairWith: Int = -1,
+    /**
+     * An input of 0/s for a catalyst (a machine that takes and gives back the same item or fluid, Py's formamide and
+     * its methanol): the loop between its output and input runs by itself once filled, but starts empty in a new
+     * build, so this is where to put some in once.
+     */
+    val priming: Boolean = false,
 )
 
 @Serializable
@@ -258,7 +265,10 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val fuelItem = fuelItem(data, c.machine, config)
         val fuel = fuelPerCraft(data, c, fuelItem)
         val main = r.mainProduct?.name ?: r.products.first().name
-        val productsPer = productsPerCraft(data, c, config)
+        // A burner's fuel leaves its burnt result (Py: ash), taken out like any product.
+        val productsPer = productsPerCraft(data, c, config).let { ps ->
+            burntPerCraft(data, fuelItem, fuel)?.let { (b, n) -> ps + (b to (ps[b] ?: 0.0) + n) } ?: ps
+        }
         val demandPer = r.ingredients.filter { !it.isFluid }.groupBy { it.name }.mapValues { (_, ings) -> ings.sumOf { it.amount } }
             .let { if (fuel > 0) it + (fuelItem!! to (it[fuelItem] ?: 0.0) + fuel) else it }
         // A rocket silo launches what it builds: no product leaves it.
@@ -299,8 +309,8 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 demand = demand,
                 products = products,
                 fluidDemand = fluidIngredients.groupBy { it.name }.mapValues { (_, ings) -> crafts * ings.sumOf { it.amount } },
-                fluidIn = fluidIngredients.mapIndexed { i, ing -> ing.name to (ing.fluidboxIndex ?: (i + 1)) }.toMap(),
-                fluidOut = fluidProducts.mapIndexed { i, p -> p.name to (p.fluidboxIndex ?: (i + 1)) }.toMap(),
+                fluidIn = data.fluidBoxes(r, c.machine).first,
+                fluidOut = data.fluidBoxes(r, c.machine).second,
                 crafts = crafts,
                 maxCrafts = maxCrafts,
                 beacons = beacons,
@@ -330,7 +340,19 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val k = name.removePrefix("mixed-").toInt() - 1
         ports += Port(ports.size, name, listOf(ConfigSource(name, edge = config.mixedOutputs[k].edge)), output = true)
     }
-    config.sources.map { it.name }.distinct().filter { it !in lp.supply }.forEach {
+    // Catalysts nobody else makes or brings: a 0/s input to fill the loop once (see [Port.priming]).
+    run {
+        val made = machines.flatMap { it.products.keys }.toSet()
+        made.filter { item -> item !in lp.supply && item !in outputs && item !in mixed }.sorted().forEach { item ->
+            val producers = machines.filter { (it.products[item] ?: 0.0) > 1e-12 }
+            if (producers.all { (it.demand[item] ?: it.fluidDemand[item] ?: 0.0) > 1e-12 }) {
+                val specs = config.sources.filter { it.name == item }
+                ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item), priming = true)
+                warn("$item is a catalyst nothing else makes: fill its loop once through its 0/s input")
+            }
+        }
+    }
+    config.sources.map { it.name }.distinct().filter { it !in lp.supply && ports.none { p -> p.item == it } }.forEach {
         warn("source '$it' is configured but not an input of this job")
     }
 
@@ -365,7 +387,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
             }
         }
         ports.firstOrNull { it.item == item && !it.output }?.let { port ->
-            netTerminals += addTerminal(Role.SOURCE, item, lp.supply.getValue(item), 1, port = port.id)
+            netTerminals += addTerminal(Role.SOURCE, item, lp.supply[item] ?: 0.0, 1, port = port.id)
         }
         if (outPort != null && outTotal > 1e-9) netTerminals += addTerminal(Role.OUTPUT, item, outTotal, 1, port = outPort.id)
         consumers.forEach { m ->

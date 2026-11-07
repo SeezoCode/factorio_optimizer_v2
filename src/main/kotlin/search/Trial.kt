@@ -62,7 +62,7 @@ fun validationSpec(
     val targets = config.targets.map { it.name }.toSet()
     val machines = placement.machines.associate { pm ->
         val inst = plan.machines[pm.id]
-        val info = recipeInfo(inst.recipe)!!
+        val info = recipeInfo(inst.recipe, inst.machine)!!
         // Inserters move only item products; fluids leave through pipes. Products that leave on a mixed belt count as
         // one product, the belt's name: one inserter takes them all.
         val items = inst.itemProducts.entries.groupBy { plan.mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }

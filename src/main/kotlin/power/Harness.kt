@@ -71,7 +71,10 @@ fun buildHarness(
     outputs.filter { it.fluid }.forEach { fluidPort(it.tile, it.item, drain = true) }
     // Item sources, grouped by tile: a shared belt gets one feeder with each item's inserters on the side that
     // drops onto its lane (an inserter drops on the far lane).
-    sources.filter { !it.fluid }.groupBy { it.tile }.forEach { (tile, group) ->
+    // A 0/s input fills a catalyst's loop (plan.Port.priming): fed without end, it would keep the loop's belt full and
+    // the machines could not put the catalyst back. The in-game check puts some into those machines instead.
+    sources.filter { !it.fluid && it.rate <= 1e-12 }.forEach { s -> warnings += "${s.item} at ${s.tile} only primes a catalyst loop: not fed" }
+    sources.filter { !it.fluid && it.rate > 1e-12 }.groupBy { it.tile }.forEach { (tile, group) ->
         val first = byTile[tile]
         val laned = group.any { it.lane >= 0 }
         // Outward direction: off the box, and not the way the first belt faces (it cannot take items head-on);
@@ -190,7 +193,10 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
         }
         return false
     }
-    sources.filter { it.fluid }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
+    // A 0/s fluid input primes a catalyst's loop (plan.Port.priming): an infinity pipe would keep the loop full, and the
+    // machines could not put the catalyst back. The in-game check fills those machines once instead.
+    sources.filter { it.fluid && it.rate <= 1e-12 }.forEach { s -> warnings += "${s.item} at ${s.tile} only primes a catalyst loop: not fed" }
+    sources.filter { it.fluid && it.rate > 1e-12 }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
     outputs.filter { it.fluid }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
     // A loader on the two tiles out from the port, the chest on the third.
     fun loaderAt(port: Tile, d: Dir, into: Boolean): PlacedEntity? {

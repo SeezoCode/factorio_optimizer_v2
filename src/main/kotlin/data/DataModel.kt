@@ -30,7 +30,28 @@ data class RootData(
     val resources: Map<String, ResourceData>? = null,
     /** 2.0 mod-data prototypes as the mods wrote them (e.g. Pyanodon's farm buildings), by name. */
     val modData: Map<String, ModData>? = null,
+    /**
+     * Where the game puts a recipe's fluids in a machine, when that is not the n-th fluid in the n-th box of its kind
+     * (or its fluidbox_index): recipe -> machine -> "in:fluid" / "out:fluid" -> box number among its kind (exporter
+     * probes it in game; see [fluidBoxes]).
+     */
+    val fluidBoxAssignment: Map<String, Map<String, Map<String, Int>>>? = null,
 )
+
+/**
+ * Which input and output box (1-based among boxes of its kind) each fluid of [recipe] uses in [machine]: the recipe's
+ * fluidbox_index, else the game's own choice as the exporter measured it, else the n-th fluid in the n-th box.
+ */
+fun RootData.fluidBoxes(recipe: Recipe, machine: String?): Pair<Map<String, Int>, Map<String, Int>> {
+    val game = machine?.let { fluidBoxAssignment?.get(gameName(recipe.name))?.get(it) }
+    val ins = recipe.ingredients.filter { it.isFluid }.mapIndexed { i, ing ->
+        ing.name to (ing.fluidboxIndex ?: game?.get("in:" + gameName(ing.name)) ?: (i + 1))
+    }.toMap()
+    val outs = recipe.products.filter { it.type == "fluid" }.mapIndexed { i, p ->
+        p.name to (p.fluidboxIndex ?: game?.get("out:" + gameName(p.name)) ?: (i + 1))
+    }.toMap()
+    return ins to outs
+}
 
 /** A resource on the map: what mining it gives, and the fluid mining it needs (Py's borax takes syngas). */
 data class ResourceData(

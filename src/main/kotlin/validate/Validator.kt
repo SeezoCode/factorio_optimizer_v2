@@ -2,6 +2,7 @@ package validate
 
 import data.GameConstants
 import data.RootData
+import data.fluidBoxes
 import geom.Dir
 import geom.Kind
 import geom.Layout
@@ -93,7 +94,8 @@ data class ValidationSpec(
     /** Effective items/s of an inserter by name, picking from a belt or not. */
     val inserterRate: (String, Boolean) -> Double = { name, fromBelt -> GameConstants.inserter(name).baseRate * (if (fromBelt) 0.7 else 1.0) },
     /** recipe -> (product, solid ingredients, fluid ingredient) for machines without a [MachineSpec]. */
-    val recipeInfo: (String) -> MachineSpec? = { null },
+    /** Recipe facts by recipe and machine name, for machines without a [MachineSpec]. */
+    val recipeInfo: (String, String?) -> MachineSpec? = { _, _ -> null },
     /** The job's beacon when machines need some ([MachineSpec.beaconNeed]). */
     val beacon: plan.BeaconSpec? = null,
     /** Aquilo heating: everything that freezes must touch a heat pipe joined to a heat port; null: no heating. */
@@ -160,7 +162,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     private fun indexAt(t: Tile): Int? = at[t]
 
     private fun machineInfo(e: PlacedEntity): MachineSpec? =
-        spec.machines[e.tile] ?: e.recipe?.let { spec.recipeInfo(it) }
+        spec.machines[e.tile] ?: e.recipe?.let { spec.recipeInfo(it, e.name) }
 
     private fun checkMachines() {
         ents.filter { it.kind == Kind.MACHINE }.forEach { m ->
@@ -1382,14 +1384,15 @@ class StuckEnd(val belt: Int, val results: List<String>, val items: Set<String>)
 fun spoilageEnds(layout: Layout, spec: ValidationSpec): List<StuckEnd> = Validator(layout, spec.copy(spoilage = true)).spoilageEnds()
 
 /** Recipe facts for machines that have no [MachineSpec] (item checks only, no rates). */
-fun recipeInfoFrom(data: RootData): (String) -> MachineSpec? = { name ->
+fun recipeInfoFrom(data: RootData): (String, String?) -> MachineSpec? = { name, machine ->
     data.recipes[name]?.let { r ->
+        val (fin, fout) = data.fluidBoxes(r, machine)
         MachineSpec(
             product = r.products.firstOrNull { it.type != "fluid" }?.name ?: r.mainProduct?.name ?: r.name,
             ingredients = r.ingredients.filter { !it.isFluid }.map { it.name }.toSet(),
             needsFluid = r.ingredients.firstOrNull { it.isFluid }?.name,
-            fluidIn = r.ingredients.filter { it.isFluid }.mapIndexed { i, ing -> ing.name to (ing.fluidboxIndex ?: (i + 1)) }.toMap(),
-            fluidOut = r.products.filter { it.type == "fluid" }.mapIndexed { i, p -> p.name to (p.fluidboxIndex ?: (i + 1)) }.toMap(),
+            fluidIn = fin,
+            fluidOut = fout,
         )
     }
 }

@@ -203,6 +203,30 @@ local function start(params)
     if CRAFTERS[t] then
       local r = e.get_recipe()
       run.machines[#run.machines + 1] = { e = e, name = e.name, recipe = r and r.name, pos = bp_pos(run, e.position), statuses = {} }
+      -- Catalysts (an item or fluid the recipe takes and gives back): a new build starts with none in its loop, so
+      -- each such machine gets a few crafts' worth (plan.Port.priming; a real game fills the loop once by hand).
+      if r then
+        local back = {}
+        for _, p in pairs(r.products) do back[p.name] = true end
+        for i, ing in pairs(r.ingredients) do
+          if back[ing.name] then
+            if ing.type == "item" then
+              pcall(function() e.insert { name = ing.name, count = math.ceil(ing.amount) * 2 } end)
+            else
+              pcall(function()
+                for k = 1, (e.fluids_count or 0) do
+                  local f = e.get_fluid_filter(k)
+                  local proto = e.get_fluid_box_prototype(k)
+                  if proto and proto.index == nil and proto[1] then proto = proto[1] end
+                  if f and f.name == ing.name and proto and proto.production_type == "input" and not e.get_fluid(k) then
+                    e.set_fluid(k, { name = ing.name, amount = ing.amount })
+                  end
+                end
+              end)
+            end
+          end
+        end
+      end
       if t == "rocket-silo" then run.silos = run.silos or {}; run.silos[#run.silos + 1] = { e = e, launches = 0, failed = 0 } end
     elseif t == "inserter" then
       run.inserters[#run.inserters + 1] = { e = e, held_all = true, moved = false, samples = 0 }
@@ -445,11 +469,21 @@ local function finish(run)
       local p = bp_pos(run, e.position)
       local seg = 0
       pcall(function() seg = e.get_fluid_segment_fluid(1).amount end)
-      report.dump_pipes[#report.dump_pipes + 1] = { x = p.x, y = p.y, n = e.name, f = f.name, a = f.amount, seg = seg }
+      local nb = nil
+      pcall(function()
+        local names = {}
+        for _, group in pairs(e.neighbours or {}) do
+          if type(group) == "table" then
+            for _, o in pairs(group) do if type(o) == "userdata" and o.valid then names[#names + 1] = o.name end end
+          end
+        end
+        nb = table.concat(names, ",")
+      end)
+      report.dump_pipes[#report.dump_pipes + 1] = { x = p.x, y = p.y, n = e.name, f = f.name, a = f.amount, seg = seg, nb = nb }
     end
   end
     for _, m in pairs(run.machines) do
-      if m.e.valid and (m.recipe == "heavy-oil-cracking" or m.recipe == "lubricant") then
+      if m.e.valid and (m.recipe == "heavy-oil-cracking" or m.recipe == "lubricant" or #run.machines <= 40) then
         local cb = m.e.get_control_behavior()
         local info = { x = m.pos.x, y = m.pos.y, n = m.recipe, status = STATUS[m.e.status] }
         if cb then
@@ -457,7 +491,39 @@ local function finish(run)
           pcall(function() info.cond = serpent.line(cb.circuit_condition) end)
         end
         pcall(function() info.sig = m.e.get_signal({ type = "fluid", name = "heavy-oil" }, defines.wire_connector_id.circuit_red) end)
-        pcall(function() local fb = {}; for i = 1, #m.e.fluidbox do local f = m.e.fluidbox[i]; fb[i] = f and (f.name .. "=" .. f.amount) or "-" end; info.fb = fb end)
+        local okf, errf = pcall(function() local fb = {}; for i = 1, #m.e.fluidbox do local f = m.e.fluidbox[i]; fb[i] = f and (f.name .. "=" .. f.amount) or "-" end; info.fb = fb end)
+        if not okf then info.fberr = tostring(errf) end
+        -- Per fluid box: the fluid the recipe gave it (filter) and what it touches, to check connections against the plan.
+        pcall(function()
+          local ff = {}
+          for i = 1, #m.e.fluidbox do
+            local f = m.e.fluidbox.get_filter(i)
+            local cs = {}
+            for _, c in pairs(m.e.fluidbox.get_pipe_connections(i) or {}) do
+              cs[#cs + 1] = string.format("%s(%.1f,%.1f)%s", c.flow_direction or "?", c.target_position and c.target_position.x or 0, c.target_position and c.target_position.y or 0, c.target and "+" or "")
+            end
+            ff[i] = (f and f.name or "-") .. " " .. table.concat(cs, " ")
+          end
+          info.filters = ff
+        end)
+        if not info.filters then
+          -- 2.1 renamed parts of the fluid box API: which of these names exist, and what they give.
+          local have = {}
+          for _, k in pairs({ "fluidbox", "fluidboxes", "fluids_count", "get_fluid", "get_fluid_count", "get_fluidbox", "get_pipe_connections",
+                              "get_fluid_filter", "get_fluidbox_filter", "get_fluid_contents", "fluid_contents", "get_fluid_segment_fluid" }) do
+            local ok, v = pcall(function() return m.e[k] end)
+            if ok and v ~= nil then have[#have + 1] = k .. ":" .. type(v) end
+          end
+          info.api = table.concat(have, " ")
+          local got = {}
+          for i = 1, (m.e.fluids_count or 0) do
+            local okg, f = pcall(function() return m.e.get_fluid(i) end)
+            local okf2, flt = pcall(function() return m.e.get_fluid_filter(i) end)
+            got[i] = (okg and f and (f.name .. "=" .. f.amount) or (okg and "-" or "err:" .. tostring(f))) .. "/" .. (okf2 and (flt and (flt.name or serpent.line(flt)) or "nofilter") or ("err:" .. tostring(flt)))
+          end
+          info.get_fluid = table.concat(got, " ")
+          pcall(function() info.fluids_count = m.e.fluids_count end)
+        end
         report.dump_pipes[#report.dump_pipes + 1] = info
       end
     end
