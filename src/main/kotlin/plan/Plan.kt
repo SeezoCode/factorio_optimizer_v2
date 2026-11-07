@@ -185,7 +185,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     val extraFor = HashMap<String, Int>()
     tuning.planner.diConsumersPerProducer.takeIf { it > 0 }?.let { per ->
         // Counts with the extra machines so far: more consumers above want more producers below (until stable).
-        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime - 1e-6).toInt()) }.toMutableMap()
+        val count = crafts.associate { (c, x) -> c.recipe.name to maxOf(1, ceil(x * c.machineTime / tuning.planner.maxUtilization - 1e-6).toInt()) }.toMutableMap()
         repeat(crafts.size) { crafts.forEach { (c, _) ->
             val main = c.recipe.mainProduct?.name ?: return@forEach
             if (isFluid(main) || main in lp.targets || (lp.output[main] ?: 0.0) > 1e-9 || c.recipe.products.size > 1) return@forEach
@@ -225,7 +225,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
             maxOf(e.width, e.height) else 0
         val room = maxOf(demandPer.size + itemOut.size,
             (tuning.planner.accessShare * (2 * (e.width + e.height) - beaconSide - fluidIngredients.size - fluidProducts.size)).toInt())
-        val base = maxOf(1, ceil(x * c.machineTime - 1e-6).toInt())
+        val base = maxOf(1, ceil(x * c.machineTime / tuning.planner.maxUtilization - 1e-6).toInt())
         val di = maxOf(base, extraFor[r.name] ?: 0)
         if (di > base) warn("${r.name}: ${di - base} more ${c.machine} than its rate needs, one per ${tuning.planner.diConsumersPerProducer} consumers for direct insertion")
         var n = di

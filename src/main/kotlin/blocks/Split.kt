@@ -120,6 +120,8 @@ fun splitPlan(
     aspect: Double = 1.0, reserved: List<ReservedArea> = emptyList(),
     /** Recipes kept in blocks of their own (machine columns, see Templates.kt), each with the most machines per block. */
     pure: Map<String, Int> = emptyMap(),
+    /** How far rebalancing may push a machine toward full speed (planner.max_utilization). */
+    maxUtilization: Double = 1.0,
 ): Split {
     val warnings = ArrayList<String>()
     val part = partitionPlan(input, cfg, beltThroughput, seed, pure)
@@ -129,7 +131,7 @@ fun splitPlan(
     val chosen = part.candidates.distinct().map { c ->
         val bl = c.map { it.sorted() }.sortedBy { ms -> ms.map { depth[it] }.average() }
         val bo = IntArray(input.machines.size).also { a -> bl.forEachIndexed { b, ms -> ms.forEach { a[it] = b } } }
-        val p = rebalance(input, bl)
+        val p = rebalance(input, bl, maxUtilization)
         val model = PartitionModel(p, cfg, beltThroughput, pure)
         Candidate(bl, bo, p, model.ports(bo, bl.size), model.cost(bo, bl.size))
     }.minBy { it.cost }

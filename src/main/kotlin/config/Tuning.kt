@@ -70,6 +70,13 @@ data class PlannerTuning(
      * consumer, so none shares its output between direct insertion and a belt. 0 keeps the fewest machines.
      */
     @SerialName("di_consumers_per_producer") val diConsumersPerProducer: Int = 0,
+    /**
+     * The most of its full speed a machine is planned to run (machine counts round up past it; block rebalancing
+     * stops there). A chain of machines planned at exactly full speed loses for good whatever one inserter swing or
+     * belt gap costs: in game the 2/s six-science factory's rail and iron-stick machines, planned at 100%, left
+     * production science 10% short. 1: no headroom (the default; 0.97 is worth it for factories of blocks).
+     */
+    @SerialName("max_utilization") val maxUtilization: Double = 1.0,
 )
 
 @Serializable

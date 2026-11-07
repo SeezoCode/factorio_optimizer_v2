@@ -26,16 +26,20 @@ import java.time.format.DateTimeFormatter
  *                                 `echo stop > <out>/control`) instead of until the time budget
  *   --plain                       factory of blocks: line-by-line output instead of the live view (the default
  *                                 when not in a terminal); <out>/status.json and <out>/control work either way
+ *   --ui [--port=<n>]             the browser UI at http://localhost:8765 (see ui/Server.kt): edit jobs, start and
+ *                                 watch runs, look at layouts and blocks
  */
 fun main(args: Array<String>) {
     val flags = args.filter { it.startsWith("--") }.associate {
         val eq = it.indexOf('=')
         if (eq < 0) it.removePrefix("--") to "true" else it.substring(2, eq) to it.substring(eq + 1)
     }
-    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact", "plain", "until-stopped")
+    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact", "plain", "until-stopped", "ui", "port")
     (flags.keys - known).takeIf { it.isNotEmpty() }?.let { error("Unknown flags: $it (known: $known)") }
 
     flags["render"]?.let { dir -> renderOutput(java.io.File(dir)); return }
+
+    if (flags.containsKey("ui")) { ui.Server(java.io.File("."), flags["port"]?.toInt() ?: 8765).start(); return }
 
     flags["verify-kit"]?.let { dir ->
         emit.VerifyKit.write(java.io.File(dir))

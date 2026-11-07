@@ -117,7 +117,8 @@ fun runFactory(
     })
     var split = saved?.takeIf { recipes(it.plan) == recipes(input) }
         ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved,
-            pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines, cfg.maxMachines / 2, cfg.templateColumns) else emptyMap()).also { saveSplit(out, config, it) }
+            pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines, cfg.maxMachines / 2, cfg.templateColumns) else emptyMap(),
+            maxUtilization = tuning.planner.maxUtilization).also { saveSplit(out, config, it) }
     // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
     val plan = split.plan
     plan.write(File(out, "plan_rebalanced.json").path)
@@ -1264,6 +1265,15 @@ private fun writeFactory(f: Factory, out: File, config: RunConfiguration) {
     }
     renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}"))
     File(out, "ports.json").writeText(strictJson.encodeToString(JsonObject.serializer(), factoryManifest(f)))
+    // Where each block ended up (tiles of the factory, as the blueprint's positions), for viewers.
+    File(out, "blocks.json").writeText(buildString {
+        append("[\n")
+        f.blockRects.forEachIndexed { b, r ->
+            append("""  {"block": ${b + 1}, "x": ${r.x}, "y": ${r.y}, "w": ${r.w}, "h": ${r.h}, "turn": ${f.blockRot.getOrElse(b) { 0 }}}""")
+            append(if (b < f.blockRects.size - 1) ",\n" else "\n")
+        }
+        append("]\n")
+    })
     // What stitching could not do as asked (crackers without a tank, poles short, ...).
     File(out, "factory_notes.txt").writeText(f.notes.joinToString("\n", postfix = if (f.notes.isEmpty()) "" else "\n"))
 }
