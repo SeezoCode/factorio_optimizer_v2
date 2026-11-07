@@ -11,7 +11,8 @@ a full output belt backs up as it would at a real consumer. The verify mod in th
 builds it on a lab-tile surface of a fresh game (every ghost revived, modules inserted), gives each electric network an
 energy interface, lets it warm up, then measures: per machine its usual status, crafts and crafting progress, the items
 per second leaving at each output and taken at each input, fluids drained at fluid outputs, and inserters and belts
-that never moved. It passes when everything was built, every machine crafted, each output reached its planned rate
+that never moved. It passes when everything was built, every machine crafted (a spare one may idle when every output
+keeps its rate), each output reached its planned rate
 (ports.json, within --tolerance) and no inserter stayed stuck holding an item (waiting for room on a backed-up belt
 or in a machine that has enough does not count: surplus backs up). Belts that never moved are listed but do
 not fail it: a belt's end past its last inserter stands still in a working factory too.
@@ -326,8 +327,7 @@ def judge(report, ports, args):
             print(f"  {'(%g,%g)' % (m['x'], m['y']):>14}  {m['name']:28} {(m.get('recipe') or '-'):34} {m['crafts']:>6} "
                   f"{m['crafts_per_min']:>7.2f} {m['progress']:>8.2f}  {m['status']} ({m['usual_status']})")
     dead = [m for m in machines if m["crafts"] == 0]
-    if dead:
-        fails.append(f"{len(dead)} machines finished nothing while measured")
+    dead_msg = f"{len(dead)} machines finished nothing while measured" if dead else None
     no_recipe = [m for m in machines if not m.get("recipe")]
     if no_recipe:
         fails.append(f"{len(no_recipe)} machines have no recipe")
@@ -374,6 +374,13 @@ def judge(report, ports, args):
     if not ports:
         notes.append("no ports.json: rates not compared with the plan")
 
+    # A machine that crafted nothing is a fault, unless every output kept its rate: with outputs taken at the plan and
+    # machine counts rounded up (headroom), a spare machine at the end of a belt can wait all the time.
+    if dead_msg:
+        if any(": " in f and "/s out, planned" in f for f in fails) or args.uncapped or not ports:
+            fails.append(dead_msg)
+        else:
+            print(f"\n{dead_msg}: spare (every output kept its planned rate)")
     stuck = report["stuck_inserters"]
     print(f"\nInserters: {report['inserters']}, stuck holding an item: {len(stuck)}, never moved with an empty hand: {report['idle_inserters']}")
     for s in stuck[:30]:
