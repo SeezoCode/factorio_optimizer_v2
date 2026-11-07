@@ -261,7 +261,7 @@ $("#refreshRuns").addEventListener("click", loadRuns);
 async function openRun(dir) {
   runDir = dir; store.set("run", dir);
   $("#runTitle").textContent = dir;
-  runInfo = null; viewer.set(null); $("#runCtl").hidden = true; $("#statusBox").textContent = ""; $("#starveBox").hidden = true; $("#blocksBox").textContent = ""; $("#logBox").textContent = "";
+  runInfo = null; viewer.set(null); $("#runCtl").hidden = true; $("#stages").hidden = true; lastHistory = null; $("#statusBox").textContent = ""; $("#starveBox").hidden = true; $("#blocksBox").textContent = ""; $("#logBox").textContent = "";
   delete $("#view").dataset.shown;
   loadRuns();
   await refreshRun(true);
@@ -294,6 +294,7 @@ async function refreshRun(first) {
   else if (changed && $("#layoutPick").value === "best") await drawPicked();
   const live = info.running || info.verifying || alive;
   loadHistory(live);
+  renderStages();
   runTimer = setTimeout(() => refreshRun(false), live ? 2500 : 15000);
 }
 
@@ -360,7 +361,64 @@ $("#stopRun").addEventListener("click", async () => {
 
 // --- history of a factory run, read from its factory.txt: phases, previews, the factory's size, block progress ---
 
-let historyAt = 0, historyDir = null;
+let historyAt = 0, historyDir = null, lastHistory = null;
+
+/**
+ * The stage strip over the layout: a factory run's stages in order (from its factory.txt and live status), those
+ * done with how long they took, the current one with a counter running every second (and the time left while
+ * blocks are refined), the ones to come; then the in-game check. Seconds count from the run's start (factory.txt).
+ */
+const STAGES = [["plan and split", "plan"], ["first layouts", "first layouts"], ["refining", "refining blocks"], ["final factory", "final factory"], ["done", "done"]];
+function renderStages() {
+  const box = $("#stages");
+  const lh = lastHistory;
+  if (!lh || lh.dir !== runDir || !runInfo) { box.hidden = true; return; }
+  const h = lh.h, info = runInfo, st = info.status;
+  const live = !$("#runCtl").hidden;
+  // The run's clock now: the log's last line, plus the time since it was read while the run is live.
+  const now = live ? h.end + (Date.now() - lh.at) / 1000 : h.end;
+  const at = new Map(h.phases.map((p) => [p.name, p.t]));
+  const reached = STAGES.filter(([k]) => at.has(k)).map(([k]) => k);
+  const cur = h.phases.length ? h.phases[h.phases.length - 1].name : null;
+  box.textContent = "";
+  STAGES.forEach(([k, label], i) => {
+    if (i) box.append(el("span", { class: "arrow" }, "›"));
+    const t0 = at.get(k);
+    const next = STAGES.slice(i + 1).map(([n]) => at.get(n)).find((x) => x !== undefined);
+    if (k === "done") {
+      box.append(el("span", { class: "st" + (at.has("done") ? " done" : "") }, label));
+      return;
+    }
+    if (t0 === undefined) { box.append(el("span", { class: "st" }, label)); return; }
+    if (k === cur && live) {
+      let extra = "";
+      if (k === "refining" && st && st.left >= 0) extra = ` · ${fmtClock(Math.max(0, st.left - (Date.now() - lh.at) / 1000))} left`;
+      if (k === "refining" && st && st.left < 0) extra = " · no limit";
+      if (st && st.paused) extra += " · paused";
+      box.append(el("span", { class: "st now" }, label, el("span", { class: "t" }, fmtClock(now - t0) + extra)));
+    } else {
+      const end = next !== undefined ? next : h.end;
+      box.append(el("span", { class: "st" + (reached.includes(k) && (next !== undefined || !live) ? " done" : "") }, label, el("span", { class: "t" }, fmtClock(end - t0))));
+    }
+  });
+  // The in-game check: running, or its verdict.
+  const files = info.files || [];
+  if (info.verifying) { box.append(el("span", { class: "arrow" }, "›"), el("span", { class: "st now" }, "in-game check")); }
+  else if (files.includes("verify_report.json")) {
+    // The verdict: the verifier's own (verify.log), else every planned output at its rate in the report.
+    let pass = info.verifyLog ? /\nPASS\s*$/.test(info.verifyLog) : null;
+    if (pass === null && info.verify && info.ports && (info.ports.outputs || []).length) {
+      const got = {}, want = {};
+      for (const o of info.verify.outputs || []) for (const [k, v] of Object.entries(o.per_s || {})) got[k] = (got[k] || 0) + v;
+      for (const o of info.ports.outputs) if (!o.fluid) want[o.item] = (want[o.item] || 0) + +o.rate;
+      pass = Object.entries(want).every(([k, v]) => (got[k] || 0) >= v * 0.99);
+    }
+    box.append(el("span", { class: "arrow" }, "›"), el("span", { class: "st " + (pass === false ? "bad" : "done") }, "in-game check" + (pass === false ? ": short" : pass ? ": pass" : "")));
+  }
+  box.append(el("span", { class: "total" }, (live ? "running " : "took ") + fmtClock(now)));
+  box.hidden = false;
+}
+setInterval(() => { if (lastHistory && !$("#runCtl").hidden) renderStages(); }, 1000);
 async function loadHistory(live) {
   if (!runDir) return;
   const now = Date.now();
@@ -370,9 +428,11 @@ async function loadHistory(live) {
   let text;
   try { text = await (await fetch("/api/file?path=" + encodeURIComponent(runDir + "/factory.txt"))).text(); } catch { text = null; }
   if (asked !== runDir) return;
-  if (!text || text.startsWith("{")) { $("#historyBox").hidden = true; return; }
+  if (!text || text.startsWith("{")) { $("#historyBox").hidden = true; $("#stages").hidden = true; return; }
   $("#historyBox").hidden = false;
-  renderHistory(parseHistory(text));
+  lastHistory = { h: parseHistory(text), at: Date.now(), dir: runDir, live };
+  renderHistory(lastHistory.h);
+  renderStages();
 }
 
 function parseHistory(text) {
@@ -708,7 +768,7 @@ const viewer = (() => {
     const W = cv.clientWidth, H = cv.clientHeight;
     // Room in pixels for the port labels beside the box.
     ctx.font = "12px sans-serif";
-    const pad = { west: 8, east: 8, north: 8, south: 8 };
+    const pad = { west: 8, east: 8, north: 40, south: 8 };   // the stage strip sits along the top
     for (const p of ports) {
       const e = edgeOf(p);
       const w = ctx.measureText(portLabel(p)).width + 30;   // room for "n ×" when grouped

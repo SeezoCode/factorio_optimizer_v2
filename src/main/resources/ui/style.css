@@ -124,3 +124,19 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .hist-wrap { position: relative; }
 td.muted { color: var(--muted); }
 td.acts { white-space: nowrap; }
+
+/* Stage strip over the layout: done, now (with a running counter), still to come. */
+.stages { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; pointer-events: none; font-size: 12px; }
+.stages .st { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 2px 9px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stages .st.done { color: var(--ink); }
+.stages .st.done::before { content: "✓ "; color: var(--ok); }
+.stages .st.now { color: var(--ink); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.stages .st.now::before { content: "● "; color: var(--accent); animation: stpulse 1.6s ease-in-out infinite; }
+.stages .st.bad::before { content: "✗ "; color: var(--bad); }
+.stages .st .t { color: var(--muted); margin-left: 4px; }
+.stages .arrow { color: var(--muted); }
+.stages .total { margin-left: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 2px 9px; font-variant-numeric: tabular-nums; }
+@keyframes stpulse { 50% { opacity: .3; } }
+
+/* The hidden attribute wins over any display set above (the control row and stage strip are flex boxes). */
+[hidden] { display: none !important; }
