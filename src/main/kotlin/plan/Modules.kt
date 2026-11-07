@@ -82,8 +82,41 @@ private fun recipeAllows(r: Recipe, key: String) = when (key) {
 private fun fits(data: RootData, recipe: Recipe, rc: Receiver, module: String) =
     effectKeys(moduleEffects(data, module)).all { it in rc.allowed && recipeAllows(recipe, it) }
 
+/** A machine's base speed effect (Py's farms: -1, so they work only with modules). */
+private fun baseSpeedEffect(data: RootData, machine: String): Double = when (val e = data.entities[machine]) {
+    is AssemblingMachineEntity -> e.effectReceiver.baseEffect["speed"] ?: 0.0
+    is FurnaceEntity -> e.effectReceiver.baseEffect["speed"] ?: 0.0
+    else -> 0.0
+}
+
+/** Whether [machine] works only with modules in its slots (a base speed effect of -100%: Pyanodon's farms). */
+fun needsModules(data: RootData, machine: String): Boolean = baseSpeedEffect(data, machine) <= -0.99
+
+/**
+ * The module a farm is filled with: the mod's default for that farm (Pyanodon's mod-data "farm_buildings", keyed by
+ * the building's name without its tier), when the farm takes it; else the slowest speed module of a category it
+ * takes (the plainest animal or plant). Null when none fits.
+ */
+fun farmModule(data: RootData, machine: String): String? {
+    val e = data.entities[machine] as? AssemblingMachineEntity ?: return null
+    val allowed = e.allowedModuleCategories?.toSet()
+    fun takes(m: String) = data.items[m]?.let { it.type == "module" && (allowed == null || it.category in allowed) && (it.moduleEffects?.speed ?: 0.0) > 0 } == true
+    val farms = data.modData?.get("pyanodons")?.data?.takeIf { it.isJsonObject }?.asJsonObject?.get("farm_buildings")?.takeIf { it.isJsonObject }?.asJsonObject
+    val default = farms?.entrySet()?.filter { (k, _) -> machine.startsWith(k) }?.maxByOrNull { it.key.length }
+        ?.value?.takeIf { it.isJsonObject }?.asJsonObject?.get("default_module")?.takeIf { it.isJsonPrimitive }?.asString
+    if (default != null && takes(default)) return default
+    if (allowed == null) return null
+    return data.items.values.filter { takes(it.name) }.minWithOrNull(compareBy({ it.moduleEffects?.speed ?: 0.0 }, { it.name }))?.name
+}
+
 /** The modules in a machine's own slots: [config.BeaconConfig.machineModules], one the recipe refuses replaced by the fallback. */
 fun machineModules(data: RootData, config: RunConfiguration, recipe: Recipe, machine: String): List<String> {
+    // A farm is full of its animals or plants, whatever the job says about modules.
+    if (needsModules(data, machine)) {
+        val m = farmModule(data, machine) ?: return emptyList()
+        val slots = (data.entities[machine] as? AssemblingMachineEntity)?.moduleInventorySize ?: 0
+        return List(slots) { m }
+    }
     // Quality production: quality modules in every machine that takes them (recyclers their own), whatever else.
     config.qualityProduction?.let { qp ->
         val rc = receiver(data, machine)?.takeIf { it.modules && it.slots > 0 } ?: return emptyList()
@@ -134,7 +167,9 @@ fun moduleSpeed(data: RootData, config: RunConfiguration, recipe: Recipe, machin
         val spec = beaconSpec(data, config) ?: return base * maxOf(0.2, 1 + bonus)
         bonus += spec.effectivity * sqrt(beacons.toDouble()) * sumEffect(data, spec.modules, "speed", recipe, rc, mult)
     }
-    return base * maxOf(0.2, 1 + bonus)
+    // A farm's -100% base speed is made up by its modules (each animal or plant +100%: Py's farm_speed).
+    val baseFx = baseSpeedEffect(data, machine)
+    return if (baseFx == 0.0) base * maxOf(0.2, 1 + bonus) else base * maxOf(1e-4, 1 + baseFx + bonus)
 }
 
 /** Productivity the machine's own modules add. */

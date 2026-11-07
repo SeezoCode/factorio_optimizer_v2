@@ -20,6 +20,7 @@ import plan.beaconSpec
 import plan.inBeaconRange
 import plan.inserterRate
 import plan.machineModules
+import plan.needsModules
 import power.placePoles
 import route.spoilProne
 import search.TrialResult
@@ -474,7 +475,7 @@ object Templates {
         // Beacons: a column of them along each side, outside the machines.
         val need = ms.maxOf { beaconNeed(it.crafts, it.beaconCrafts) }
         val beacon = if (need > 0) beaconSpec(data, config) ?: return no("$need beacon(s) per machine but no beacon") else null
-        val modules = if (config.beacons == null && config.qualityProduction == null) null else data.recipes[m0.recipe]?.let { machineModules(data, config, it, m0.machine) }?.takeIf { it.isNotEmpty() }
+        val modules = if (config.beacons == null && config.qualityProduction == null && !needsModules(data, m0.machine)) null else data.recipes[m0.recipe]?.let { machineModules(data, config, it, m0.machine) }?.takeIf { it.isNotEmpty() }
         val spec = ColumnSpec(m0.machine, m0.recipe, product, inPorts, prodOut.map { it.id }, passOut.map { it.id },
             tier.belt, tier.underground, tier.splitter, tier.maxUndergroundGap, laneCap, need, beacon, modules, pairs, ::portRate,
             plan.ports.associate { it.id to it.item }, fluid, fluidPorts.map { it.id })
