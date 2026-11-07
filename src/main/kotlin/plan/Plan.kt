@@ -117,6 +117,12 @@ data class ProductionPlan(
     val mixed: Map<String, String> = emptyMap(),
     /** The most of its full speed each recipe's machines are planned to run (planner.max_utilization, lower up the chain). */
     val utilization: Map<String, Double> = emptyMap(),
+    /**
+     * The most of its full speed a machine making an intermediate may run to fill a belt, as the validator sees it
+     * (planner.max_utilization): a belt that only producers flat out can fill comes up short in game as soon as
+     * anything upstream of it does. Machines making targets may run flat out.
+     */
+    val headroom: Double = 1.0,
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -394,5 +400,6 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         outputs = lp.output,
         mixed = mixed,
         utilization = crafts.associate { (c, _) -> c.recipe.name to utilOf(c.recipe.name) },
+        headroom = tuning.planner.maxUtilization,
     )
 }

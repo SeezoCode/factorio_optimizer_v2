@@ -59,6 +59,7 @@ fun validationSpec(
     outputs: List<OutputSpec> = emptyList(),
 ): ValidationSpec {
     val recipeInfo = recipeInfoFrom(data)
+    val targets = config.targets.map { it.name }.toSet()
     val machines = placement.machines.associate { pm ->
         val inst = plan.machines[pm.id]
         val info = recipeInfo(inst.recipe)!!
@@ -78,9 +79,9 @@ fun validationSpec(
             products = items.takeIf { it.size > 1 } ?: emptyMap(),
             sinks = plan.terminals.filter { it.machine == pm.id && it.role == Role.SINK }.groupBy { it.item }.mapValues { (_, ts) -> ts.sumOf { it.rate } },
             beaconNeed = beaconNeed(inst.crafts, inst.beaconCrafts),
-            // Up to the speed the plan sized the recipe for (planner.max_utilization), not flat out: a belt that only
-            // its producers at full speed can fill comes up short in game as soon as anything upstream of it does.
-            fullRates = (plan.utilization[inst.recipe] ?: 1.0).let { u -> max(inst.crafts, u * inst.maxCrafts) }.let { top ->
+            // Intermediates up to [ProductionPlan.headroom] of full speed, targets flat out (outputs to the edge are
+            // interchangeable: a port fed by one machine fewer is made up by the other port).
+            fullRates = (if (inst.itemProducts.keys.any { it in targets }) 1.0 else plan.headroom).let { u -> max(inst.crafts, u * inst.maxCrafts) }.let { top ->
                 if (inst.crafts > 1e-12 && top > inst.crafts + 1e-12) items.mapValues { it.value * top / inst.crafts } else emptyMap() },
         )
     }
