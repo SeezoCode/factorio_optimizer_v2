@@ -31,7 +31,9 @@ job file next to it, and most have a screenshot of the layout built in game. All
 Compared with my most compact hand-built layouts, the generated ones take 110–120% of their area. More compute
 closes only a little of that; the rest is the algorithm. Hand builds run one belt down a whole column of
 machines, put two inputs on one belt, and feed everything from a bus, while the router still treats each item
-as separate chains between scattered machines.
+as separate chains between scattered machines. [docs/COMMUNITY_BENCHMARK.md](docs/COMMUNITY_BENCHMARK.md) measures
+the same gap against 15 published community designs and lists what to copy; `tools/blueprints/analyze.py` prints
+any blueprint's footprint, parts, rate and layout patterns.
 
 | Example | Machines | Box | Search ran | Best layout found after | J*b |
 |---------|---------:|----:|-----------:|------------------------:|-----|
