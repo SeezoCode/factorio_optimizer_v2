@@ -263,31 +263,38 @@ class Server(private val root: File, private val port: Int) {
 
     private val gameCache = ConcurrentHashMap<String, JsonElement>()
 
+    /** Entity sizes of one game data file: its entities, then belts, inserters, poles and the like (data.logistics), 1 x 1 unless it says otherwise. */
+    private fun entitySizes(d: JsonObject): Map<String, JsonObject> {
+        val out = LinkedHashMap<String, JsonObject>()
+        fun int(o: JsonObject, vararg keys: String) = keys.firstNotNullOfOrNull { (o[it] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() }
+        d["entities"]?.jsonObject?.forEach { (name, e) ->
+            val o = e as? JsonObject ?: return@forEach
+            out[name] = buildJsonObject {
+                put("w", int(o, "width", "tile_width") ?: 1); put("h", int(o, "height", "tile_height") ?: 1); o["type"]?.let { put("type", it) }
+            }
+        }
+        (d["logistics"] as? JsonObject)?.forEach { (_, group) ->
+            (group as? JsonArray)?.forEach { e -> (e as? JsonObject)?.get("name")?.jsonPrimitive?.content?.let { n ->
+                if (n !in out) out[n] = buildJsonObject { put("w", int(e, "width") ?: if (n.endsWith("splitter")) 2 else 1); put("h", int(e, "height") ?: 1) }
+            } }
+        }
+        return out
+    }
+
     /** Entity sizes, recipes and items of the game data (built-in recipes.json, or a job's "data" file). */
     private fun game(data: String?): JsonElement = gameCache.getOrPut(data ?: "") {
         val text = data?.let { inside(it)?.takeIf { f -> f.isFile }?.readText() }
             ?: javaClass.classLoader.getResource("recipes.json")?.readText()
             ?: File(root, "src/main/resources/recipes.json").readText()
         val d = Json.parseToJsonElement(text).jsonObject
+        val sizes = LinkedHashMap(entitySizes(d))
+        // Without a data file, modded entities from the project's other game data (data/*.json, written by the exporter)
+        // too, so a run of a modded job draws its machines at their size; the built-in data wins where both have one.
+        if (data == null) File(root, "data").listFiles { f -> f.extension == "json" }?.sortedBy { it.name }?.forEach { f ->
+            runCatching { entitySizes(Json.parseToJsonElement(f.readText()).jsonObject) }.getOrNull()?.forEach { (n, s) -> sizes.putIfAbsent(n, s) }
+        }
         buildJsonObject {
-            putJsonObject("entities") {
-                d["entities"]?.jsonObject?.forEach { (name, e) ->
-                    val o = e as? JsonObject ?: return@forEach
-                    val w = (o["width"] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: (o["tile_width"] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: 1
-                    val h = (o["height"] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: (o["tile_height"] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: 1
-                    putJsonObject(name) { put("w", w); put("h", h); o["type"]?.let { put("type", it) } }
-                }
-                // Belts, inserters, poles and the like (data.logistics): 1 x 1 unless the game says otherwise.
-                (d["logistics"] as? JsonObject)?.forEach { (_, group) ->
-                    (group as? JsonArray)?.forEach { e -> (e as? JsonObject)?.get("name")?.jsonPrimitive?.content?.let { n ->
-                        if (d["entities"]?.jsonObject?.containsKey(n) != true) putJsonObject(n) {
-                            val w = (e["width"] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: if (n.endsWith("splitter")) 2 else 1
-                            val h = (e["height"] as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt() ?: 1
-                            put("w", w); put("h", h)
-                        }
-                    } }
-                }
-            }
+            putJsonObject("entities") { sizes.forEach { (n, s) -> put(n, s) } }
             putJsonArray("recipes") { d["recipes"]?.jsonObject?.keys?.sorted()?.forEach { add(JsonPrimitive(it)) } }
             putJsonArray("items") { d["items"]?.jsonObject?.keys?.sorted()?.forEach { add(JsonPrimitive(it)) } }
             putJsonArray("fluids") { d["fluids"]?.jsonObject?.keys?.sorted()?.forEach { add(JsonPrimitive(it)) } }
