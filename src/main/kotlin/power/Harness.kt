@@ -163,15 +163,32 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
         Dir.W.takeIf { t.x <= 0 }, Dir.E.takeIf { t.x >= w - 1 }, Dir.N.takeIf { t.y <= 0 }, Dir.S.takeIf { t.y >= h - 1 },
     ).filter { !inBox(t + it) }
 
+    /** An infinity pipe of [fluid] could go on [t]: free, and touching no pipe of another fluid (but [except]). */
+    fun pipeFits(t: Tile, fluid: String, except: Tile): Boolean =
+        free(t) && Dir.entries.all { n -> (t + n == except) || byTile[t + n]?.let { it.kind !in PIPE_KINDS || it.fluid == fluid } ?: true } &&
+            out.none { it.kind in PIPE_KINDS && it.fluid != fluid && it.tile.manhattan(t) == 1 && (it.kind != Kind.PIPE_UG || it.tile + it.dir == t) }
     // An infinity pipe next to a fluid port, on a side the port's pipe connects to, touching no pipe of another fluid.
+    // Where it would (two fluid ports side by side), a pipe-to-ground pair carries the feed out first: it touches
+    // nothing on its way, and the infinity pipe at its far end is clear of the neighbour's feed.
     fun fluidFeed(tile: Tile, fluid: String, drain: Boolean): Boolean {
-        val d = fluidSides(byTile[tile], outward(tile)).firstOrNull { d ->
-            val t = tile + d
-            free(t) && Dir.entries.all { n -> (t + n == tile) || byTile[t + n]?.let { it.kind !in PIPE_KINDS || it.fluid == fluid } ?: true } &&
-                out.none { it.kind == Kind.INFINITY_PIPE && it.fluid != fluid && it.tile.manhattan(t) == 1 }
-        } ?: return false
-        (tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = fluid, drain = drain)) }
-        return true
+        val sides = fluidSides(byTile[tile], outward(tile))
+        sides.firstOrNull { d -> pipeFits(tile + d, fluid, tile) }?.let { d ->
+            (tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = fluid, drain = drain)) }
+            return true
+        }
+        for (d in sides) {
+            val near = tile + d
+            if (!free(near)) continue
+            for (k in 2..GameConstants.PIPE_TO_GROUND_GAP + 1) {
+                val far = tile.step(d, k); val end = tile.step(d, k + 1)
+                if (!free(far) || !pipeFits(end, fluid, far)) continue
+                take(PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, near.x, near.y, d.opposite, fluid = fluid))
+                take(PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, far.x, far.y, d, fluid = fluid))
+                take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, end.x, end.y, fluid = fluid, drain = drain))
+                return true
+            }
+        }
+        return false
     }
     sources.filter { it.fluid }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
     outputs.filter { it.fluid }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }

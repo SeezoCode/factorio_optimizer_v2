@@ -84,4 +84,22 @@ class TestCopyTest {
         val added = poles.single { it.value !== pole }.index
         assertTrue(tc.layout.wires.any { (a, b) -> setOf(a, b) == setOf(1, added) }, "${tc.layout.wires}")
     }
+
+    @Test
+    fun `two fluid ports side by side are both fed, one through a pipe-to-ground pair`() {
+        // As in the 2/s six-science factory: crude oil and water enter on neighbouring tiles of the west edge. Two
+        // infinity pipes beside each other would join; the second feed runs underground first.
+        val oil = PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, 0, 4, Dir.W, fluid = "crude-oil")
+        val water = PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, 0, 5, Dir.W, fluid = "water")
+        val tc = power.testCopy(Layout(9, 9, listOf(oil, water)),
+            listOf(SourceSpec(oil.tile, "crude-oil", 100.0, fluid = true), SourceSpec(water.tile, "water", 100.0, fluid = true)), emptyList(), config)
+        assertTrue(tc.warnings.isEmpty(), "${tc.warnings}")
+        val feeds = tc.layout.entities.filter { it.kind == Kind.INFINITY_PIPE }
+        assertEquals(2, feeds.size)
+        // No two pipes of different fluids touch where they connect: infinity pipes never side by side.
+        assertTrue(feeds[0].tile.manhattan(feeds[1].tile) > 1, "${feeds.map { it.tile }}")
+        val pair = tc.layout.entities.filter { it.kind == Kind.PIPE_UG && it.x < 0 }
+        assertEquals(2, pair.size)
+        assertEquals(setOf(Dir.E, Dir.W), pair.map { it.dir }.toSet())
+    }
 }

@@ -1,6 +1,7 @@
 import config.RunConfiguration
 import config.Tuning
 import data.loadRootData
+import emit.toBlueprintString
 import emit.toLayout
 import plan.buildPlan
 import java.time.LocalDateTime
@@ -26,6 +27,7 @@ import java.time.format.DateTimeFormatter
  *                                 `echo stop > <out>/control`) instead of until the time budget
  *   --plain                       factory of blocks: line-by-line output instead of the live view (the default
  *                                 when not in a terminal); <out>/status.json and <out>/control work either way
+ *   --test-copy=<dir>             write <dir>'s test copy (test_output_string.txt) again with this version's harness
  *   --ui [--port=<n>]             the browser UI at http://localhost:8765 (see ui/Server.kt): edit jobs, start and
  *                                 watch runs, look at layouts and blocks
  */
@@ -34,10 +36,12 @@ fun main(args: Array<String>) {
         val eq = it.indexOf('=')
         if (eq < 0) it.removePrefix("--") to "true" else it.substring(2, eq) to it.substring(eq + 1)
     }
-    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact", "plain", "until-stopped", "ui", "port")
+    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact", "plain", "until-stopped", "ui", "port", "test-copy")
     (flags.keys - known).takeIf { it.isNotEmpty() }?.let { error("Unknown flags: $it (known: $known)") }
 
     flags["render"]?.let { dir -> renderOutput(java.io.File(dir)); return }
+
+    flags["test-copy"]?.let { dir -> writeTestCopy(java.io.File(dir), flags["config"]); return }
 
     if (flags.containsKey("ui")) { ui.Server(java.io.File("."), flags["port"]?.toInt() ?: 8765).start(); return }
 
@@ -113,6 +117,34 @@ private fun fail(msg: String): Nothing {
 }
 
 /** Redraws [dir]/best.png from the blueprint and ports.json a search or factory run left there, ports marked. */
+/**
+ * Writes <dir>/test_output_string.txt and test_feeds.txt again from the run's best layout and ports.json, with this
+ * version's harness (the job from [config], else <dir>/resume/job.json, else the defaults).
+ */
+private fun writeTestCopy(dir: java.io.File, config: String?) {
+    val json = kotlinx.serialization.json.Json
+    val ports = json.parseToJsonElement(java.io.File(dir, "ports.json").readText()) as kotlinx.serialization.json.JsonObject
+    fun str(o: kotlinx.serialization.json.JsonObject, k: String) = (o[k] as? kotlinx.serialization.json.JsonPrimitive)?.content
+    val box = ports.getValue("box") as kotlinx.serialization.json.JsonObject
+    val w = str(box, "w")!!.toInt(); val h = str(box, "h")!!.toInt()
+    val job = config?.let { RunConfiguration.load(it) } ?: java.io.File(dir, "resume/job.json").takeIf { it.isFile }?.let { RunConfiguration.load(it.path) }
+        ?: RunConfiguration.parse("""{"targets": []}""")
+    loadRootData(job.data ?: "recipes.json")
+    val layout = emit.decodeBlueprint(java.io.File(dir, "best_output_string.txt").readText().trim()).toLayout(w, h)
+    fun list(key: String) = (ports[key] as? kotlinx.serialization.json.JsonArray ?: kotlinx.serialization.json.JsonArray(emptyList())).map { it as kotlinx.serialization.json.JsonObject }
+    val sources = list("inputs").map { o ->
+        val lane = when (str(o, "lane")) { "left" -> 0; "right" -> 1; else -> -1 }
+        validate.SourceSpec(geom.Tile(str(o, "x")!!.toInt(), str(o, "y")!!.toInt()), str(o, "item")!!, str(o, "rate")!!.toDouble(), str(o, "fluid") == "true", lane)
+    }
+    val outputs = list("outputs").map { o ->
+        validate.OutputSpec(geom.Tile(str(o, "x")!!.toInt(), str(o, "y")!!.toInt()), str(o, "item")!!, str(o, "rate")!!.toDouble(), str(o, "fluid") == "true")
+    }
+    val tc = power.testCopy(layout, sources, outputs, job)
+    java.io.File(dir, "test_output_string.txt").writeText(tc.layout.toBlueprintString(job.buildQuality()))
+    java.io.File(dir, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
+    println("wrote ${java.io.File(dir, "test_output_string.txt")}: " + (tc.warnings.ifEmpty { listOf("every port fed") }).joinToString("; "))
+}
+
 private fun renderOutput(dir: java.io.File) {
     val ports = kotlinx.serialization.json.Json.parseToJsonElement(java.io.File(dir, "ports.json").readText()).let { it as kotlinx.serialization.json.JsonObject }
     fun num(o: kotlinx.serialization.json.JsonObject, k: String) = (o.getValue(k) as kotlinx.serialization.json.JsonPrimitive).content
