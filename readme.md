@@ -223,7 +223,7 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 ### The browser UI
 
 ```sh
-./optimize --ui            # then open http://localhost:8765 (--port=<n> for another port)
+./optimize --ui            # then open the address it prints: http://localhost:8765, or the next free port (--port=<n> to start elsewhere)
 ```
 
 - **Jobs**: every job file in the repository, edited in a form built from the job and tuning types themselves:
