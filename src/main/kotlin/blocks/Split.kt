@@ -428,6 +428,7 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     val plan = ProductionPlan(machines, ports, terminals, nets, inputs, inputs.filterKeys { k -> mine.any { it.item == k && it.fluid } },
         emptyMap(), full.beltTier, emptyList(), outputs, beltStack = full.beltStack,
         // Leftovers sharing a mixed belt: the block hands its share on to the factory's edge like any item.
-        mixed = full.mixed.filterKeys { item -> machines.any { item in it.itemProducts } })
+        mixed = full.mixed.filterKeys { item -> machines.any { item in it.itemProducts } },
+        utilization = full.utilization.filterKeys { r -> machines.any { it.recipe == r } })
     return BlockPlan(b, plan, ids, linkOfPort, linksOfPort)
 }

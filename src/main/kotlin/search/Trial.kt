@@ -44,6 +44,7 @@ import validate.recipeInfoFrom
 import validate.validate
 import java.util.SplittableRandom
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /** What the validator should expect of this plan on this placement. */
@@ -77,7 +78,10 @@ fun validationSpec(
             products = items.takeIf { it.size > 1 } ?: emptyMap(),
             sinks = plan.terminals.filter { it.machine == pm.id && it.role == Role.SINK }.groupBy { it.item }.mapValues { (_, ts) -> ts.sumOf { it.rate } },
             beaconNeed = beaconNeed(inst.crafts, inst.beaconCrafts),
-            fullRates = if (inst.crafts > 1e-12 && inst.maxCrafts > inst.crafts) items.mapValues { it.value * inst.maxCrafts / inst.crafts } else emptyMap(),
+            // Up to the speed the plan sized the recipe for (planner.max_utilization), not flat out: a belt that only
+            // its producers at full speed can fill comes up short in game as soon as anything upstream of it does.
+            fullRates = (plan.utilization[inst.recipe] ?: 1.0).let { u -> max(inst.crafts, u * inst.maxCrafts) }.let { top ->
+                if (inst.crafts > 1e-12 && top > inst.crafts + 1e-12) items.mapValues { it.value * top / inst.crafts } else emptyMap() },
         )
     }
     val sourceOutside = (sources.map { it.tile } + outputs.map { it.tile }).filter { it.x !in 0 until placement.w || it.y !in 0 until placement.h }
