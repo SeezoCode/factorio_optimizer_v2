@@ -165,6 +165,8 @@ object GameConstants {
     /** Aquilo: heat pipes warm whatever shares an edge with them (see power/Heat.kt). */
     const val HEAT_PIPE = "heat-pipe"
     const val INFINITY_PIPE = "infinity-pipe"
+    /** Pyanodon's overflow valve: passes fluid on only while its input side is over 80% full (overflow outputs). */
+    const val OVERFLOW_VALVE = "py-overflow-valve"
 
     /**
      * 1x2 loaders by belt tier (editor-only in 2.0; the test copy uses them to feed and empty ports at full belt
@@ -236,6 +238,8 @@ object GameConstants {
      */
     const val BEACON_MODULE_INVENTORY = 1
     const val MACHINE_MODULE_INVENTORY = 4
+    /** A crafting machine's input slots (defines.inventory.crafter_input), one per item ingredient in recipe order. */
+    const val MACHINE_INPUT_INVENTORY = 2
     const val STORAGE_TANK = "storage-tank"
     /** Fluid a storage tank holds; it reads out its contents on a circuit wire. [P] VERIFY (v19) */
     const val STORAGE_TANK_CAPACITY = 25000.0

@@ -195,6 +195,8 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
                 g.drawOval(sx(e.x + 0.15), sy(e.y + 0.15), ((e.w - 0.3) * px).toInt(), ((e.h - 0.3) * px).toInt())
             }
             Kind.BELT -> arrow(cx, cy, e.dir, 0.8, netColor(e), (px / 6f).coerceAtLeast(2f))
+            // An overflow valve: an arrow the way it lets fluid out.
+            Kind.VALVE -> arrow(cx, cy, e.dir.opposite, 0.6, Color(200, 120, 40), (px / 6f).coerceAtLeast(2f))
             Kind.UG_IN, Kind.UG_OUT -> {
                 g.color = netColor(e)
                 g.fillRect(sx(e.x + 0.2), sy(e.y + 0.2), (px * 0.6).toInt(), (px * 0.6).toInt())

@@ -26,6 +26,59 @@ internal fun fluidSides(port: PlacedEntity?, outward: List<Dir>): List<Dir> =
     if (port?.kind == Kind.PIPE_UG) outward.filter { it == port.dir } else outward
 
 /**
+ * The overflow valve of a 0/s fluid output [o] (see plan.overflowItems): on the tile just outside the box beside its
+ * port, taking from the port's pipe and letting out away from the box, where it and the tile after it are [free].
+ */
+internal fun overflowValve(o: OutputSpec, byTile: Map<Tile, PlacedEntity>, w: Int, h: Int, free: (Tile) -> Boolean): PlacedEntity? {
+    fun inBox(t: Tile) = t.x in 0 until w && t.y in 0 until h
+    val t = o.tile
+    val outward = listOfNotNull(Dir.W.takeIf { t.x <= 0 }, Dir.E.takeIf { t.x >= w - 1 }, Dir.N.takeIf { t.y <= 0 }, Dir.S.takeIf { t.y >= h - 1 })
+        .filter { !inBox(t + it) }
+    val d = fluidSides(byTile[t], outward).firstOrNull { free(t + it) && free(t.step(it, 2)) } ?: return null
+    val at = t + d
+    return PlacedEntity(GameConstants.OVERFLOW_VALVE, Kind.VALVE, at.x, at.y, d.opposite, fluid = o.item)
+}
+
+/** Most a by-product fluid output may carry to get an overflow valve (Py's passes 200/s). */
+const val VALVE_RATE = 150.0
+
+/**
+ * [layout] with production loop [seeds] (plan.loopSeeds) asked for in every machine taking one: a blueprint item
+ * request into its input slot of a few crafts' worth (at most a stack), which construction bots bring when it is
+ * built (the in-game check fills requests itself). Fluid seeds cannot come by bot: they stay for the player.
+ */
+fun withSeedRequests(layout: geom.Layout, seeds: List<String>, data: data.RootData): geom.Layout {
+    val items = seeds.filter { it in data.items }.toSet()
+    if (items.isEmpty()) return layout
+    return layout.copy(entities = layout.entities.map { e ->
+        if (e.kind != Kind.MACHINE || e.recipe == null) return@map e
+        val r = data.recipes[e.recipe] ?: data.recipes[gameNameOf(e.recipe)] ?: return@map e
+        val solid = r.ingredients.filter { !it.isFluid }
+        val asks = solid.withIndex().filter { it.value.name in items }.map { (i, ing) ->
+            val stack = data.items[ing.name]?.stackSize ?: 50
+            Triple(ing.name, i, minOf(stack, kotlin.math.ceil(ing.amount * 5).toInt()))
+        }
+        if (asks.isEmpty()) e else e.copy(seeds = asks)
+    })
+}
+
+/**
+ * [layout] with an overflow valve at each 0/s fluid output (plan.overflowItems), and, with [byproducts], at each fluid
+ * leaving as a by-product (not one of [targets]; up to [VALVE_RATE]): a plain drain there would empty the pipe the
+ * block's own machines take that fluid from (Py's aromatics left at 160/s while polybutadiene had none). For the
+ * blueprint to build.
+ */
+fun withOverflowValves(layout: geom.Layout, outputs: List<OutputSpec>, byproducts: Boolean = false, targets: Set<String> = emptySet()): geom.Layout {
+    val overflows = outputs.filter { it.fluid && (it.rate <= 1e-12 || byproducts && it.item !in targets && it.rate <= VALVE_RATE) }
+    if (overflows.isEmpty()) return layout
+    val taken = HashSet<Tile>(); val byTile = HashMap<Tile, PlacedEntity>()
+    layout.entities.forEach { e -> e.rect.tiles().forEach { taken += it; byTile[it] = e } }
+    fun inBox(t: Tile) = t.x in 0 until layout.w && t.y in 0 until layout.h
+    val valves = overflows.mapNotNull { o -> overflowValve(o, byTile, layout.w, layout.h) { !inBox(it) && it !in taken }?.also { taken += it.tile } }
+    return layout.copy(entities = layout.entities + valves)
+}
+
+/**
  * Sides of an item input tile holding [port] a feed can come from, best first, out of the [outward] ones: from
  * behind first (a corner belt fed from its side gets one lane only), then from the sides for a plain belt, never
  * head-on. Undergrounds and splitters only take items from behind.
@@ -197,7 +250,16 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     // machines could not put the catalyst back. The in-game check fills those machines once instead.
     sources.filter { it.fluid && it.rate <= 1e-12 }.forEach { s -> warnings += "${s.item} at ${s.tile} only primes a catalyst loop: not fed" }
     sources.filter { it.fluid && it.rate > 1e-12 }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
-    outputs.filter { it.fluid }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
+    // A fluid output with an overflow valve (see withOverflowValves) is drained behind it; an overflow without one
+    // (a 0/s output, see plan.overflowItems) gets one; any other output is drained at its port.
+    fun valveAt(o: OutputSpec) = (layout.entities + out).firstOrNull { it.kind == Kind.VALVE && it.tile.manhattan(o.tile) == 1 }
+    outputs.filter { it.fluid && it.rate > 1e-12 && valveAt(it) == null }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
+    outputs.filter { it.fluid && (it.rate <= 1e-12 || valveAt(it) != null) }.forEach { o ->
+        val valve = valveAt(o) ?: overflowValve(o, byTile, w, h) { free(it) }?.also { take(it) }
+        val end = valve?.let { it.tile + it.dir.opposite }
+        if (valve == null || end == null || !free(end)) { warnings += "no room for the overflow of ${o.item} at ${o.tile}"; return@forEach }
+        take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, end.x, end.y, fluid = o.item, drain = true))
+    }
     // A loader on the two tiles out from the port, the chest on the third.
     fun loaderAt(port: Tile, d: Dir, into: Boolean): PlacedEntity? {
         val a = port + d; val b = port.step(d, 2); val c = port.step(d, 3)
@@ -252,3 +314,8 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     }
     return TestCopy(layout.copy(entities = layout.entities + out, wires = wires, label = layout.label + " (test feeds)"), warnings)
 }
+
+private fun gameNameOf(recipe: String): String = data.gameName(recipe.substringBefore("@"))
+
+/** Whether the game data has an overflow valve (Pyanodon's), for overflow outputs and by-product fluid outputs. */
+fun hasOverflowValve(d: data.RootData): Boolean = d.items.containsKey(GameConstants.OVERFLOW_VALVE)

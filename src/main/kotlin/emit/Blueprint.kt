@@ -151,9 +151,21 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
             },
             // A blacklist filter: takes everything but the listed items. VERIFY (v24)
             filterMode = if (e.kind == Kind.INSERTER && e.item == null && e.blacklist != null) "blacklist" else null,
-            items = e.modules?.takeIf { it.isNotEmpty() }?.let { ms ->
+            items = (e.modules.orEmpty().isNotEmpty() || e.seeds.orEmpty().isNotEmpty()).takeIf { it }?.let {
+                val ms = e.modules.orEmpty()
                 val inv = if (e.kind == Kind.BEACON) GameConstants.BEACON_MODULE_INVENTORY else GameConstants.MACHINE_MODULE_INVENTORY
                 buildJsonArray {
+                    // Seeds into the machine's input slots, for construction bots to bring once (plan.loopSeeds).
+                    e.seeds.orEmpty().forEach { (item, stack, count) ->
+                        add(buildJsonObject {
+                            put("id", buildJsonObject { put("name", item) })
+                            put("items", buildJsonObject {
+                                put("in_inventory", buildJsonArray {
+                                    add(buildJsonObject { put("inventory", GameConstants.MACHINE_INPUT_INVENTORY); put("stack", stack); put("count", count) })
+                                })
+                            })
+                        })
+                    }
                     ms.withIndex().groupBy({ it.value }, { it.index }).forEach { (module, stacks) ->
                         add(buildJsonObject {
                             put("id", buildJsonObject { put("name", module); if (q.modules != "normal") put("quality", q.modules) })

@@ -360,6 +360,14 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val k = name.removePrefix("mixed-").toInt() - 1
         ports += Port(ports.size, name, listOf(ConfigSource(name, edge = config.mixedOutputs[k].edge)), output = true)
     }
+    // Overflows: a 0/s output for by-products of production loops (see [overflowItems]).
+    val overflow = if (!config.byproductOverflow) emptySet()
+        else overflowItems(machines, lp.supply.keys, outputs.keys + mixed.keys).filter { if (isFluid(it)) data.items.containsKey(GameConstants.OVERFLOW_VALVE) else portMode }.toSet()
+    overflow.sorted().forEach { item ->
+        val specs = config.outputs.filter { it.name == item }
+        ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item), output = true)
+    }
+    if (overflow.isNotEmpty()) warn("overflow outputs (0/s; what their users do not take leaves${if (overflow.any { isFluid(it) }) ", fluids through an overflow valve" else ""}): ${overflow.sorted().joinToString(", ")}")
     // Catalysts nobody else makes or brings: a 0/s input to fill the loop once (see [Port.priming]).
     run {
         val made = machines.flatMap { it.products.keys }.toSet()
@@ -409,7 +417,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         ports.firstOrNull { it.item == item && !it.output }?.let { port ->
             netTerminals += addTerminal(Role.SOURCE, item, lp.supply[item] ?: 0.0, 1, port = port.id)
         }
-        if (outPort != null && outTotal > 1e-9) netTerminals += addTerminal(Role.OUTPUT, item, outTotal, 1, port = outPort.id)
+        if (outPort != null && (outTotal > 1e-9 || item in overflow)) netTerminals += addTerminal(Role.OUTPUT, item, outTotal, 1, port = outPort.id)
         consumers.forEach { m ->
             val need = m.demand[item] ?: m.fluidDemand.getValue(item)
             netTerminals += addTerminal(Role.CONSUMER, item, need, if (fluid) 1 else inserterCount(need, pickRate), machine = m.id)
@@ -469,36 +477,8 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
  * until no loop is left: a few of each of those, put in once, start every loop.
  */
 fun loopSeeds(machines: List<MachineInstance>, supplied: Set<String>): List<String> {
-    val made = machines.flatMap { m -> m.products.filterValues { it > 1e-12 }.keys }.toSet() - supplied
-    val next = HashMap<String, MutableSet<String>>()
-    machines.forEach { m ->
-        val ins = (m.demand.keys + m.fluidDemand.keys).filter { it in made }
-        val outs = m.products.filterValues { it > 1e-12 }.keys.filter { it in made }
-        ins.forEach { i -> outs.forEach { o -> if (o != i) next.getOrPut(i) { HashSet() } += o } }
-    }
-    /** Strongly connected parts of the graph over [nodes] with more than one item (Tarjan). */
-    fun loops(nodes: Set<String>): List<Set<String>> {
-        var counter = 0
-        val index = HashMap<String, Int>(); val low = HashMap<String, Int>()
-        val stack = ArrayDeque<String>(); val on = HashSet<String>()
-        val out = ArrayList<Set<String>>()
-        fun visit(v: String) {
-            index[v] = counter; low[v] = counter; counter++
-            stack.addLast(v); on += v
-            for (w in next[v].orEmpty()) {
-                if (w !in nodes) continue
-                if (w !in index) { visit(w); low[v] = minOf(low.getValue(v), low.getValue(w)) }
-                else if (w in on) low[v] = minOf(low.getValue(v), index.getValue(w))
-            }
-            if (low[v] == index[v]) {
-                val part = HashSet<String>()
-                while (true) { val w = stack.removeLast(); on -= w; part += w; if (w == v) break }
-                if (part.size > 1) out += part
-            }
-        }
-        nodes.sorted().forEach { if (it !in index) visit(it) }
-        return out
-    }
+    val (made, next) = loopGraph(machines, supplied)
+    fun loops(nodes: Set<String>) = stronglyConnected(nodes, next)
     val seeds = sortedSetOf<String>()
     val todo = ArrayDeque(loops(made))
     while (todo.isNotEmpty()) {
@@ -512,4 +492,68 @@ fun loopSeeds(machines: List<MachineInstance>, supplied: Set<String>): List<Stri
         todo += loops(part - seed)
     }
     return seeds.toList()
+}
+
+/** Items made inside (less [supplied]) and the graph ingredient -> product over them (a recipe's own catalysts left out). */
+private fun loopGraph(machines: List<MachineInstance>, supplied: Set<String>): Pair<Set<String>, Map<String, Set<String>>> {
+    val made = machines.flatMap { m -> m.products.filterValues { it > 1e-12 }.keys }.toSet() - supplied
+    val next = HashMap<String, MutableSet<String>>()
+    machines.forEach { m ->
+        val ins = (m.demand.keys + m.fluidDemand.keys).filter { it in made }
+        val outs = m.products.filterValues { it > 1e-12 }.keys.filter { it in made }
+        ins.forEach { i -> outs.forEach { o -> if (o != i) next.getOrPut(i) { HashSet() } += o } }
+    }
+    return made to next
+}
+
+/**
+ * Overflows. A machine with several products stops when any of them backs up. Where one of them goes into a
+ * production loop (or comes out of one) its users may not take it for a long while: the loop has not started yet, or
+ * runs slower for a time. Pyanodon's tar distillation gives carbon dioxide besides the aromatics a loop needs; the CO2's
+ * users were in loops not yet running, so its pipe filled, tar distillation stopped, and so did every loop. Such an
+ * item also gets an output of 0/s that takes only what its users leave (a belt past them that ends at the port; for a
+ * fluid, an overflow valve at the port, which lets fluid out only above 80% full). Items a machine also takes back (its
+ * catalysts) and items already leaving are left out.
+ */
+fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leaving: Set<String>): Set<String> {
+    val (made, next) = loopGraph(machines, supplied)
+    val inLoops = stronglyConnected(made, next).flatten().toSet()
+    if (inLoops.isEmpty()) return emptySet()
+    fun takes(m: MachineInstance) = m.demand.keys + m.fluidDemand.keys
+    fun inLoop(m: MachineInstance) = m.products.keys.any { it in inLoops } && takes(m).any { it in inLoops }
+    val out = sortedSetOf<String>()
+    machines.forEach { m ->
+        val products = m.products.filterValues { it > 1e-12 }.keys
+        if (products.size < 2) return@forEach
+        products.forEach { p ->
+            if (p in takes(m) || p in leaving || p in supplied) return@forEach
+            val users = machines.filter { (it.demand[p] ?: it.fluidDemand[p] ?: 0.0) > 1e-12 }
+            if (users.isNotEmpty() && (p in inLoops || inLoop(m) || users.any { inLoop(it) })) out += p
+        }
+    }
+    return out
+}
+
+/** Strongly connected parts of the graph [next] over [nodes] with more than one item (Tarjan). */
+private fun stronglyConnected(nodes: Set<String>, next: Map<String, Set<String>>): List<Set<String>> {
+    var counter = 0
+    val index = HashMap<String, Int>(); val low = HashMap<String, Int>()
+    val stack = ArrayDeque<String>(); val on = HashSet<String>()
+    val out = ArrayList<Set<String>>()
+    fun visit(v: String) {
+        index[v] = counter; low[v] = counter; counter++
+        stack.addLast(v); on += v
+        for (w in next[v].orEmpty()) {
+            if (w !in nodes) continue
+            if (w !in index) { visit(w); low[v] = minOf(low.getValue(v), low.getValue(w)) }
+            else if (w in on) low[v] = minOf(low.getValue(v), index.getValue(w))
+        }
+        if (low[v] == index[v]) {
+            val part = HashSet<String>()
+            while (true) { val w = stack.removeLast(); on -= w; part += w; if (w == v) break }
+            if (part.size > 1) out += part
+        }
+    }
+    nodes.sorted().forEach { if (it !in index) visit(it) }
+    return out
 }

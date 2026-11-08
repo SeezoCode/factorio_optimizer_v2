@@ -204,7 +204,8 @@ fun effectiveTerminals(plan: ProductionPlan, links: List<DiLink>, config: RunCon
             else -> 0.0
         }
         val rate = t.rate - di
-        if (rate < 1e-6) return@forEach
+        // An overflow (a 0/s output, plan.overflowItems) stays: it takes what the consumers leave.
+        if (rate < 1e-6 && !(t.role == Role.OUTPUT && t.port != null)) return@forEach
         val k = when (t.role) {
             Role.CONSUMER -> inserterCount(rate, pick)
             Role.PRODUCER, Role.SINK -> inserterCount(rate, drop)

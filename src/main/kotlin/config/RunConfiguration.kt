@@ -82,6 +82,12 @@ data class RunConfiguration(
      * consumers with raw supply backs up and stops the machine making it; "use" lets the planner use it.
      */
     @SerialName("raw_byproducts") val rawByproducts: String = "leave",
+    /**
+     * By-products going into or coming out of production loops (Py's farms) also get a 0/s output that takes what
+     * their users leave (fluids through an overflow valve, when the data has one: Py's py-overflow-valve), so their
+     * machine does not stop while a loop is not running yet. Only plans with loops; items only in port mode.
+     */
+    @SerialName("byproduct_overflow") val byproductOverflow: Boolean = true,
     /** Fuel for burner machines (stone and steel furnaces). */
     val fuel: String = "coal",
     /** Fuel fluid for machines that burn one (Py's glassworks); default: the raw fluid that holds the most energy. */
@@ -592,6 +598,8 @@ data class SearchConfig(
     val seed: Long = 12345,
     /** Print a line for every finished trial (how close it came and where), not just one per box size. */
     val verbose: Boolean = true,
+    /** Stop after this many valid layouts (a block's improvements, or a factory's saves) instead of using the whole budget; 0: the budget. */
+    @SerialName("stop_after") val stopAfter: Int = 0,
 )
 
 @Serializable

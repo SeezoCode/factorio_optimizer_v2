@@ -74,4 +74,19 @@ class LoopSeedsTest {
         // A recipe's own catalyst is not a loop here (it gets a priming input).
         assertEquals(emptyList(), plan.loopSeeds(listOf(m(0, listOf("methanol", "ammonia"), listOf("methanol", "formamide"))), emptySet()))
     }
+
+    @Test
+    fun `a by-product feeding a production loop gets an overflow, one off any loop does not`() {
+        val ms = listOf(
+            m(0, listOf("tar"), listOf("aromatics", "co2")),          // tar distillation
+            m(1, listOf("co2", "fertilizer"), listOf("moss")),         // co2 goes into the loop
+            m(2, listOf("moss"), listOf("fertilizer", "substrate")),   // the loop: fertilizer -> moss -> fertilizer
+            m(3, listOf("aromatics", "substrate"), listOf("science")),
+            m(4, listOf("ore"), listOf("plate", "slag")),              // off any loop
+            m(5, listOf("slag"), listOf("brick")),
+        )
+        assertEquals(setOf("co2", "fertilizer", "substrate"), plan.overflowItems(ms, setOf("tar", "ore"), setOf("science", "plate", "brick")))
+        // No loops: no overflows.
+        assertEquals(emptySet(), plan.overflowItems(ms.filter { it.id >= 4 }, setOf("ore"), emptySet()))
+    }
 }

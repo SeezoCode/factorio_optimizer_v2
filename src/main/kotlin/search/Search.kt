@@ -184,12 +184,16 @@ class Search(
             val imp = Improvement(clock() - start, t.w, t.h, t.score, l.count(Kind.BELT), l.count(Kind.UG_IN) + l.count(Kind.UG_OUT), l.count(Kind.INSERTER), t.seed)
             improvements += imp
             writeBest(t, improvements.size)
+            if (config.search.stopAfter > 0 && improvements.size >= config.search.stopAfter) deadline = clock()
             say("improvement #${improvements.size}: ${t.w}x${t.h} score ${"%.1f".format(t.score)} (belts ${imp.belts}, undergrounds ${imp.undergrounds}, inserters ${imp.inserters}, seed ${t.seed})")
         }
     }
 
     private fun writeBest(t: TrialResult, n: Int) {
-        val l = t.layout!!.copy(label = "factorio-optimizer ${t.w}x${t.h}")
+        // Overflow outputs get their valves (outside the box, on the port's side).
+        val l = power.withSeedRequests(power.withOverflowValves(t.layout!!, t.outputs.ifEmpty { t.route?.outputs ?: emptyList() },
+            byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), plan.seeds, data)
+            .copy(label = "factorio-optimizer ${t.w}x${t.h}")
         val bp = l.toBlueprintString(config.buildQuality())
         out.mkdirs()
         File(out, "best_output_string.txt").writeText(bp)

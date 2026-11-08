@@ -370,10 +370,20 @@ fun linksFor(
         val (outAll, outDirect) = edgesOf(plan, net.item, true)
         fun edgeDist(b: Int, edges: Set<Dir>) = edges.minOfOrNull { edgeDistance(g.boxes[b], it, g.w, g.h) }?.toDouble() ?: 1e6
         fun directSide(b: Int, direct: Set<Dir>) = direct.firstOrNull { it in g.touches[b] }
+        // An overflow (a 0/s output, see plan.overflowItems): what its users leave goes out of the factory.
+        val overflow = ts.any { it.role == Role.OUTPUT && it.rate <= 1e-12 }
+        val makers = ts.filter { it.role == Role.PRODUCER && it.machine != null }.map { blockOf[it.machine!!] }.distinct()
 
         if (net.fluid) {
             val members = (0 until k).filter { abs(bal[net.id][it]) > PartitionModel.EPS }
-            if (members.isEmpty()) return@forEach
+            if (members.isEmpty()) {
+                // Made and used inside one block: its overflow leaves that block for the edge.
+                if (overflow) makers.forEach { b ->
+                    val ds = directSide(b, outDirect)
+                    raw += if (ds != null) Link(0, net.item, 0.0, b, EDGE, true, fromSide = ds.name) else Link(0, net.item, 0.0, b, EDGE, true, routed = true)
+                }
+                return@forEach
+            }
             val b0 = members[0]
             // One block and the edge, and the block touches it: straight out, as for a single block.
             if (members.size == 1 && (source > 1e-9) != (output > 1e-9)) {
@@ -389,7 +399,7 @@ fun linksFor(
                 raw += if (r > 0) Link(0, net.item, r, b, HUB, true) else Link(0, net.item, -r, HUB, b, true)
             }
             if (source > 1e-9) raw += Link(0, net.item, source, EDGE, HUB, true, routed = true)
-            if (output > 1e-9) raw += Link(0, net.item, output, HUB, EDGE, true, routed = true)
+            if (output > 1e-9 || overflow) raw += Link(0, net.item, output, HUB, EDGE, true, routed = true)
             return@forEach
         }
 
@@ -487,6 +497,11 @@ fun linksFor(
                 var from = src; var rest = total
                 chain.forEach { (b, r) -> emit(from, b, rest); rest -= r; from = b }
             }
+        }
+        // Overflow: from each block making it whose users are all inside it (a second output beside a link to another
+        // block would take half of what goes there).
+        if (overflow) makers.forEach { b ->
+            if (flows.keys.none { it.first == b } && raw.none { it.item == net.item && it.from == b }) emit(b, EDGE, 0.0)
         }
     }
 
