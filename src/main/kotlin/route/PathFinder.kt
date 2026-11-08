@@ -39,6 +39,8 @@ class RouteProblem(
     val obstacles: Set<Tile> = emptySet(),
     /** Extra per-tile cost on belts, e.g. to keep tiles free for poles. */
     val tileBias: Map<Tile, Double> = emptyMap(),
+    /** Extra per-tile cost on belts only (pipes do not see it). */
+    val beltBias: Map<Tile, Double> = emptyMap(),
     /** History from an earlier run on the same placement (warm start). */
     val warmHistory: FloatArray? = null,
     val debugDir: File? = null,
@@ -70,6 +72,8 @@ class RouteResult(
     val outputs: List<OutputSpec> = emptyList(),
     /** Tiles still in conflict when routing ended (empty on success). */
     val conflicts: List<Tile> = emptyList(),
+    /** Connection tiles of unrouted fluid nets that no pipe could reach (empty on success). */
+    val unreached: List<Tile> = emptyList(),
     /** Up to 40 conflict tiles with the plan nets (items, fluids) that meet there, for progress output. */
     val conflictNets: Map<Tile, Set<Int>> = emptyMap(),
     val di: List<DiLink>,
@@ -120,6 +124,7 @@ class PathFinder(internal val p: RouteProblem) {
     internal val allowNet = IntArray(N) { -2 }
     internal val pinCount = IntArray(N)
     internal val bias = FloatArray(N)
+    private val beltBias = FloatArray(N)
 
     // ---- terminals and options ----
     private val eff: Map<Int, EffectiveTerminal>
@@ -309,6 +314,7 @@ class PathFinder(internal val p: RouteProblem) {
         placement.machines.forEach { m -> placement.connections(plan, m).filter { it.fluid != null }.forEach { c -> if (dims.inFull(c.tile.x, c.tile.y)) allowNet[dims.idx(c.tile)] = -2 } }
         p.obstacles.forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }
         p.tileBias.forEach { (t, v) -> if (dims.inFull(t.x, t.y)) bias[dims.idx(t)] = v.toFloat() }
+        p.beltBias.forEach { (t, v) -> if (dims.inFull(t.x, t.y)) beltBias[dims.idx(t)] = v.toFloat() }
         p.warmHistory?.let { it.copyInto(hist, 0, 0, minOf(it.size, N)) }
 
         machineRects.forEach { r -> Dir.entries.forEach { side -> r.sideTiles(side, 1).forEach { if (dims.inFull(it.x, it.y)) pinCount[dims.idx(it)]++ } } }
@@ -522,7 +528,7 @@ class PathFinder(internal val p: RouteProblem) {
     /** Cost of a belt-family entity on [q] that would take items from [deadTaken] chain ends pointing into it. */
     private fun beltCost(q: Int, deadTaken: Int = deadEndAt[q]): Float =
         (tun.beltBase.toFloat() + hist[q]) * (1f + pFac * (occTile[q] + deadTaken + occHeat[q])) +
-            (if (pinCount[q] > 0) tun.pinReservation.toFloat() else 0f) + bias[q]
+            (if (pinCount[q] > 0) tun.pinReservation.toFloat() else 0f) + bias[q] + beltBias[q]
 
     /** Taken for heating: off the grid, a machine or obstacle, or used. */
     private fun walled(t: Int): Boolean = t !in 0 until N || allowNet[t] == -2 || occTile[t] > 0
@@ -1554,6 +1560,7 @@ class PathFinder(internal val p: RouteProblem) {
                 }
                 c.map { dims.tile(it) }
             },
+            unreached = if (success) emptyList() else pr?.unreachedTiles() ?: emptyList(),
             conflictNets = if (success) emptyMap() else {
                 val m = LinkedHashMap<Tile, Set<Int>>()
                 for (t in 0 until N) if (overuseAt(t) > 0 && m.size < 40) {

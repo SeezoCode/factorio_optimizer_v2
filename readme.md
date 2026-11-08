@@ -987,9 +987,12 @@ a roomy size and records every planner or trial exception, invalid layout or fai
 `BlockCheckTest` (`BLOCKCHECK=<job>,<run folder>,<block>`, block counted from 1) validates every layout a factory
 run saved for one block, against the block's own plan and against the whole factory's, and prints the errors of
 each, for a block that keeps failing in the factory but not alone.
-Run them with `--rerun -i`. A factory run with `FACTORY_INVALID_DIR=<dir>` set renders every stitched factory that
-fails validation there (it is skipped for the next smallest), and `LANE_DEBUG=1` prints each belt chain that has no
-lane-true split, with what it carries and what its draws need.
+Run them with `--rerun -i`. A factory run draws every stitch that did not route into `<out>/failed_stitches/`
+(`stitch_<time>_<w>x<h>.png`, the trouble marked, and a `.txt` beside it with the blocks' places, the tiles no pipe
+could reach and the router's last log lines), and every stitched factory that fails validation there too (it is
+skipped for the next smallest; `<what>_<w>x<h>_*.png`, `.json`, and `.txt` with each error's block).
+`STITCH_DEBUG_DIR=<dir>` and `FACTORY_INVALID_DIR=<dir>` send them elsewhere outside a factory run (tests).
+`LANE_DEBUG=1` prints each belt chain that has no lane-true split, with what it carries and what its draws need.
 
 ## Status
 

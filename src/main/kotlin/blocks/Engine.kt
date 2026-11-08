@@ -169,7 +169,11 @@ class BlockEngine(
      * valid factory is what is wanted).
      */
     private val firstOnly: Boolean = false,
+    /** With [firstOnly]: how long blocks keep refining after the last first layout before the pause (ms). */
+    private val refineMs: Long = 0,
 ) {
+    /** When every block first had a layout (epoch ms), or -1. */
+    private var allFirstAt = -1L
     private val n = bps.size
     private val m = jobs.size
     private val t0 = System.currentTimeMillis()
@@ -350,12 +354,16 @@ class BlockEngine(
                 val allFirst = (0 until n).all { best(it) != null }
                 if ((stopping || (timeUp() && allFirst)) && active.isEmpty()) break
                 if (allFirst && phase == "first layouts") {
-                    phase = "refining"; stitchRequested = true; event("every block has a layout; stitching a preview")
-                    if (firstOnly) {
-                        paused = true
-                        searches.forEach { it?.extendTo(System.currentTimeMillis()) }
-                        event("blocks paused: the stitch gets every core")
-                    }
+                    phase = "refining"; allFirstAt = System.currentTimeMillis()
+                    if (!firstOnly) { stitchRequested = true; event("every block has a layout; stitching a preview") }
+                    else event("every block has a layout; refining them for ${refineMs / 1000} s before the stitch")
+                }
+                // First factory wanted: after the refining time, the blocks pause and the stitch gets every core
+                // (smaller blocks, shorter corridors).
+                if (firstOnly && !paused && allFirstAt >= 0 && System.currentTimeMillis() - allFirstAt >= refineMs) {
+                    paused = true; stitchRequested = true
+                    searches.forEach { it?.extendTo(System.currentTimeMillis()) }
+                    event("blocks paused: stitching with every core")
                 }
                 // A preview when asked, or when the blocks shrank enough (at most every 2 minutes).
                 val area = totalArea()

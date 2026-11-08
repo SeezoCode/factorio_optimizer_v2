@@ -340,7 +340,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 val own = feeders.filter { ents[it].net == e.net }
                 if (own.size == feeders.size) return@forEach
                 if (shape(e, own) != shape(e, feeders)) {
-                    err(ErrorType.SHAPE_CHANGED, e.tile, "a belt of net ${feeders.first { ents[it].net != e.net }.let { ents[it].net }} changes the shape of net ${e.net}'s belt")
+                    val f = ents[feeders.first { ents[it].net != e.net }]
+                    err(ErrorType.SHAPE_CHANGED, e.tile, "a belt of net ${f.net} (${f.kind.name.lowercase()} ${f.dir} at ${f.tile}${f.item?.let { " $it" } ?: ""}) changes the shape of net ${e.net}'s belt (heading ${e.dir}, fed by ${own.size} of its own)")
                 }
             }
         }

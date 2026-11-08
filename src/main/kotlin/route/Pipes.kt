@@ -283,6 +283,38 @@ internal class PipeRouter(private val pf: PathFinder) {
         return true
     }
 
+    /** Connection tiles a fluid net could not reach in its last try (for the stitch's trouble tiles and renders). */
+    private val unreached = HashMap<Int, List<geom.Tile>>()
+
+    /**
+     * Why [group] of net [n] cannot be reached, for the log: its first tile, the pocket of pipe-placeable tiles
+     * around it (up to 400; pipe-to-ground aside), and what stands on each side of that tile.
+     */
+    private fun pocket(group: IntArray, n: Int): String {
+        if (group.isEmpty()) return "an empty group (a port with no tile on the grid)"
+        fun open(q: Int) = q in 0 until N && (connNet[q] == n || (connNet[q] == -1 && pf.allowNet[q] == -1))
+        val seen = HashSet<Int>(); val q = ArrayDeque<Int>()
+        group.forEach { if (seen.add(it)) q += it }
+        while (q.isNotEmpty() && seen.size < 400) {
+            val t = q.removeFirst()
+            for (d in 0..3) { val u = t + pf.dIdx[d]; if (open(u) && seen.add(u)) q += u }
+        }
+        val t0 = group[0]
+        val sides = (0..3).joinToString(" ") { d ->
+            val u = t0 + pf.dIdx[d]
+            "${"NESW"[d]}:" + when {
+                u !in 0 until N || !dims.inFull(dims.x(t0) + pf.dX[d], dims.y(t0) + pf.dY[d]) -> "off"
+                connNet[u] == n -> "own"
+                connNet[u] >= 0 -> "conn(${nets.getOrNull(connNet[u])?.fluid})"
+                connNet[u] == -2 -> "machine-conn"
+                pf.allowNet[u] == -2 -> "wall"
+                pf.allowNet[u] >= 0 -> "port"
+                else -> "free"
+            }
+        }
+        return "${dims.tile(t0)} (${group.size} tiles, pocket ${if (seen.size >= 400) "400+" else seen.size}; $sides)"
+    }
+
     /** Routes one fluid net as a tree; on failure rips it up and returns false. */
     fun route(i: Int): Boolean {
         val n = nets[i]
@@ -315,7 +347,10 @@ internal class PipeRouter(private val pf: PathFinder) {
                 r.sourceTile = (c / 5).let { t0 -> if (entryIn[t0] >= 0) t0 + pf.dIdx[entryIn[t0]] else t0 }
             }
             entries.forEach { entryIn[it] = -1 }
-            if (s == -1) return fail("no path from the port")
+            if (s == -1) {
+                unreached[i] = listOfNotNull(n.portTiles.firstOrNull()?.let { dims.tile(it) })
+                return fail("no path from the port: " + pocket(n.portTiles, n.idx) + (if (starts.isEmpty()) ", no port tile a pipe may take" else ""))
+            }
             if (s < 0) return fail("every path from the port crosses itself")
         } else {
             if (left.size + (if (n.outTiles.isNotEmpty()) 1 else 0) < 2) return fail("needs two connections")
@@ -328,7 +363,10 @@ internal class PipeRouter(private val pf: PathFinder) {
             if (left.isEmpty()) break
             val tree = r.pipes.toList()
             val s = leg(n, tree.map { it to 0f }, left.flatMap { it.toList() }.toSet())
-            if (s == -1) return fail("no path to ${left.size} more connections")
+            if (s == -1) {
+                unreached[i] = left.mapNotNull { g -> g.firstOrNull()?.let { dims.tile(it) } }
+                return fail("no path to ${left.size} more connections: " + left.joinToString { pocket(it, n.idx) })
+            }
             if (s < 0) return fail("every path to ${left.size} more connections crosses itself")
             commit(n, r, s)
         }
@@ -340,8 +378,12 @@ internal class PipeRouter(private val pf: PathFinder) {
             r.outTile = s / 5
         }
         r.ok = true
+        unreached.remove(i)
         return true
     }
+
+    /** Tiles the fluid nets still unrouted could not reach. */
+    fun unreachedTiles(): List<geom.Tile> = unreached.filterKeys { !ok(it) }.values.flatten().distinct()
 
     // ---- negotiation bookkeeping ----
     /** Joins with other fluids at tile t (a pipe end of one net next to a joinable end of another). */

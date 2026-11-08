@@ -457,6 +457,8 @@ data class BlocksConfig(
      * each on their own is kept, with a note to wire them by hand; wide corridors leave poles out of reach.
      */
     @SerialName("wire_blocks") val wireBlocks: Boolean = false,
+    /** With search.stop_after: seconds blocks keep refining after each has a first layout, before the stitch (60). */
+    @SerialName("refine_s") val refineS: Double? = null,
     /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */
     val rotate: Boolean = true,
     /**

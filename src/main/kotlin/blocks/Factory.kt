@@ -170,7 +170,7 @@ fun runFactory(
             val squeeze0 = cfg.compactS ?: maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
             val squeeze = squeezeCap?.let { minOf(it, squeeze0) } ?: squeeze0
             assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong(),
-                { consider(it, "$what (compacting)") }, tries)
+                { consider(it, "$what (compacting)") }, tries, debugDir = File(out, "failed_stitches"))
         }
             .getOrElse { e -> say("$what: failed with $e"); e.printStackTrace(); null }
 
@@ -234,6 +234,7 @@ fun runFactory(
         parkAfter = cfg.parkAfter, variantCapS = cfg.shapeVariantS, restitchShare = cfg.restitchShare,
         limit = blocksUntil, out = out, say = ::say,
         firstOnly = config.search.stopAfter > 0,
+        refineMs = ((cfg.refineS ?: 60.0) * 1000).toLong(),
         blockPrinter = { job, line ->
             if (view?.live != true) synchronized(sayLock) { println("  b${job.block + 1}${if (job.variant > 0) "x" + "%.2f".format(job.factor) else ""} $line") }
         },
@@ -550,6 +551,8 @@ fun assembleFactory(
     onBetter: (Pair<Factory, FpState>) -> Unit = {},
     /** Floorplans to try (default blocks.floorplan_tries). */
     triesOverride: Int? = null,
+    /** Where failed stitches and factories that fail validation are drawn (else the debug environment variables). */
+    debugDir: File? = null,
 ): Pair<Factory, FpState>? {
     val cfg = config.blocks!!
     val input = floorplanInput(plan, split, variants, cfg, config, bps = bps)
@@ -565,7 +568,7 @@ fun assembleFactory(
                 val label = if (tries > 1) "$what (floorplan ${t + 1}/$tries)" else what
                 val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 1009L * t)
                 val st = if (t == 0) start?.takeIf { it.plus.size == input.blocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(input.blocks.size)) } else null
-                val s = Stitching(config, tuning, plan, split, bps, input, params, say, label)
+                val s = Stitching(config, tuning, plan, split, bps, input, params, say, label, debugDir)
                 s.start(st)
                 if (!s.routed) null
                 else {
@@ -623,9 +626,11 @@ fun assembleFactory(
         val f = finishFactory(data, config, plan, s)
         if (f.success) return f to st
         say("$what: ${f.layout.w} x ${f.layout.h} has ${f.errors.size} validation errors: ${f.errors.take(5)}")
-        // FACTORY_INVALID_DIR=<dir>: a render of each factory that failed validation, for finding out why.
-        System.getenv("FACTORY_INVALID_DIR")?.let { d ->
+        // A render of each factory that failed validation, for finding out why (beside the failed stitches, or
+        // FACTORY_INVALID_DIR=<dir>).
+        (debugDir ?: System.getenv("FACTORY_INVALID_DIR")?.let(::File))?.let { d ->
             runCatching {
+                d.mkdirs()
                 val name = "${what.replace(' ', '_')}_${f.layout.w}x${f.layout.h}_${System.currentTimeMillis() % 100000}"
                 viz.renderLayout(f.layout, File(d, "$name.png"),
                     viz.RenderOptions(px = 12, errors = f.errors, title = "$what ${f.layout.w}x${f.layout.h} blocks ${f.blockRects}"))
@@ -652,6 +657,7 @@ fun assembleFactory(
 private class Stitching(
     val config: RunConfiguration, val tuning: Tuning, val plan: ProductionPlan, val split: Split, val bps: List<BlockPlan>,
     val input: FloorplanInput, val params: FpParams, val say: (String) -> Unit, val what: String,
+    val debugDir: File? = null,
 ) {
     val k = split.blocks.size
     val planner = Floorplanner(input.blocks, input.nets, params)
@@ -678,7 +684,7 @@ private class Stitching(
         IntArray(k) { input.blocks[it].shapes[p.state.shape[it]].rot })
     /** Lane pairs whose junction next to the supplier did not route: theirs goes in front of the consumer. */
     val atConsumer = HashSet<Int>()
-    private fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p), atConsumer)
+    private fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p), atConsumer, debugDir)
 
     fun start(from: FpState?) {
         fp = planner.optimise(from)
@@ -690,7 +696,7 @@ private class Stitching(
         while (widenings < 8 && attempt < 8 + split.links.size) {
             attempt++
             val arr = layoutOf(fp)
-            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer)
+            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir)
             if (r.stitched != null) { ok += r.stitched to fp.state; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 1) " (attempt $attempt)" else ""}"); break }
             if (!atConsumer.containsAll(r.badPairs)) {
                 atConsumer += r.badPairs
@@ -862,6 +868,8 @@ fun stitchRoute(
     bps: List<BlockPlan>, shapes: List<List<BlockShape>>, arr: Arrangement,
     /** Lane pairs (by their lower link id) whose junction goes right in front of the consumer instead. */
     atConsumer: Set<Int> = emptySet(),
+    /** Where a failed stitch is drawn, the trouble marked (else STITCH_DEBUG_DIR, else nowhere). */
+    debugDir: File? = null,
 ): StitchAttempt {
     val k = bps.size
     val results = (0 until k).map { shapes[it][arr.shape[it]].layout }
@@ -966,7 +974,7 @@ fun stitchRoute(
         if (!foreign(t, l.item, port) && headOk(t, l.item)) return t.also { fluidHeads[it] = l.item }
         for (j in 1..GameConstants.PIPE_TO_GROUND_GAP + 1) {
             val exit = t.step(out, j); val next = exit + out
-            if ((0..j).any { !free(t.step(out, it)) || t.step(out, it) in noTunnel } || !free(next) || foreign(next, l.item, exit) || !headOk(next, l.item)) continue
+            if ((0..j).any { !free(t.step(out, it)) || t.step(out, it) in noTunnel || t.step(out, it) in fluidHeads } || !free(next) || foreign(next, l.item, exit) || !headOk(next, l.item)) continue
             listOf(t to out.opposite, exit to out).forEach { (p, open) ->
                 val e = PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, p.x, p.y, open, fluid = l.item, net = netOfItem[l.item])
                 entities += e; byTile[p] = e
@@ -1205,7 +1213,8 @@ fun stitchRoute(
         .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
     val reached = entities.filter { it.kind == Kind.INSERTER }.flatMap { listOf(it.pickupTile, it.dropTile) }.filter { it !in blockTiles }
     // Beside a block's belt (on its edge or ring): a corridor belt there pointing into it would feed it from the back
-    // or a side and change its shape (Py science 2: one SHAPE_CHANGED kept a routed 641 x 737 factory out).
+    // or a side and change its shape (Py science 2: one SHAPE_CHANGED kept a routed 641 x 737 factory out). A cost on
+    // belts only (tileBias): pipes go there freely (as obstacles, they walled a water port in and water never routed).
     val besideBelts = entities.filter { it.kind == Kind.BELT }.flatMap { b -> Dir.entries.map { b.tile + it } }
         .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles && t !in byTile }
     // (Heat stays on, so corridor belts keep a side free for a heat pipe, but the blocks' lattice is theirs alone.)
@@ -1213,31 +1222,48 @@ fun stitchRoute(
     // Everything the blocks put outside their boxes (ring ports) is in the way too.
     val entityTiles = entities.flatMap { it.rect.tiles() }
     // A corridor pipe beside a block's pipe or machine would join it: keep those tiles free, except where a link ends.
+    // A pipe-to-ground joins on its open side only: walling all four of its sides walled in the next port's link end
+    // when a port beside it dived (Py science 2: always exactly one gasoline or water end no pipe could reach).
     val besidePipes = if (corridorLinks.none { it.fluid }) emptyList() else {
         val linkTiles = (starts.values + ends.values).map { it.first }.toSet()
-        entities.filter { it.kind == Kind.PIPE || it.kind == Kind.PIPE_UG || it.kind == Kind.MACHINE }.flatMap { it.rect.tiles() }
-            .flatMap { t -> Dir.entries.map { t + it } }.filter { it !in blockTiles && it !in linkTiles }
+        (entities.filter { it.kind == Kind.PIPE || it.kind == Kind.MACHINE }.flatMap { it.rect.tiles() }.flatMap { t -> Dir.entries.map { t + it } } +
+            entities.filter { it.kind == Kind.PIPE_UG }.map { it.tile + it.dir })
+            .filter { it !in blockTiles && it !in linkTiles }
     }
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
-        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + besideBelts + junctionKeepFree, noTunnel = noTunnel,
+        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree, noTunnel = noTunnel,
+        beltBias = besideBelts.associateWith { 40.0 },
         // At most 6 minutes: a big factory's corridors otherwise rip up and reroute for hours (Py science 2).
         deadlineMs = System.currentTimeMillis() + 360_000))
     if (!routed.success) {
-        // Trouble: conflict tiles, and the ports of every link that did not route.
-        val trouble = routed.conflicts + routed.failedNets.flatMap { n ->
-            (linksOfNet[n] ?: emptyList()).flatMap { l -> listOfNotNull(starts[l.id]?.first, ends[l.id]?.first) }
+        // Trouble: conflict tiles, and where a pipe tree could not get to (else the ends of every link that did not route).
+        val trouble = routed.conflicts + routed.unreached.ifEmpty {
+            routed.failedNets.flatMap { n -> (linksOfNet[n] ?: emptyList()).flatMap { l -> listOfNotNull(starts[l.id]?.first, ends[l.id]?.first) } }
         }
         val edges = routed.failedNets.flatMap { n -> (linksOfNet[n] ?: emptyList()).filter { it.from == EDGE || it.to == EDGE } }
             .flatMap { l -> plan.ports.first { it.item == l.item && it.output == (l.to == EDGE) }.specs }
             .flatMap { s -> if (s.edge == "any") Dir.entries.toList() else listOfNotNull(s.edge?.let(Dir::fromName)) }.toSet()
         val unrouted = routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }
         val badPairs = routed.failedNets.flatMap { n -> linksOfNet[n] ?: emptyList() }.filter { it.pair >= 0 }.map { minOf(it.id, it.pair) }.toSet()
-        // STITCH_DEBUG_DIR=<dir>: a render of each failed stitch, the trouble marked, for finding out why.
-        System.getenv("STITCH_DEBUG_DIR")?.let { d ->
+        // A render of each failed stitch, the trouble marked, and why in a text file beside it (<out>/failed_stitches,
+        // or STITCH_DEBUG_DIR=<dir>).
+        (debugDir ?: System.getenv("STITCH_DEBUG_DIR")?.let(::File))?.let { d ->
             runCatching {
+                d.mkdirs()
+                val name = "stitch_${java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH-mm-ss"))}_${W}x$H"
                 val l = geom.Layout(W, H, entities + routed.entities)
-                viz.renderLayout(l, File(d, "stitch_${W}x${H}_${System.nanoTime() % 100000}.png"), viz.RenderOptions(px = 14,
-                    errors = trouble.map { validate.ValidationError(validate.ErrorType.UNSUPPORTED, it, "trouble") }, title = "stitch ${W}x$H: ${routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }}"))
+                viz.renderLayout(l, File(d, "$name.png"), viz.RenderOptions(px = 14,
+                    errors = trouble.map { validate.ValidationError(validate.ErrorType.UNSUPPORTED, it, if (it in routed.unreached) "unreached" else "trouble") },
+                    title = "stitch ${W}x$H: unrouted ${unrouted}, ${routed.conflicts.size} conflicts"))
+                File(d, "$name.txt").writeText(buildString {
+                    appendLine("stitch ${W}x$H: ${routed.conflicts.size} conflicts, unrouted $unrouted")
+                    if (routed.unreached.isNotEmpty()) appendLine("unreached (marked): ${routed.unreached}")
+                    appendLine("trouble tiles: ${trouble.take(40)}")
+                    appendLine("blocks (1-based: x, y, w x h, turn):")
+                    (0 until k).forEach { b -> appendLine("  ${b + 1}: ${ox[b]}, ${oy[b]}, ${results[b].w} x ${results[b].h}, ${arr.rot[b]}") }
+                    appendLine("router log (last 30):")
+                    routed.log.takeLast(30).forEach { appendLine("  $it") }
+                })
             }
         }
         // What clashes on the first conflict tiles: the corridor items there, and what of the blocks is beside them.
