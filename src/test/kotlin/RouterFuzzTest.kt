@@ -4,6 +4,7 @@ import config.RouteTuning
 import config.RunConfiguration
 import geom.Dir
 import geom.Rect
+import org.junit.jupiter.api.parallel.Isolated
 import place.PlacedMachine
 import place.Placement
 import plan.Net
@@ -18,6 +19,8 @@ import java.util.SplittableRandom
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
+/** Isolated: one test times the router, which other tests running alongside would slow down. */
+@Isolated
 class RouterFuzzTest {
     private val items = listOf(
         "iron-gear-wheel", "copper-cable", "electronic-circuit", "pipe", "iron-stick", "inserter",

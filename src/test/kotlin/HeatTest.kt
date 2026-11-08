@@ -4,6 +4,7 @@ import geom.Dir
 import geom.Kind
 import geom.Layout
 import geom.Tile
+import org.junit.jupiter.api.parallel.Isolated
 import plan.buildPlan
 import power.edgeNeighbours
 import power.needsHeat
@@ -20,7 +21,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Aquilo heating: every entity that freezes touches a heat pipe joined to the heat port. */
+/**
+ * Aquilo heating: every entity that freezes touches a heat pipe joined to the heat port. Isolated: what the search
+ * and the router's endgame (both against the clock) find here passes reliably only with the machine to itself.
+ */
+@Isolated
 class HeatTest {
     @Test
     fun `a heated block keeps everything warm and validates`() {

@@ -6,6 +6,8 @@ import config.ConfigSource
 import config.SearchConfig
 import config.Tuning
 import geom.Dir
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import plan.Role
 import plan.buildPlan
 import java.io.File
@@ -14,6 +16,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+/** Each factory search runs for its time budget; they write to folders of their own, so they run side by side. */
+@Execution(ExecutionMode.CONCURRENT)
 class FactoryTest {
     @Test
     fun `the split keeps blocks within the limit and balances every item`() {

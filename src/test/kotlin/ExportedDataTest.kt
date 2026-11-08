@@ -9,11 +9,16 @@ import data.GameConstants
 import data.PipeConnectionData
 import data.Vec
 import geom.Dir
+import org.junit.jupiter.api.parallel.Isolated
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** The exporter mod's data (recipes.json) against the hand-checked tables in GameConstants. */
+/**
+ * The exporter mod's data (recipes.json) against the hand-checked tables in GameConstants. Isolated: two tests here
+ * register modded data in GameConstants for a while, which no other test may see.
+ */
+@Isolated
 class ExportedDataTest {
     private val data = TestData.data
 
