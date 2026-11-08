@@ -479,6 +479,18 @@ local function finish(run)
           if inv then for _, it in pairs(inv.get_contents()) do o[it.name] = it.count end end; return o end)(),
         output = (function() local inv = e.get_inventory(defines.inventory.crafter_output); local o = {}
           if inv then for _, it in pairs(inv.get_contents()) do o[it.name] = it.count end end; return o end)(),
+        -- Each fluid box: input or output, what it holds (or is filtered to), how much, how hot.
+        fluids = (function() local o = {}
+          pcall(function()
+            for k = 1, (e.fluids_count or 0) do
+              local proto = e.get_fluid_box_prototype(k)
+              if proto and proto.index == nil and proto[1] then proto = proto[1] end
+              local f = e.get_fluid(k); local flt = e.get_fluid_filter(k)
+              o[#o + 1] = { io = proto and proto.production_type or "?", name = (f and f.name) or (flt and flt.name) or nil,
+                amount = f and f.amount or 0, temperature = f and f.temperature or nil }
+            end
+          end)
+          return o end)(),
       }
     end
   end

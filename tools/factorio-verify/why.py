@@ -28,7 +28,14 @@ def missing(m):
     rc = rec(m); out = []
     for i in rc["ingredients"]:
         if i["type"] == "item" and m["input"].get(i["name"], 0) < i["amount"]: out.append(i["name"])
-        if i["type"] == "fluid":
+        if i["type"] == "fluid" and m.get("fluids") is not None:
+            # The machine's own fluid boxes (newer verify runs): short when its inputs hold less than a craft's worth at a
+            # temperature it takes.
+            lo, hi = i.get("minimum_temperature"), i.get("maximum_temperature")
+            have = sum(b["amount"] for b in m["fluids"] if b.get("io") == "input" and b.get("name") == i["name"]
+                       and (lo is None or (b.get("temperature") or 0) >= lo) and (hi is None or (b.get("temperature") or 0) <= hi))
+            if have < i["amount"]: out.append("[" + i["name"] + "]")
+        elif i["type"] == "fluid":
             g = fluids_of.get((m["x"], m["y"]), "")
             box = [b for b in g.split() if b.endswith("/" + i["name"])]
             if box and box[0].startswith("-") or (not box and "fluid" in m["status"]): out.append("[" + i["name"] + "]")
