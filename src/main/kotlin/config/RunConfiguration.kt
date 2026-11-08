@@ -86,8 +86,10 @@ data class RunConfiguration(
      * By-products going into or coming out of production loops (Py's farms) also get a 0/s output that takes what
      * their users leave (fluids through an overflow valve, when the data has one: Py's py-overflow-valve), so their
      * machine does not stop while a loop is not running yet. Only plans with loops; items only in port mode.
+     * "all", "fluids" (only fluids: an item overflow is one more belt to the block's edge, and in a packed block of a
+     * factory enough of them wall machines in), "off".
      */
-    @SerialName("byproduct_overflow") val byproductOverflow: Boolean = true,
+    @SerialName("byproduct_overflow") val byproductOverflow: String = "all",
     /** Fuel for burner machines (stone and steel furnaces). */
     val fuel: String = "coal",
     /** Fuel fluid for machines that burn one (Py's glassworks); default: the raw fluid that holds the most energy. */

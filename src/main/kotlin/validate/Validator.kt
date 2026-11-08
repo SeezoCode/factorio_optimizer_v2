@@ -459,7 +459,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val e = ents[m]
             mi.outputs.forEach { (item, rate) ->
                 val outCap = outIns.getValue(m).filter { machineOutput(it) == item }.sumOf { cap(it) }
-                if (rate > 1e-9 && outCap + 1e-9 < rate) {
+                // Rates under 1e-6/s are rounding left by rebalancing; the router gives them no inserter either.
+                if (rate > 1e-6 && outCap + 1e-9 < rate) {
                     val what = if (mi.outputs.size > 1) "$item " else ""
                     err(ErrorType.INSERTER_RATE, e.tile, "${e.recipe} makes ${fmt(rate)}/s ${what}but its output inserters move ${fmt(outCap)}/s")
                 }
@@ -477,6 +478,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val demandEdge = needs.mapIndexed { j, (_, need) -> g.edge(2 + feeders.size + j, 1, need) }
             g.run(0, 1)
             needs.forEachIndexed { j, (item, need) ->
+                if (need <= 1e-6) return@forEachIndexed   // rounding (see above): nothing is routed for it
                 if (feeders.none { feederCarries(it, item, belts) }) err(ErrorType.MISSING_INPUT, e.tile, "${e.recipe} gets no $item")
                 else {
                     val c = g.flowOn(demandEdge[j])

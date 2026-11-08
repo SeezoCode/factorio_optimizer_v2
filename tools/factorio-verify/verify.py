@@ -369,9 +369,16 @@ def judge(report, ports, args):
             for item, (got, want) in sorted(totals.items()):
                 print(f"  {'total ' + item:34} {'':14} {fmt(got):>9}  planned {fmt(want):>8}  {100 * got / want if want else 0:6.1f}%")
         if check:
+            # The job's targets must come out at their rate; a by-product leaving below its plan is a note (its users
+            # inside take it first, and overflows leave only what is left over).
+            targets = getattr(args, "targets", None) or set()
             for item, (got, want) in totals.items():
                 if want and got < want * (1 - args.tolerance):
-                    fails.append(f"{item}: {fmt(got)}/s out, planned {fmt(want)}/s")
+                    msg = f"{item}: {fmt(got)}/s out, planned {fmt(want)}/s"
+                    if targets and item not in targets:
+                        notes.append("by-product " + msg)
+                    else:
+                        fails.append(msg)
     if not ports:
         notes.append("no ports.json: rates not compared with the plan")
 
@@ -492,6 +499,7 @@ def main():
     if out and os.path.exists(os.path.join(out, "plan.json")):
         with open(os.path.join(out, "plan.json")) as f:
             args.launched = json.load(f).get("launched") or {}
+    args.targets = {t["name"] for t in (job or {}).get("targets", [])}
     fails = judge(report, ports, args)
     if out:
         print(f"\nfull report: {os.path.join(out, 'verify_report.json')}")

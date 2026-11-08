@@ -116,7 +116,7 @@ local function prime(run, e, r)
           if have < want then e.insert { name = ing.name, count = want - have } end
         end)
       else
-        pcall(function()
+        local ok_, err = pcall(function()
           for k = 1, (e.fluids_count or 0) do
             local f = e.get_fluid_filter(k)
             local proto = e.get_fluid_box_prototype(k)
@@ -128,10 +128,14 @@ local function prime(run, e, r)
               (ing.maximum_temperature == nil or t <= ing.maximum_temperature) and (ing.temperature == nil or t == ing.temperature)
             local have = e.get_fluid(k)
             if ok and f and f.name == ing.name and proto and proto.production_type == "input" and (not have or have.amount < ing.amount) then
-              e.set_fluid(k, { name = ing.name, amount = math.max(ing.amount, (proto.volume or 0) / 2), temperature = t })
+              -- Two crafts' worth, or one where the box holds less.
+              if not pcall(function() e.set_fluid(k, { name = ing.name, amount = ing.amount * 2, temperature = t }) end) then
+                e.set_fluid(k, { name = ing.name, amount = ing.amount, temperature = t })
+              end
             end
           end
         end)
+        if not ok_ and not run.prime_error then run.prime_error = true; run.warnings[#run.warnings + 1] = "priming " .. ing.name .. " in " .. e.name .. ": " .. tostring(err) end
       end
     end
   end

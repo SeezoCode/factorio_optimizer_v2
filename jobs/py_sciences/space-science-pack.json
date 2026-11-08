@@ -40,7 +40,7 @@
     }
   ],
   "blocks": {
-    "max_machines": 30,
+    "max_machines": 20,
     "size_by": "weight",
     "lanes": 5,
     "corridor": 4,

@@ -600,7 +600,9 @@ class PathFinder(internal val p: RouteProblem) {
     private var paired = false
 
     private fun share(v: Int) = vts[v].rate / vts[v].k
-    private fun claimable(v: Int) = need[v] > 0 && (vts[v].role == Role.PRODUCER || surplus[vts[v].slot] >= share(v) - 1e-9) &&
+    // Within 1e-4 of the share (and 1e-6/s): rebalanced rates differ in their last digits (Py's tinned cable: made
+    // 0.0370369733/s, taken 0.0370370370/s), and an absolute 1e-9 left such a consumer unclaimable for good.
+    private fun claimable(v: Int) = need[v] > 0 && (vts[v].role == Role.PRODUCER || surplus[vts[v].slot] >= share(v) * (1 - 1e-4) - 1e-6) &&
         (vts[v].rank == 0 || !orderLast[termNet[v]] || nets[termNet[v]].terms.all { t ->
             vts[t].rank >= vts[v].rank || vts[t].role != Role.PRODUCER || vts[t].base.item != vts[v].base.item || need[t] <= 0 })
 
@@ -1211,7 +1213,7 @@ class PathFinder(internal val p: RouteProblem) {
                 }
                 val detail = n.terms.filter { need[it] > 0 }.joinToString { t ->
                     val free = termOpts[t].count { ownStamp[optIns[it]] != stamp && ownStamp[optBelt[it]] != stamp }
-                    "t$t ${vts[t].role.name.take(1)} need ${need[t]} free opts $free/${termOpts[t].size}"
+                    "t$t ${vts[t].role.name.take(1)} need ${need[t]} free opts $free/${termOpts[t].size} share ${share(t)} slot ${vts[t].slot} claimable ${claimable(t)}"
                 }
                 val reach = if (legs.isEmpty()) {
                     // Diagnostic: belt-step reachability from the start tiles over tiles this net may use.
@@ -1910,8 +1912,10 @@ class PathFinder(internal val p: RouteProblem) {
         }
         // Pass-through chains whose port fed no consumers here.
         pending.forEach { (s, ps) -> ps.forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) } }
-        // 3. The rest from producers.
-        val rest = need.filter { it.value > 1e-9 }.map { (c, r) -> part(c, r, pickRate) }
+        // 3. The rest from producers. Not a rounding crumb (under 1e-6/s) of a consumer a port's chain already serves:
+        // a chain of its own with nothing to feed it never routes (Py's titanium plate, 6.7e-8/s short of four
+        // consumers' total after rebalancing).
+        val rest = need.filter { it.value > 1e-9 && !(it.value <= 1e-6 && it.value < 1e-3 * it.key.rate) }.map { (c, r) -> part(c, r, pickRate) }
         chainsOf(rest).forEach { group ->
             val at = group.map { center(it.base) }.let { ps -> ps.map { it.first }.average() to ps.map { it.second }.average() }
             val (parts, missing) = fromProducers(group.sumOf { it.rate }, at)

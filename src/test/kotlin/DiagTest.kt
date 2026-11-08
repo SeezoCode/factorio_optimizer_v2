@@ -41,7 +41,8 @@ class DiagTest {
         val first = System.getenv("DIAG_FIRST")?.toLongOrNull() ?: 1L
         for (seed in first until first + seeds.toLong()) {
             val s = size.toInt()
-            val r = runTrial(data, plan, config, tuning, s, s, seed)
+            // DIAG_DEBUG=<dir>: the router's renders of failed nets, with why.
+            val r = runTrial(data, plan, config, tuning, s, s, seed, debugDir = System.getenv("DIAG_DEBUG")?.let { File(it) })
             println("DIAG seed $seed: ${r.stage} ${r.millis}ms score ${r.score}")
             r.notes.forEach { println("DIAG   note $it") }
             r.route?.log?.filter { "split" in it }?.forEach { println("DIAG   log $it") }
@@ -62,6 +63,8 @@ class DiagTest {
             r.route?.let { rt ->
                 println("DIAG   failed nets ${rt.failedNets.map { plan.nets[it].item }} overuse ${rt.overuse} iters ${rt.iterations} chains ${rt.chains}")
                 rt.log.takeLast(8).forEach { println("DIAG   log $it") }
+                // DIAG_ITEM: every log line about that item.
+                System.getenv("DIAG_ITEM")?.let { item -> (listOf("log size ${rt.log.size}") + rt.log.filter { item in it || "net 51 " in it }.distinct().take(6)).forEach { println("DIAG   item log $it") } }
                 rt.log.filter { it.startsWith("shared belt") }.forEach { println("DIAG   $it") }
                 // With trace_detail: the iteration closest to a solution, and what its conflicts were.
                 val iters = rt.log.filter { it.startsWith("iter ") }

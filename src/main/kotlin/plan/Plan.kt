@@ -362,8 +362,10 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         ports += Port(ports.size, name, listOf(ConfigSource(name, edge = config.mixedOutputs[k].edge)), output = true)
     }
     // Overflows: a 0/s output for by-products of production loops (see [overflowItems]).
-    val overflow = if (!config.byproductOverflow) emptySet()
-        else overflowItems(machines, lp.supply.keys, outputs.keys + mixed.keys).filter { if (isFluid(it)) data.items.containsKey(GameConstants.OVERFLOW_VALVE) else portMode }.toSet()
+    val overflow = if (config.byproductOverflow == "off") emptySet()
+        else overflowItems(machines, lp.supply.keys, outputs.keys + mixed.keys).filter {
+            if (isFluid(it)) data.items.containsKey(GameConstants.OVERFLOW_VALVE) else portMode && config.byproductOverflow == "all"
+        }.toSet()
     overflow.sorted().forEach { item ->
         val specs = config.outputs.filter { it.name == item }
         ports += Port(ports.size, item, specs.ifEmpty { listOf(ConfigSource(item, edge = "any")) }, fluid = isFluid(item), output = true)

@@ -364,7 +364,24 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         if (touched.size > firstUsed) warn("planner: ${touched.size} recipes tried; whole-machine cost ${"%.1f".format(before)} -> ${"%.1f".format(bestCost)}" +
             (if (fc == null) " (integer program: no solution in time)" else "") + ", ${best.first.count { it.value > eps }} recipes used")
     }
-    val crafts = best.first.filterValues { it > eps }
+    // A recipe under a millionth of a craft per second (Py's hotair tin cable at 1e-8/s: a craft a year) is not
+    // built: its machine would wait for inputs nothing routes at that rate. Unless taking it out leaves something
+    // short by more than that: a recipe used rarely per craft (a catalyst nearly always returned) still needs its
+    // maker, however slow.
+    val crafts = best.first.filterValues { it > eps }.toMutableMap()
+    var dropped = crafts.filterValues { it <= 1e-6 }.keys.toMutableSet()
+    repeat(3) {
+        val kept = crafts.filterKeys { it !in dropped }
+        val bal = HashMap<String, Double>()
+        kept.forEach { (c, v) -> net.getValue(c).forEach { (item, a) -> bal.merge(item, a * v, Double::plus) } }
+        best.second.forEach { (item, v) -> bal.merge(item, v, Double::plus) }
+        targets.forEach { (item, v) -> bal.merge(item, -v, Double::plus) }
+        val short = bal.filterValues { it < -1e-6 }.keys
+        val back = dropped.filter { c -> net.getValue(c).any { (item, a) -> a > 0 && item in short } }
+        if (back.isEmpty()) return@repeat
+        dropped -= back.toSet()
+    }
+    dropped.forEach { crafts.remove(it) }
     val supply = best.second.filterValues { it > eps }
     // What leaves the block: each target plus any surplus.
     val output = best.third.mapValues { it.value + (targets[it.key] ?: 0.0) }.filterValues { it > eps }

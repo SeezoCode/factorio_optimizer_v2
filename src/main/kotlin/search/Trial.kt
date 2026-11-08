@@ -267,7 +267,8 @@ fun runTrial(
         if (routed.success) break
         val sc = routed.overuse + tuning.route.unroutedPenalty * routed.failedNets.size
         if (sc < bestScore) { bestScore = sc; bestPlacement = model.placement(); bestConflicts = routed.conflicts }
-        notes += "round $round: overuse ${routed.overuse}, failed nets ${routed.failedNets} ${routed.log.takeLast(3)}"
+        notes += "round $round: overuse ${routed.overuse}, failed nets ${routed.failedNets} ${routed.log.takeLast(3)}" +
+            routed.failedNets.mapNotNull { f -> routed.log.lastOrNull { it.startsWith("net $f ") || it.startsWith("net $f:") } }.joinToString(" | ", " why: ") + routed.failedNets.mapNotNull { f -> routed.log.lastOrNull { it.startsWith("net $f ") } }.joinToString(" | ", " ")
         if (round == tuning.place.feedbackRounds) break
         routed.history.forEach { (t, v) -> history.merge(t, v, Double::plus) }
         model.setHistory(history, tuning.place.beta2)
