@@ -531,21 +531,38 @@ private fun loopGraph(machines: List<MachineInstance>, supplied: Set<String>): P
  */
 fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leaving: Set<String>): Set<String> {
     val (made, next) = loopGraph(machines, supplied)
-    val inLoops = stronglyConnected(made, next).flatten().toSet()
+    val loops = stronglyConnected(made, next)
+    val inLoops = loops.flatten().toSet()
     if (inLoops.isEmpty()) return emptySet()
     fun takes(m: MachineInstance) = m.demand.keys + m.fluidDemand.keys
     fun inLoop(m: MachineInstance) = m.products.keys.any { it in inLoops } && takes(m).any { it in inLoops }
+    val loopOf = HashMap<String, Set<String>>().also { m -> loops.forEach { s -> s.forEach { m[it] = s } } }
     val out = sortedSetOf<String>()
     machines.forEach { m ->
         val products = m.products.filterValues { it > 1e-12 }.keys
         if (products.size < 2) return@forEach
         products.forEach { p ->
-            if (p in takes(m) || p in leaving || p in supplied) return@forEach
+            if (p in takes(m) || p in leaving || p in supplied || carrier(p, machines, loopOf)) return@forEach
             val users = machines.filter { (it.demand[p] ?: it.fluidDemand[p] ?: 0.0) > 1e-12 }
             if (users.isNotEmpty() && (p in inLoops || inLoop(m) || users.any { inLoop(it) })) out += p
         }
     }
     return out
+}
+
+/**
+ * Whether [p] only goes round its loop: every machine that makes it turns another item of the same loop into it one
+ * for one (Py's heat bricks: stone -> warm -> warmer -> hot -> stone; barrels filled and emptied; cages). The loop
+ * holds as many as were put in, so an overflow would only drain it: the belt runs on past its users to the edge,
+ * and whatever passes them while they are full is gone for good (Py science 2's brick ring starved that way).
+ */
+private fun carrier(p: String, machines: List<MachineInstance>, loopOf: Map<String, Set<String>>): Boolean {
+    val loop = loopOf[p] ?: return false
+    val makers = machines.filter { (it.products[p] ?: 0.0) > 1e-12 }
+    return makers.isNotEmpty() && makers.all { m ->
+        val r = m.products.getValue(p)
+        (m.demand + m.fluidDemand).any { (q, rq) -> q != p && q in loop && kotlin.math.abs(rq - r) <= 1e-6 * maxOf(r, rq) + 1e-12 }
+    }
 }
 
 /** Strongly connected parts of the graph [next] over [nodes] with more than one item (Tarjan). */

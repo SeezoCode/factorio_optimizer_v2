@@ -1898,6 +1898,8 @@ class PathFinder(internal val p: RouteProblem) {
         }
         // 2. Consumers nearest each input port, fed by it.
         val need = LinkedHashMap<EffectiveTerminal, Double>().apply { consumers.forEach { put(it, it.rate) } }
+        // Input ports no chain starts from (a 0/s port: a block's overflow coming into a factory's corridor).
+        val idleSources = ArrayDeque<EffectiveTerminal>()
         sources.sortedByDescending { srcLeft.getValue(it) }.forEach { s ->
             var left = srcLeft.getValue(s)
             val at = portCenter(s)
@@ -1919,6 +1921,7 @@ class PathFinder(internal val p: RouteProblem) {
                 val through = ps.firstOrNull()
                 if (through != null) addChain(net, mine + through.parts, s, through.srcRate + mine.sumOf { it.rate }, through.out, through.outRate, rectOf)
                 else if (mine.isNotEmpty()) addChain(net, mine, s, mine.sumOf { it.rate }, null, 0.0, rectOf)
+                else idleSources += s
                 // More outputs passing through this port still get chains: their output ports must exist (a second
                 // belt at the port fails the trial's one-belt check rather than leaving an output out).
                 ps.drop(1).forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) }
@@ -1938,7 +1941,12 @@ class PathFinder(internal val p: RouteProblem) {
         overflowOuts.forEach { o ->
             val spare = prodLeft.filter { it.value > 1e-9 }.keys.map { part(it, prodLeft.getValue(it), dropRate) }
             val makers = spare.ifEmpty { producers.map { part(it, it.rate, dropRate) } }
-            if (makers.isEmpty()) log += "net ${net.id} (${net.item}): an overflow with no producer" else addChain(net, makers, null, 0.0, o, 0.0, rectOf)
+            // No producer here (a factory's corridor): the block's overflow port, coming in at 0/s, runs on to it. Before,
+            // nothing was built and every block's item overflow ended a tile outside the block (Py science 2: its
+            // stone-brick ring's bricks piled up in four such blind alleys and the ring starved).
+            if (makers.isNotEmpty()) addChain(net, makers, null, 0.0, o, 0.0, rectOf)
+            else idleSources.removeFirstOrNull()?.let { s -> addChain(net, emptyList(), s, 0.0, o, 0.0, rectOf) }
+                ?: run { log += "net ${net.id} (${net.item}): an overflow with no producer" }
         }
         prodLeft.filter { it.value > 1e-6 }.forEach { (p, r) -> log += "net ${net.id} (${net.item}): ${"%.2f".format(r)}/s of a producer has no chain" }
         srcLeft.filter { it.value > 1e-6 }.forEach { (_, r) -> log += "net ${net.id} (${net.item}): ${"%.2f".format(r)}/s of an input port has no chain" }

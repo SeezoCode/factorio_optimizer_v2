@@ -52,9 +52,9 @@ class ByproductsTest {
 }
 
 class LoopSeedsTest {
-    private fun m(id: Int, ins: List<String>, outs: List<String>) = plan.MachineInstance(
-        id, "r$id", "m", 3, 3, outputRate = 1.0, product = outs.first(),
-        demand = ins.associateWith { 1.0 }, products = outs.associateWith { 1.0 })
+    private fun m(id: Int, ins: List<String>, outs: List<String>) = m(id, ins.associateWith { 1.0 }, outs.associateWith { 1.0 })
+    private fun m(id: Int, ins: Map<String, Double>, outs: Map<String, Double>) = plan.MachineInstance(
+        id, "r$id", "m", 3, 3, outputRate = outs.values.first(), product = outs.keys.first(), demand = ins, products = outs)
 
     @Test
     fun `a loop through several recipes gets one seed, a chain none`() {
@@ -80,7 +80,7 @@ class LoopSeedsTest {
         val ms = listOf(
             m(0, listOf("tar"), listOf("aromatics", "co2")),          // tar distillation
             m(1, listOf("co2", "fertilizer"), listOf("moss")),         // co2 goes into the loop
-            m(2, listOf("moss"), listOf("fertilizer", "substrate")),   // the loop: fertilizer -> moss -> fertilizer
+            m(2, mapOf("moss" to 1.0), mapOf("fertilizer" to 1.5, "substrate" to 1.0)),   // the loop: fertilizer -> moss -> fertilizer, growing
             m(3, listOf("aromatics", "substrate"), listOf("science")),
             m(4, listOf("ore"), listOf("plate", "slag")),              // off any loop
             m(5, listOf("slag"), listOf("brick")),
@@ -88,5 +88,18 @@ class LoopSeedsTest {
         assertEquals(setOf("co2", "fertilizer", "substrate"), plan.overflowItems(ms, setOf("tar", "ore"), setOf("science", "plate", "brick")))
         // No loops: no overflows.
         assertEquals(emptySet(), plan.overflowItems(ms.filter { it.id >= 4 }, setOf("ore"), emptySet()))
+    }
+
+    @Test
+    fun `items a loop only passes round, one for one, get no overflow`() {
+        // Py's heat bricks: heated by gas, cooled making hot air; the ring holds as many bricks as were put in.
+        val ms = listOf(
+            m(0, mapOf("stone-brick" to 0.07, "hot-gas" to 0.35), mapOf("warm-stone-brick" to 0.07, "cool-gas" to 0.35)),
+            m(1, mapOf("warm-stone-brick" to 0.07, "air" to 0.5), mapOf("stone-brick" to 0.07, "hot-air" to 0.5)),
+            m(2, mapOf("cool-gas" to 0.35, "salt" to 0.2), mapOf("hot-gas" to 0.33, "used-salt" to 0.2)),
+            m(3, mapOf("hot-air" to 0.5), mapOf("science" to 0.02)),
+        )
+        val over = plan.overflowItems(ms, setOf("air", "salt"), setOf("science", "used-salt"))
+        assertTrue("stone-brick" !in over && "warm-stone-brick" !in over, "bricks only go round: $over")
     }
 }
