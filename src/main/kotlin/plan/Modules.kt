@@ -110,7 +110,11 @@ fun farmModule(data: RootData, machine: String, recipe: Recipe? = null): String?
         ?.value?.takeIf { it.isJsonObject }?.asJsonObject?.get("default_module")?.takeIf { it.isJsonPrimitive }?.asString
     if (default != null && takes(default)) return default
     if (allowed == null) return null
-    return data.items.values.filter { takes(it.name) }.minWithOrNull(compareBy({ it.moduleEffects?.speed ?: 0.0 }, { it.name }))?.name
+    // The plainest: an animal or plant that only speeds the farm up before one with more to it (Py's special modules,
+    // geooxidation +100% productivity each: eight in a farm made a recipe give nine times its products, and the
+    // planner's linear program came back ABNORMAL on Py science 1).
+    fun special(m: data.Item) = (m.moduleEffects?.productivity ?: 0.0) != 0.0 || (m.moduleEffects?.quality ?: 0.0) != 0.0
+    return data.items.values.filter { takes(it.name) }.minWithOrNull(compareBy({ special(it) }, { it.moduleEffects?.speed ?: 0.0 }, { it.name }))?.name
 }
 
 /** The modules in a machine's own slots: [config.BeaconConfig.machineModules], one the recipe refuses replaced by the fallback. */

@@ -389,14 +389,27 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         floorFor(chosen.filter { (best.first[it] ?: 0.0) > eps })
         solver.setTimeLimit(60_000)
         var st = MPSolver.ResultStatus.NOT_SOLVED
-        // Recipes the exact balance brings in get the floor too, in a round more.
-        for (round in 0 until 3) {
+        // A recipe the exact balance brings in at a sliver is left out and the balance solved again (flooring it instead
+        // snowballed: each floor needs more inputs, which bring more slivers; Py science 1 went from 63 recipes to 819).
+        // One that cannot be left out (the balance fails without it) stays, as thin as it is. Never a change to the
+        // program after its last solve: the values read then are stale (Py science 1 came out with no machines at all).
+        val forbidden = HashSet<RecipeChoice>()
+        var round = 0
+        while (true) {
             solver.reset()
             st = solver.solve()
-            if (st != MPSolver.ResultStatus.OPTIMAL) break
-            val thinNew = choices.filter { c -> x.getValue(c).solutionValue().let { it > eps && it < MIN_CRAFTS } && c !in slack }
-            if (thinNew.isEmpty()) break
-            floorFor(thinNew)
+            if (st != MPSolver.ResultStatus.OPTIMAL) {
+                if (forbidden.isEmpty()) break
+                // Leaving the last ones out broke the balance: let them back in and settle for the slivers.
+                forbidden.forEach { x.getValue(it).setBounds(0.0, inf) }
+                forbidden.clear()
+                solver.reset()
+                st = solver.solve()
+                break
+            }
+            val thinNew = choices.filter { c -> c !in chosen && x.getValue(c).solutionValue().let { it > eps && it < MIN_CRAFTS } }
+            if (thinNew.isEmpty() || round++ == 3) break
+            thinNew.forEach { x.getValue(it).setBounds(0.0, 0.0); forbidden += it }
         }
         if (st == MPSolver.ResultStatus.OPTIMAL) {
             val before = best.first.count { it.value > eps }
