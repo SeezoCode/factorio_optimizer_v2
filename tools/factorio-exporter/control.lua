@@ -132,16 +132,23 @@ local function probe_fluid_boxes(player)
                 seen[r.name] = true
                 if pcall(function() ent.set_recipe(r.name) end) then
                   probed = probed + 1
-                  -- What the optimizer assumes: fluidbox_index, else order among the recipe's fluids of that kind.
-                  local assumed = {}
+                  -- What the optimizer assumes: fluidbox_index, else order among the recipe's fluids of that kind. A
+                  -- fluid the recipe has twice (Py's gas separators: uf6 out at two enrichments) is "out:uf6" the first
+                  -- time and "out:uf6/2" the second: the game fills the boxes filtered to it in the recipe's order.
+                  local assumed, times = {}, {}
+                  local function key_of(k, name)
+                    times[k .. name] = (times[k .. name] or 0) + 1
+                    return k .. ":" .. name .. (times[k .. name] > 1 and ("/" .. times[k .. name]) or "")
+                  end
                   local n = 0
                   for _, i in pairs(r.ingredients) do
-                    if i.type == "fluid" then n = n + 1; assumed["in:" .. i.name] = i.fluidbox_index or n end
+                    if i.type == "fluid" then n = n + 1; assumed[key_of("in", i.name)] = i.fluidbox_index or n end
                   end
                   n = 0
                   for _, p in pairs(r.products) do
-                    if p.type == "fluid" then n = n + 1; assumed["out:" .. p.name] = assumed["out:" .. p.name] or p.fluidbox_index or n end
+                    if p.type == "fluid" then n = n + 1; assumed[key_of("out", p.name)] = p.fluidbox_index or n end
                   end
+                  times = {}
                   for i = 1, (ent.fluids_count or 0) do
                     local f = ent.get_fluid_filter(i)
                     local okp, proto = pcall(function() return ent.get_fluid_box_prototype(i) end)
@@ -152,7 +159,7 @@ local function probe_fluid_boxes(player)
                     if f and okp and proto then
                       local k = proto.production_type == "output" and "out" or "in"
                       local no = kind_no[proto.index]
-                      local key = k .. ":" .. f.name
+                      local key = key_of(k, f.name)
                       if no and assumed[key] ~= nil and assumed[key] ~= no then
                         out[r.name] = out[r.name] or {}
                         out[r.name][e.name] = out[r.name][e.name] or {}

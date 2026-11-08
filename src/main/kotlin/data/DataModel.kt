@@ -44,11 +44,18 @@ data class RootData(
  */
 fun RootData.fluidBoxes(recipe: Recipe, machine: String?): Pair<Map<String, Int>, Map<String, Int>> {
     val game = machine?.let { fluidBoxAssignment?.get(gameName(recipe.name))?.get(it) }
+    // A fluid the recipe has twice (Py's gas separators give uf6 at two enrichments, uf6#20 and uf6#10 here): the
+    // exporter calls the second "out:uf6/2". Before, both went to the first one's box and the other box had no pipe.
+    val times = HashMap<String, Int>()
+    fun key(kind: String, name: String): String {
+        val n = times.merge(kind + ":" + gameName(name), 1, Int::plus)!!
+        return kind + ":" + gameName(name) + if (n > 1) "/$n" else ""
+    }
     val ins = recipe.ingredients.filter { it.isFluid }.mapIndexed { i, ing ->
-        ing.name to (ing.fluidboxIndex ?: game?.get("in:" + gameName(ing.name)) ?: (i + 1))
+        ing.name to (ing.fluidboxIndex ?: game?.get(key("in", ing.name)) ?: (i + 1))
     }.toMap()
     val outs = recipe.products.filter { it.type == "fluid" }.mapIndexed { i, p ->
-        p.name to (p.fluidboxIndex ?: game?.get("out:" + gameName(p.name)) ?: (i + 1))
+        p.name to (p.fluidboxIndex ?: game?.get(key("out", p.name)) ?: (i + 1))
     }.toMap()
     return ins to outs
 }

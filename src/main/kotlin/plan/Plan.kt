@@ -204,7 +204,10 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     val warn: (String) -> Unit = { warnings += it; println("WARNING: $it") }
     val lp = solveRates(data, config, tuning.planner, warn)
     // Mixed outputs: surplus items no recipe of the plan uses leave together on one belt per group.
-    val used = lp.crafts.keys.flatMap { c -> c.recipe.ingredients.map { it.name } }.toSet()
+    // (Fuel too: a burner's fuel is no ingredient. Py science 2's fuel rods, burnt by a bhoddos culture, went onto the
+    // mixed belt as a leftover and the culture got none.)
+    val used = (lp.crafts.keys.flatMap { c -> c.recipe.ingredients.map { it.name } } +
+        lp.crafts.keys.mapNotNull { c -> fuelItem(data, c.machine, config) }).toSet()
     val mixed = LinkedHashMap<String, String>()
     // byproducts_mixed: one more group with every item that only leaves.
     val listed = config.mixedOutputs.flatMap { it.items }.toSet()
