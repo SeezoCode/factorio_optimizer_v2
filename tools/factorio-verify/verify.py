@@ -450,12 +450,27 @@ def main():
               "productivity": research.get("productivity") or None,
               "belt_stack_size": (job or {}).get("belt_stack_size", 1)}
     if not args.uncapped and ports:
-        # Only the targets: a by-product output held to its planned rate stops its machine whenever that runs ahead
-        # of the plan (Py's tar distillation at start, its rich clay planned at 0.02/s).
+        # Every item output at its planned rate: the belt backs up, so the block's own users of a by-product take
+        # first (Py's moss gets its coarse back; uncapped, the moving belt took 2 of its 15 out of the factory) and a
+        # machine with several products runs at its planned rate. Not the overflows (0/s, plan.overflowItems): they
+        # take only what is left over.
+        # Items the factory also uses (plan.json consumers), and the 0/s overflows, leave only what their users leave:
+        # the mod opens their sinks only while the belt into them is backed up, and does not hold them to a rate.
+        used = set()
+        plan_file = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        if plan_file and os.path.exists(plan_file):
+            used = {t["item"] for t in json.load(open(plan_file)).get("terminals", []) if t.get("role") == "CONSUMER"}
         targets = {t["name"] for t in (job or {}).get("targets", [])}
+        overflow = {o["item"].split("#")[0] for o in ports.get("outputs", [])
+                    if not o.get("fluid") and o["item"] not in targets and (o["rate"] <= 1e-12 or o["item"] in used)}
+        if overflow:
+            params["overflow"] = sorted(overflow)
+            # Where they are, so their sinks start closed (by item alone, the first ones through would leave).
+            params["overflow_at"] = [[o["x"] + 0.5, o["y"] + 0.5] for o in ports.get("outputs", [])
+                                     if not o.get("fluid") and o["item"].split("#")[0] in overflow]
         rates = defaultdict(float)
         for o in ports.get("outputs", []):
-            if not o.get("fluid") and (not targets or o["item"] in targets):
+            if not o.get("fluid") and o["rate"] > 1e-12 and o["item"].split("#")[0] not in overflow:
                 rates[o["item"].split("#")[0]] += o["rate"]
         params["sink_rates"] = dict(rates)
     if args.dump:

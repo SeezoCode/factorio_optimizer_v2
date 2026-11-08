@@ -260,6 +260,9 @@ class BlockEngine(
         }
     }
 
+    /** Stops every block search now (search.stop_after: the factory has its valid layouts). */
+    fun stopForGood() = stopAll(true)
+
     private fun stopAll(now: Boolean) {
         stopping = true
         if (now) { stopNow = true; event("stopping now") }

@@ -288,7 +288,8 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val demandPer = r.ingredients.filter { !it.isFluid }.groupBy { it.name }.mapValues { (_, ings) -> ings.sumOf { it.amount } }
             .let { if (fuel > 0 && fuelFluid == null) it + (fuelItem!! to (it[fuelItem] ?: 0.0) + fuel) else it }
         // A rocket silo launches what it builds: no product leaves it.
-        val launched = GameConstants.launches(c.machine)
+        // A silo's parts are launched; a payload's launch products come back out (see withLaunchProducts).
+        val launched = GameConstants.launches(c.machine) && !isLaunch(c.recipe.name)
         val itemOut0 = if (launched) emptyMap() else productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
         // Products that go on one mixed belt leave through one inserter (count them as one).
         val itemOut = itemOut0.entries.groupBy { mixed[it.key] ?: it.key }.mapValues { (_, es) -> es.sumOf { it.value } }
@@ -349,7 +350,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     }
     val portMode = config.sinks.mode == "port"
     // Launched in rocket silos (rocket parts): counted, but nothing to carry.
-    val launched = crafts.filter { (c, _) -> GameConstants.launches(c.machine) }
+    val launched = crafts.filter { (c, _) -> GameConstants.launches(c.machine) && !isLaunch(c.recipe.name) }
         .flatMap { (c, _) -> c.recipe.products.map { it.name } }.associateWith { lp.output[it] ?: 0.0 }.filterValues { it > 1e-12 }
     val outputs = lp.output.filterKeys { it !in launched }
     outputs.keys.sorted().filter { (portMode || isFluid(it)) && it !in mixed }.forEach { item ->

@@ -157,7 +157,7 @@ fun runFactory(
         best = f; bestState = r.second
         writeFactory(f, out, config, data, input.seeds)
         saves++
-        if (config.search.stopAfter > 0 && saves >= config.search.stopAfter) deadline = System.currentTimeMillis()
+        if (config.search.stopAfter > 0 && saves >= config.search.stopAfter) { deadline = System.currentTimeMillis(); engineRef?.stopForGood() }
         say("$what: ${f.layout.w} x ${f.layout.h} (${area(f)} tiles), saved")
         engineRef?.factorySaved(f.layout.w, f.layout.h)
         return true

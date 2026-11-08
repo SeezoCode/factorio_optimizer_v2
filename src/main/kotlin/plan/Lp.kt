@@ -5,6 +5,7 @@ import com.google.ortools.linearsolver.MPSolver
 import config.PlannerTuning
 import config.RunConfiguration
 import data.FurnaceEntity
+import data.RocketSiloEntity
 import data.AssemblingMachineEntity
 import data.Recipe
 import data.RootData
@@ -36,8 +37,8 @@ fun recyclingAllowed(r: Recipe, config: RunConfiguration): Boolean {
         else -> if (selfRecycling(r)) r.ingredients[0].name in rc.voidItems else true
     }
 }
-// Emptying barrels gains nothing; filling them only when a recipe takes a filled barrel (Py does), which the
-// program sees itself.
+// Emptying barrels gains nothing, except for a fluid nothing else makes (Py's milk: see solveRates); filling them
+// only when a recipe takes a filled barrel (Py does), which the program sees itself.
 private val EXCLUDED_SUBGROUPS = setOf("empty-barrel")
 
 /** A recipe the planner may use, with the machine that will craft it. */
@@ -77,6 +78,8 @@ fun autoMachines(data: RootData, config: RunConfiguration, listed: List<String>)
         val (cats, source, hidden, fixed) = when (e) {
             is AssemblingMachineEntity -> listOf(e.craftingCategories, e.energySource, e.hidden, e.fixedRecipe)
             is FurnaceEntity -> listOf(e.craftingCategories, e.energySource, e.hidden, null)
+            // Rocket silos (for launch products, see withLaunchProducts); not Py's mega farm, a silo of one part.
+            is RocketSiloEntity -> if (e.rocketPartsRequired > 1) listOf(e.craftingCategories, e.energySource, e.hidden, e.fixedRecipe) else return@mapNotNull null
             else -> return@mapNotNull null
         }
         @Suppress("UNCHECKED_CAST") cats as List<String>
@@ -101,7 +104,11 @@ fun autoMachines(data: RootData, config: RunConfiguration, listed: List<String>)
 }
 
 /** The one recipe a machine is built to make, if any (Py's clay pit, the rocket silo). */
-fun fixedRecipeOf(data: RootData, machine: String): String? = (data.entities[machine] as? AssemblingMachineEntity)?.fixedRecipe
+fun fixedRecipeOf(data: RootData, machine: String): String? = when (val e = data.entities[machine]) {
+    is AssemblingMachineEntity -> e.fixedRecipe
+    is RocketSiloEntity -> e.fixedRecipe
+    else -> null
+}
 
 /** Raw resources when the job lists none: the game data's mined and pumped resources (exporter data), else the base game's. */
 fun defaultRaw(data: RootData): Set<String> =
@@ -199,8 +206,12 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     val overrides = config.recipeOverrides
     val categoryFilter = config.recipeCategories?.toSet()
 
+    // Fluids only a barrel holds: Py's milk and arqad jelly come from emptying barrels the animals fill.
+    val onlyBarrelled = data.recipes.values.filter { it.subgroup in EXCLUDED_SUBGROUPS }.flatMap { r -> r.products.filter { it.type == "fluid" }.map { it.name } }
+        .filter { f -> data.recipes.values.none { r -> r.subgroup !in EXCLUDED_SUBGROUPS && r.products.any { it.name == f } } }.toSet()
     val choices = data.recipes.values.mapNotNull { r ->
-        if (r.inAny(EXCLUDED_CATEGORIES) || r.subgroup in EXCLUDED_SUBGROUPS || r.name in config.forbiddenRecipes) return@mapNotNull null
+        val barrelOnly = r.subgroup in EXCLUDED_SUBGROUPS && r.products.any { it.name in onlyBarrelled }
+        if (r.inAny(EXCLUDED_CATEGORIES) || (r.subgroup in EXCLUDED_SUBGROUPS && !barrelOnly) || r.name in config.forbiddenRecipes) return@mapNotNull null
         // Hidden recipes (recycling excepted) and the job's skip list (Py's upgrade and voiding recipes),
         // unless a recipe override names it.
         val named = r.name in config.recipeOverrides.values

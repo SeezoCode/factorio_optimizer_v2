@@ -96,6 +96,56 @@ local function surface_for(radius_chunks)
 end
 
 -- Item request proxies (modules for machines and beacons): put the items straight in.
+-- Catalysts (an item or fluid the recipe takes and gives back): a new build starts with none in its loop, so each
+-- such machine gets a few crafts' worth (plan.Port.priming; a real game fills the loop once by hand). Production loops
+-- (params.seeds, plan.json "seeds", e.g. Py's farms feeding each other) too. Only what the machine is short of: this
+-- runs again through the first half of the warm-up (see seed_tick), which starts loops whose crafts do not line up (Py's
+-- ammonia -> formamide -> formic acid -> ammonia). Returns whether the machine takes any of them.
+local function prime(run, e, r)
+  local back, made_at, seeded = {}, {}, {}
+  for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature end
+  for _, name in pairs(run.params.seeds or {}) do back[name] = true; seeded[name] = true end
+  local any = false
+  for _, ing in pairs(r.ingredients) do
+    if back[ing.name] then
+      any = true
+      if ing.type == "item" then
+        local want = math.ceil(ing.amount) * (seeded[ing.name] and 5 or 2)
+        pcall(function()
+          local have = e.get_item_count(ing.name)
+          if have < want then e.insert { name = ing.name, count = want - have } end
+        end)
+      else
+        pcall(function()
+          for k = 1, (e.fluids_count or 0) do
+            local f = e.get_fluid_filter(k)
+            local proto = e.get_fluid_box_prototype(k)
+            if proto and proto.index == nil and proto[1] then proto = proto[1] end
+            -- At the temperature the recipe gives it back at; none when that is outside what it takes (Py's
+            -- warmer-stone-brick takes coke oven gas at 500 and gives it at 250: not a catalyst at all).
+            local t = made_at[ing.name] or prototypes.fluid[ing.name].default_temperature
+            local ok = (ing.minimum_temperature == nil or t >= ing.minimum_temperature) and
+              (ing.maximum_temperature == nil or t <= ing.maximum_temperature) and (ing.temperature == nil or t == ing.temperature)
+            local have = e.get_fluid(k)
+            if ok and f and f.name == ing.name and proto and proto.production_type == "input" and (not have or have.amount < ing.amount) then
+              e.set_fluid(k, { name = ing.name, amount = math.max(ing.amount, (proto.volume or 0) / 2), temperature = t })
+            end
+          end
+        end)
+      end
+    end
+  end
+  return any
+end
+
+-- Tops up the primed machines every 2 s through the first half of the warm-up.
+local function seed_tick(run)
+  if run.phase ~= "warmup" or game.tick - run.t0 >= run.warmup / 2 or game.tick % 120 ~= 0 then return end
+  for _, p in pairs(run.primes or {}) do
+    if p.e.valid then prime(run, p.e, p.r) end
+  end
+end
+
 local function fulfil_proxies(surface)
   local n = 0
   for _, p in pairs(surface.find_entities_filtered { type = "item-request-proxy" }) do
@@ -196,6 +246,7 @@ local function start(params)
   local networks, unwired = power(run, surface, force, maxx + run.dx + 6, miny + run.dy)
 
   run.machines, run.inserters, run.belts, run.sources, run.sinks, run.drains = {}, {}, {}, {}, {}, {}
+  run.primes = {}
   local counts = {}
   for _, e in pairs(surface.find_entities_filtered { force = force }) do
     add(counts, e.name, 1)
@@ -205,36 +256,7 @@ local function start(params)
       run.machines[#run.machines + 1] = { e = e, name = e.name, recipe = r and r.name, pos = bp_pos(run, e.position), statuses = {} }
       -- Catalysts (an item or fluid the recipe takes and gives back): a new build starts with none in its loop, so
       -- each such machine gets a few crafts' worth (plan.Port.priming; a real game fills the loop once by hand).
-      if r then
-        local back, made_at = {}, {}
-        for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature end
-        -- Production loops (plan.json "seeds", e.g. Py's farms feeding each other): their machines start with a few.
-        local seeded = {}
-        for _, name in pairs(run.params.seeds or {}) do back[name] = true; seeded[name] = true end
-        for i, ing in pairs(r.ingredients) do
-          if back[ing.name] then
-            if ing.type == "item" then
-              pcall(function() e.insert { name = ing.name, count = math.ceil(ing.amount) * (seeded[ing.name] and 5 or 2) } end)
-            else
-              pcall(function()
-                for k = 1, (e.fluids_count or 0) do
-                  local f = e.get_fluid_filter(k)
-                  local proto = e.get_fluid_box_prototype(k)
-                  if proto and proto.index == nil and proto[1] then proto = proto[1] end
-                  -- At the temperature the recipe gives it back at; none when that is outside what it takes (Py's
-                  -- warmer-stone-brick takes coke oven gas at 500 and gives it at 250: not a catalyst at all).
-                  local t = made_at[ing.name] or prototypes.fluid[ing.name].default_temperature
-                  local ok = (ing.minimum_temperature == nil or t >= ing.minimum_temperature) and
-                    (ing.maximum_temperature == nil or t <= ing.maximum_temperature) and (ing.temperature == nil or t == ing.temperature)
-                  if ok and f and f.name == ing.name and proto and proto.production_type == "input" and not e.get_fluid(k) then
-                    e.set_fluid(k, { name = ing.name, amount = ing.amount, temperature = t })
-                  end
-                end
-              end)
-            end
-          end
-        end
-      end
+      if r and prime(run, e, r) then run.primes[#run.primes + 1] = { e = e, r = r } end
       if t == "rocket-silo" then run.silos = run.silos or {}; run.silos[#run.silos + 1] = { e = e, launches = 0, failed = 0 } end
     elseif t == "inserter" then
       run.inserters[#run.inserters + 1] = { e = e, held_all = true, moved = false, samples = 0 }
@@ -254,7 +276,12 @@ local function start(params)
         if e.loader_type == "input" then
           c.infinity_container_filters = {}
           c.remove_unfiltered_items = false
-          run.sinks[#run.sinks + 1] = { chest = c, loader = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
+          local s = { chest = c, loader = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
+          -- An overflow port's sink (params.overflow_at): closed until its belt backs up.
+          for _, at in pairs(run.params.overflow_at or {}) do
+            if math.abs(s.pos.x - at[1]) + math.abs(s.pos.y - at[2]) <= 3.5 then s.overflow = true; e.disabled_by_script = true end
+          end
+          run.sinks[#run.sinks + 1] = s
         else
           local keep = {}
           for _, f in pairs(c.infinity_container_filters or {}) do
@@ -305,6 +332,8 @@ local function flows(run, counting)
     end
   end
   local caps = run.params.sink_rates
+  local overflow = {}
+  for _, n in pairs(run.params.overflow or {}) do overflow[n] = true end
   for _, s in pairs(run.sinks) do
     if s.chest.valid and not s.inv.is_empty() then
       for _, it in pairs(s.inv.get_contents()) do
@@ -322,6 +351,26 @@ local function flows(run, counting)
         end
       end
       if caps then s.loader.disabled_by_script = s.inv.get_item_count() >= 20 end
+    end
+    -- An overflow (params.overflow: items the factory also uses) takes only while the belt into its loader is
+    -- backed up, so the factory's own users always take first, however fast they run.
+    if next(overflow) and s.loader.valid then
+      local belts = (s.loader.belt_neighbours or {}).inputs or {}
+      local b = belts[1]
+      if b and b.valid then
+        local mine, full = false, false
+        for i = 1, 2 do
+          local ok, line = pcall(function() return b.get_transport_line(i) end)
+          if ok and line then
+            for _, it in pairs(line.get_contents()) do if overflow[it.name] then mine = true end end
+            if line.get_item_count() >= 3 then full = true end
+          end
+        end
+        if mine or s.overflow then
+          s.overflow = true
+          if not full then s.loader.disabled_by_script = true elseif not (caps and s.inv.get_item_count() >= 20) then s.loader.disabled_by_script = false end
+        end
+      end
     end
   end
   if caps then
@@ -575,6 +624,7 @@ script.on_event(defines.events.on_tick, function()
       end
     end
   end
+  seed_tick(run)
   if run.phase == "warmup" and game.tick - run.t0 >= run.warmup then begin_measure(run) end
   if run.phase == "measure" then
     local t = game.tick - run.m0

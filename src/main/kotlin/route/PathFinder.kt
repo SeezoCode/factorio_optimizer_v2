@@ -257,6 +257,12 @@ class PathFinder(internal val p: RouteProblem) {
     private val stubStamp = IntArray(N)
     /** Dead-end splitter pickups (B14): a splitter on a straight belt whose second half leads nowhere. */
     private val stubsOn = config.trick("B14") && config.spoilage.mode == "off"   // a stub holds what spoils there
+    /** A net whose item some machine both makes and takes (a catalyst on a belt). */
+    private fun catalystNet(n: RNet): Boolean {
+        val ts = n.terms.map { vts[it].base }
+        val makers = ts.filter { it.role == Role.PRODUCER }.mapNotNull { it.machine }.toSet()
+        return ts.any { it.role == Role.CONSUMER && it.machine in makers }
+    }
     /** Aquilo: each inserter keeps a tile beside it for a heat pipe; belts and inserters there are conflicts. */
     private val heatOn = config.heat.mode != "off"
     /** Names of the plan's mixed belts (sushi): their producers' inserters take every product that goes there. */
@@ -743,7 +749,9 @@ class PathFinder(internal val p: RouteProblem) {
             }
             // Goal through a dead-end splitter stub (B14): this belt becomes a splitter whose other half, beside
             // it, leads nowhere; a consumer's inserter picks from that half. Items must enter from behind.
-            if (stubsOn && !outputLeg && kind == BELT && stubStamp[t] == goalGen && par[s] != -1 && s !in banned &&
+            // Not for a catalyst that also leaves through a port: the stub fills only once the belt to the port has
+            // backed up, which a small loop (Py's moss and its coarse) never does, and the machine starves.
+            if (stubsOn && !outputLeg && !(n.outTiles.isNotEmpty() && catalystNet(n)) && kind == BELT && stubStamp[t] == goalGen && par[s] != -1 && s !in banned &&
                 ((par[s] ushr 1) and 3) == d) stubGoals(n, s, t, d, gS, final, leg1)
 
             // Belt step (B1).

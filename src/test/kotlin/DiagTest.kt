@@ -25,7 +25,7 @@ class DiagTest {
         // DIAG_PLAN=<plan.json>: a saved plan (e.g. one block of a factory, run alone) instead of planning the job.
         val config = if (System.getenv("DIAG_PLAN") != null) job.copy(blocks = null, testMode = false, reserved = emptyList(), forbiddenTiles = emptyList()) else job
         // The job's own game data (a modded export), else the built-in one.
-        val data = withRawByproducts(job.data?.let { data.loadRootData(it) } ?: TestData.data, config)
+        val data = plan.withLaunchProducts(withRawByproducts(job.data?.let { data.loadRootData(it) } ?: TestData.data, config))
         val tuning = (System.getenv("DIAG_TUNING")?.takeIf { it.isNotBlank() }?.let { Tuning.load(it) } ?: Tuning.defaults()).withOverrides(config.tuning)
         val plan = System.getenv("DIAG_PLAN")?.let { strictJson.decodeFromString(ProductionPlan.serializer(), File(it).readText()) }
             ?: buildPlan(data, config, tuning)

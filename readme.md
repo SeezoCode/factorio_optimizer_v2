@@ -330,7 +330,7 @@ Unknown keys are an error. Everything except `targets` has a default.
                "machine_modules": ["productivity-module-3", "productivity-module-3", "productivity-module-3", "productivity-module-3"],
                "fallback_module": "speed-module-3", "recipes": null, "pitch": null,
                "quality": "normal", "module_quality": "normal" },
-  "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true },
+  "search": { "time_budget_s": 300, "seeds_per_size": 3, "threads": 4, "seed": 12345, "verbose": true, "stop_after": 0 },
   "score": { "belt": 0.3, "underground": 1.0, "inserter": 0.2 },
   "test_mode": false,
   "templates": true,
@@ -359,6 +359,9 @@ Unknown keys are an error. Everything except `targets` has a default.
   water, which enter at ports anywhere on the edge. A port one tile wide carries one belt, which branches with
   splitters to all its consumers; give a busy input a few tiles of edge so it can enter on several belts.
   Fluid ports may touch: the generator starts them with pipe-to-ground, which you feed through its open side.
+- `search.stop_after`: stop once this many valid layouts are found (a block's improvements, a factory's saved
+  stitches) instead of using all of `time_budget_s`; `1` takes the first valid layout, good for checking that a job
+  works at all. `0` (default) uses the whole budget. Seeds run in parallel, so a few more may land in the same round.
 - Products and surplus by-products leave through output ports (`outputs` pins their edge; otherwise the
   generator picks one and reports it in `ports.json`). `"sinks": {"mode": "chest"}` puts products into chests
   instead, as in v1.

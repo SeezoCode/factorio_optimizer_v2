@@ -1,0 +1,49 @@
+{
+  "data": "data/pyanodon.json",
+  "targets": [
+    {
+      "name": "logistic-science-pack",
+      "amount": 0.02
+    }
+  ],
+  "machines": [
+    "auto"
+  ],
+  "belt_tier": "express",
+  "research": {
+    "inserter_capacity": 7
+  },
+  "inserters": {
+    "allowed": [
+      "inserter",
+      "long-handed-inserter",
+      "fast-inserter",
+      "bulk-inserter"
+    ],
+    "belt_pickup_derate": 0.7
+  },
+  "power": {
+    "pole": "substation"
+  },
+  "search": {
+    "time_budget_s": 1800,
+    "seeds_per_size": 3,
+    "threads": 10,
+    "seed": 1,
+    "verbose": false,
+    "stop_after": 1
+  },
+  "outputs": [
+    {
+      "name": "logistic-science-pack",
+      "edge": "east"
+    }
+  ],
+  "blocks": {
+    "max_machines": 30,
+    "size_by": "weight",
+    "lanes": 5,
+    "corridor": 4,
+    "compact": true
+  }
+}
