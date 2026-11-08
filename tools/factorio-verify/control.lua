@@ -544,7 +544,8 @@ local function finish(run)
     end
   end
     for _, m in pairs(run.machines) do
-      if m.e.valid and (m.recipe == "heavy-oil-cracking" or m.recipe == "lubricant" or #run.machines <= 40) then
+      if m.e.valid and (m.recipe == "heavy-oil-cracking" or m.recipe == "lubricant" or #run.machines <= 40 or
+          m.e.status == defines.entity_status.fluid_ingredient_shortage) then
         local cb = m.e.get_control_behavior()
         local info = { x = m.pos.x, y = m.pos.y, n = m.recipe, status = STATUS[m.e.status] }
         if cb then

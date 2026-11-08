@@ -92,7 +92,9 @@ data class BpEntity(
 )
 
 /** Quality of what a blueprint places: crafting machines, beacons, and the modules in either. Everything else is normal. */
-data class BuildQuality(val machines: String = "normal", val beacons: String = "normal", val modules: String = "normal")
+data class BuildQuality(val machines: String = "normal", val beacons: String = "normal", val modules: String = "normal",
+    /** The pipe entities built for the layout's pipes (fluids.pipe, fluids.pipe_to_ground). */
+    val pipe: String = GameConstants.PIPE, val pipeToGround: String = GameConstants.PIPE_TO_GROUND)
 
 /**
  * An item or recipe of a quality: "name@quality" (quality production, see plan/Quality.kt), else normal. Returns the
@@ -110,7 +112,7 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
     val bpEntities = entities.mapIndexed { i, e ->
         BpEntity(
             entityNumber = i + 1,
-            name = e.name,
+            name = when (e.kind) { Kind.PIPE -> q.pipe; Kind.PIPE_UG -> q.pipeToGround; else -> e.name },
             position = BpPosition(e.x + e.w / 2.0, e.y + e.h / 2.0),
             // A storage tank has two orientations: north (as south) and east (as west).
             direction = if (e.kind == Kind.TANK) (if (e.dir.axis == 0) Dir.E.value16 else null) else e.dir.value16.takeIf { it != 0 && e.kind.hasDirection },
@@ -212,7 +214,7 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
         val dir = Dir.from16(b.direction ?: 0)
         val (ew, eh) = PlacedEntity.defaultSize(b.name, kind, dir)
         PlacedEntity(
-            name = b.name,
+            name = when (b.name) { in GameConstants.PIPE_ALIASES -> GameConstants.PIPE; in GameConstants.PIPE_TO_GROUND_ALIASES -> GameConstants.PIPE_TO_GROUND; else -> b.name },
             kind = kind,
             x = floor(b.position.x - ew / 2.0 + 1e-6).toInt(),
             y = floor(b.position.y - eh / 2.0 + 1e-6).toInt(),

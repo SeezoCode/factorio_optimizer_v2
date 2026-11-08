@@ -168,7 +168,7 @@ data class RunConfiguration(
     fun trick(id: String): Boolean = tricks[id] ?: DEFAULT_TRICKS[id] ?: error("Unknown trick '$id'")
 
     /** Quality of the machines, beacons and modules a blueprint of this job places ([quality] is the machines'). */
-    fun buildQuality() = emit.BuildQuality(quality, beacons?.quality ?: "normal", moduleQuality())
+    fun buildQuality() = emit.BuildQuality(quality, beacons?.quality ?: "normal", moduleQuality(), fluids.pipe, fluids.pipeToGround)
 
     /** Quality of every module the job places. */
     fun moduleQuality(): String = qualityProduction?.moduleQuality ?: beacons?.moduleQuality ?: "normal"
@@ -562,6 +562,13 @@ data class FluidConfig(
      */
     @SerialName("surplus_only") val surplusOnly: Map<String, String> = mapOf("heavy-oil-cracking" to "heavy-oil", "light-oil-cracking" to "light-oil"),
     @SerialName("surplus_level") val surplusLevel: Double = 0.5,
+    /**
+     * The pipe and pipe-to-ground the blueprint builds (routing plans with the base game's reach either way). A fluid
+     * network stops working past its pipes' max_pipeline_extent: Pyanodon holds plain pipes to 320 tiles, so a big
+     * factory's pipes between blocks need its "ht-pipes" / "ht-pipes-to-ground" (1280; they join plain pipes and machines).
+     */
+    val pipe: String = "pipe",
+    @SerialName("pipe_to_ground") val pipeToGround: String = "pipe-to-ground",
 )
 
 @Serializable

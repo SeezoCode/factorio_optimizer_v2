@@ -46,5 +46,9 @@
     "corridor": 12,
     "compact": false,
     "lane_pairs": false
+  },
+  "fluids": {
+    "pipe": "ht-pipes",
+    "pipe_to_ground": "ht-pipes-to-ground"
   }
 }

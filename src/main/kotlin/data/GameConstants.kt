@@ -224,6 +224,9 @@ object GameConstants {
     // ---------------- pipes ----------------
     const val PIPE = "pipe"
     const val PIPE_TO_GROUND = "pipe-to-ground"
+    /** Other pipes a blueprint may build for [PIPE] and [PIPE_TO_GROUND] (config fluids.pipe; read back as those). */
+    val PIPE_ALIASES = setOf("ht-pipes", "niobium-pipe")
+    val PIPE_TO_GROUND_ALIASES = setOf("ht-pipes-to-ground", "niobium-pipe-to-ground")
     /** Tiles allowed between two pipe-to-ground ends (max distance 10). [P] VERIFY (v12) */
     const val PIPE_TO_GROUND_GAP = 9
 

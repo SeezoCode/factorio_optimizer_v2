@@ -71,8 +71,8 @@ data class PlacedEntity(
                 name in GameConstants.POLES -> Kind.POLE
                 name == GameConstants.INFINITY_PIPE -> Kind.INFINITY_PIPE
                 name in GameConstants.MACHINE_SIZES -> Kind.MACHINE
-                name == GameConstants.PIPE -> Kind.PIPE
-                name == GameConstants.PIPE_TO_GROUND -> Kind.PIPE_UG
+                name == GameConstants.PIPE || name in GameConstants.PIPE_ALIASES -> Kind.PIPE
+                name == GameConstants.PIPE_TO_GROUND || name in GameConstants.PIPE_TO_GROUND_ALIASES -> Kind.PIPE_UG
                 name == GameConstants.STORAGE_TANK -> Kind.TANK
                 name == GameConstants.BEACON -> Kind.BEACON
                 name in GameConstants.LOADERS.values -> if (ugType == "input") Kind.LOADER_IN else Kind.LOADER_OUT
