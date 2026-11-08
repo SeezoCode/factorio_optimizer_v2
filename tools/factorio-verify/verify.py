@@ -450,9 +450,12 @@ def main():
               "productivity": research.get("productivity") or None,
               "belt_stack_size": (job or {}).get("belt_stack_size", 1)}
     if not args.uncapped and ports:
+        # Only the targets: a by-product output held to its planned rate stops its machine whenever that runs ahead
+        # of the plan (Py's tar distillation at start, its rich clay planned at 0.02/s).
+        targets = {t["name"] for t in (job or {}).get("targets", [])}
         rates = defaultdict(float)
         for o in ports.get("outputs", []):
-            if not o.get("fluid"):
+            if not o.get("fluid") and (not targets or o["item"] in targets):
                 rates[o["item"].split("#")[0]] += o["rate"]
         params["sink_rates"] = dict(rates)
     if args.dump:

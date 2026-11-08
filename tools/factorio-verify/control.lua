@@ -206,8 +206,8 @@ local function start(params)
       -- Catalysts (an item or fluid the recipe takes and gives back): a new build starts with none in its loop, so
       -- each such machine gets a few crafts' worth (plan.Port.priming; a real game fills the loop once by hand).
       if r then
-        local back = {}
-        for _, p in pairs(r.products) do back[p.name] = true end
+        local back, made_at = {}, {}
+        for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature end
         -- Production loops (plan.json "seeds", e.g. Py's farms feeding each other): their machines start with a few.
         local seeded = {}
         for _, name in pairs(run.params.seeds or {}) do back[name] = true; seeded[name] = true end
@@ -221,8 +221,13 @@ local function start(params)
                   local f = e.get_fluid_filter(k)
                   local proto = e.get_fluid_box_prototype(k)
                   if proto and proto.index == nil and proto[1] then proto = proto[1] end
-                  if f and f.name == ing.name and proto and proto.production_type == "input" and not e.get_fluid(k) then
-                    e.set_fluid(k, { name = ing.name, amount = ing.amount })
+                  -- At the temperature the recipe gives it back at; none when that is outside what it takes (Py's
+                  -- warmer-stone-brick takes coke oven gas at 500 and gives it at 250: not a catalyst at all).
+                  local t = made_at[ing.name] or prototypes.fluid[ing.name].default_temperature
+                  local ok = (ing.minimum_temperature == nil or t >= ing.minimum_temperature) and
+                    (ing.maximum_temperature == nil or t <= ing.maximum_temperature) and (ing.temperature == nil or t == ing.temperature)
+                  if ok and f and f.name == ing.name and proto and proto.production_type == "input" and not e.get_fluid(k) then
+                    e.set_fluid(k, { name = ing.name, amount = ing.amount, temperature = t })
                   end
                 end
               end)
