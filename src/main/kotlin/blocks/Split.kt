@@ -517,7 +517,11 @@ fun linksFor(
         if (l.from >= 0) directSides[l.from] += Dir.fromName(l.fromSide!!)
         if (l.to >= 0) directSides[l.to] += Dir.fromName(l.toSide!!)
     }
-    fun pick(b: Int, prefs: List<Dir>): String = (prefs.firstOrNull { it !in directSides[b] } ?: prefs.first()).name
+    // When every side toward the other end leaves the factory straight out (a corner block of Py science 2 sent pitch
+    // to its pipe tree from its top side, flush with the factory's edge, where the corridor would start outside),
+    // any side that does not.
+    fun pick(b: Int, prefs: List<Dir>): String =
+        (prefs.firstOrNull { it !in directSides[b] } ?: (prefs + Dir.entries).firstOrNull { it !in directSides[b] } ?: prefs.first()).name
     fun towardEdges(b: Int, edges: Set<Dir>): List<Dir> {
         val es = edges.ifEmpty { Dir.entries.toSet() }
         return Dir.entries.sortedBy { d -> if (d in es) edgeDistance(g.boxes[b], d, g.w, g.h) else 1_000_000 + edgeDistance(g.boxes[b], d, g.w, g.h) }
@@ -543,6 +547,13 @@ fun linksFor(
         l.copy(id = id,
             fromSide = if (l.from >= 0) sideFor(l.from, l.to) else null,
             toSide = if (l.to >= 0) sideFor(l.to, l.from) else null)
+    }
+    // A corridor link on a side that leaves the factory straight out: that side is flush with the factory's edge, and
+    // the corridor would start outside it.
+    out.filter { it.throughCorridor }.forEach { l ->
+        listOf(l.from to l.fromSide, l.to to l.toSide).forEach { (b, sd) ->
+            if (b >= 0 && sd != null && Dir.fromName(sd) in directSides[b]) warnings += "${l.item}: block ${b + 1}'s corridor port is on its side $sd, which also leaves the factory straight out"
+        }
     }
     return if (cfg.lanePairs) pairLanes(out, cfg.linkBeltShare * beltThroughput / 2) else out
 }

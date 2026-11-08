@@ -1866,7 +1866,10 @@ class PathFinder(internal val p: RouteProblem) {
         // factory) waits for step 2: the consumers that port feeds join it, so the port stays one belt.
         class Pending(val parts: List<EffectiveTerminal>, val srcRate: Double, val out: EffectiveTerminal, val outRate: Double)
         val pending = HashMap<EffectiveTerminal, MutableList<Pending>>()
-        outputs.forEach { o ->
+        // An overflow (a 0/s output, plan.overflowItems) is no chain of its own, which nothing would feed: it ends a
+        // chain from the producers past the consumers (step 3), taking what they leave.
+        val overflowOuts = ArrayDeque(outputs.filter { it.rate <= 1e-9 })
+        outputs.filter { it.rate > 1e-9 }.forEach { o ->
             val pieces = if (plan.ports[o.base.port!!].single) 1 else maxOf(1, kotlin.math.ceil(o.rate / beltCap - 1e-9).toInt())
             repeat(pieces) {
                 val r = o.rate / pieces
@@ -1922,7 +1925,13 @@ class PathFinder(internal val p: RouteProblem) {
             val at = group.map { center(it.base) }.let { ps -> ps.map { it.first }.average() to ps.map { it.second }.average() }
             val (parts, missing) = fromProducers(group.sumOf { it.rate }, at)
             if (missing > 1e-6) log += "net ${net.id} (${net.item}): chain short of ${"%.2f".format(missing)}/s supply"
-            addChain(net, group + parts, null, 0.0, null, 0.0, rectOf)
+            addChain(net, group + parts, null, 0.0, overflowOuts.removeFirstOrNull(), 0.0, rectOf)
+        }
+        // An overflow no producer-fed chain took: the producers' spare, else every producer, on to it.
+        overflowOuts.forEach { o ->
+            val spare = prodLeft.filter { it.value > 1e-9 }.keys.map { part(it, prodLeft.getValue(it), dropRate) }
+            val makers = spare.ifEmpty { producers.map { part(it, it.rate, dropRate) } }
+            if (makers.isEmpty()) log += "net ${net.id} (${net.item}): an overflow with no producer" else addChain(net, makers, null, 0.0, o, 0.0, rectOf)
         }
         prodLeft.filter { it.value > 1e-6 }.forEach { (p, r) -> log += "net ${net.id} (${net.item}): ${"%.2f".format(r)}/s of a producer has no chain" }
         srcLeft.filter { it.value > 1e-6 }.forEach { (_, r) -> log += "net ${net.id} (${net.item}): ${"%.2f".format(r)}/s of an input port has no chain" }

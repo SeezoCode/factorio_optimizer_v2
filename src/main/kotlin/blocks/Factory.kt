@@ -889,6 +889,13 @@ fun stitchRoute(
     val outputs = ArrayList<OutputSpec>()
     // (On the ring, or on the box's own edge row: fluid ports start with a pipe-to-ground there.)
     fun outsideOnSide(t: Tile, side: String?) = when (side) { "N" -> t.y <= 0; "S" -> t.y >= H - 1; "W" -> t.x <= 0; "E" -> t.x >= W - 1; else -> false }
+    fun inBounds(t: Tile) = t.x in 0 until W && t.y in 0 until H
+    /** Whether the job lets [item] enter ([output] false) or leave on factory side [d]. */
+    fun edgeAllowed(item: String, output: Boolean, d: Dir): Boolean {
+        val name = when (d) { Dir.N -> "north"; Dir.S -> "south"; Dir.W -> "west"; Dir.E -> "east" }
+        val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return true
+        return specs.any { it.edge == null || it.edge == "any" || it.edge == name }
+    }
     for (b in 0 until k) {
         results[b].outputs.forEach { o ->
             val group = bps[b].linksOfPort[o.port] ?: return@forEach
@@ -903,6 +910,9 @@ fun stitchRoute(
             }
             // A pipe port joins on the side the block was searched with it (a corner tile alone does not say which).
             val d = if (o.fluid) side(l.fromSide, b)!! else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
+            // A link to the factory's edge whose port already faces out of the factory on a side the job allows:
+            // it leaves there (its corridor would start outside the factory).
+            if (group.size == 1 && l.to == EDGE && !l.hub && !inBounds(t + d) && edgeAllowed(l.item, true, d)) { outputs += o.copy(tile = t, port = -1); return@forEach }
             // Links sharing the port all start there (one belt, branching in the corridors).
             group.forEach { starts[it] = (t + d) to d }
             if (group.size > 1) sharedStarts += group
@@ -916,6 +926,7 @@ fun stitchRoute(
                 detoured += l.id
             }
             val out = side(l.toSide, b) ?: sideOf(s.tile, results[b].w, results[b].h)
+            if (l.from == EDGE && !l.hub && !inBounds(t + out) && edgeAllowed(l.item, false, out)) { sources += s.copy(tile = t, port = -1); return@forEach }
             ends[l.id] = (t + out) to out.opposite
         }
     }
@@ -964,9 +975,15 @@ fun stitchRoute(
     }
     // A corridor belt or pipe starts and ends inside the factory: a port side squeezed to its ring alone on the
     // factory's border leaves no tile for it.
-    (starts.values + ends.values).map { it.first }.filter { it.x !in 0 until W || it.y !in 0 until H }.takeIf { it.isNotEmpty() }?.let {
-        return StitchAttempt(null, it, "${it.size} link end(s) outside the factory")
-    }
+    (starts.entries.map { Triple(it.key, it.value.first, "from") } + ends.entries.map { Triple(it.key, it.value.first, "to") })
+        .filter { (_, t, _) -> t.x !in 0 until W || t.y !in 0 until H }.takeIf { it.isNotEmpty() }?.let { out ->
+            return StitchAttempt(null, out.map { it.second }, "${out.size} link end(s) outside the factory: " + out.take(3).joinToString { (id, _, end) ->
+                val l = split.links[id]
+                val b = if (end == "from") l.from else l.to
+                val where = if (b >= 0) " block ${b + 1} at (${ox[b]},${oy[b]}) ${results[b].w}x${results[b].h} turn ${arr.rot[b]}, side ${l.side(b)}" else ""
+                "${l.item} ${l.from + 1}->${if (l.to == EDGE) "edge" else if (l.hub) "hub" else (l.to + 1).toString()} ($end end; ${if (l.routed) "routed" else if (l.inner) "inner" else "direct"};$where)"
+            })
+        }
     for (l in corridorLinks.filter { it.fluid }) {
         starts[l.id]?.let { (t, d) -> starts[l.id] = (dive(l, t, d) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot leave its port")) to d }
         ends[l.id]?.let { (t, d) -> ends[l.id] = (dive(l, t, d.opposite) ?: return StitchAttempt(null, listOf(t), "${l.item} cannot reach its port")) to d }

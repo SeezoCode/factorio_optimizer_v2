@@ -64,14 +64,14 @@ fun staticObstacles(config: RunConfiguration, plan: ProductionPlan, w: Int, h: I
 }
 
 /** Candidate start tiles of a port in a W x H box, each with the direction that points out of the box (or null). */
-fun portCandidates(specs: List<ConfigSource>, w: Int, h: Int): List<Pair<Tile, Dir?>> {
+fun portCandidates(specs: List<ConfigSource>, w: Int, h: Int, corners: Boolean = true): List<Pair<Tile, Dir?>> {
     val out = LinkedHashMap<Tile, Dir?>()
     fun edge(e: String, from: Int?, to: Int?) {
         when (e) {
-            "north" -> range(from, to, w).forEach { out.putIfAbsent(Tile(it, 0), Dir.N) }
-            "south" -> range(from, to, w).forEach { out.putIfAbsent(Tile(it, h - 1), Dir.S) }
-            "west" -> range(from, to, h).forEach { out.putIfAbsent(Tile(0, it), Dir.W) }
-            "east" -> range(from, to, h).forEach { out.putIfAbsent(Tile(w - 1, it), Dir.E) }
+            "north" -> range(from, to, w, corners).forEach { out.putIfAbsent(Tile(it, 0), Dir.N) }
+            "south" -> range(from, to, w, corners).forEach { out.putIfAbsent(Tile(it, h - 1), Dir.S) }
+            "west" -> range(from, to, h, corners).forEach { out.putIfAbsent(Tile(0, it), Dir.W) }
+            "east" -> range(from, to, h, corners).forEach { out.putIfAbsent(Tile(w - 1, it), Dir.E) }
             "any" -> listOf("north", "east", "south", "west").forEach { edge(it, null, null) }
         }
     }
@@ -82,7 +82,18 @@ fun portCandidates(specs: List<ConfigSource>, w: Int, h: Int): List<Pair<Tile, D
     return out.entries.map { it.key to it.value }
 }
 
-private fun range(from: Int?, to: Int?, size: Int): IntRange = maxOf(0, from ?: 0)..minOf(size - 1, to ?: (size - 1))
+/**
+ * The tiles of a side a port may use: [from]..[to] as given, else the whole side, or without its two corners when
+ * [corners] is false (fluid ports: a corner belongs to two sides, and a pipe port's ring tile there may land on the
+ * other side's ring; Py science 2's west pitch port came out on the north ring of a block flush with the factory's
+ * top edge, outside the factory).
+ */
+private fun range(from: Int?, to: Int?, size: Int, corners: Boolean = true): IntRange {
+    val trim = !corners && size >= 3
+    val lo = from ?: if (trim) 1 else 0
+    val hi = to ?: if (trim) size - 2 else size - 1
+    return maxOf(0, lo)..minOf(size - 1, hi)
+}
 
 // ---- fixture files: hand placements for router tests ----
 

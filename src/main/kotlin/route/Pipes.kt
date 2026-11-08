@@ -88,14 +88,14 @@ internal class PipeRouter(private val pf: PathFinder) {
             val source = srcTs.firstOrNull()
             val output = outTs.firstOrNull { t -> plan.ports[t.port!!].specs.any { it.edge != null } } ?: outTs.firstOrNull()
             (srcTs.drop(1) + outTs.filter { it !== output }).forEach { t ->
-                val tiles = portCandidates(plan.ports[t.port!!].specs, pf.W, pf.H).map { it.first }.filter { dims.inFull(it.x, it.y) }.map { dims.idx(it) }
+                val tiles = portCandidates(plan.ports[t.port!!].specs, pf.W, pf.H, corners = false).map { it.first }.filter { dims.inFull(it.x, it.y) }.map { dims.idx(it) }
                 tiles.forEach { connNet[it] = idx }
                 // A port with no tile on the grid cannot be reached: an empty group keeps the net from routing.
                 groups += tiles.toIntArray()
             }
             var portTiles = IntArray(0); var portOut = IntArray(0)
             if (source != null) {
-                val cands = portCandidates(plan.ports[source.port!!].specs, pf.W, pf.H)
+                val cands = portCandidates(plan.ports[source.port!!].specs, pf.W, pf.H, corners = false)
                     .filter { (t, _) -> dims.inFull(t.x, t.y) && (dims.inBox(t.x, t.y) || (t.x >= -1 && t.y >= -1 && t.x <= pf.W && t.y <= pf.H)) }
                 portTiles = cands.map { dims.idx(it.first) }.toIntArray()
                 portOut = cands.map { it.second?.ordinal ?: -1 }.toIntArray()
@@ -103,7 +103,7 @@ internal class PipeRouter(private val pf: PathFinder) {
             }
             var outTiles = IntArray(0)
             if (output != null) {
-                val cands = portCandidates(plan.ports[output.port!!].specs, pf.W, pf.H).filter { (t, _) -> dims.inBox(t.x, t.y) }
+                val cands = portCandidates(plan.ports[output.port!!].specs, pf.W, pf.H, corners = false).filter { (t, _) -> dims.inBox(t.x, t.y) }
                 outTiles = cands.map { dims.idx(it.first) }.toIntArray()
                 cands.forEach { (t, out) -> if (out == null) connNet[dims.idx(t)] = idx }
             }
