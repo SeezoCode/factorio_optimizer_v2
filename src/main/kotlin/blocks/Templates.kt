@@ -221,7 +221,8 @@ object Templates {
         if (shorts.isEmpty()) { why("no inserter but long-handed ones allowed"); return null }
         val needs = belts.map { g -> ms.maxOf { mi -> g.sumOf { mi.demand.getValue(it) } } }
         val maxOut = ms.maxOf { it.itemProducts.values.single() }
-        fun count(rate: Double, ins: String, fromBelt: Boolean) = maxOf(1, ceil(rate / inserterRate(ins, config, fromBelt) - 1e-9).toInt())
+        // Inputs are picked from belts, outputs dropped onto them.
+        fun count(rate: Double, ins: String, fromBelt: Boolean) = maxOf(1, ceil(rate / inserterRate(ins, config, fromBelt, toBelt = !fromBelt) - 1e-9).toInt())
         var best: Design? = null
         var bestKey: Triple<Int, Int, Int>? = null
         for (si in shorts) for (so in shorts) {

@@ -92,7 +92,8 @@ data class ValidationSpec(
     val fluidMode: String = "infinity-pipe",
     val checkRates: Boolean = true,
     /** Effective items/s of an inserter by name, picking from a belt or not. */
-    val inserterRate: (String, Boolean) -> Double = { name, fromBelt -> GameConstants.inserter(name).baseRate * (if (fromBelt) 0.7 else 1.0) },
+    /** Items/s of an inserter: its name, whether it picks from a belt, whether it drops onto one. */
+    val inserterRate: (String, Boolean, Boolean) -> Double = { name, fromBelt, _ -> GameConstants.inserter(name).baseRate * (if (fromBelt) 0.7 else 1.0) },
     /** recipe -> (product, solid ingredients, fluid ingredient) for machines without a [MachineSpec]. */
     /** Recipe facts by recipe and machine name, for machines without a [MachineSpec]. */
     val recipeInfo: (String, String?) -> MachineSpec? = { _, _ -> null },
@@ -444,7 +445,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         fun pickIdx(i: Int) = indexAt(ents[i].pickupTile)
         fun dropIdx(i: Int) = indexAt(ents[i].dropTile)
         fun fromBelt(i: Int) = pickIdx(i)?.let { ents[it].kind == Kind.BELT || ents[it].kind == Kind.SPLITTER } == true
-        fun cap(i: Int) = spec.inserterRate(ents[i].name, fromBelt(i))
+        fun toBelt(i: Int) = dropIdx(i)?.let { ents[it].kind == Kind.BELT || ents[it].kind == Kind.SPLITTER || ents[it].kind == Kind.UG_IN || ents[it].kind == Kind.UG_OUT } == true
+        fun cap(i: Int) = spec.inserterRate(ents[i].name, fromBelt(i), toBelt(i))
 
         val machines = ents.indices.filter { ents[it].kind == Kind.MACHINE }
         val info = machines.associateWith { machineInfo(ents[it]) }

@@ -868,6 +868,14 @@ than recipes and machine sizes, and the program handles it from the exported dat
   thousands of recipes the rate program is solved again with whole machines in mind (a recipe at 1% of a machine
   costs a machine), so it does not use hundreds of recipes for slivers of by-products. If no plan exists, the error
   names what the targets need that nothing allowed can make.
+- **Raw by-products leave** (`raw_byproducts`, default `"leave"`): a raw resource a recipe makes besides other
+  products (Py's copper screening gives stone) leaves the block as surplus (`stone#byproduct`), and what needs the
+  resource takes it raw. Fed to the same machines as raw stone it would back up whenever they need less than both
+  bring, and stop the copper with it. `"use"` lets the planner use it anyway.
+- **Production loops** (Py's farms feed each other: fertilizer needs bones, bones need carcasses, ... seaweed needs
+  fertilizer): a new build has none of any of it and never starts. The planner names a few items that start every
+  loop ("production loops start only with some fertilizer, ... in them"; `seeds` in plan.json): put a few of each in
+  by hand once. The in-game check does it itself.
 
 A Py job can be as short as this (`jobs/py_red_auto.json`): Py's red science from ore, coal, stone, salt, water and
 native flora, 24 machines, checked in game at its planned rate.

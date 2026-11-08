@@ -208,10 +208,13 @@ local function start(params)
       if r then
         local back = {}
         for _, p in pairs(r.products) do back[p.name] = true end
+        -- Production loops (plan.json "seeds", e.g. Py's farms feeding each other): their machines start with a few.
+        local seeded = {}
+        for _, name in pairs(run.params.seeds or {}) do back[name] = true; seeded[name] = true end
         for i, ing in pairs(r.ingredients) do
           if back[ing.name] then
             if ing.type == "item" then
-              pcall(function() e.insert { name = ing.name, count = math.ceil(ing.amount) * 2 } end)
+              pcall(function() e.insert { name = ing.name, count = math.ceil(ing.amount) * (seeded[ing.name] and 5 or 2) } end)
             else
               pcall(function()
                 for k = 1, (e.fluids_count or 0) do

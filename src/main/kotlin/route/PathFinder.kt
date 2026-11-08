@@ -1646,8 +1646,8 @@ class PathFinder(internal val p: RouteProblem) {
         if (ontoBelt && config.beltStackSize > 1) return GameConstants.STACK_INSERTER
         val allowed = config.inserters.allowed.filter { it != "long-handed-inserter" }
             .sortedBy { GameConstants.inserter(it).tierCost }
-        return allowed.firstOrNull { inserterRate(it, config, fromBelt) >= share - 1e-9 }
-            ?: allowed.maxByOrNull { inserterRate(it, config, fromBelt) }!!
+        return allowed.firstOrNull { inserterRate(it, config, fromBelt, ontoBelt) >= share - 1e-9 }
+            ?: allowed.maxByOrNull { inserterRate(it, config, fromBelt, ontoBelt) }!!
     }
 
     private fun entities(): List<PlacedEntity> {

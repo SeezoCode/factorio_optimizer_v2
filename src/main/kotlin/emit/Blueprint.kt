@@ -127,7 +127,8 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                         put("remove_unfiltered_items", true)
                         put("filters", buildJsonArray {
                             add(buildJsonObject {
-                                put("index", 1); put("name", item); put("count", 50); put("mode", "exactly")
+                                val (n, ql) = splitQuality(item)
+                                put("index", 1); put("name", n); ql?.let { put("quality", it) }; put("count", 50); put("mode", "exactly")
                             })
                         })
                     }

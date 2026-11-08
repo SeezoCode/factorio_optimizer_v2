@@ -132,6 +132,8 @@ data class ProductionPlan(
     val headroom: Double = 1.0,
     /** Items launched in rocket silos per second (rocket parts; a rocket is rocket_parts_required of them). */
     val launched: Map<String, Double> = emptyMap(),
+    /** Items (and fluids) to put in by hand once so that the plan's production loops can start (see [loopSeeds]). */
+    val seeds: List<String> = emptyList(),
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -146,18 +148,22 @@ data class ProductionPlan(
 }
 
 /**
- * Effective items/s of one inserter of [name], given hand size research and whether it picks from a belt. A bulk
- * inserter picking from a belt also waits for its hand to fill from the items passing: one swing plus [hand] items
- * at [BULK_PICKUP_SHARE] of the belt's throughput per cycle.
+ * Effective items/s of one inserter of [name], given hand size research, whether it picks from a belt and whether it
+ * drops onto one. A bulk inserter picking from a belt also waits for its hand to fill from the items passing: one
+ * swing plus [hand] items at [BULK_PICKUP_SHARE] of the belt's throughput per cycle. One dropping onto a belt lays its
+ * hand down an item at a time, at [BULK_DROP_SHARE] of the belt's throughput (the Space Age stack inserter drops
+ * stacks instead).
  */
-fun inserterRate(name: String, config: RunConfiguration, fromBelt: Boolean): Double {
+fun inserterRate(name: String, config: RunConfiguration, fromBelt: Boolean, toBelt: Boolean = false): Double {
     val spec = GameConstants.inserter(name)
     val (normal, bulk) = GameConstants.handSizes(config.research.inserterCapacity)
     val hand = if (spec.bulk) bulk else normal
-    val rate = spec.baseRate * hand * (if (fromBelt) config.inserters.beltPickupDerate else 1.0)
-    if (!fromBelt || !spec.bulk || hand <= 1) return rate
+    var rate = spec.baseRate * hand * (if (fromBelt) config.inserters.beltPickupDerate else 1.0)
+    if (!spec.bulk || hand <= 1) return rate
     val belt = runCatching { GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput }.getOrNull() ?: return rate
-    return minOf(rate, hand / (1.0 / spec.baseRate + hand / (BULK_PICKUP_SHARE * belt)))
+    if (fromBelt) rate = minOf(rate, hand / (1.0 / spec.baseRate + hand / (BULK_PICKUP_SHARE * belt)))
+    if (toBelt && name != GameConstants.STACK_INSERTER) rate = minOf(rate, hand / (1.0 / spec.baseRate + hand / (BULK_DROP_SHARE * belt)))
+    return rate
 }
 
 /**
@@ -167,16 +173,24 @@ fun inserterRate(name: String, config: RunConfiguration, fromBelt: Boolean): Dou
  */
 const val BULK_PICKUP_SHARE = 0.58
 
+/**
+ * Share of a belt's throughput a bulk inserter lays its hand onto the belt at. Measured in game (2.1, hand size 12,
+ * from an infinity chest): 13.75 items/s onto an express belt and 11.0 onto a fast one, either 12 / (1 / 2.31 + 12 /
+ * (0.607 x belt)); two of them on one lane 20.65, on both lanes 27.5. A fast inserter (hand 3) kept its full 6.9.
+ * A Py ash furnace planned at 18 ash/s through one bulk inserter stood half the time with full output at 13.75.
+ */
+const val BULK_DROP_SHARE = 0.607
+
 /** Best rate among the allowed inserters that sit at d = 1 (long-handed only serves trick options). */
-fun bestInserterRate(config: RunConfiguration, fromBelt: Boolean): Double =
-    config.inserters.allowed.maxOf { inserterRate(it, config, fromBelt) }
+fun bestInserterRate(config: RunConfiguration, fromBelt: Boolean, toBelt: Boolean = false): Double =
+    config.inserters.allowed.maxOf { inserterRate(it, config, fromBelt, toBelt) }
 
 /**
  * Best rate of an inserter dropping onto a belt: it drops onto one lane, which holds half the belt (a bulk
  * inserter at hand size 12 moves more than a fast belt's lane). The router's lane check keeps the same margin.
  */
 fun beltDropRate(config: RunConfiguration): Double =
-    minOf(bestInserterRate(config, fromBelt = false), GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput / 2 * 0.98)
+    minOf(bestInserterRate(config, fromBelt = false, toBelt = true), GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput / 2 * 0.98)
 
 fun inserterCount(rate: Double, perInserter: Double): Int = maxOf(1, ceil(rate / perInserter - 1e-9).toInt())
 
@@ -422,6 +436,9 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         nets += Net(nets.size, name, total, netTerminals.map { it.id }, belts)
     }
 
+    val seeds = loopSeeds(machines, lp.supply.keys)
+    if (seeds.isNotEmpty()) warn("production loops start only with some ${seeds.joinToString(", ")} in them: put a few in by hand once")
+
     return ProductionPlan(
         machines = machines,
         ports = ports,
@@ -438,5 +455,61 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         mixed = mixed,
         utilization = crafts.associate { (c, _) -> c.recipe.name to utilOf(c.recipe.name) },
         headroom = if (tuning.planner.headroomCheck) tuning.planner.maxUtilization else 1.0,
+        seeds = seeds,
     )
+}
+
+/**
+ * Seeds for production loops. Pyanodon's farms feed each other: fertilizer needs bones, bones come from zipir
+ * carcasses, carcasses need fawogae substrate, its moss needs limestone from seaweed, and seaweed needs fertilizer. A
+ * new build of such a loop has none of it anywhere and never starts (a 58-machine Py science 1 layout stood with every
+ * machine idle). Items made inside, by several recipes in turn, form loops (strongly connected parts of the graph
+ * ingredient -> product over the [machines], leaving out what also comes in through [supplied] and a recipe's own
+ * catalysts, which get priming inputs instead); per loop, items are taken out, the one most loops run through first,
+ * until no loop is left: a few of each of those, put in once, start every loop.
+ */
+fun loopSeeds(machines: List<MachineInstance>, supplied: Set<String>): List<String> {
+    val made = machines.flatMap { m -> m.products.filterValues { it > 1e-12 }.keys }.toSet() - supplied
+    val next = HashMap<String, MutableSet<String>>()
+    machines.forEach { m ->
+        val ins = (m.demand.keys + m.fluidDemand.keys).filter { it in made }
+        val outs = m.products.filterValues { it > 1e-12 }.keys.filter { it in made }
+        ins.forEach { i -> outs.forEach { o -> if (o != i) next.getOrPut(i) { HashSet() } += o } }
+    }
+    /** Strongly connected parts of the graph over [nodes] with more than one item (Tarjan). */
+    fun loops(nodes: Set<String>): List<Set<String>> {
+        var counter = 0
+        val index = HashMap<String, Int>(); val low = HashMap<String, Int>()
+        val stack = ArrayDeque<String>(); val on = HashSet<String>()
+        val out = ArrayList<Set<String>>()
+        fun visit(v: String) {
+            index[v] = counter; low[v] = counter; counter++
+            stack.addLast(v); on += v
+            for (w in next[v].orEmpty()) {
+                if (w !in nodes) continue
+                if (w !in index) { visit(w); low[v] = minOf(low.getValue(v), low.getValue(w)) }
+                else if (w in on) low[v] = minOf(low.getValue(v), index.getValue(w))
+            }
+            if (low[v] == index[v]) {
+                val part = HashSet<String>()
+                while (true) { val w = stack.removeLast(); on -= w; part += w; if (w == v) break }
+                if (part.size > 1) out += part
+            }
+        }
+        nodes.sorted().forEach { if (it !in index) visit(it) }
+        return out
+    }
+    val seeds = sortedSetOf<String>()
+    val todo = ArrayDeque(loops(made))
+    while (todo.isNotEmpty()) {
+        val part = todo.removeFirst()
+        val seed = part.maxWith(compareBy<String>({ v ->
+            val inDeg = part.count { u -> v in next[u].orEmpty() }
+            val outDeg = next[v].orEmpty().count { it in part }
+            inDeg * outDeg
+        }, { it }))
+        seeds += seed
+        todo += loops(part - seed)
+    }
+    return seeds.toList()
 }

@@ -3,6 +3,7 @@ import config.Tuning
 import config.strictJson
 import plan.ProductionPlan
 import plan.buildPlan
+import plan.withRawByproducts
 import search.runTrial
 import viz.RenderOptions
 import viz.renderLayout
@@ -24,12 +25,14 @@ class DiagTest {
         // DIAG_PLAN=<plan.json>: a saved plan (e.g. one block of a factory, run alone) instead of planning the job.
         val config = if (System.getenv("DIAG_PLAN") != null) job.copy(blocks = null, testMode = false, reserved = emptyList(), forbiddenTiles = emptyList()) else job
         // The job's own game data (a modded export), else the built-in one.
-        val data = job.data?.let { data.loadRootData(it) } ?: TestData.data
+        val data = withRawByproducts(job.data?.let { data.loadRootData(it) } ?: TestData.data, config)
         val tuning = (System.getenv("DIAG_TUNING")?.takeIf { it.isNotBlank() }?.let { Tuning.load(it) } ?: Tuning.defaults()).withOverrides(config.tuning)
         val plan = System.getenv("DIAG_PLAN")?.let { strictJson.decodeFromString(ProductionPlan.serializer(), File(it).readText()) }
             ?: buildPlan(data, config, tuning)
         println("DIAG machines ${plan.machines.size} nets ${plan.nets.size} terminals ${plan.terminals.size}")
         plan.machines.groupBy { it.recipe }.forEach { (r, ms) -> println("DIAG   $r x${ms.size}") }
+        // DIAG_PLAN_ONLY: stop after planning.
+        if (System.getenv("DIAG_PLAN_ONLY") != null) return
         // DIAG_ITEM=<item>: the plan's terminals and nets of one item.
         System.getenv("DIAG_ITEM")?.let { item ->
             plan.terminals.filter { it.item == item }.forEach { println("DIAG   terminal $it ${it.machine?.let { m -> plan.machines[m].recipe } ?: ""}") }

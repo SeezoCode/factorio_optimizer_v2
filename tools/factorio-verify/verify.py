@@ -351,8 +351,9 @@ def judge(report, ports, args):
                 i = min(near)[1]
                 used.add(i)
                 per_s = feeds[i]["per_s"]
-                got = sum(per_s.values()) if p["item"].startswith("mixed") else per_s.get(p["item"], 0.0)
-                extra = {k: v for k, v in per_s.items() if k != p["item"] and not p["item"].startswith("mixed") and v}
+                game = p["item"].split("#")[0]   # the game's name (temperatures and by-products are named "x#...")
+                got = sum(per_s.values()) if p["item"].startswith("mixed") else per_s.get(game, 0.0)
+                extra = {k: v for k, v in per_s.items() if k != game and not p["item"].startswith("mixed") and v}
             else:
                 extra = {}
             totals[p["item"]][0] += got
@@ -452,10 +453,17 @@ def main():
         rates = defaultdict(float)
         for o in ports.get("outputs", []):
             if not o.get("fluid"):
-                rates[o["item"]] += o["rate"]
+                rates[o["item"].split("#")[0]] += o["rate"]
         params["sink_rates"] = dict(rates)
     if args.dump:
         params["dump"] = True
+    # Production loops the planner found (plan.json "seeds"): their machines get a few crafts' worth to start with.
+    plan_path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    if plan_path and os.path.exists(plan_path):
+        seeds = sorted({s.split("#")[0] for s in json.load(open(plan_path)).get("seeds", [])})
+        if seeds:
+            params["seeds"] = seeds
+            print(f"seeding production loops with {', '.join(seeds)}")
     params = {k: v for k, v in params.items() if v is not None}
     report = run_game(args, bp, params, enabled, have)
     report["mods"] = enabled

@@ -96,7 +96,7 @@ fun validationSpec(
         requirePower = requirePower,
         fluidMode = config.fluids.mode,
         checkRates = true,
-        inserterRate = { name, fromBelt -> inserterRate(name, config, fromBelt) },
+        inserterRate = { name, fromBelt, toBelt -> inserterRate(name, config, fromBelt, toBelt) },
         recipeInfo = recipeInfo,
         beacon = beaconSpec(data, config),
         beltStack = config.beltStackSize,

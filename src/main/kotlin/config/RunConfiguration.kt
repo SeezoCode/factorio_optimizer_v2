@@ -76,6 +76,12 @@ data class RunConfiguration(
      * recipes ("pyvoid"). Hidden recipes (but recycling) are never used.
      */
     @SerialName("skip_recipes") val skipRecipes: List<String> = listOf("-turd", "pyvoid"),
+    /**
+     * A raw resource a recipe makes besides other products (Py's copper screening gives stone): "leave" (default)
+     * sends it out of the block as surplus and feeds what needs the resource raw, since a by-product that shares its
+     * consumers with raw supply backs up and stops the machine making it; "use" lets the planner use it.
+     */
+    @SerialName("raw_byproducts") val rawByproducts: String = "leave",
     /** Fuel for burner machines (stone and steel furnaces). */
     val fuel: String = "coal",
     /** Fuel fluid for machines that burn one (Py's glassworks); default: the raw fluid that holds the most energy. */

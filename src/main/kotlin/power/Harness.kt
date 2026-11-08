@@ -51,8 +51,8 @@ fun buildHarness(
     entities.forEach { e -> e.rect.tiles().forEach { occupied += it } }
     val byTile = entities.associateBy { it.tile }
     val insName = config.inserters.allowed.filter { it != "long-handed-inserter" }
-        .maxByOrNull { inserterRate(it, config, fromBelt = false) } ?: "inserter"
-    val cap = inserterRate(insName, config, fromBelt = false)
+        .maxByOrNull { inserterRate(it, config, fromBelt = false, toBelt = true) } ?: "inserter"
+    val cap = inserterRate(insName, config, fromBelt = false, toBelt = true)
     val out = ArrayList<PlacedEntity>()
     val tiles = HashSet<Tile>()
     val warnings = ArrayList<String>()

@@ -321,8 +321,13 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
             choices.forEach { c ->
                 val v = cur.first[c] ?: 0.0
                 val m = v * c.machineTime
-                obj.setCoefficient(x.getValue(c), if (v > eps) area(c) * maxOf(1.0, kotlin.math.ceil(m - 1e-6) / maxOf(m, 1e-6)) else area(c))
+                // At most 1,000 times a machine's area (a sliver of 1e-6 of a machine would weigh a million times and
+                // leave the simplex with numbers it cannot handle).
+                obj.setCoefficient(x.getValue(c), if (v > eps) area(c) * kotlin.math.ceil(m - 1e-6).coerceAtLeast(1.0) / m.coerceAtLeast(1e-3) else area(c))
             }
+            // From scratch: GLOP restarting from the last round's basis stalls or gives up on the numbers ("abnormal")
+            // on Py red science, where a fresh solve takes under a second.
+            solver.reset()
             val st = solver.solve()
             if (st != MPSolver.ResultStatus.OPTIMAL) { stalled = true; return@repeat }
             val next = snapshot()
