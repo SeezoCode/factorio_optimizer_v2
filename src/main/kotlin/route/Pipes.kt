@@ -349,7 +349,9 @@ internal class PipeRouter(private val pf: PathFinder) {
             entries.forEach { entryIn[it] = -1 }
             if (s == -1) {
                 unreached[i] = listOfNotNull(n.portTiles.firstOrNull()?.let { dims.tile(it) })
-                return fail("no path from the port: " + pocket(n.portTiles, n.idx) + (if (starts.isEmpty()) ", no port tile a pipe may take" else ""))
+                unreached[i] = unreached.getValue(i) + left.mapNotNull { g -> g.firstOrNull()?.let { dims.tile(it) } }
+                return fail("no path from the port: " + pocket(n.portTiles, n.idx) + (if (starts.isEmpty()) ", no port tile a pipe may take" else "") +
+                    "; to reach: " + left.joinToString { pocket(it, n.idx) })
             }
             if (s < 0) return fail("every path from the port crosses itself")
         } else {

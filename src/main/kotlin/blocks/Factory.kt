@@ -1233,8 +1233,11 @@ fun stitchRoute(
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
         obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree, noTunnel = noTunnel,
         beltBias = besideBelts.associateWith { 40.0 },
-        // At most 6 minutes: a big factory's corridors otherwise rip up and reroute for hours (Py science 2).
-        deadlineMs = System.currentTimeMillis() + 360_000))
+        // 6 minutes, then on only while it converges, 30 at most: a big factory's corridors otherwise rip up and reroute
+        // for hours (Py science 2), but a bigger one needs more than 6 minutes' worth of iterations.
+        // (Negotiation 25 minutes at most, so the endgame has up to 8 for the last few conflicts.)
+        deadlineMs = System.currentTimeMillis() + 1_980_000, softDeadlineMs = System.currentTimeMillis() + 360_000,
+        negotiationDeadlineMs = System.currentTimeMillis() + 1_500_000))
     if (!routed.success) {
         // Trouble: conflict tiles, and where a pipe tree could not get to (else the ends of every link that did not route).
         val trouble = routed.conflicts + routed.unreached.ifEmpty {

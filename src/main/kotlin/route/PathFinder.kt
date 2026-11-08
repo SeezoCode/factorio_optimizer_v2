@@ -50,6 +50,14 @@ class RouteProblem(
     val noTunnel: Set<Tile> = emptySet(),
     /** Stop routing then (epoch ms) with what is routed so far (a factory's corridors: hundreds of links over 600 x 600). */
     val deadlineMs: Long = Long.MAX_VALUE,
+    /**
+     * After this (epoch ms), negotiation goes on only while it still converges: the conflicts down by 15% over the
+     * last three iterations. (Py science 2's 521 x 531 corridors: 8 iterations in 6 minutes, conflicts 3469 -> 364 and
+     * falling by a quarter each, cut off by a fixed limit.)
+     */
+    val softDeadlineMs: Long = Long.MAX_VALUE,
+    /** Negotiation stops by then (epoch ms) even while converging, leaving the endgame time up to [deadlineMs]. */
+    val negotiationDeadlineMs: Long = Long.MAX_VALUE,
 )
 
 data class RouteStats(val belts: Int, val undergrounds: Int, val inserters: Int)
@@ -1432,7 +1440,7 @@ class PathFinder(internal val p: RouteProblem) {
         var overuse = Int.MAX_VALUE
         var unrouted = nets.map { it.idx }
         var failedFluids = emptyList<Int>()
-        while (iter < tun.maxIterations && System.currentTimeMillis() < p.deadlineMs) {
+        while (iter < tun.maxIterations && System.currentTimeMillis() < minOf(p.deadlineMs, p.negotiationDeadlineMs)) {
             iter++
             val todo = if (iter <= tun.fullRerouteIterations) order else order.filter { w ->
                 !ok(w) || (if (w >= 0) touchesOveruse(w) else pr!!.touchesOveruse(-1 - w, ::overuseAt))
@@ -1446,6 +1454,10 @@ class PathFinder(internal val p: RouteProblem) {
             overuse = totalOveruse()
             val score = overuse + tun.unroutedPenalty * (unrouted.size + failedFluids.size)
             trace += score
+            if (System.currentTimeMillis() > p.softDeadlineMs && trace.size >= 5 && trace.last() > trace[trace.size - 5] * 0.9) {
+                log += "iter $iter: past the soft deadline and no longer converging (${trace[trace.size - 5]} -> ${trace.last()}): stop"
+                break
+            }
             if (p.debugDir != null || tun.traceDetail) {
                 var tileO = 0; var deadO = 0; var chanO = 0
                 for (t in 0 until N) { tileO += max(0, occTile[t] - 1); deadO += deadEndConflicts(t) }
