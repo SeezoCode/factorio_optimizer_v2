@@ -215,6 +215,7 @@ local function export(player)
       name = r.name, categories = r.categories, category = r.categories[1],
       ingredients = r.ingredients, products = r.products, main_product = p.main_product,
       allowed_effects = p.allowed_effects, maximum_productivity = p.maximum_productivity,
+      allowed_module_categories = p.allowed_module_categories and keys(p.allowed_module_categories) or nil,
       energy = r.energy, order = r.order, group = group_entry(groups, r.group), subgroup = group_entry(groups, r.subgroup),
       enabled = r.enabled, hidden = p.hidden, productivity_bonus = r.productivity_bonus,
     }

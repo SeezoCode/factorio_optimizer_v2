@@ -94,12 +94,16 @@ fun needsModules(data: RootData, machine: String): Boolean = baseSpeedEffect(dat
 
 /**
  * The module a farm is filled with: the mod's default for that farm (Pyanodon's mod-data "farm_buildings", keyed by
- * the building's name without its tier), when the farm takes it; else the slowest speed module of a category it
- * takes (the plainest animal or plant). Null when none fits.
+ * the building's name without its tier), when the farm and [recipe] take it; else the slowest speed module of a
+ * category both take (the plainest animal or plant). Null when none fits. A recipe that limits its module
+ * categories (Py's breeding in the reproductive complex: its own animal only) refuses any other in game, and the
+ * machine then crafts at 0.01% speed (Py science 2: every reproductive complex had kmauts).
  */
-fun farmModule(data: RootData, machine: String): String? {
+fun farmModule(data: RootData, machine: String, recipe: Recipe? = null): String? {
     val e = data.entities[machine] as? AssemblingMachineEntity ?: return null
-    val allowed = e.allowedModuleCategories?.toSet()
+    // (Recipe variants, at a temperature or a quality, are copies: they keep the field.)
+    val byRecipe = recipe?.allowedModuleCategories?.toSet()
+    val allowed = e.allowedModuleCategories?.toSet()?.let { a -> byRecipe?.let { a intersect it } ?: a } ?: byRecipe
     fun takes(m: String) = data.items[m]?.let { it.type == "module" && (allowed == null || it.category in allowed) && (it.moduleEffects?.speed ?: 0.0) > 0 } == true
     val farms = data.modData?.get("pyanodons")?.data?.takeIf { it.isJsonObject }?.asJsonObject?.get("farm_buildings")?.takeIf { it.isJsonObject }?.asJsonObject
     val default = farms?.entrySet()?.filter { (k, _) -> machine.startsWith(k) }?.maxByOrNull { it.key.length }
@@ -113,7 +117,7 @@ fun farmModule(data: RootData, machine: String): String? {
 fun machineModules(data: RootData, config: RunConfiguration, recipe: Recipe, machine: String): List<String> {
     // A farm is full of its animals or plants, whatever the job says about modules.
     if (needsModules(data, machine)) {
-        val m = farmModule(data, machine) ?: return emptyList()
+        val m = farmModule(data, machine, recipe) ?: return emptyList()
         val slots = (data.entities[machine] as? AssemblingMachineEntity)?.moduleInventorySize ?: 0
         return List(slots) { m }
     }

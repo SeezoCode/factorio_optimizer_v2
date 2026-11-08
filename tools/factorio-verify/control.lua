@@ -121,11 +121,17 @@ local function prime(run, e, r)
             local f = e.get_fluid_filter(k)
             local proto = e.get_fluid_box_prototype(k)
             if proto and proto.index == nil and proto[1] then proto = proto[1] end
-            -- At the temperature the recipe gives it back at; none when that is outside what it takes (Py's
-            -- warmer-stone-brick takes coke oven gas at 500 and gives it at 250: not a catalyst at all).
-            local t = made_at[ing.name] or prototypes.fluid[ing.name].default_temperature
-            local ok = (ing.minimum_temperature == nil or t >= ing.minimum_temperature) and
-              (ing.maximum_temperature == nil or t <= ing.maximum_temperature) and (ing.temperature == nil or t == ing.temperature)
+            -- At the temperature the recipe gives it back at, else one the plan seeds it at (Py's outlet gas ring:
+            -- the stone-brick heaters take it at 1000 and give it back cooler), else its default; none when no such
+            -- temperature is one it takes (Py's warmer-stone-brick takes coke oven gas at 500 and gives it at 250).
+            local function takes(t) return (ing.minimum_temperature == nil or t >= ing.minimum_temperature) and
+              (ing.maximum_temperature == nil or t <= ing.maximum_temperature) and (ing.temperature == nil or t == ing.temperature) end
+            local cands = {}
+            if made_at[ing.name] then cands[#cands + 1] = made_at[ing.name] end
+            if seeded[ing.name] then for _, st in pairs((run.params.seed_temps or {})[ing.name] or {}) do cands[#cands + 1] = st end end
+            if not made_at[ing.name] then cands[#cands + 1] = prototypes.fluid[ing.name].default_temperature end
+            local t, ok = cands[1], false
+            for _, c in ipairs(cands) do if takes(c) then t, ok = c, true; break end end
             local have = e.get_fluid(k)
             if ok and f and f.name == ing.name and proto and proto.production_type == "input" and (not have or have.amount < ing.amount) then
               -- Two crafts' worth, or one where the box holds less.
@@ -143,10 +149,19 @@ local function prime(run, e, r)
 end
 
 -- Tops up the primed machines every 2 s through the first half of the warm-up.
+-- Top-ups go only to a machine standing short of ingredients, and at most three times: topping up running machines
+-- flooded closed loops (Py science 2's stone-brick heat ring: bricks are never used up, so every top-up added to
+-- the ring until its belts and machines were full and nothing moved).
+local SEED_TOPUPS = 3
 local function seed_tick(run)
   if run.phase ~= "warmup" or game.tick - run.t0 >= run.warmup / 2 or game.tick % 120 ~= 0 then return end
+  local short = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
+    [defines.entity_status.fluid_ingredient_shortage] = true }
   for _, p in pairs(run.primes or {}) do
-    if p.e.valid then prime(run, p.e, p.r) end
+    if p.e.valid and short[p.e.status] and (p.topups or 0) < SEED_TOPUPS then
+      p.topups = (p.topups or 0) + 1
+      prime(run, p.e, p.r)
+    end
   end
 end
 

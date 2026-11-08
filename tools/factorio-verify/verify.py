@@ -485,10 +485,19 @@ def main():
     # Production loops the planner found (plan.json "seeds"): their machines get a few crafts' worth to start with.
     plan_path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
     if plan_path and os.path.exists(plan_path):
-        seeds = sorted({s.split("#")[0] for s in json.load(open(plan_path)).get("seeds", [])})
+        raw = json.load(open(plan_path)).get("seeds", [])
+        seeds = sorted({s.split("#")[0] for s in raw})
         if seeds:
             params["seeds"] = seeds
-            print(f"seeding production loops with {', '.join(seeds)}")
+            # Fluids seeded at a temperature (name#t: Py's outlet gas ring at 1000) are poured in at that temperature.
+            temps = defaultdict(list)
+            for s in raw:
+                name, _, t = s.partition("#")
+                if t.replace(".", "", 1).isdigit():
+                    temps[name].append(float(t))
+            if temps:
+                params["seed_temps"] = dict(temps)
+            print(f"seeding production loops with {', '.join(raw)}")
     params = {k: v for k, v in params.items() if v is not None}
     report = run_game(args, bp, params, enabled, have)
     report["mods"] = enabled

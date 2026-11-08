@@ -229,7 +229,7 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         // recipe_overrides: only the chosen recipe may make that item.
         if (overrides.any { (item, chosen) -> chosen != r.name && r.products.any { it.name == item } }) return@mapNotNull null
         // A farm with no module it can take does not work.
-        val m = machines.firstOrNull { r.inAny(data.craftingCategories(it)) && (!needsModules(data, it) || farmModule(data, it) != null) &&
+        val m = machines.firstOrNull { r.inAny(data.craftingCategories(it)) && (!needsModules(data, it) || farmModule(data, it, r) != null) &&
             fixedRecipeOf(data, it).let { f -> f == null || f == gameName(r.name) } } ?: return@mapNotNull null
         // Modules and the planned beacons make the machine faster (see Modules.kt).
         RecipeChoice(r, m, moduleSpeed(data, config, r, m, plannedBeacons(data, config, r, m)))

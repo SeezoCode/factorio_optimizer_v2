@@ -1358,8 +1358,8 @@ private fun sideOf(t: Tile, w: Int, h: Int): Dir = when {
 }
 
 private fun writeFactory(f: Factory, out: File, config: RunConfiguration, data: RootData, seeds: List<String>) {
-    val l = power.withSeedRequests(power.withOverflowValves(f.layout, f.outputs,
-        byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), seeds, data)
+    val l = power.withSeedRequests(power.withFarmModules(power.withOverflowValves(f.layout, f.outputs,
+        byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), data, config), seeds, data)
     File(out, "best_output_string.txt").writeText(l.toBlueprintString(config.buildQuality()))
     File(out, "best_blueprint.json").writeText(l.toBlueprint(config.buildQuality()).toJson())
     if (!config.testMode) power.testCopy(l, f.sources, f.outputs, config).let { tc ->

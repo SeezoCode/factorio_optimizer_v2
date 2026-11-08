@@ -1,7 +1,9 @@
 import config.RunConfiguration
 import config.Tuning
 import data.loadRootData
+import emit.toBlueprint
 import emit.toBlueprintString
+import emit.toJson
 import emit.toLayout
 import plan.buildPlan
 import java.time.LocalDateTime
@@ -131,8 +133,16 @@ private fun writeTestCopy(dir: java.io.File, config: String?) {
     val w = str(box, "w")!!.toInt(); val h = str(box, "h")!!.toInt()
     val job = config?.let { RunConfiguration.load(it) } ?: java.io.File(dir, "resume/job.json").takeIf { it.isFile }?.let { RunConfiguration.load(it.path) }
         ?: RunConfiguration.parse("""{"targets": []}""")
-    loadRootData(job.data ?: "recipes.json")
-    val layout = emit.decodeBlueprint(java.io.File(dir, "best_output_string.txt").readText().trim()).toLayout(w, h)
+    val data = loadRootData(job.data ?: "recipes.json")
+    val decoded = emit.decodeBlueprint(java.io.File(dir, "best_output_string.txt").readText().trim()).toLayout(w, h)
+    // Farms' modules chosen again for their recipes (an older run's may be ones the recipe refuses): the blueprint too.
+    val layout = power.withFarmModules(decoded, data, job)
+    if (layout.entities != decoded.entities) {
+        val changed = layout.entities.indices.count { layout.entities[it].modules != decoded.entities[it].modules }
+        java.io.File(dir, "best_output_string.txt").writeText(layout.toBlueprintString(job.buildQuality()))
+        java.io.File(dir, "best_blueprint.json").writeText(layout.toBlueprint(job.buildQuality()).toJson())
+        println("modules of $changed farm(s) chosen again for their recipes; best_output_string.txt rewritten")
+    }
     fun list(key: String) = (ports[key] as? kotlinx.serialization.json.JsonArray ?: kotlinx.serialization.json.JsonArray(emptyList())).map { it as kotlinx.serialization.json.JsonObject }
     val sources = list("inputs").map { o ->
         val lane = when (str(o, "lane")) { "left" -> 0; "right" -> 1; else -> -1 }

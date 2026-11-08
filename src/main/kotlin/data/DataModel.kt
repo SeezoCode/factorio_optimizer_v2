@@ -136,6 +136,11 @@ data class Recipe(
     val categories: List<String>? = null,
     /** Hidden from the player (exporter data): placeholders, recycling, mod internals. */
     val hidden: Boolean? = null,
+    /**
+     * Module categories the recipe takes (exporter data; null: any the machine takes). Pyanodon's breeding recipes in
+     * the reproductive complex take their own animal only.
+     */
+    val allowedModuleCategories: List<String>? = null,
 ) {
     /** Every category of the recipe: [categories], or the single [category] of 2.0 data. */
     val allCategories: List<String> get() = categories ?: listOf(category)

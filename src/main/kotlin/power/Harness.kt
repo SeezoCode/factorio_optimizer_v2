@@ -47,6 +47,18 @@ const val VALVE_RATE = 150.0
  * request into its input slot of a few crafts' worth (at most a stack), which construction bots bring when it is
  * built (the in-game check fills requests itself). Fluid seeds cannot come by bot: they stay for the player.
  */
+/**
+ * [layout] with each farm's modules (a machine that works only with modules in it: Py's farms and reproductive
+ * complexes) chosen again for its recipe (see plan.farmModule): a layout searched before the recipe's own module
+ * categories were known asks for an animal the recipe refuses, and the farm stands at 0.01% speed in game.
+ */
+fun withFarmModules(layout: geom.Layout, data: data.RootData, config: RunConfiguration): geom.Layout =
+    layout.copy(entities = layout.entities.map { e ->
+        if (e.kind != Kind.MACHINE || e.recipe == null || !plan.needsModules(data, e.name)) return@map e
+        val r = data.recipes[e.recipe] ?: data.recipes[gameNameOf(e.recipe)] ?: return@map e
+        e.copy(modules = plan.machineModules(data, config, r, e.name).takeIf { it.isNotEmpty() })
+    })
+
 fun withSeedRequests(layout: geom.Layout, seeds: List<String>, data: data.RootData): geom.Layout {
     val items = seeds.filter { it in data.items }.toSet()
     if (items.isEmpty()) return layout
