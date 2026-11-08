@@ -77,6 +77,7 @@ fun validationSpec(
             needsFluid = inst.needsFluid,
             fluidIn = inst.fluidIn,
             fluidOut = inst.fluidOut,
+            fluidDemand = inst.fluidDemand,
             products = items.takeIf { it.size > 1 } ?: emptyMap(),
             sinks = plan.terminals.filter { it.machine == pm.id && it.role == Role.SINK }.groupBy { it.item }.mapValues { (_, ts) -> ts.sumOf { it.rate } },
             beaconNeed = beaconNeed(inst.crafts, inst.beaconCrafts),

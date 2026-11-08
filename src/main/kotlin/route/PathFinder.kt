@@ -1892,7 +1892,9 @@ class PathFinder(internal val p: RouteProblem) {
             val mine = ArrayList<EffectiveTerminal>()
             while (left > 1e-9) {
                 val c = need.filter { it.value > 1e-9 }.keys.minByOrNull { dist(center(it.base), at) } ?: break
-                val take = min(left, need.getValue(c))
+                // Short of the consumer's need by a rounding crumb (under 1e-6/s): the port serves it whole, rather
+                // than leave a crumb that becomes a chain with nothing to feed it (Py's lignin: 4.49e-6 of 4.5e-6/s).
+                val take = need.getValue(c).let { nd -> if (nd - left <= 1e-6) nd else min(left, nd) }
                 need[c] = need.getValue(c) - take
                 left -= take
                 mine += part(c, take, pickRate)
@@ -1912,10 +1914,8 @@ class PathFinder(internal val p: RouteProblem) {
         }
         // Pass-through chains whose port fed no consumers here.
         pending.forEach { (s, ps) -> ps.forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) } }
-        // 3. The rest from producers. Not a rounding crumb (under 1e-6/s) of a consumer a port's chain already serves:
-        // a chain of its own with nothing to feed it never routes (Py's titanium plate, 6.7e-8/s short of four
-        // consumers' total after rebalancing).
-        val rest = need.filter { it.value > 1e-9 && !(it.value <= 1e-6 && it.value < 1e-3 * it.key.rate) }.map { (c, r) -> part(c, r, pickRate) }
+        // 3. The rest from producers.
+        val rest = need.filter { it.value > 1e-9 }.map { (c, r) -> part(c, r, pickRate) }
         chainsOf(rest).forEach { group ->
             val at = group.map { center(it.base) }.let { ps -> ps.map { it.first }.average() to ps.map { it.second }.average() }
             val (parts, missing) = fromProducers(group.sumOf { it.rate }, at)

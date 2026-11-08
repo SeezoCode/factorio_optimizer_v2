@@ -370,7 +370,8 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     // maker, however slow.
     val crafts = best.first.filterValues { it > eps }.toMutableMap()
     var dropped = crafts.filterValues { it <= 1e-6 }.keys.toMutableSet()
-    repeat(3) {
+    // Until nothing more comes back: a recipe brought back needs its own inputs' makers too.
+    repeat(50) {
         val kept = crafts.filterKeys { it !in dropped }
         val bal = HashMap<String, Double>()
         kept.forEach { (c, v) -> net.getValue(c).forEach { (item, a) -> bal.merge(item, a * v, Double::plus) } }

@@ -244,6 +244,9 @@ fun wholeMachines(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Lin
     val netOf = HashMap<Int, Int>().also { m -> plan.nets.forEach { n -> n.terminals.forEach { t -> m[t] = n.id } } }
     val newBlocks = blocks.map { it.toMutableList() }
     var changed = false
+    // A recipe with several products (Py's sodium hydroxide gives limestone too) is sized once per block: sized again
+    // for its next product, the copies already added were missed and the block made half again what its links take.
+    val sized = HashSet<Pair<Int, String>>()
     blocks.forEachIndexed { b, ms ->
         val items = ms.flatMap { plan.machines[it].itemProducts.keys }.distinct()
         for (item in items) {
@@ -253,6 +256,7 @@ fun wholeMachines(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Lin
             val recipes = producers.map { plan.machines[it].recipe }.distinct()
             if (recipes.size != 1) continue
             val m0 = plan.machines[producers[0]]
+            if ((b to m0.recipe) in sized) continue
             // One machine's most of the item: at full speed (as the validator allows), or held to the plan's headroom.
             val per = m0.itemProducts.getValue(item) / m0.crafts
             val top = maxOf(m0.crafts, plan.headroom * m0.maxCrafts) * per
@@ -292,6 +296,7 @@ fun wholeMachines(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Lin
                 newBlocks[b] += id
             }
             changed = true
+            sized += b to m0.recipe
             warnings += "block ${b + 1}: $extra more ${m0.machine} (${m0.recipe}) so that its ${out.size} belts of $item can be fed"
         }
     }
@@ -500,8 +505,9 @@ fun linksFor(
         }
         // Overflow: from each block making it whose users are all inside it (a second output beside a link to another
         // block would take half of what goes there).
+        // Not into a block that also receives it: there the overflow would drain the supply.
         if (overflow) makers.forEach { b ->
-            if (flows.keys.none { it.first == b } && raw.none { it.item == net.item && it.from == b }) emit(b, EDGE, 0.0)
+            if (flows.keys.none { it.first == b || it.second == b } && raw.none { it.item == net.item && (it.from == b || it.to == b) }) emit(b, EDGE, 0.0)
         }
     }
 

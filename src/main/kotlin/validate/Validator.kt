@@ -36,6 +36,12 @@ data class ValidationError(val type: ErrorType, val tile: Tile, val message: Str
 }
 
 /** What a machine is supposed to do, for item and rate checks. Rates are items/s. */
+/**
+ * Rates at or below this (items or fluid units per second) are slivers: rounding left by rebalancing, or a machine
+ * planned to craft about once a day. The split, router and planner leave them unconnected, so they are not checked.
+ */
+const val TINY_RATE = 1e-5
+
 data class MachineSpec(
     val product: String,
     val ingredients: Set<String>,
@@ -58,6 +64,8 @@ data class MachineSpec(
      * Empty: no faster than planned.
      */
     val fullRates: Map<String, Double> = emptyMap(),
+    /** Fluid ingredients per second (null: unknown, every fluid input is checked). */
+    val fluidDemand: Map<String, Double>? = null,
 ) {
     /** Item products leaving the machine, with their rates. */
     val outputs: Map<String, Double> get() = products.ifEmpty { if (outputRate > 0) mapOf(product to outputRate) else emptyMap() }
@@ -459,8 +467,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val e = ents[m]
             mi.outputs.forEach { (item, rate) ->
                 val outCap = outIns.getValue(m).filter { machineOutput(it) == item }.sumOf { cap(it) }
-                // Rates under 1e-6/s are rounding left by rebalancing; the router gives them no inserter either.
-                if (rate > 1e-6 && outCap + 1e-9 < rate) {
+                if (rate > TINY_RATE && outCap + 1e-9 < rate) {
                     val what = if (mi.outputs.size > 1) "$item " else ""
                     err(ErrorType.INSERTER_RATE, e.tile, "${e.recipe} makes ${fmt(rate)}/s ${what}but its output inserters move ${fmt(outCap)}/s")
                 }
@@ -478,7 +485,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val demandEdge = needs.mapIndexed { j, (_, need) -> g.edge(2 + feeders.size + j, 1, need) }
             g.run(0, 1)
             needs.forEachIndexed { j, (item, need) ->
-                if (need <= 1e-6) return@forEachIndexed   // rounding (see above): nothing is routed for it
+                if (need <= TINY_RATE) return@forEachIndexed   // a sliver (see TINY_RATE): nothing is routed for it
                 if (feeders.none { feederCarries(it, item, belts) }) err(ErrorType.MISSING_INPUT, e.tile, "${e.recipe} gets no $item")
                 else {
                     val c = g.flowOn(demandEdge[j])
@@ -1335,7 +1342,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val f = c.fluid ?: return@forEachIndexed
             val r = find(ents.size + k)
             val linked = attached[k]
-            if (c.flow == GameConstants.Flow.INPUT && (!linked || supplies[r]?.contains(f) != true)) {
+            val tiny = machineInfo(ents[m])?.fluidDemand?.get(f)?.let { it <= TINY_RATE } == true
+            if (c.flow == GameConstants.Flow.INPUT && !tiny && (!linked || supplies[r]?.contains(f) != true)) {
                 err(ErrorType.FLUID_MISSING, c.tile, "${ents[m].recipe} gets no $f here")
             }
             if (c.flow == GameConstants.Flow.OUTPUT && (!linked || drains[r]?.contains(f) != true)) {
