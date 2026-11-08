@@ -447,7 +447,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         nets += Net(nets.size, name, total, netTerminals.map { it.id }, belts)
     }
 
-    val seeds = loopSeeds(machines, lp.supply.keys)
+    val seeds = loopSeeds(machines, lp.supply.keys) { m -> !GameConstants.takesRecipe(m) }
     if (seeds.isNotEmpty()) warn("production loops start only with some ${seeds.joinToString(", ")} in them: put a few in by hand once")
 
     return ProductionPlan(
@@ -479,14 +479,19 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
  * catalysts, which get priming inputs instead); per loop, items are taken out, the one most loops run through first,
  * until no loop is left: a few of each of those, put in once, start every loop.
  */
-fun loopSeeds(machines: List<MachineInstance>, supplied: Set<String>): List<String> {
+fun loopSeeds(machines: List<MachineInstance>, supplied: Set<String>, recipeLess: (String) -> Boolean = { false }): List<String> {
     val (made, next) = loopGraph(machines, supplied)
     fun loops(nodes: Set<String>) = stronglyConnected(nodes, next)
+    // An item only machines without a set recipe take (Py's barrel machine is a furnace: it picks its recipe from what
+    // it is given) cannot be put in by hand or by the in-game check: another item of the loop is the seed.
+    val takers = HashMap<String, MutableList<MachineInstance>>()
+    machines.forEach { m -> (m.demand.keys + m.fluidDemand.keys).forEach { takers.getOrPut(it) { ArrayList() } += m } }
+    fun placeable(item: String) = takers[item].orEmpty().any { !recipeLess(it.machine) }
     val seeds = sortedSetOf<String>()
     val todo = ArrayDeque(loops(made))
     while (todo.isNotEmpty()) {
         val part = todo.removeFirst()
-        val seed = part.maxWith(compareBy<String>({ v ->
+        val seed = part.maxWith(compareBy<String>({ placeable(it) }, { v ->
             val inDeg = part.count { u -> v in next[u].orEmpty() }
             val outDeg = next[v].orEmpty().count { it in part }
             inDeg * outDeg
