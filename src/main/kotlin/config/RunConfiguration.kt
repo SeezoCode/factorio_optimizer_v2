@@ -447,6 +447,11 @@ data class BlocksConfig(
     @SerialName("pass_through") val passThrough: Boolean = false,
     /** Two items going between the same two blocks, each fitting a lane, share one belt (one item per lane). */
     @SerialName("lane_pairs") val lanePairs: Boolean = true,
+    /**
+     * Whether the blocks' pole networks must be wired to each other. Off (for now): a factory whose blocks are powered
+     * each on their own is kept, with a note to wire them by hand; wide corridors leave poles out of reach.
+     */
+    @SerialName("wire_blocks") val wireBlocks: Boolean = false,
     /** Floorplan: blocks may be turned in quarter turns (their ports turn with them). */
     val rotate: Boolean = true,
     /**

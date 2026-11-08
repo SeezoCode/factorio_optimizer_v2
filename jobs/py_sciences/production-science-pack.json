@@ -43,7 +43,7 @@
     "max_machines": 20,
     "size_by": "weight",
     "lanes": 5,
-    "corridor": 4,
+    "corridor": 12,
     "compact": false,
     "lane_pairs": false
   }

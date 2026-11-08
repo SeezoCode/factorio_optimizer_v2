@@ -46,6 +46,8 @@ class RouteProblem(
     val endgameSeed: Long = 0,
     /** Tiles no underground may pass under (blocks, when stitching a split factory). */
     val noTunnel: Set<Tile> = emptySet(),
+    /** Stop routing then (epoch ms) with what is routed so far (a factory's corridors: hundreds of links over 600 x 600). */
+    val deadlineMs: Long = Long.MAX_VALUE,
 )
 
 data class RouteStats(val belts: Int, val undergrounds: Int, val inserters: Int)
@@ -1424,7 +1426,7 @@ class PathFinder(internal val p: RouteProblem) {
         var overuse = Int.MAX_VALUE
         var unrouted = nets.map { it.idx }
         var failedFluids = emptyList<Int>()
-        while (iter < tun.maxIterations) {
+        while (iter < tun.maxIterations && System.currentTimeMillis() < p.deadlineMs) {
             iter++
             val todo = if (iter <= tun.fullRerouteIterations) order else order.filter { w ->
                 !ok(w) || (if (w >= 0) touchesOveruse(w) else pr!!.touchesOveruse(-1 - w, ::overuseAt))
@@ -1496,7 +1498,7 @@ class PathFinder(internal val p: RouteProblem) {
             overuse <= maxOf(tun.endgameMaxOveruse, (tun.endgameOverusePerChain * nets.size).toInt()) &&
             unrouted.size + failedFluids.size <= tun.endgameMaxUnrouted) {
             val before = "overuse $overuse, unrouted ${unrouted.size + failedFluids.size}"
-            val rounds = endgame(order, ::ok, deadline = System.currentTimeMillis() + ((System.currentTimeMillis() - t0) * tun.endgameTimeFactor).toLong())
+            val rounds = endgame(order, ::ok, deadline = minOf(p.deadlineMs, System.currentTimeMillis() + ((System.currentTimeMillis() - t0) * tun.endgameTimeFactor).toLong()))
             unrouted = nets.filter { routed[it.idx]?.ok != true }.map { it.idx }
             failedFluids = pr?.failed() ?: emptyList()
             overuse = totalOveruse()

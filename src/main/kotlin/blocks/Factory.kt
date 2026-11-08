@@ -233,6 +233,7 @@ fun runFactory(
         seeds = config.search.seedsPerSize,
         parkAfter = cfg.parkAfter, variantCapS = cfg.shapeVariantS, restitchShare = cfg.restitchShare,
         limit = blocksUntil, out = out, say = ::say,
+        firstOnly = config.search.stopAfter > 0,
         blockPrinter = { job, line ->
             if (view?.live != true) synchronized(sayLock) { println("  b${job.block + 1}${if (job.variant > 0) "x" + "%.2f".format(job.factor) else ""} $line") }
         },
@@ -680,15 +681,21 @@ private class Stitching(
     fun start(from: FpState?) {
         fp = planner.optimise(from)
         if (fp.violations > 0) say("$what: the floorplan leaves ${fp.violations} block side(s) off the factory edge they need")
-        for (attempt in 0 until 8) {
+        // 8 widenings; moving a lane junction in front of its consumer is not one (Py science 2 had more than 8 to move,
+        // one per attempt, and never routed).
+        var widenings = 0
+        var attempt = 0
+        while (widenings < 8 && attempt < 8 + split.links.size) {
+            attempt++
             val arr = layoutOf(fp)
             val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer)
-            if (r.stitched != null) { ok += r.stitched to fp.state; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 0) " (attempt ${attempt + 1})" else ""}"); break }
+            if (r.stitched != null) { ok += r.stitched to fp.state; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 1) " (attempt $attempt)" else ""}"); break }
             if (!atConsumer.containsAll(r.badPairs)) {
                 atConsumer += r.badPairs
                 say("$what: ${r.badPairs.size} lane junction(s) did not route next to the supplier; moving them in front of the consumer")
                 continue
             }
+            widenings++
             say("$what: corridors at ${fp.w} x ${fp.h} did not route (${r.why}); widening near ${r.trouble.size} trouble tiles ${r.trouble.take(4)}")
             pads = grow(pads, arr, r.trouble, r.edges, k)
             fp = planner.pack(fp.state, pads)
@@ -935,17 +942,22 @@ fun stitchRoute(
     }
     fun free(t: Tile) = t.x in 0 until W && t.y in 0 until H && t !in blockTiles && t !in byTile
     /** The tile after a pipe-to-ground pair from [t] going [out] (port behind it), or null if no pair fits. */
+    // Where each fluid link's corridor pipe starts: two of different fluids side by side would join, and nothing the
+    // router does can part them (Py science 2: hydrogen and gasoline ports next to each other, tunnels of one length).
+    val fluidHeads = HashMap<Tile, String>()
+    fun headOk(h: Tile, fluid: String) = h !in fluidHeads && Dir.entries.none { d -> fluidHeads[h + d]?.let { it != fluid } == true }
     fun dive(l: Link, t: Tile, out: Dir): Tile? {
         val port = t + out.opposite
-        if (!foreign(t, l.item, port)) return t
+        if (!foreign(t, l.item, port) && headOk(t, l.item)) return t.also { fluidHeads[it] = l.item }
         for (j in 1..GameConstants.PIPE_TO_GROUND_GAP + 1) {
             val exit = t.step(out, j); val next = exit + out
-            if ((0..j).any { !free(t.step(out, it)) || t.step(out, it) in noTunnel } || !free(next) || foreign(next, l.item, exit)) continue
+            if ((0..j).any { !free(t.step(out, it)) || t.step(out, it) in noTunnel } || !free(next) || foreign(next, l.item, exit) || !headOk(next, l.item)) continue
             listOf(t to out.opposite, exit to out).forEach { (p, open) ->
                 val e = PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, p.x, p.y, open, fluid = l.item, net = netOfItem[l.item])
                 entities += e; byTile[p] = e
             }
             (0..j).forEach { noTunnel += t.step(out, it) }
+            fluidHeads[next] = l.item
             return next
         }
         return null
@@ -1054,15 +1066,23 @@ fun stitchRoute(
         val sl = starts.getValue(left.id).first; val sr = starts.getValue(right.id).first
         val end = ends.getValue(l.id).first
         if (l.id in atConsumer) {
-            // The fallback: the junction belt is the tile in front of the consumer's port, fed from both sides.
+            // The fallback: the junction belt is the tile in front of the consumer's port, fed from both sides; where
+            // that has no room (a neighbouring port's end beside it), up to 4 tiles further out, with a straight belt
+            // on to the port.
             val h = ends.getValue(l.id).second
-            if (listOf(end + h.ccw, end + h.cw).any { !free(it) || it in endTiles } || (end + h.opposite) in byTile)
-                return StitchAttempt(null, listOf(end), "no room for the junction of ${left.item} and ${right.item} at the consumer", badPairs = setOf(l.id))
-            val e = PlacedEntity(GameConstants.beltTier(config.beltTier).belt, Kind.BELT, end.x, end.y, h)
-            entities += e; byTile[end] = e
-            junctionKeepFree += listOf(end + h.opposite)
-            endTiles += listOf(end + h.ccw, end + h.cw)
-            for ((lk, pEnd) in listOf(left to fixedPort(left, end + h.ccw, h.cw, true), right to fixedPort(right, end + h.cw, h.ccw, true))) {
+            val k = (0..4).firstOrNull { k ->
+                val j = end.step(h.opposite, k)
+                (1..k).all { i -> end.step(h.opposite, i).let { free(it) && it !in endTiles } } &&
+                    listOf(j + h.ccw, j + h.cw).all { free(it) && it !in endTiles } && (j + h.opposite) !in byTile
+            } ?: return StitchAttempt(null, listOf(end), "no room for the junction of ${left.item} and ${right.item} at the consumer", badPairs = setOf(l.id))
+            val jt = end.step(h.opposite, k)
+            for (i in 0..k) end.step(h.opposite, i).let { t ->
+                val e = PlacedEntity(GameConstants.beltTier(config.beltTier).belt, Kind.BELT, t.x, t.y, h)
+                entities += e; byTile[t] = e
+            }
+            junctionKeepFree += listOf(jt + h.opposite)
+            endTiles += listOf(jt + h.ccw, jt + h.cw)
+            for ((lk, pEnd) in listOf(left to fixedPort(left, jt + h.ccw, h.cw, true), right to fixedPort(right, jt + h.cw, h.ccw, true))) {
                 val p1 = starts.getValue(lk.id).let { (st, sd) -> fixedPort(lk, st, sd.opposite, false) }
                 val t1 = terminal(Role.SOURCE, lk, lk.rate, p1); val t2 = terminal(Role.OUTPUT, lk, lk.rate, pEnd)
                 linksOfNet[nets.size] = listOf(lk)
@@ -1174,7 +1194,9 @@ fun stitchRoute(
             .flatMap { t -> Dir.entries.map { t + it } }.filter { it !in blockTiles && it !in linkTiles }
     }
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
-        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree, noTunnel = noTunnel))
+        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree, noTunnel = noTunnel,
+        // At most 6 minutes: a big factory's corridors otherwise rip up and reroute for hours (Py science 2).
+        deadlineMs = System.currentTimeMillis() + 360_000))
     if (!routed.success) {
         // Trouble: conflict tiles, and the ports of every link that did not route.
         val trouble = routed.conflicts + routed.failedNets.flatMap { n ->
@@ -1193,7 +1215,14 @@ fun stitchRoute(
                     errors = trouble.map { validate.ValidationError(validate.ErrorType.UNSUPPORTED, it, "trouble") }, title = "stitch ${W}x$H: ${routed.failedNets.mapNotNull { stitchPlan.nets.getOrNull(it)?.item }}"))
             }
         }
+        // What clashes on the first conflict tiles: the corridor items there, and what of the blocks is beside them.
+        val clash = routed.conflicts.take(3).joinToString("; ") { t ->
+            val here = routed.entities.filter { t in it.rect.tiles() }.map { "${it.kind.name.lowercase()} ${it.net?.let { n -> stitchPlan.nets.getOrNull(n)?.item } ?: it.item ?: it.fluid ?: ""}".trim() }
+            val near = Dir.entries.mapNotNull { d -> byTile[t + d]?.let { e -> "${e.kind.name.lowercase()} ${e.item ?: e.fluid ?: e.recipe ?: ""}".trim() } }.distinct()
+            "($t) ${here.joinToString()}${if (near.isNotEmpty()) " beside ${near.joinToString()}" else ""}"
+        }
         return StitchAttempt(null, trouble, "${routed.conflicts.size} conflicts, ${routed.failedNets.size} unrouted" +
+            (if (clash.isNotEmpty()) " [$clash]" else "") +
             (if (unrouted.isNotEmpty()) " $unrouted; ${routed.log.filter { l -> unrouted.any { it in l } }.takeLast(2)}" else ""), edges, badPairs)
     }
     entities += routed.entities.map { it.copy(net = global(it, stitchPlan)) }
@@ -1246,8 +1275,13 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         val spec = validationSpec(data, plan, config, Placement(w, h, mach), if (config.testMode) emptyList() else srcs,
             requirePower = config.power.mode != "none", outsideAllowed = outside.toSet(), outputs = outs)
             .copy(heat = heat?.let { validate.HeatSpec(it.ports.toSet(), config.heat.poles) })
-        val errors = validate(layout, spec)
-        return Factory(layout, errors, score(layout, config), srcs, outs, notes, rects, s.layouts, s.rot, heat?.ports ?: emptyList())
+        val found = validate(layout, spec)
+        // Blocks' pole networks not wired to each other (blocks.wire_blocks off): a note, not a fault. The in-game
+        // check powers each network on its own; in a real game, run a line of poles between them.
+        val unwired = if (config.blocks?.wireBlocks == false) found.filter { it.type == validate.ErrorType.POLES_DISCONNECTED } else emptyList()
+        val errors = found - unwired.toSet()
+        val notes2 = if (unwired.isEmpty()) notes else notes + "${unwired.size} poles are not wired to the rest: the blocks' power networks need wiring together by hand"
+        return Factory(layout, errors, score(layout, config), srcs, outs, notes2, rects, s.layouts, s.rot, heat?.ports ?: emptyList())
     }
 
     // Rows and columns that only straight belts and pipes cross go first; if that breaks anything (it should

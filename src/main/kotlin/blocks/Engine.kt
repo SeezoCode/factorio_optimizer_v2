@@ -164,6 +164,11 @@ class BlockEngine(
     private val extras: List<List<TrialResult>> = emptyList(),
     /** Search share of a block that has a template (its template already counts as a layout). */
     private val extraShare: Double = 1.0,
+    /**
+     * Once every block has a layout, stop improving blocks so the stitch has every core (search.stop_after: the first
+     * valid factory is what is wanted).
+     */
+    private val firstOnly: Boolean = false,
 ) {
     private val n = bps.size
     private val m = jobs.size
@@ -344,7 +349,14 @@ class BlockEngine(
                 // Every block gets its first layout, even past the limit (the factory needs one of each).
                 val allFirst = (0 until n).all { best(it) != null }
                 if ((stopping || (timeUp() && allFirst)) && active.isEmpty()) break
-                if (allFirst && phase == "first layouts") { phase = "refining"; stitchRequested = true; event("every block has a layout; stitching a preview") }
+                if (allFirst && phase == "first layouts") {
+                    phase = "refining"; stitchRequested = true; event("every block has a layout; stitching a preview")
+                    if (firstOnly) {
+                        paused = true
+                        searches.forEach { it?.extendTo(System.currentTimeMillis()) }
+                        event("blocks paused: the stitch gets every core")
+                    }
+                }
                 // A preview when asked, or when the blocks shrank enough (at most every 2 minutes).
                 val area = totalArea()
                 val due = allFirst && lastStitch >= 0 && area <= stitchedArea * (1 - restitchShare) && System.currentTimeMillis() - lastStitch > 120_000
@@ -365,7 +377,11 @@ class BlockEngine(
                                 factory = fw to fh
                                 critical = criticalBlocks(rects, fw, fh, corridor)
                                 event("preview: ${fw} x ${fh} (${fw * fh} tiles) in ${took()}; blocks setting its size: ${critical.sorted().map { it + 1 }}")
-                            } else event("preview: did not stitch (${took()})")
+                            } else {
+                                event("preview: did not stitch (${took()})")
+                                // Blocks paused for the first factory: the final stitch tries again, with more floorplans.
+                                if (firstOnly) stopAll(false)
+                            }
                         } finally { stitchingNow = false }
                     }
                 }
