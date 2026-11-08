@@ -313,14 +313,18 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         var cur = best
         val touched = best.first.filterValues { it > eps }.keys.toMutableSet()
         val snapshotUsed = touched.size
+        // Each round at most 20 s (a re-weighted program can stall the simplex); one that runs out ends the rounds.
+        solver.setTimeLimit(20_000)
+        var stalled = false
         repeat(6) {
+            if (stalled) return@repeat
             choices.forEach { c ->
                 val v = cur.first[c] ?: 0.0
                 val m = v * c.machineTime
                 obj.setCoefficient(x.getValue(c), if (v > eps) area(c) * maxOf(1.0, kotlin.math.ceil(m - 1e-6) / maxOf(m, 1e-6)) else area(c))
             }
             val st = solver.solve()
-            if (st != MPSolver.ResultStatus.OPTIMAL && st != MPSolver.ResultStatus.FEASIBLE) return@repeat
+            if (st != MPSolver.ResultStatus.OPTIMAL) { stalled = true; return@repeat }
             val next = snapshot()
             val used = next.first.filterValues { it > eps }.keys
             touched += used

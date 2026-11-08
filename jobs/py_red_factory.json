@@ -1,0 +1,48 @@
+{
+  "data": "data/pyanodon.json",
+  "targets": [
+    {
+      "name": "automation-science-pack",
+      "amount": 3.0
+    }
+  ],
+  "machines": [
+    "auto"
+  ],
+  "belt_tier": "express",
+  "research": {
+    "inserter_capacity": 7
+  },
+  "inserters": {
+    "allowed": [
+      "inserter",
+      "long-handed-inserter",
+      "fast-inserter",
+      "bulk-inserter"
+    ],
+    "belt_pickup_derate": 0.7
+  },
+  "power": {
+    "pole": "substation"
+  },
+  "search": {
+    "time_budget_s": 900,
+    "seeds_per_size": 3,
+    "threads": 10,
+    "seed": 1,
+    "verbose": false
+  },
+  "outputs": [
+    {
+      "name": "automation-science-pack",
+      "edge": "east"
+    }
+  ],
+  "blocks": {
+    "max_machines": 20,
+    "size_by": "weight",
+    "lanes": 5,
+    "corridor": 4,
+    "compact": true
+  }
+}

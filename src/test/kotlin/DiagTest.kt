@@ -10,7 +10,8 @@ import java.io.File
 import kotlin.test.Test
 
 /**
- * Diagnostic, skipped unless DIAG=<job path>,<size>,<seeds> is set (DIAG_TUNING=<file> overrides tuning.json,
+ * Diagnostic, skipped unless DIAG=<job path>,<size>,<seeds> is set (the job's "data" game data is used; DIAG_PLAN=<plan.json>
+ * runs a saved plan, such as a factory block's, alone; DIAG_TUNING=<file> overrides tuning.json,
  * DIAG_FIRST=<seed> picks the first seed, DIAG_AT=<x>,<y>,<radius> lists the entities around a tile):
  * runs single trials and prints why routing fails. Use `./gradlew test --tests DiagTest --rerun -i`.
  */
@@ -19,11 +20,14 @@ class DiagTest {
     fun diag() {
         val spec = System.getenv("DIAG") ?: return
         val (path, size, seeds) = spec.split(",")
-        val config = RunConfiguration.load(path)
+        val job = RunConfiguration.load(path)
+        // DIAG_PLAN=<plan.json>: a saved plan (e.g. one block of a factory, run alone) instead of planning the job.
+        val config = if (System.getenv("DIAG_PLAN") != null) job.copy(blocks = null, testMode = false, reserved = emptyList(), forbiddenTiles = emptyList()) else job
+        // The job's own game data (a modded export), else the built-in one.
+        val data = job.data?.let { data.loadRootData(it) } ?: TestData.data
         val tuning = (System.getenv("DIAG_TUNING")?.takeIf { it.isNotBlank() }?.let { Tuning.load(it) } ?: Tuning.defaults()).withOverrides(config.tuning)
-        // DIAG_PLAN=<plan.json>: a saved plan (e.g. one block of a factory) instead of planning the job.
         val plan = System.getenv("DIAG_PLAN")?.let { strictJson.decodeFromString(ProductionPlan.serializer(), File(it).readText()) }
-            ?: buildPlan(TestData.data, config, tuning)
+            ?: buildPlan(data, config, tuning)
         println("DIAG machines ${plan.machines.size} nets ${plan.nets.size} terminals ${plan.terminals.size}")
         plan.machines.groupBy { it.recipe }.forEach { (r, ms) -> println("DIAG   $r x${ms.size}") }
         // DIAG_ITEM=<item>: the plan's terminals and nets of one item.
@@ -34,7 +38,7 @@ class DiagTest {
         val first = System.getenv("DIAG_FIRST")?.toLongOrNull() ?: 1L
         for (seed in first until first + seeds.toLong()) {
             val s = size.toInt()
-            val r = runTrial(TestData.data, plan, config, tuning, s, s, seed)
+            val r = runTrial(data, plan, config, tuning, s, s, seed)
             println("DIAG seed $seed: ${r.stage} ${r.millis}ms score ${r.score}")
             r.notes.forEach { println("DIAG   note $it") }
             r.route?.log?.filter { "split" in it }?.forEach { println("DIAG   log $it") }

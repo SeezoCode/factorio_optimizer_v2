@@ -839,9 +839,48 @@ fluid connections, from their fluid boxes), its belt tiers (`belt_tier` is the b
 `"kr-advanced-transport-belt"`), its inserters (`inserters.allowed`; rate from the swing speed) and its poles
 (`power.pole`). What a mod changes of the base game counts too: with Krastorio 2 express undergrounds reach 20 tiles
 and substations supply 20 x 20. Krastorio 2 (exported with `--no-space-age`) routes 40 plastic/s from three of its
-7 x 7 advanced chemical plants on its advanced belts in 19 x 19. This is basic support: a machine's fluid box with
-several connections uses its first, mining drills, boilers, heat and mod-specific mechanics are not modelled, and
-nothing modded has been checked in game.
+7 x 7 advanced chemical plants on its advanced belts in 19 x 19. A machine's fluid box with several connections uses
+its first; mining drills, boilers and heat are not modelled.
+
+#### Pyanodon and other big mods
+
+Pyanodon's mods (export with `--mods pymodpack --no-space-age`: 10,000 recipes, 646 crafting machines) need more
+than recipes and machine sizes, and the program handles it from the exported data:
+
+- **Which box a fluid goes in.** Without `fluidbox_index` the game does not put a recipe's n-th fluid in a machine's
+  n-th box (Py's fluidized bed reactor takes formamide's three fluids in input boxes 1, 3 and 4 of 4). The exporter
+  builds every machine with several boxes of a kind with each recipe it can craft, and writes down where the game put
+  each fluid when that differs (Py: 581 recipes); the planner and validator use it.
+- **Temperatures.** A fluid made at several temperatures becomes fluids of their own, `steam#500`, `steam#250` (at its
+  default temperature it keeps its plain name); an ingredient that takes a range becomes one recipe variant per
+  temperature made in it. Blueprints get the game's names back.
+- **Catalysts** (a recipe giving back some of what it takes, formamide's methanol): the machine's output and input of
+  it join one pipe or belt, so it feeds itself. When nothing else makes or brings it, the block gets a 0/s input to
+  fill the loop once in a new build (the in-game check does that itself).
+- **Farms** (machines with a -100% base speed that run on animals or plants as modules) are filled with their module
+  (Py's own default for each farm), counted at that speed, and the blueprint asks for the modules.
+- **Fuel**: burner machines' fuel leaves its burnt result (Py's ash), taken out like a product; machines burning a
+  fuel fluid (Py's glassworks) get it piped into their energy box (`fluid_fuel`, default the raw fluid with the most
+  energy).
+- **Choosing**: `"machines": ["auto"]` takes, per recipe category, the data's fastest machine (`machine_tier:
+  "slowest"` for the first tier), electric ones and farms first; raw resources default to what can be mined or
+  pumped; hidden recipes and `skip_recipes` (default Py's TURD upgrade variants and voiding) are left out. With
+  thousands of recipes the rate program is solved again with whole machines in mind (a recipe at 1% of a machine
+  costs a machine), so it does not use hundreds of recipes for slivers of by-products. If no plan exists, the error
+  names what the targets need that nothing allowed can make.
+
+A Py job can be as short as this (`jobs/py_red_auto.json`): Py's red science from ore, coal, stone, salt, water and
+native flora, 24 machines, checked in game at its planned rate.
+
+```json
+{ "data": "data/pyanodon.json", "targets": [{ "name": "automation-science-pack", "amount": 0.5 }], "machines": ["auto"],
+  "belt_tier": "express", "power": { "pole": "substation" } }
+```
+
+Checked in game so far (`verify.py`, which starts the game with the job's mods): formamide with its methanol loop,
+seaweed farms, gas-fired glassworks, and red science from raw resources. Py's chains are long: science pack 1 at
+0.2/s from raw resources plans to about 750 machines (farms and their breeding included), chemical science at
+0.05/s to about 480.
 
 ### Tuning knobs
 

@@ -1,0 +1,10 @@
+{
+  "data": "data/pyanodon.json",
+  "targets": [{ "name": "automation-science-pack", "amount": 0.5 }],
+  "machines": ["auto"],
+  "belt_tier": "express",
+  "research": { "inserter_capacity": 7 },
+  "inserters": { "allowed": ["inserter", "long-handed-inserter", "fast-inserter", "bulk-inserter"], "belt_pickup_derate": 0.7 },
+  "power": { "pole": "substation" },
+  "search": { "time_budget_s": 180, "seeds_per_size": 3, "threads": 10, "seed": 1, "verbose": false }
+}

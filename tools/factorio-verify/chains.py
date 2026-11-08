@@ -18,7 +18,7 @@ import sys
 from collections import defaultdict, Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from starve import Factory, F, REPO  # noqa: E402
+from starve import Factory, F, REPO, load_recipes  # noqa: E402
 
 
 def main():
@@ -32,6 +32,7 @@ def main():
     if "dump_belts" not in report:
         sys.exit("the report has no belt dump: run verify.py with --dump")
     data = json.load(open(args.recipes))
+    load_recipes(args.recipes)   # also the underground belts' reach (mods change it)
     rec = data["recipes"]
     sizes = {n: (e.get("tile_width") or e.get("width") or 3) for n, e in data.get("entities", {}).items() if isinstance(e, dict)}
     f = Factory(report, sizes)

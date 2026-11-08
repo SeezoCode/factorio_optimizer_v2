@@ -32,7 +32,13 @@ def load_recipes(path):
         out[name] = {i["name"]: i["amount"] for i in r.get("ingredients", []) if i.get("type", "item") == "item"}
         makes[name] = {p["name"] for p in r.get("products", []) if p.get("type", "item") == "item"}
     sizes = {n: (e.get("tile_width") or e.get("width") or 3) for n, e in d.get("entities", {}).items() if isinstance(e, dict)}
+    # Underground belts' reach from the game data (mods change it: Pyanodon's express ones span 33 tiles).
+    UG_REACH.update({u["name"]: u["max_distance"] for u in (d.get("logistics") or {}).get("undergrounds", []) if u.get("max_distance")})
     return out, makes, sizes
+
+
+# Underground belt name -> tiles it spans at most (else the base game's: 10 express or turbo, 8 fast, 6 basic).
+UG_REACH = {}
 
 
 class Factory:
@@ -71,7 +77,7 @@ class Factory:
     def nxt(self, b):
         d = D[b["d"]]
         if b["n"].endswith("underground-belt") and b.get("t") == "input":
-            rng = 10 if "express" in b["n"] or "turbo" in b["n"] else 8 if "fast" in b["n"] else 6
+            rng = UG_REACH.get(b["n"]) or (10 if "express" in b["n"] or "turbo" in b["n"] else 8 if "fast" in b["n"] else 6)
             x, y = b["tiles"][0]
             for k in range(1, rng + 2):
                 c = self.cell.get((x + d[0] * k, y + d[1] * k))
