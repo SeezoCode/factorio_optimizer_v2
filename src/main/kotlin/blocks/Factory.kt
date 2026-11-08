@@ -553,7 +553,8 @@ fun assembleFactory(
 ): Pair<Factory, FpState>? {
     val cfg = config.blocks!!
     val input = floorplanInput(plan, split, variants, cfg, config, bps = bps)
-    val tries = (triesOverride ?: cfg.floorplanTries).coerceAtLeast(1)
+    // search.stop_after: the first valid factory is wanted, from one floorplan (each more costs up to 8 routings).
+    val tries = if (config.search.stopAfter > 0) 1 else (triesOverride ?: cfg.floorplanTries).coerceAtLeast(1)
     val t0 = System.currentTimeMillis()
     // 1. Every floorplan routed, tightened and squeezed, side by side on the job's threads, for a quarter of the time.
     val threads = config.search.threads.coerceAtLeast(1)
@@ -568,7 +569,7 @@ fun assembleFactory(
                 s.start(st)
                 if (!s.routed) null
                 else {
-                    val n = s.squeeze(t0 + (deadline - t0) / 4)
+                    val n = if (config.search.stopAfter > 0) 0 else s.squeeze(t0 + (deadline - t0) / 4)
                     if (n > 0) say("$label: squeezed $n corridor lines out: ${s.fp.w} x ${s.fp.h}")
                     s
                 }
@@ -579,7 +580,8 @@ fun assembleFactory(
     // 2. Compaction, until the time is up, of the smallest floorplans side by side (two when there are threads for
     //    it): squeeze; when that stalls, floorplan again from the current arrangement with a fresh seed and a lighter
     //    price on belt length (longer belts for a tighter packing). Every smaller valid factory is offered on the way.
-    val compacting = stitchings.sortedBy { it.area }.take(if (threads >= 2) 2 else 1)
+    // (search.stop_after: none; the first valid factory is wanted.)
+    val compacting = if (config.search.stopAfter > 0) emptyList() else stitchings.sortedBy { it.area }.take(if (threads >= 2) 2 else 1)
     if (tries > 1) say("$what: compacting the smallest floorplan${if (compacting.size > 1) "s" else ""}, " + compacting.joinToString(" and ") { "${it.fp.w} x ${it.fp.h}" })
     val savedArea = java.util.concurrent.atomic.AtomicInteger(Int.MAX_VALUE)
     fun compact(best: Stitching, index: Int) {
@@ -607,7 +609,7 @@ fun assembleFactory(
         }
     }
     if (compacting.size == 1) compact(compacting[0], 0)
-    else {
+    else if (compacting.size > 1) {
         val cp = java.util.concurrent.Executors.newFixedThreadPool(compacting.size)
         try { compacting.mapIndexed { i, s -> cp.submit { compact(s, i) } }.forEach { runCatching { it.get() }.onFailure { e -> say("$what: compaction failed with $e") } } }
         finally { cp.shutdown() }
@@ -701,6 +703,8 @@ private class Stitching(
             fp = planner.pack(fp.state, pads)
         }
         if (!routed) return
+        // search.stop_after: the first routed factory, not a smaller one (each tighter try is another routing).
+        if (config.search.stopAfter > 0) return
         for (round in 0 until 3) {
             val tighter = tighten(pads, ok.last().first, k)
             if (tighter.indices.all { tighter[it].contentEquals(pads[it]) }) break
@@ -1200,6 +1204,10 @@ fun stitchRoute(
         entities.filter { it.kind == Kind.SPLITTER }.flatMap { sp -> sp.rect.tiles().map { it + sp.dir } })
         .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
     val reached = entities.filter { it.kind == Kind.INSERTER }.flatMap { listOf(it.pickupTile, it.dropTile) }.filter { it !in blockTiles }
+    // Beside a block's belt (on its edge or ring): a corridor belt there pointing into it would feed it from the back
+    // or a side and change its shape (Py science 2: one SHAPE_CHANGED kept a routed 641 x 737 factory out).
+    val besideBelts = entities.filter { it.kind == Kind.BELT }.flatMap { b -> Dir.entries.map { b.tile + it } }
+        .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles && t !in byTile }
     // (Heat stays on, so corridor belts keep a side free for a heat pipe, but the blocks' lattice is theirs alone.)
     val stitchConfig = config.copy(blocks = null, laneSharing = false, heat = config.heat.copy(lattice = null))
     // Everything the blocks put outside their boxes (ring ports) is in the way too.
@@ -1211,7 +1219,7 @@ fun stitchRoute(
             .flatMap { t -> Dir.entries.map { t + it } }.filter { it !in blockTiles && it !in linkTiles }
     }
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
-        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree, noTunnel = noTunnel,
+        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + besideBelts + junctionKeepFree, noTunnel = noTunnel,
         // At most 6 minutes: a big factory's corridors otherwise rip up and reroute for hours (Py science 2).
         deadlineMs = System.currentTimeMillis() + 360_000))
     if (!routed.success) {

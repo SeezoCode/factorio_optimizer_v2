@@ -41,6 +41,9 @@ fun recyclingAllowed(r: Recipe, config: RunConfiguration): Boolean {
 // only when a recipe takes a filled barrel (Py does), which the program sees itself.
 private val EXCLUDED_SUBGROUPS = setOf("empty-barrel")
 
+/** Crafts/s every recipe a plan uses runs at least (see solveRates). */
+const val MIN_CRAFTS = 1e-4
+
 /** A recipe the planner may use, with the machine that will craft it. */
 data class RecipeChoice(val recipe: Recipe, val machine: String, val speed: Double) {
     /** Seconds of one machine per craft. */
@@ -364,25 +367,48 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         if (touched.size > firstUsed) warn("planner: ${touched.size} recipes tried; whole-machine cost ${"%.1f".format(before)} -> ${"%.1f".format(bestCost)}" +
             (if (fc == null) " (integer program: no solution in time)" else "") + ", ${best.first.count { it.value > eps }} recipes used")
     }
-    // A recipe under a millionth of a craft per second (Py's hotair tin cable at 1e-8/s: a craft a year) is not
-    // built: its machine would wait for inputs nothing routes at that rate. Unless taking it out leaves something
-    // short by more than that: a recipe used rarely per craft (a catalyst nearly always returned) still needs its
-    // maker, however slow.
-    val crafts = best.first.filterValues { it > eps }.toMutableMap()
-    var dropped = crafts.filterValues { it <= 1e-6 }.keys.toMutableSet()
-    // Until nothing more comes back: a recipe brought back needs its own inputs' makers too.
-    repeat(50) {
-        val kept = crafts.filterKeys { it !in dropped }
-        val bal = HashMap<String, Double>()
-        kept.forEach { (c, v) -> net.getValue(c).forEach { (item, a) -> bal.merge(item, a * v, Double::plus) } }
-        best.second.forEach { (item, v) -> bal.merge(item, v, Double::plus) }
-        targets.forEach { (item, v) -> bal.merge(item, -v, Double::plus) }
-        val short = bal.filterValues { it < -1e-6 }.keys
-        val back = dropped.filter { c -> net.getValue(c).any { (item, a) -> a > 0 && item in short } }
-        if (back.isEmpty()) return@repeat
-        dropped -= back.toSet()
+    // The chosen recipes, solved again exactly. The integer program (SCIP) accepts balances off by up to about 1e-6/s,
+    // which at Py's rates makes items from nothing (Py science 2: biofilm for nickel at 1.2e-7 crafts/s, its fibres
+    // from no recipe at all), and the rounds' solution can carry slivers. Here the plain program balances every item
+    // exactly with the chosen recipes, others allowed at 100 times their machine cost where the chosen cannot; and
+    // every recipe used runs at least [MIN_CRAFTS] (a craft every 2.8 hours), so no flow is one the split, router and
+    // validator take for rounding (soft: a loop that cannot be raised stays below, at a high cost).
+    if (choices.size > 1000 || best.first.values.any { it > eps && it < MIN_CRAFTS }) {
+        val chosen = best.first.filterValues { it > 0.0 }.keys
+        choices.forEach { c ->
+            obj.setCoefficient(x.getValue(c), area(c) * (if (c in chosen) 1.0 else 100.0) + (if (c in chosen) 0.0 else 1.0))
+            x.getValue(c).setBounds(0.0, inf)
+        }
+        val slack = HashMap<RecipeChoice, com.google.ortools.linearsolver.MPVariable>()
+        fun floorFor(cs: Collection<RecipeChoice>) = cs.filter { it !in slack }.forEach { c ->
+            slack[c] = solver.makeNumVar(0.0, MIN_CRAFTS, "under_${c.recipe.name}").also { v ->
+                solver.makeConstraint(MIN_CRAFTS, inf, "floor_${c.recipe.name}").apply { setCoefficient(x.getValue(c), 1.0); setCoefficient(v, 1.0) }
+                obj.setCoefficient(v, 1e6)
+            }
+        }
+        floorFor(chosen.filter { (best.first[it] ?: 0.0) > eps })
+        solver.setTimeLimit(60_000)
+        var st = MPSolver.ResultStatus.NOT_SOLVED
+        // Recipes the exact balance brings in get the floor too, in a round more.
+        for (round in 0 until 3) {
+            solver.reset()
+            st = solver.solve()
+            if (st != MPSolver.ResultStatus.OPTIMAL) break
+            val thinNew = choices.filter { c -> x.getValue(c).solutionValue().let { it > eps && it < MIN_CRAFTS } && c !in slack }
+            if (thinNew.isEmpty()) break
+            floorFor(thinNew)
+        }
+        if (st == MPSolver.ResultStatus.OPTIMAL) {
+            val before = best.first.count { it.value > eps }
+            best = snapshot()
+            val added = best.first.filter { it.value > eps && it.key !in chosen }.keys
+            val under = slack.filterValues { it.solutionValue() > 1e-9 }.keys
+            if (added.isNotEmpty()) warn("planner: balancing exactly took ${added.size} more recipes: ${added.take(6).joinToString { it.recipe.name }}")
+            if (under.isNotEmpty()) warn("planner: ${under.size} recipes stay below $MIN_CRAFTS crafts/s: ${under.take(6).joinToString { it.recipe.name }}")
+            if (before != best.first.count { it.value > eps }) warn("planner: $before recipes -> ${best.first.count { it.value > eps }} balanced exactly")
+        } else warn("planner: solving the chosen recipes exactly failed ($st); the plan may be off by rounding")
     }
-    dropped.forEach { crafts.remove(it) }
+    val crafts = best.first.filterValues { it > eps }
     val supply = best.second.filterValues { it > eps }
     // What leaves the block: each target plus any surplus.
     val output = best.third.mapValues { it.value + (targets[it.key] ?: 0.0) }.filterValues { it > eps }

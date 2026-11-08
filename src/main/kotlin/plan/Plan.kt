@@ -1,6 +1,7 @@
 package plan
 
 import config.ConfigSource
+import config.MixedOutput
 import config.RunConfiguration
 import config.Tuning
 import config.strictJson
@@ -205,7 +206,12 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     // Mixed outputs: surplus items no recipe of the plan uses leave together on one belt per group.
     val used = lp.crafts.keys.flatMap { c -> c.recipe.ingredients.map { it.name } }.toSet()
     val mixed = LinkedHashMap<String, String>()
-    config.mixedOutputs.forEachIndexed { k, g ->
+    // byproducts_mixed: one more group with every item that only leaves.
+    val listed = config.mixedOutputs.flatMap { it.items }.toSet()
+    val mixedGroups = config.mixedOutputs + (if (!config.byproductsMixed) emptyList() else listOf(MixedOutput(
+        lp.output.filter { (item, v) -> v > 1e-9 && item !in lp.targets && item !in used && item !in lp.fluids && item !in listed }.keys.sorted())))
+        .filter { it.items.isNotEmpty() }
+    mixedGroups.forEachIndexed { k, g ->
         g.items.forEach { item ->
             when {
                 (lp.output[item] ?: 0.0) <= 1e-9 -> {}
@@ -359,7 +365,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     }
     mixed.values.distinct().forEach { name ->
         val k = name.removePrefix("mixed-").toInt() - 1
-        ports += Port(ports.size, name, listOf(ConfigSource(name, edge = config.mixedOutputs[k].edge)), output = true)
+        ports += Port(ports.size, name, listOf(ConfigSource(name, edge = mixedGroups[k].edge)), output = true)
     }
     // Overflows: a 0/s output for by-products of production loops (see [overflowItems]).
     val overflow = if (config.byproductOverflow == "off") emptySet()

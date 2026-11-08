@@ -50,5 +50,6 @@
   "fluids": {
     "pipe": "ht-pipes",
     "pipe_to_ground": "ht-pipes-to-ground"
-  }
+  },
+  "byproducts_mixed": true
 }

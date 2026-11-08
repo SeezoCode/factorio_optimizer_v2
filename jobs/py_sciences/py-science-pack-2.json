@@ -51,5 +51,6 @@
     "pipe": "ht-pipes",
     "pipe_to_ground": "ht-pipes-to-ground"
   },
-  "byproduct_overflow": "all"
+  "byproduct_overflow": "all",
+  "byproducts_mixed": true
 }

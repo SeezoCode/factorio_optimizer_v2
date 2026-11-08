@@ -123,6 +123,11 @@ data class RunConfiguration(
     val heat: HeatConfig = HeatConfig(),
     /** Surplus items that leave together on one belt (a sushi belt), see [MixedOutput]. */
     @SerialName("mixed_outputs") val mixedOutputs: List<MixedOutput> = emptyList(),
+    /**
+     * Every item that only leaves (not a target, not used inside: Py's dozens of by-products at a few hundredths per
+     * second) goes out on one mixed belt, after the [mixedOutputs] groups, instead of a port and belt each.
+     */
+    @SerialName("byproducts_mixed") val byproductsMixed: Boolean = false,
     val tricks: Map<String, Boolean> = emptyMap(),
 
     val box: BoxConfig = BoxConfig(),
