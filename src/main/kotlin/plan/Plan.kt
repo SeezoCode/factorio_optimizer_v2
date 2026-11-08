@@ -269,8 +269,10 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         val productsPer = productsPerCraft(data, c, config).let { ps ->
             burntPerCraft(data, fuelItem, fuel)?.let { (b, n) -> ps + (b to (ps[b] ?: 0.0) + n) } ?: ps
         }
+        // A fuel fluid (a machine that burns one) comes by pipe into its own box; fuel items by inserter.
+        val fuelFluid = fuelItem?.takeIf { fuel > 0 && isFluid(it) }
         val demandPer = r.ingredients.filter { !it.isFluid }.groupBy { it.name }.mapValues { (_, ings) -> ings.sumOf { it.amount } }
-            .let { if (fuel > 0) it + (fuelItem!! to (it[fuelItem] ?: 0.0) + fuel) else it }
+            .let { if (fuel > 0 && fuelFluid == null) it + (fuelItem!! to (it[fuelItem] ?: 0.0) + fuel) else it }
         // A rocket silo launches what it builds: no product leaves it.
         val launched = GameConstants.launches(c.machine)
         val itemOut0 = if (launched) emptyMap() else productsPer.filterKeys { p -> fluidProducts.none { it.name == p } }.filterValues { it > 1e-12 }
@@ -308,8 +310,12 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
                 product = main,
                 demand = demand,
                 products = products,
-                fluidDemand = fluidIngredients.groupBy { it.name }.mapValues { (_, ings) -> crafts * ings.sumOf { it.amount } },
-                fluidIn = data.fluidBoxes(r, c.machine).first,
+                fluidDemand = fluidIngredients.groupBy { it.name }.mapValues { (_, ings) -> crafts * ings.sumOf { it.amount } }
+                    .let { fd -> if (fuelFluid == null) fd else fd + (fuelFluid to (fd[fuelFluid] ?: 0.0) + crafts * fuel) },
+                fluidIn = data.fluidBoxes(r, c.machine).first.let { fi ->
+                    val box = GameConstants.fuelInputIndex(c.machine)
+                    if (fuelFluid == null || box == null) fi else fi + (fuelFluid to box)
+                },
                 fluidOut = data.fluidBoxes(r, c.machine).second,
                 crafts = crafts,
                 maxCrafts = maxCrafts,

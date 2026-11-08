@@ -41,6 +41,19 @@ local function group_entry(groups, g)
   return name_of(g)
 end
 
+local function fluid_box_entry(fb)
+  local conns = {}
+  for _, c in pairs(fb.pipe_connections or {}) do
+    local ps = {}
+    for i, p in pairs(c.positions or {}) do ps[i] = pos(p) end
+    conns[#conns + 1] = {
+      flow_direction = c.flow_direction, connection_type = c.connection_type, direction = DIRS[c.direction],
+      positions = ps, max_underground_distance = c.max_underground_distance, connection_category = c.connection_category,
+    }
+  end
+  return { index = fb.index, production_type = fb.production_type, filter = name_of(fb.filter), connections = conns }
+end
+
 local function fluid_boxes(e)
   local out = {}
   for _, fb in pairs(e.fluidbox_prototypes or {}) do
@@ -90,11 +103,24 @@ local function probe_fluid_boxes(player)
   for _, e in pairs(prototypes.entity) do
     if e.type == "assembling-machine" and not e.hidden and e.crafting_categories then
       -- Boxes per kind, in prototype order: [proto index] = number among its kind.
+      -- The energy source's own box (a machine burning a fuel fluid) is listed too, numbered 1 again: not a recipe box.
+      local eb = e.fluid_energy_source_prototype and e.fluid_energy_source_prototype.fluid_box
+      local function is_energy(fb)
+        if not eb then return false end
+        local same = false
+        pcall(function() same = (fb == eb) end)
+        if same then return true end
+        local a, b = (fb.pipe_connections or {})[1], (eb.pipe_connections or {})[1]
+        return a ~= nil and b ~= nil and a.direction == b.direction and a.positions[1].x == b.positions[1].x and a.positions[1].y == b.positions[1].y
+          and fb.production_type == eb.production_type and #(fb.pipe_connections) == #(eb.pipe_connections)
+      end
       local kind_no, count = {}, { input = 0, output = 0 }
       for _, fb in pairs(e.fluidbox_prototypes or {}) do
-        local k = fb.production_type == "output" and "output" or "input"
-        count[k] = count[k] + 1
-        kind_no[fb.index] = count[k]
+        if not is_energy(fb) then
+          local k = fb.production_type == "output" and "output" or "input"
+          count[k] = count[k] + 1
+          kind_no[fb.index] = count[k]
+        end
       end
       if count.input > 1 or count.output > 1 then
         local ok, ent = pcall(function() return surface.create_entity { name = e.name, position = { 0, 0 }, force = player.force } end)
@@ -121,6 +147,9 @@ local function probe_fluid_boxes(player)
                     local okp, proto = pcall(function() return ent.get_fluid_box_prototype(i) end)
                     if f and okp and proto then
                       if proto.index == nil and proto[1] then proto = proto[1] end
+                      if is_energy(proto) then proto = nil end
+                    end
+                    if f and okp and proto then
                       local k = proto.production_type == "output" and "out" or "in"
                       local no = kind_no[proto.index]
                       local key = k .. ":" .. f.name
@@ -237,6 +266,8 @@ local function export(player)
         energy = e.energy_usage * 60; drain = e.electric_energy_source_prototype.drain * 60; source = "electric"
       elseif e.burner_prototype and e.energy_usage then
         energy = e.energy_usage * 60; drain = 0; source = "burner"; fuel = keys(e.burner_prototype.fuel_categories)
+      elseif e.fluid_energy_source_prototype and e.energy_usage then
+        energy = e.energy_usage * 60; drain = 0; source = "fluid"   -- burns a fuel fluid (Py's glassworks)
       else
         energy = 0; drain = 0; source = "void"   -- needs no energy (or one the optimizer has no use for)
       end
@@ -255,6 +286,11 @@ local function export(player)
       for _, q in pairs(data.quality_names) do
         info.crafting_speed[q] = e.get_crafting_speed(q)
         info.supply_area_distance[q] = e.get_supply_area_distance(q)
+      end
+      if e.fluid_energy_source_prototype then
+        local fe = e.fluid_energy_source_prototype
+        info.fluid_energy = { fluid_box = fluid_box_entry(fe.fluid_box), burns_fluid = fe.burns_fluid, effectivity = fe.effectivity,
+          fluid_usage_per_tick = fe.fluid_usage_per_tick, scale_fluid_usage = fe.scale_fluid_usage }
       end
       if next(info.crafting_speed) == nil then info.crafting_speed = nil end
       if next(info.supply_area_distance) == nil then info.supply_area_distance = nil end

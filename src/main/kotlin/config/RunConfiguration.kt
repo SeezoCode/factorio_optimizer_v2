@@ -37,6 +37,9 @@ val DEFAULT_TRICKS: Map<String, Boolean> = buildMap {
     put("B14", true)
 }
 
+/** In [RunConfiguration.machines]: the game data's best machine for every recipe category not covered. */
+const val AUTO_MACHINES = "auto"
+
 @Serializable
 data class RunConfiguration(
     val engine: String = "sa",
@@ -61,10 +64,22 @@ data class RunConfiguration(
 
     val machine: String = "assembling-machine-3",
     /** Machines in preference order; the first that can craft a recipe's category makes it. Default: [machine],
-     *  electric-furnace, chemical-plant, oil-refinery, centrifuge. */
+     *  electric-furnace, chemical-plant, oil-refinery, centrifuge. "auto" (anywhere in the list) adds, for every
+     *  recipe category no listed machine crafts, the game data's best machine for it (see [machineTier]): electric
+     *  machines and farms before burners; none with a fixed recipe or matching [skipRecipes]. For modded games. */
     val machines: List<String>? = null,
+    /** Which machine "auto" picks per category: "fastest" (default) or "slowest" (the first tier of each building). */
+    @SerialName("machine_tier") val machineTier: String = "fastest",
+    /**
+     * Recipes (and, for "auto", machines) whose name contains one of these are not used unless a recipe_override
+     * names them: Pyanodon's upgrade variants ("-turd", unlocked only by its tech upgrade choices) and voiding
+     * recipes ("pyvoid"). Hidden recipes (but recycling) are never used.
+     */
+    @SerialName("skip_recipes") val skipRecipes: List<String> = listOf("-turd", "pyvoid"),
     /** Fuel for burner machines (stone and steel furnaces). */
     val fuel: String = "coal",
+    /** Fuel fluid for machines that burn one (Py's glassworks); default: the raw fluid that holds the most energy. */
+    @SerialName("fluid_fuel") val fluidFuel: String? = null,
     @SerialName("belt_tier") val beltTier: String = "fast",
     /**
      * Space Age belt stacking: items stack this high on belts (1: off; up to 4 with the belt capacity research). Every
@@ -159,7 +174,7 @@ data class RunConfiguration(
         val notYet = tricks.filter { it.value && it.key in UNIMPLEMENTED_TRICKS }.keys
         require(notYet.isEmpty()) { "Tricks $notYet are planned for v2/v3 and not implemented yet" }
         GameConstants.beltTier(beltTier)
-        (machines ?: listOf(machine)).forEach { require(it in GameConstants.SUPPORTED_MACHINES) { "Unknown or unsupported machine '$it' (supported: ${GameConstants.SUPPORTED_MACHINES})" } }
+        (machines ?: listOf(machine)).filter { it != AUTO_MACHINES }.forEach { require(it in GameConstants.SUPPORTED_MACHINES) { "Unknown or unsupported machine '$it' (supported: ${GameConstants.SUPPORTED_MACHINES})" } }
         if (weaveTier != "auto" && weaveTier != "none") { require(weaveTier != beltTier) { "weave_tier must differ from belt_tier" }; GameConstants.beltTier(weaveTier) }
         inserters.allowed.forEach { GameConstants.inserter(it) }
         require(research.inserterCapacity in 0..7) { "research.inserter_capacity must be 0..7" }

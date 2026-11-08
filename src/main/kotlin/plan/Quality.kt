@@ -30,9 +30,9 @@ fun withQualityProduction(data: RootData, config: RunConfiguration): Pair<RootDa
     val qp = config.qualityProduction ?: return data to config
     val tiers = GameConstants.QUALITIES
     val chainProb = tiers.map { data.quality[it]?.chain ?: 0.0 }
-    val machines = effectiveMachines(config)
+    val machines = effectiveMachines(config, data)
     fun machineFor(r: Recipe) = machines.firstOrNull { r.inAny(data.craftingCategories(it)) }
-    val raw = (config.rawResources?.toSet() ?: BASE_RAW) + config.sources.map { it.name }
+    val raw = (config.rawResources?.toSet() ?: defaultRaw(data)) + config.sources.map { it.name }
 
     // The recipes that make what the targets need, down to raw resources (recycling apart, added below).
     val needed = ArrayDeque(config.targets.map { splitQuality(it.name).first })

@@ -305,6 +305,10 @@ object GameConstants {
 
     /** Fluid connections of machines the built-in table lacks, from loaded exporter data (see [register]). */
     @Volatile private var exportedFluids: Map<String, Pair<List<FluidConnection>, Boolean>> = emptyMap()
+    @Volatile private var fuelBoxes: Map<String, Int> = emptyMap()
+
+    /** The input number of the box a fluid-burning machine takes its fuel fluid through (null: it burns none). */
+    fun fuelInputIndex(machine: String): Int? = fuelBoxes[machine]
 
     /** Exported fluid boxes first (a mod may change a base machine's), else the built-in table. */
     private fun fluidsOf(machine: String) = exportedFluids[machine] ?: FLUID_TABLE[machine]
@@ -403,9 +407,22 @@ object GameConstants {
         val machines = data.entities.values.filterIsInstance<CraftingEntity>().filter { it.hidden != true }
         val extra = machines.filter { it.name !in BASE_MACHINE_SIZES }
         MACHINE_SIZES = BASE_MACHINE_SIZES + machines.associate { it.name to (it.width to it.height) }
-        exportedFluids = machines.filter { it.fluidBoxes != null }.associate {
-            it.name to (fluidConnectionsOf(it.width, it.height, it.fluidBoxes!!) to (it.fluidBoxesOffWhenNoFluidRecipe == true))
+        // A machine burning a fuel fluid takes it through a box of its own: one more input, after the recipe's.
+        fun energyBox(e: CraftingEntity): FluidBoxData? = when (e) {
+            is AssemblingMachineEntity -> e.fluidEnergy?.fluidBox
+            is FurnaceEntity -> e.fluidEnergy?.fluidBox
+            else -> null
+        }?.copy(index = 10_000, productionType = "input")
+        // The game lists the energy source's box among the machine's fluid boxes too (numbered 1 again): it is not a
+        // recipe box, so it is left out there and comes last.
+        fun recipeBoxes(e: CraftingEntity): List<FluidBoxData> {
+            val eb = energyBox(e) ?: return e.fluidBoxes.orEmpty()
+            return e.fluidBoxes.orEmpty().filter { fb -> fb.connections != eb.connections }
         }
+        exportedFluids = machines.filter { it.fluidBoxes != null || energyBox(it) != null }.associate {
+            it.name to (fluidConnectionsOf(it.width, it.height, recipeBoxes(it) + listOfNotNull(energyBox(it))) to (it.fluidBoxesOffWhenNoFluidRecipe == true))
+        }
+        fuelBoxes = machines.mapNotNull { m -> energyBox(m)?.let { m.name to exportedFluids.getValue(m.name).first.count { it.flow == Flow.INPUT } } }.toMap()
         machineTypes = data.entities.values.filterIsInstance<CraftingEntity>().associate { it.name to it.type }
         SUPPORTED_MACHINES = (BASE_MACHINES + SPACE_AGE_MACHINES + extra.map { it.name }).distinct()
 
