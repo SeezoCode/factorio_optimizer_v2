@@ -384,15 +384,6 @@ local function start(params)
           c.infinity_container_filters = {}
           c.remove_unfiltered_items = false
           local s = { chest = c, loader = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
-          -- An overflow port's sink (params.overflow_at): closed until its belt backs up. A mixed belt's (params.mixed_at)
-          -- always takes: it carries only leftovers, whatever items on it are overflows elsewhere (Py science 1's
-          -- leftovers belt, with stone on it, stayed shut and stopped the lime that the moss farm's CO2 came with).
-          for _, at in pairs(run.params.mixed_at or {}) do
-            if math.abs(s.pos.x - at[1]) + math.abs(s.pos.y - at[2]) <= 3.5 then s.mixed = true end
-          end
-          for _, at in pairs(run.params.overflow_at or {}) do
-            if not s.mixed and math.abs(s.pos.x - at[1]) + math.abs(s.pos.y - at[2]) <= 3.5 then s.overflow = true; e.disabled_by_script = true end
-          end
           run.sinks[#run.sinks + 1] = s
         else
           local keep = {}
@@ -411,6 +402,25 @@ local function start(params)
         run.drains[#run.drains + 1] = { e = e, fluid = f.name, pos = bp_pos(run, e.position), amount = 0 }
       end
     end
+  end
+
+  -- An overflow port's sink (params.overflow_at): closed until its belt backs up. A mixed belt's (params.mixed_at)
+  -- always takes: it carries only leftovers, whatever items on it are overflows elsewhere (Py science 1's leftovers
+  -- belt, with stone on it, stayed shut and stopped the lime that the moss farm's CO2 came with). Each port marks the one
+  -- sink nearest it: ports a tile apart have sinks a tile apart (Py logistic science's science sink, beside two
+  -- overflows', was taken for one and stayed shut: 33 packs made, none out).
+  local function nearest_sink(at)
+    local best, bd = nil, 3.5 + 1e-6
+    for _, s in pairs(run.sinks) do
+      local d = math.abs(s.pos.x - at[1]) + math.abs(s.pos.y - at[2])
+      if d < bd then best, bd = s, d end
+    end
+    return best
+  end
+  for _, at in pairs(run.params.mixed_at or {}) do local s = nearest_sink(at); if s then s.mixed = true end end
+  for _, at in pairs(run.params.overflow_at or {}) do
+    local s = nearest_sink(at)
+    if s and not s.mixed then s.overflow = true; s.loader.disabled_by_script = true end
   end
 
   run.build = {
