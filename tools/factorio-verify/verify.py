@@ -378,6 +378,9 @@ def judge(report, ports, args):
     if no_recipe:
         fails.append(f"{len(no_recipe)} machines have no recipe")
 
+    if report.get("bootstrapped"):
+        print("\nLoop carriers put in by the check (--flow, a loop starved for two minutes): " +
+              ", ".join(f"{k} {fmt(v)}" for k, v in sorted(report["bootstrapped"].items(), key=lambda kv: -kv[1])))
     fed = report.get("fed_measure") or {}
     if report.get("fed") is not None:
         use = planned_use(args)

@@ -721,7 +721,7 @@ local function finish(run)
   local report = {
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
-    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure,
+    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped,
     research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
                  bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
                  belt_stack_size_bonus = game.forces.player.belt_stack_size_bonus },
@@ -1122,6 +1122,46 @@ script.on_event(defines.events.on_tick, function()
             local off = it ~= nil and capped[it] == true
             if off then run.quota_held = run.quota_held + 1 end
             if off or i.disabled_by_script then i.disabled_by_script = off end
+          end
+        end
+      end
+    end
+  end
+  -- --flow: a starved loop gets its carriers. A machine that has waited two minutes running for a loop's carrier
+  -- (barrels, cages, bricks), while no maker of it stands with a full output, gets five minutes of its planned use (at
+  -- least a craft's worth); then two more minutes. Py science 2's barrel loop never started: its water-barrel filler had
+  -- no empty barrels, and the animals that give barrels back get them only with water barrels. (A ring with too many
+  -- locks: a full maker stops this.)
+  if run.params.flow and game.tick % 60 == 0 and run.short then
+    local carrier = {}
+    for _, n in pairs(run.params.seed_carriers or {}) do carrier[n] = true end
+    local full = {}
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      if e.valid and e.status == defines.entity_status.full_output then
+        local r = e.get_recipe()
+        if r then for _, p in pairs(r.products) do full[p.name] = true end end
+      end
+    end
+    run.bootstrapped = run.bootstrapped or {}
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local wants = e.valid and run.short.at[e.unit_number]
+      m.cshort = m.cshort or {}
+      for item in pairs(m.cshort) do if not (wants and wants[item]) then m.cshort[item] = nil end end
+      if wants then
+        local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+        for item in pairs(wants) do
+          if carrier[item] and r then
+            m.cshort[item] = m.cshort[item] or game.tick
+            if game.tick - m.cshort[item] >= 7200 and not full[item] then
+              local amount = 1
+              for _, ing in pairs(r.ingredients) do if ing.name == item then amount = ing.amount end end
+              local rate = ((run.params.demand_of or {})[r.name] or {})[item] or 0
+              local ok, done = pcall(function() return e.insert { name = item, count = math.max(amount, math.ceil(rate * 300)) } end)
+              if ok and done and done > 0 then run.bootstrapped[item] = (run.bootstrapped[item] or 0) + done end
+              m.cshort[item] = game.tick
+            end
           end
         end
       end
