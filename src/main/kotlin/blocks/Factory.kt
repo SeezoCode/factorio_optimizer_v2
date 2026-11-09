@@ -1372,8 +1372,15 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         // Blocks' pole networks not wired to each other (blocks.wire_blocks off): a note, not a fault. The in-game
         // check powers each network on its own; in a real game, run a line of poles between them.
         val unwired = if (config.blocks?.wireBlocks == false) found.filter { it.type == validate.ErrorType.POLES_DISCONNECTED } else emptyList()
-        val errors = found - unwired.toSet()
-        val notes2 = if (unwired.isEmpty()) notes else notes + "${unwired.size} poles are not wired to the rest: the blocks' power networks need wiring together by hand"
+        // A machine of a block putting one item onto several belts, one of them to another block: each block passed this
+        // check on its own (its ports taking what the plan sends), but here the other block's machines draw at full speed
+        // (a rounded-up Py machine at a few percent of its speed, up to twenty times its share) and leave the block's own
+        // belt short. That lasts only until their belts back up, so it is a note here (Py science 2: three such splits in
+        // every stitch kept the factory out).
+        val splits = found.filter { e -> e.type == validate.ErrorType.SPLIT_OUTPUT && rects.any { r -> e.tile.x in r.x until r.x + r.w && e.tile.y in r.y until r.y + r.h } }
+        val errors = found - unwired.toSet() - splits.toSet()
+        val notes2 = notes + (if (unwired.isEmpty()) emptyList() else listOf("${unwired.size} poles are not wired to the rest: the blocks' power networks need wiring together by hand")) +
+            splits.map { "until belts back up: ${it.message} (at ${it.tile})" }
         return Factory(layout, errors, score(layout, config), srcs, outs, notes2, rects, s.layouts, s.rot, heat?.ports ?: emptyList())
     }
 
