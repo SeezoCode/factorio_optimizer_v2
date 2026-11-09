@@ -439,8 +439,16 @@ local function start(params)
     end
     run.feeds, run.drops, run.net_of = {}, {}, {}
     for u in pairs(parent) do run.net_of[u] = find(u) end
+    -- What is at an inserter's pickup or drop position (its pickup_target and drop_target are not set yet right after
+    -- the build: every machine came out on no network).
+    local function at(p)
+      for _, x in pairs(surface.find_entities_filtered { area = { { p.x - 0.05, p.y - 0.05 }, { p.x + 0.05, p.y + 0.05 } }, force = force }) do
+        if BELTS[x.type] or CRAFTERS[x.type] then return x end
+      end
+    end
     for _, i in pairs(run.inserters) do
-      local d, pk = i.e.valid and i.e.drop_target, i.e.valid and i.e.pickup_target
+      local d = i.e.valid and (i.e.drop_target or at(i.e.drop_position))
+      local pk = i.e.valid and (i.e.pickup_target or at(i.e.pickup_position))
       if d and pk and parent[pk.unit_number] then
         local f = run.feeds[d.unit_number] or {}
         f[find(pk.unit_number)] = true
