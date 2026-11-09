@@ -392,7 +392,7 @@ local function start(params)
           end
           c.infinity_container_filters = {}
           c.remove_unfiltered_items = false
-          run.sources[#run.sources + 1] = { chest = c, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), keep = keep, items = {} }
+          run.sources[#run.sources + 1] = { chest = c, loader = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), keep = keep, items = {} }
         end
       end
     elseif t == "infinity-pipe" then
@@ -671,6 +671,9 @@ local function finish(run)
         name = m.name, recipe = str(recipe) or m.recipe or "", x = m.pos.x, y = m.pos.y, status = STATUS[e.status], usual_status = most(m.statuses),
         statuses = m.statuses, crafts = crafts, crafts_per_min = crafts / secs * 60, progress = e.crafting_progress,
         products_finished = e.products_finished, speed = e.crafting_speed,
+        -- The belt networks its inserters take from and drop onto (see run.net_of).
+        feeds = (function() local o = {}; for n in pairs((run.feeds or {})[e.unit_number] or {}) do o[#o + 1] = n end; return o end)(),
+        drops = (function() local o = {}; for n in pairs((run.drops or {})[e.unit_number] or {}) do o[#o + 1] = n end; return o end)(),
         input = (function() local inv = e.get_inventory(defines.inventory.crafter_input); local o = {}
           if inv then for _, it in pairs(inv.get_contents()) do o[it.name] = it.count end end; return o end)(),
         output = (function() local inv = e.get_inventory(defines.inventory.crafter_output); local o = {}
@@ -705,13 +708,16 @@ local function finish(run)
   for _, s in pairs(run.sinks) do
     local rates = {}
     for k, v in pairs(s.items) do rates[k] = v / secs end
-    report.outputs[#report.outputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates }
+    local b = s.loader.valid and ((s.loader.belt_neighbours or {}).inputs or {})[1]
+    report.outputs[#report.outputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates, net = b and (run.net_of or {})[b.unit_number] or nil,
+      overflow = s.overflow or nil, mixed = s.mixed or nil }
   end
   for _, s in pairs(run.sources) do
     local rates = {}
     for k, v in pairs(s.items) do rates[k] = v / secs end
     for _, k in pairs(s.keep) do rates[key(k.name, k.quality)] = rates[key(k.name, k.quality)] or 0 end
-    report.inputs[#report.inputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates }
+    local b = s.loader and s.loader.valid and ((s.loader.belt_neighbours or {}).outputs or {})[1]
+    report.inputs[#report.inputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates, net = b and (run.net_of or {})[b.unit_number] or nil }
   end
   for _, d in pairs(run.drains) do
     report.fluid_outputs[#report.fluid_outputs + 1] = { x = d.pos.x, y = d.pos.y, fluid = d.fluid, per_s = d.amount / secs }
@@ -754,7 +760,8 @@ local function finish(run)
         for _, it in pairs(b.e.get_transport_line(i).get_contents()) do o[it.name] = it.count end
         lanes[i] = o
       end
-      report.dump_belts[#report.dump_belts + 1] = { n = b.e.name, x = p.x, y = p.y, d = b.e.direction, t = b.e.type == "underground-belt" and b.e.belt_to_ground_type or nil, lanes = lanes }
+      report.dump_belts[#report.dump_belts + 1] = { n = b.e.name, x = p.x, y = p.y, d = b.e.direction, t = b.e.type == "underground-belt" and b.e.belt_to_ground_type or nil, lanes = lanes,
+        net = (run.net_of or {})[b.e.unit_number] }
     end
   end
   report.dump_pipes = {}

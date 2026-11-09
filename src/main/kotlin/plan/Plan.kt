@@ -563,7 +563,12 @@ fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leavin
         products.forEach { p ->
             if (p in takes(m) || p in leaving || p in supplied || carrier(p, machines, loopOf)) return@forEach
             val users = machines.filter { (it.demand[p] ?: it.fluidDemand[p] ?: 0.0) > 1e-12 }
-            val othersUsed = coupled && products.any { o -> o != p && machines.any { (it.demand[o] ?: it.fluidDemand[o] ?: 0.0) > 1e-12 } }
+            // The product a machine runs for (the one it makes that is all used, its others surplus that leaves anyway)
+            // gets no overflow for being made beside them: else nothing ever backs up to stop the machine, and it runs flat
+            // out on shared inputs (Py logistic science: electrolysers at 3.6 times their plan, the hydroxide overflowing,
+            // took the saline water the fish breeders and soda ash needed).
+            val drives = products.all { o -> o == p || o in leaving }
+            val othersUsed = coupled && !drives && products.any { o -> o != p && machines.any { (it.demand[o] ?: it.fluidDemand[o] ?: 0.0) > 1e-12 } }
             if (users.isNotEmpty() && (p in inLoops || inLoop(m) || users.any { inLoop(it) } || othersUsed)) out += p
         }
     }

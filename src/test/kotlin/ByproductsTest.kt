@@ -91,6 +91,25 @@ class LoopSeedsTest {
     }
 
     @Test
+    fun `made beside other products, an item gets an overflow unless the others all leave anyway`() {
+        // Py's electrolysis: hydroxide (all used) with chlorine and hydrogen (their surplus leaves). An overflow on the
+        // hydroxide would let the electrolyser run flat out on the saline water others need.
+        val electrolysis = listOf(
+            m(0, listOf("brine"), listOf("hydroxide", "chlorine", "hydrogen")),
+            m(1, listOf("hydroxide"), listOf("soap")),
+            m(2, listOf("chlorine"), listOf("bleach")),
+        )
+        assertEquals(emptySet(), plan.overflowItems(electrolysis, setOf("brine"), setOf("soap", "bleach", "chlorine", "hydrogen"), coupled = true))
+        // A slaughterhouse: meat and bones both used, neither leaves: each gets one, or one backing up stops the other.
+        val slaughter = listOf(
+            m(0, listOf("animal"), listOf("meat", "bones")),
+            m(1, listOf("meat"), listOf("food")),
+            m(2, listOf("bones"), listOf("meal")),
+        )
+        assertEquals(setOf("meat", "bones"), plan.overflowItems(slaughter, setOf("animal"), setOf("food", "meal"), coupled = true))
+    }
+
+    @Test
     fun `items a loop only passes round, one for one, get no overflow`() {
         // Py's heat bricks: heated by gas, cooled making hot air; the ring holds as many bricks as were put in.
         val ms = listOf(
