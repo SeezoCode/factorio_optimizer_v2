@@ -823,6 +823,23 @@ script.on_event(defines.events.on_tick, function()
     end
   end
   seed_tick(run)
+  -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of 1.5x its plan (plus 3 crafts to start)
+  -- waits, as it would once the belts and pipes after it were full (a consumer early on a belt whose output fills hours
+  -- of pipe otherwise takes everything that consumers further on need).
+  if run.params.governor and game.tick % 60 == 0 then
+    local secs = (game.tick - run.t0) / 60
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      if e.valid then
+        local r = e.get_recipe()
+        local g = r and run.params.governor[r.name]
+        if g then
+          m.gov0 = m.gov0 or e.products_finished
+          e.disabled_by_script = e.products_finished - m.gov0 > g * secs * 1.5 + 3
+        end
+      end
+    end
+  end
   if run.phase == "warmup" and game.tick - run.t0 >= run.warmup then begin_measure(run) end
   if run.phase == "measure" then
     local t = game.tick - run.m0

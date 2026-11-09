@@ -447,6 +447,9 @@ def main():
                          "factory cannot look good by over-making one pack while starving another)")
     ap.add_argument("--dump", action="store_true", help="also write every belt's lanes, inserter and pipe to the report")
     ap.add_argument("--prime-all", action="store_true", help="warm start: every machine starts with two crafts' worth of its ingredients")
+    ap.add_argument("--governor", action="store_true",
+                    help="steady state: hold each machine to 1.5x its planned crafts (plus 3 to start), as full buffers would; "
+                         "without it a consumer early on a belt whose output fills hours of pipe takes everything first")
     ap.add_argument("--keep", action="store_true", help="keep the temporary game folder (log, save)")
     args = ap.parse_args()
 
@@ -489,6 +492,15 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
+    if args.governor:
+        gp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        if gp and os.path.exists(gp):
+            per = defaultdict(float)
+            for m in json.load(open(gp)).get("machines", []):
+                rn = m["recipe"].split("#")[0].split("@")[0]
+                per[rn] = max(per[rn], m.get("crafts", 0.0))
+            params["governor"] = {k: v for k, v in per.items() if v > 0}
+            print(f"governor: {len(per)} recipes held to 1.5x their planned crafts")
     # Production loops the planner found (plan.json "seeds"): their machines get a few crafts' worth to start with.
     plan_path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
     if plan_path and os.path.exists(plan_path):
