@@ -513,8 +513,10 @@ fun linksFor(
         // one whose users stood still; with no way out, the burners' ash boxes filled and they stopped. 57 of its 222
         // overflows had no way out of the factory). Also when the block makes some itself: gravel came from three blocks'
         // crushers into one that makes gravel too, its one user stood, and the crushers stopped with it.
+        // One for each link coming in: each link is a belt of its own, and the router ends each at one overflow (gravel
+        // came into one block on three links, and the two without an overflow backed up into block 1's crushers).
         if (overflow) flows.keys.map { it.second }.filter { it >= 0 }.distinct().forEach { b ->
-            if (raw.none { it.item == net.item && it.from == b }) emit(b, EDGE, 0.0)
+            if (raw.none { it.item == net.item && it.from == b }) repeat(maxOf(1, raw.count { it.item == net.item && it.to == b })) { emit(b, EDGE, 0.0) }
         }
     }
 
