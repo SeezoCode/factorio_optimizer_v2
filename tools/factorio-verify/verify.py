@@ -253,7 +253,13 @@ def run_game(args, bp, params, enabled, have):
             pct = int(100 * st.get("game_s", 0) / max(1, st.get("total_s", 1)))
             if pct // 10 != last // 10:
                 rate = st.get("game_s", 0) / max(1e-9, time.time() - t0)
-                print(f"  {st.get('phase')}: {st.get('game_s', 0):.0f} of {st.get('total_s', 0):.0f} game seconds ({rate:.1f}x real time)", flush=True)
+                extra = ""
+                if st.get("machines"):
+                    extra = f"; {st.get('working', 0)} of {st['machines']} machines working, target crafts {st.get('target_crafts', 0)}"
+                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("gates", "gates closed")):
+                        if st.get(k) is not None:
+                            extra += f", {st[k]} {label}"
+                print(f"  {st.get('phase')}: {st.get('game_s', 0):.0f} of {st.get('total_s', 0):.0f} game seconds ({rate:.1f}x real time){extra}", flush=True)
                 last = pct
             time.sleep(2)
         report_file = os.path.join(user, "script-output", REPORT)
@@ -587,6 +593,7 @@ def main():
         params["pull"] = True
         params["pull_wanted"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
         print("pull: a machine runs only while a user of one of its products waits for it")
+    params["targets"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
     if args.feed_short:
         params["feed_short"] = args.feed_short
         if args.feed_stop is not None:

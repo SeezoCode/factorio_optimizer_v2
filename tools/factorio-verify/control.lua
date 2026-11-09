@@ -468,6 +468,7 @@ local function start(params)
         f[find(d.unit_number)] = true
         run.drops[pk.unit_number] = f
       end
+      if d and pk and CRAFTERS[d.type] and parent[pk.unit_number] then run.pick_belts = run.pick_belts or {}; run.pick_belts[pk.unit_number] = true end
       -- The inserters bringing things into each machine (for --flow's quotas).
       if d and CRAFTERS[d.type] then
         run.into = run.into or {}
@@ -481,6 +482,31 @@ local function start(params)
         local f = run.hands[pk.unit_number] or {}
         f[d.unit_number] = true
         run.hands[pk.unit_number] = f
+      end
+    end
+  end
+
+  -- --flow's belt gates: on each overflow sink's belt, the belt just past the last one an inserter takes from (walking
+  -- up from the sink). Closed while a machine on that network waits for an overflow item, items queue in front of the
+  -- users instead of passing them to the far end (Py science 2: 549 raw fiber stood at the overflow, 300 tiles past a
+  -- cellulose machine waiting for it).
+  if run.params.flow and run.pick_belts then
+    run.gates = {}
+    for _, sk in pairs(run.sinks) do
+      local b = sk.overflow and sk.loader.valid and ((sk.loader.belt_neighbours or {}).inputs or {})[1]
+      if b then
+        local seen, queue, head, gate = { [b.unit_number] = true }, { { b, nil } }, 1, nil
+        while head <= #queue and head < 3000 do
+          local cur, child = queue[head][1], queue[head][2]
+          head = head + 1
+          if run.pick_belts[cur.unit_number] then gate = child; break end
+          local ups = (cur.belt_neighbours or {}).inputs or {}
+          if cur.type == "underground-belt" and cur.belt_to_ground_type == "output" and cur.underground_belt_neighbour then ups = { cur.underground_belt_neighbour } end
+          for _, u in pairs(ups) do
+            if u.valid and not seen[u.unit_number] then seen[u.unit_number] = true; queue[#queue + 1] = { u, cur } end
+          end
+        end
+        if gate and gate.type == "transport-belt" then run.gates[#run.gates + 1] = { e = gate, net = run.net_of[gate.unit_number] } end
       end
     end
   end
@@ -1101,6 +1127,22 @@ script.on_event(defines.events.on_tick, function()
       end
     end
   end
+  if run.params.flow and game.tick % 60 == 0 and run.short and run.gates then
+    local overflow = {}
+    for _, n in pairs(run.params.overflow or {}) do overflow[n] = true end
+    run.gates_closed = 0
+    for _, g in pairs(run.gates) do
+      if g.e.valid then
+        local close = false
+        for item, nets in pairs(run.short.net) do if overflow[item] and nets[g.net] then close = true; break end end
+        if close then run.gates_closed = run.gates_closed + 1 end
+        if close ~= (g.closed or false) then
+          g.closed = close
+          if not pcall(function() g.e.disabled_by_script = close end) then pcall(function() g.e.active = not close end) end
+        end
+      end
+    end
+  end
   if run.params.governor and game.tick % 60 == 0 then
     local secs = (game.tick - run.t0) / 60
     local factor = run.params.governor_factor or 2
@@ -1178,5 +1220,17 @@ commands.add_command("verify_status", "Where a verify run is.", function()
   local run = storage.run
   if not run then reply { phase = "idle", tick = game.tick }; return end
   local at = game.tick - run.t0
-  reply { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil }
+  -- How it is going: machines working now, the targets' crafts so far, and what flow control holds back.
+  local working, made = 0, 0
+  local target = {}
+  for _, n in pairs(run.params.pull_wanted or run.params.targets or {}) do target[n] = true end
+  for _, m in pairs(run.machines or {}) do
+    if m.e.valid then
+      if m.e.status == defines.entity_status.working then working = working + 1 end
+      local r = m.e.get_recipe()
+      if r then for _, p in pairs(r.products) do if target[p.name] then made = made + m.e.products_finished end end end
+    end
+  end
+  reply { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil,
+    working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, gates = run.gates_closed }
 end)
