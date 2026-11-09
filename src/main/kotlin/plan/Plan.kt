@@ -557,20 +557,45 @@ fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leavin
     fun takes(m: MachineInstance) = m.demand.keys + m.fluidDemand.keys
     fun inLoop(m: MachineInstance) = m.products.keys.any { it in inLoops } && takes(m).any { it in inLoops }
     val loopOf = HashMap<String, Set<String>>().also { m -> loops.forEach { s -> s.forEach { m[it] = s } } }
+    fun usersOf(p: String) = machines.filter { (it.demand[p] ?: it.fluidDemand[p] ?: 0.0) > 1e-12 }
+    // Items made from [x], directly or further on.
+    val downstream = HashMap<String, Set<String>>()
+    fun below(x: String): Set<String> = downstream.getOrPut(x) {
+        val seen = hashSetOf(x); val todo = ArrayDeque(listOf(x))
+        while (todo.isNotEmpty()) next[todo.removeFirst()]?.forEach { if (seen.add(it)) todo += it }
+        seen
+    }
+    /**
+     * The product that stops [m] when it backs up (no overflow for being made beside the others): else nothing ever does,
+     * and a machine whose every product has a way out runs flat out on inputs it shares (Py logistic science: a sand
+     * washer at 16 times its plan, its pure sand overflowing, its sand extractor eating the iron sticks the other
+     * extractor needed; electrolysers at 3.6 times theirs took the saline water others needed). The main product, else
+     * the most used, all of it used, whose users do not wait on anything made from the machine's other products: when it
+     * stops them too, its users wait for ever (Py science 1's moss farm: moss backed up behind a lab waiting for flasks,
+     * whose iron oxide came from the coarse the farm then stopped making). None such: every product keeps its way out.
+     */
+    fun stopper(m: MachineInstance, products: Set<String>): String? =
+        (listOf(m.product) + products.sortedByDescending { p -> usersOf(p).sumOf { it.demand[p] ?: it.fluidDemand[p] ?: 0.0 } })
+            .distinct().firstOrNull { d ->
+                d in products && d !in leaving && d !in takes(m) && usersOf(d).isNotEmpty() &&
+                    // (nor into a loop, whose users may not run for a long while: Py's tar distillation stopped by its CO2)
+                    d !in inLoops && usersOf(d).none { inLoop(it) } &&
+                    products.filter { it != d }.all { o -> usersOf(d).none { u -> takes(u).any { it in below(o) } } }
+            }
+    val multi = machines.mapNotNull { m -> m.products.filterValues { it > 1e-12 }.keys.takeIf { it.size >= 2 }?.let { m to it } }
+    // An item that stops every machine making it beside others (one that is another machine's co-product keeps its way out:
+    // a machine standing for good is worse than one running ahead).
+    val stoppers: Set<String> = HashMap<String, Boolean>().also { byItem ->
+        multi.forEach { (m, ps) -> val s = stopper(m, ps); ps.forEach { p -> byItem[p] = (byItem[p] ?: true) && p == s } }
+    }.filterValues { it }.keys
     val out = sortedSetOf<String>()
-    machines.forEach { m ->
-        val products = m.products.filterValues { it > 1e-12 }.keys
-        if (products.size < 2) return@forEach
+    multi.forEach { (m, products) ->
         products.forEach { p ->
             if (p in takes(m) || p in leaving || p in supplied || carrier(p, machines, loopOf)) return@forEach
-            val users = machines.filter { (it.demand[p] ?: it.fluidDemand[p] ?: 0.0) > 1e-12 }
-            // The product a machine runs for (the one it makes that is all used, its others surplus that leaves anyway)
-            // gets no overflow for being made beside them: else nothing ever backs up to stop the machine, and it runs flat
-            // out on shared inputs (Py logistic science: electrolysers at 3.6 times their plan, the hydroxide overflowing,
-            // took the saline water the fish breeders and soda ash needed).
-            val drives = products.all { o -> o == p || o in leaving }
-            val othersUsed = coupled && !drives && products.any { o -> o != p && machines.any { (it.demand[o] ?: it.fluidDemand[o] ?: 0.0) > 1e-12 } }
-            if (users.isNotEmpty() && (p in inLoops || inLoop(m) || users.any { inLoop(it) } || othersUsed)) out += p
+            val users = usersOf(p)
+            val stops = p in stoppers && p !in inLoops
+            val othersUsed = coupled && products.any { o -> o != p && usersOf(o).isNotEmpty() }
+            if (users.isNotEmpty() && (p in inLoops || (!stops && (inLoop(m) || users.any { inLoop(it) } || othersUsed)))) out += p
         }
     }
     return out

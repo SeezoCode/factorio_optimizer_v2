@@ -91,7 +91,7 @@ class LoopSeedsTest {
     }
 
     @Test
-    fun `made beside other products, an item gets an overflow unless the others all leave anyway`() {
+    fun `a machine of several products keeps one without an overflow to stop it, unless that would stall its users`() {
         // Py's electrolysis: hydroxide (all used) with chlorine and hydrogen (their surplus leaves). An overflow on the
         // hydroxide would let the electrolyser run flat out on the saline water others need.
         val electrolysis = listOf(
@@ -100,13 +100,32 @@ class LoopSeedsTest {
             m(2, listOf("chlorine"), listOf("bleach")),
         )
         assertEquals(emptySet(), plan.overflowItems(electrolysis, setOf("brine"), setOf("soap", "bleach", "chlorine", "hydrogen"), coupled = true))
-        // A slaughterhouse: meat and bones both used, neither leaves: each gets one, or one backing up stops the other.
+        // A slaughterhouse: meat (its main product) and bones both used. Bones get a way out; the meat stops the
+        // slaughterhouse when its users stop taking it (with every product overflowing nothing ever would).
         val slaughter = listOf(
             m(0, listOf("animal"), listOf("meat", "bones")),
             m(1, listOf("meat"), listOf("food")),
             m(2, listOf("bones"), listOf("meal")),
         )
-        assertEquals(setOf("meat", "bones"), plan.overflowItems(slaughter, setOf("animal"), setOf("food", "meal"), coupled = true))
+        assertEquals(setOf("bones"), plan.overflowItems(slaughter, setOf("animal"), setOf("food", "meal"), coupled = true))
+        // Py science 1's moss farm: moss (main) goes to a lab that waits for flasks made from the farm's coarse. Stopped by
+        // its moss, the farm would stop the coarse the lab is waiting for: the coarse stops it instead, the moss overflows.
+        val moss = listOf(
+            m(0, listOf("water"), listOf("moss", "coarse")),
+            m(1, listOf("coarse"), listOf("iron-oxide")),
+            m(2, listOf("iron-oxide"), listOf("flask")),
+            m(3, listOf("moss", "flask"), listOf("science")),
+        )
+        assertEquals(setOf("moss"), plan.overflowItems(moss, setOf("water"), setOf("science"), coupled = true))
+        // Each needs the other's line: no product can stop the machine safely, both keep a way out.
+        val tangled = listOf(
+            m(0, listOf("ore"), listOf("a", "b")),
+            m(1, listOf("a"), listOf("a2")),
+            m(2, listOf("b"), listOf("b2")),
+            m(3, listOf("a", "b2"), listOf("x")),
+            m(4, listOf("b", "a2"), listOf("y")),
+        )
+        assertEquals(setOf("a", "b"), plan.overflowItems(tangled, setOf("ore"), setOf("x", "y"), coupled = true))
     }
 
     @Test
