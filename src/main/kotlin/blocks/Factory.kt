@@ -649,7 +649,13 @@ fun assembleFactory(
                 File(d, "$name.txt").writeText(f.errors.joinToString("\n") { e ->
                     val b = f.blockRects.indexOfFirst { r -> e.tile.x in r.x until r.x + r.w && e.tile.y in r.y until r.y + r.h } + 1
                     "block $b: $e"
-                } + "\nblocks (x, y, w x h): " + f.blockRects.mapIndexed { i, r -> "${i + 1}: ${r.x}, ${r.y}, ${r.w} x ${r.h}" }.joinToString("; ") + "\n")
+                } + "\nblocks (x, y, w x h): " + f.blockRects.mapIndexed { i, r -> "${i + 1}: ${r.x}, ${r.y}, ${r.w} x ${r.h}" }.joinToString("; ") + "\n" +
+                    // What the stitch put around each error (the factory as stitched; a compacted one has moved).
+                    if (f.layout.w != s.w || f.layout.h != s.h) "" else f.errors.joinToString("") { e ->
+                        val near = (listOf(e.tile) + Dir.entries.map { e.tile + it } + Dir.entries.map { e.tile + it + it })
+                            .flatMap { t -> s.tileNotes[t]?.map { "  ($t) $it" } ?: emptyList() }
+                        if (near.isEmpty()) "" else "\naround ${e.type} at ${e.tile}:\n" + near.joinToString("\n")
+                    } + "\n")
             }
         }
         last = f to st
@@ -800,6 +806,8 @@ class Stitched(
     val w: Int, val h: Int, val blockRects: List<Rect>, val reservedRects: List<Rect>,
     /** Each block's layout as placed (turned), and its turn. */
     val layouts: List<TrialResult> = emptyList(), val rot: IntArray = IntArray(0),
+    /** What the stitch put on a corridor tile and why (link ends, junctions, the router's nets), for reports. */
+    val tileNotes: Map<Tile, List<String>> = emptyMap(),
 )
 
 /** A stitch that routed, or why not: tiles near the trouble, and factory edges a corridor link could not reach. */
@@ -898,6 +906,10 @@ fun stitchRoute(
         results[b].placement!!.machines.forEach { pm -> machines += pm.copy(id = bps[b].globalIds[pm.id], x = pm.x + ox[b], y = pm.y + oy[b]) }
     }
     val byTile = HashMap<Tile, PlacedEntity>().also { m -> entities.forEach { e -> e.rect.tiles().forEach { m[it] = e } } }
+    val tileNotes = HashMap<Tile, MutableList<String>>()
+    fun note(t: Tile, what: String) { tileNotes.getOrPut(t) { ArrayList() } += what }
+    fun linkName(l: Link) = "link ${l.id} ${l.item} ${if (l.from >= 0) "block ${l.from + 1}" else if (l.hub) "hub" else "edge"}->" +
+        (if (l.to >= 0) "block ${l.to + 1}" else if (l.hub) "hub" else "edge") + (if (l.pair >= 0) " (lane pair of ${l.pair})" else "")
 
     // Link ends: the tile just outside a block's port (and the way a belt points there). Ports that leave the
     // factory straight out must lie on its ring, on the side the job allows.
@@ -1065,6 +1077,7 @@ fun stitchRoute(
             val t = path[i].t
             val e = PlacedEntity(tier.belt, Kind.BELT, t.x, t.y, path[i + 1].h, net = net)
             entities += e; byTile[t] = e; claimed += t
+            note(t, "belt to the splitters of a shared $item output (links ${g.joinToString()})")
         }
         es.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e; claimed += it } }
         g.forEachIndexed { i, id -> starts[id] = ts[i] to end.h }
@@ -1115,6 +1128,7 @@ fun stitchRoute(
                     listOf(j + h.ccw, j + h.cw).all { free(it) && it !in endTiles } && (j + h.opposite) !in byTile
             } ?: return StitchAttempt(null, listOf(end), "no room for the junction of ${left.item} and ${right.item} at the consumer", badPairs = setOf(l.id))
             val jt = end.step(h.opposite, k)
+            note(jt, "junction at the consumer of ${linkName(left)} (from its ${h.ccw} side) and ${linkName(right)}, heading $h")
             for (i in 0..k) end.step(h.opposite, i).let { t ->
                 val e = PlacedEntity(GameConstants.beltTier(config.beltTier).belt, Kind.BELT, t.x, t.y, h)
                 entities += e; byTile[t] = e
@@ -1175,6 +1189,7 @@ fun stitchRoute(
         // No net: the junction belongs to both items (the validator's shape check is for belts of one item each).
         val e = PlacedEntity(GameConstants.beltTier(config.beltTier).belt, Kind.BELT, j.x, j.y, h)
         entities += e; byTile[j] = e
+        note(j, "junction of ${linkName(left)} (from its ${h.ccw} side) and ${linkName(right)}, heading $h")
         junctionKeepFree += listOf(j, j + h.opposite)
         endTiles += listOf(j + h.ccw, j + h.cw, j + h)
         // The two items to the junction's sides, heading into it; the shared belt from the tile after it.
@@ -1246,6 +1261,10 @@ fun stitchRoute(
             entities.filter { it.kind == Kind.PIPE_UG }.map { it.tile + it.dir })
             .filter { it !in blockTiles && it !in linkTiles }
     }
+    corridorLinks.forEach { l ->
+        starts[l.id]?.let { (t, d) -> note(t, "start of ${linkName(l)}, out of its port heading $d") }
+        ends[l.id]?.let { (t, d) -> note(t, "end of ${linkName(l)}, into its port heading $d") }
+    }
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
         obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree + portTargets, noTunnel = noTunnel,
         beltBias = besideBelts.associateWith { 40.0 },
@@ -1296,10 +1315,14 @@ fun stitchRoute(
             (if (unrouted.isNotEmpty()) " $unrouted; ${routed.log.filter { l -> unrouted.any { it in l } }.takeLast(2)}" else ""), edges, badPairs)
     }
     entities += routed.entities.map { it.copy(net = global(it, stitchPlan)) }
+    routed.entities.forEach { e ->
+        val n = e.net ?: return@forEach
+        note(e.tile, "corridor ${e.kind.name.lowercase()} ${e.dir} of router net $n: ${(linksOfNet[n] ?: emptyList()).joinToString { linkName(it) }}")
+    }
     sources += routed.sources.filter { it.port in edgePorts }.map { it.copy(port = -1) }
     outputs += routed.outputs.filter { it.port in edgePorts }.map { it.copy(port = -1) }
     val blockRects = (0 until k).map { b -> Rect(ox[b], oy[b], results[b].w, results[b].h) }
-    return StitchAttempt(Stitched(entities, machines, sources, outputs, W, H, blockRects, arr.reserved, results, arr.rot), emptyList(), "ok")
+    return StitchAttempt(Stitched(entities, machines, sources, outputs, W, H, blockRects, arr.reserved, results, arr.rot, tileNotes), emptyList(), "ok")
 }
 
 /** Test harness on the factory's ports, compaction, poles over everything, block borders, and validation. */

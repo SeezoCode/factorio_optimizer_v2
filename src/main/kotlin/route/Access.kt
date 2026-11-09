@@ -204,8 +204,12 @@ fun effectiveTerminals(plan: ProductionPlan, links: List<DiLink>, config: RunCon
             else -> 0.0
         }
         val rate = t.rate - di
-        // An overflow (a 0/s output, plan.overflowItems) stays: it takes what the consumers leave.
-        if (rate < 1e-6 && !(t.role == Role.OUTPUT && t.port != null)) return@forEach
+        // An overflow (a 0/s output, plan.overflowItems) stays: it takes what the consumers leave. So does a link's 0/s
+        // input port (a block's overflow coming into the corridors): without it the router built no belt from it, another
+        // net's belt ran over its first tile, and the block's port belt fed that one (Py science 2 and logistic: a
+        // SHAPE_CHANGED or two items on one lane in every stitch).
+        val keepIdle = t.port != null && (t.role == Role.OUTPUT || (t.role == Role.SOURCE && plan.ports.getOrNull(t.port)?.single == true))
+        if (rate < 1e-6 && !keepIdle) return@forEach
         val k = when (t.role) {
             Role.CONSUMER -> inserterCount(rate, pick)
             Role.PRODUCER, Role.SINK -> inserterCount(rate, drop)
