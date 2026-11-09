@@ -333,6 +333,11 @@ local function start(params)
   local modules = fulfil_proxies(surface)
   local networks, unwired = power(run, surface, force, maxx + run.dx + 6, miny + run.dy)
 
+  -- Furnace-type machines' planned recipes (blueprint tags; the game sets theirs only once something arrives).
+  local planned = {}
+  for _, be in pairs(bp_entities) do
+    if be.tags and be.tags.recipe then planned[be.position.x .. "," .. be.position.y] = be.tags.recipe end
+  end
   run.machines, run.inserters, run.belts, run.sources, run.sinks, run.drains = {}, {}, {}, {}, {}, {}
   run.primes = {}
   local counts = {}
@@ -341,7 +346,10 @@ local function start(params)
     local t = e.type
     if CRAFTERS[t] then
       local r = e.get_recipe()
-      run.machines[#run.machines + 1] = { e = e, name = e.name, recipe = r and r.name, pos = bp_pos(run, e.position), statuses = {} }
+      local pos = bp_pos(run, e.position)
+      local plan_recipe = planned[pos.x .. "," .. pos.y]
+      if not r and plan_recipe then r = prototypes.recipe[plan_recipe] end
+      run.machines[#run.machines + 1] = { e = e, name = e.name, recipe = r and r.name, plan_recipe = plan_recipe, pos = pos, statuses = {} }
       -- Catalysts (an item or fluid the recipe takes and gives back): a new build starts with none in its loop, so
       -- each such machine gets a few crafts' worth (plan.Port.priming; a real game fills the loop once by hand).
       if r and prime(run, e, r) then run.primes[#run.primes + 1] = { e = e, r = r, pf0 = e.products_finished } end
@@ -889,7 +897,7 @@ local function feed_short(run)
   end
   for _, m in pairs(run.machines) do
     local e = m.e
-    local r = e.valid and e.get_recipe()
+    local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
     if r then pcall(function()
       local function count(ing) return ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0) end
       if mode == "full" then
@@ -967,7 +975,7 @@ script.on_event(defines.events.on_tick, function()
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid and not e.disabled_by_script and SHORT[e.status] then
-        local r = e.get_recipe()
+        local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         if r then
           for _, ing in pairs(r.ingredients) do
             if ing.type == "item" then
@@ -988,7 +996,7 @@ script.on_event(defines.events.on_tick, function()
     run.pulled_off = 0
     for _, m in pairs(run.machines) do
       local e = m.e
-      local r = e.valid and e.get_recipe()
+      local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
       if r then
         local drops, hands = run.drops[e.unit_number] or {}, (run.hands or {})[e.unit_number] or {}
         local wanted, known = false, false
@@ -1019,7 +1027,7 @@ script.on_event(defines.events.on_tick, function()
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid and (e.status == defines.entity_status.item_ingredient_shortage or e.status == defines.entity_status.no_ingredients) then
-        local r = e.get_recipe()
+        local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         local inv = r and e.get_inventory(defines.inventory.crafter_input)
         local feeds = run.feeds and run.feeds[e.unit_number]
         if inv and feeds then
@@ -1037,7 +1045,7 @@ script.on_event(defines.events.on_tick, function()
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid then
-        local r = e.get_recipe()
+        local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         local g = r and run.params.governor[r.name]
         local hold = false
         if g then

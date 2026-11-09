@@ -89,6 +89,8 @@ data class BpEntity(
      * 0-based; inventory 1 for a beacon, 4 for a crafting machine. VERIFY (v20)
      */
     val items: kotlinx.serialization.json.JsonArray? = null,
+    /** Script data the game keeps with the entity: a furnace-type machine's planned recipe (the game takes none there). */
+    val tags: JsonObject? = null,
 )
 
 /** Quality of what a blueprint places: crafting machines, beacons, and the modules in either. Everything else is normal. */
@@ -121,6 +123,10 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
             recipe = e.recipe?.takeIf { GameConstants.takesRecipe(e.name) }?.let { splitQuality(it).first },
             // The quality of what the recipe makes (and takes): normal unless it is a quality variant.
             recipeQuality = if (e.recipe != null && GameConstants.takesRecipe(e.name)) splitQuality(e.recipe).second ?: "normal" else null,
+            // A furnace-type machine picks its recipe from what it is given: the plan's goes along as a tag, for scripts
+            // (the in-game check knows from it what an empty one is waiting for).
+            tags = if (e.kind == Kind.MACHINE && e.recipe != null && !GameConstants.takesRecipe(e.name))
+                buildJsonObject { put("recipe", gameName(splitQuality(e.recipe).first)) } else null,
             quality = when (e.kind) { Kind.MACHINE -> q.machines; Kind.BEACON -> q.beacons; else -> null }?.takeIf { it != "normal" },
             mirror = if (e.mirror) true else null,
             infinitySettings = when (e.kind) {

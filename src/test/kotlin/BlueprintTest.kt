@@ -93,6 +93,14 @@ class BlueprintTest {
     }
 
     @Test
+    fun `a furnace's planned recipe goes along as a tag`() {
+        val l = Layout(4, 4, listOf(PlacedEntity("stone-furnace", Kind.MACHINE, 0, 0, Dir.N, recipe = "iron-plate", w = 2, h = 2)))
+        val e = l.toBlueprint().entities[0]
+        assertNull(e.recipe)
+        assertEquals("iron-plate", e.tags!!["recipe"]!!.jsonPrimitive.content)
+    }
+
+    @Test
     fun `inserter filters carry the game's item names`() {
         // A raw resource made as a by-product is "stone#byproduct" in a plan; the game only knows stone.
         val l = Layout(6, 3, listOf(
