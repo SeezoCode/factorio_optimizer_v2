@@ -53,6 +53,9 @@ data class PlannerTuning(
     /** Per item/s of a by-product leaving the block unused (cracking and recycling are usually cheaper). */
     @SerialName("surplus_cost_item") val surplusCostItem: Double = 10.0,
     @SerialName("surplus_cost_fluid") val surplusCostFluid: Double = 0.1,
+    /** Branch-and-bound nodes the planner's integer program (recipes at whole machines) may search: a work limit, so the
+     *  same job plans the same however busy the machine is. */
+    @SerialName("fixed_charge_nodes") val fixedChargeNodes: Long = 20_000,
     /**
      * Share of the tiles around a machine its belt inserters may take. A recipe whose machines would need more
      * gets more machines, each with a smaller share (fast machines with productivity need this most).

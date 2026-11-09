@@ -331,8 +331,10 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         var cur = best
         val touched = best.first.filterValues { it > eps }.keys.toMutableSet()
         val snapshotUsed = touched.size
-        // Each round at most 20 s (a re-weighted program can stall the simplex); one that runs out ends the rounds.
-        solver.setTimeLimit(20_000)
+        // Each round at most 2 minutes (a re-weighted program can stall the simplex); one that runs out ends the rounds.
+        // (20 s was enough on an idle machine but not beside two game instances: the rounds then stopped at a load-
+        // dependent point and the plan changed from run to run.)
+        solver.setTimeLimit(120_000)
         var stalled = false
         repeat(6) {
             if (stalled) return@repeat
@@ -473,7 +475,11 @@ private fun fixedCharge(
     val hintVars = cands.flatMap { listOf(x.getValue(it), y.getValue(it)) }.toTypedArray()
     val hintVals = cands.flatMap { val v = start[it] ?: 0.0; listOf(v, if (v > 1e-9) 1.0 else 0.0) }.toDoubleArray()
     solver.setHint(hintVars, hintVals)
-    solver.setTimeLimit(60_000)
+    // A node limit, not a clock: the same plan whatever else the machine is doing (under a time limit Py science 1 came
+    // out at 58 machines on an idle machine and 262 beside two game instances, and --resume refused the changed plan).
+    // The clock stays only as a safety net.
+    solver.setSolverSpecificParametersAsString("limits/nodes = ${tun.fixedChargeNodes}\nrandomization/randomseedshift = 0\n")
+    solver.setTimeLimit(600_000)
     val st = solver.solve()
     if (st != MPSolver.ResultStatus.OPTIMAL && st != MPSolver.ResultStatus.FEASIBLE) return null
     return Triple(x.mapValues { it.value.solutionValue() }, s.mapValues { it.value.solutionValue() }, out.mapValues { it.value.solutionValue() })

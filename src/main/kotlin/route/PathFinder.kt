@@ -1875,9 +1875,10 @@ class PathFinder(internal val p: RouteProblem) {
             return takes.map { (pr, take, k) -> if (abs(take - pr.rate) < 1e-9 && k <= pr.k) pr else EffectiveTerminal(pr.base, take, k) } to left
         }
         /** Chains for [parts], at most [room] by visits (one per tile of the port they start from). */
-        fun chainsOf(parts: List<EffectiveTerminal>, room: Int = Int.MAX_VALUE): List<List<EffectiveTerminal>> {
+        fun chainsOf(parts: List<EffectiveTerminal>, room: Int = Int.MAX_VALUE, anyVisits: Boolean = false): List<List<EffectiveTerminal>> {
             if (parts.isEmpty()) return emptyList()
-            val g = maxOf(minOf(ceilDiv(parts.sumOf { it.k }, tun.maxChainVisits), room), kotlin.math.ceil(parts.sumOf { it.rate } / beltCap - 1e-9).toInt(), 1)
+            val byVisits = if (anyVisits) 1 else ceilDiv(parts.sumOf { it.k }, tun.maxChainVisits)
+            val g = maxOf(minOf(byVisits, room), kotlin.math.ceil(parts.sumOf { it.rate } / beltCap - 1e-9).toInt(), 1)
                 .coerceAtMost(parts.size)
             return groupWithin(parts, g, center)
         }
@@ -1945,7 +1946,10 @@ class PathFinder(internal val p: RouteProblem) {
         pending.forEach { (s, ps) -> ps.forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) } }
         // 3. The rest from producers.
         val rest = need.filter { it.value > 1e-9 }.map { (c, r) -> part(c, r, pickRate) }
-        chainsOf(rest).forEach { group ->
+        // An item with an overflow here: as few chains as its belts need, however many machines they pass, each ending at
+        // an overflow. More chains than overflows left the rest dead-ending at a consumer, and when it stood still their
+        // producers stood full (Py logistic science's starch makers, blocked by their biomass).
+        chainsOf(rest, anyVisits = overflowOuts.isNotEmpty()).forEach { group ->
             val at = group.map { center(it.base) }.let { ps -> ps.map { it.first }.average() to ps.map { it.second }.average() }
             val (parts, missing) = fromProducers(group.sumOf { it.rate }, at)
             if (missing > 1e-6) log += "net ${net.id} (${net.item}): chain short of ${"%.2f".format(missing)}/s supply"

@@ -649,7 +649,7 @@ fun assembleFactory(
                 File(d, "$name.txt").writeText(f.errors.joinToString("\n") { e ->
                     val b = f.blockRects.indexOfFirst { r -> e.tile.x in r.x until r.x + r.w && e.tile.y in r.y until r.y + r.h } + 1
                     "block $b: $e"
-                })
+                } + "\nblocks (x, y, w x h): " + f.blockRects.mapIndexed { i, r -> "${i + 1}: ${r.x}, ${r.y}, ${r.w} x ${r.h}" }.joinToString("; ") + "\n")
             }
         }
         last = f to st
@@ -1222,6 +1222,12 @@ fun stitchRoute(
         entities.filter { it.kind == Kind.SPLITTER }.flatMap { sp -> sp.rect.tiles().map { it + sp.dir } })
         .filter { t -> t !in blockTiles && t !in startTiles && t !in endTiles }
     val reached = entities.filter { it.kind == Kind.INSERTER }.flatMap { listOf(it.pickupTile, it.dropTile) }.filter { it !in blockTiles }
+    // The block port each link end points at (out of a block's box when the port moved onto its ring): no other
+    // corridor belt may run over it, or the link's last belt feeds that one from the side (Py chemical science: lime's
+    // last belt pointed into a zinc-plate belt routed over lime's port, SHAPE_CHANGED and a mixed lane).
+    val endTilesAll = (starts.values + ends.values).map { it.first }.toSet()
+    val portTargets = (ends.values.map { (e, ed) -> e + ed } + starts.values.map { (s, sd) -> s + sd.opposite })
+        .filter { it !in blockTiles && it !in endTilesAll }
     // Beside a block's belt (on its edge or ring): a corridor belt there pointing into it would feed it from the back
     // or a side and change its shape (Py science 2: one SHAPE_CHANGED kept a routed 641 x 737 factory out). A cost on
     // belts only (tileBias): pipes go there freely (as obstacles, they walled a water port in and water never routed).
@@ -1241,7 +1247,7 @@ fun stitchRoute(
             .filter { it !in blockTiles && it !in linkTiles }
     }
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
-        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree, noTunnel = noTunnel,
+        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree + portTargets, noTunnel = noTunnel,
         beltBias = besideBelts.associateWith { 40.0 },
         // 6 minutes, then on only while it converges, 30 at most: a big factory's corridors otherwise rip up and reroute
         // for hours (Py science 2), but a bigger one needs more than 6 minutes' worth of iterations.

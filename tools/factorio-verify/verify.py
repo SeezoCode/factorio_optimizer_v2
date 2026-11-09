@@ -446,6 +446,7 @@ def main():
                     help="empty output chests without limit (default: take each output item at its planned rate, so a "
                          "factory cannot look good by over-making one pack while starving another)")
     ap.add_argument("--dump", action="store_true", help="also write every belt's lanes, inserter and pipe to the report")
+    ap.add_argument("--prime-all", action="store_true", help="warm start: every machine starts with two crafts' worth of its ingredients")
     ap.add_argument("--keep", action="store_true", help="keep the temporary game folder (log, save)")
     args = ap.parse_args()
 
@@ -486,6 +487,8 @@ def main():
         params["sink_rates"] = dict(rates)
     if args.dump:
         params["dump"] = True
+    if args.prime_all:
+        params["prime_all"] = True
     # Production loops the planner found (plan.json "seeds"): their machines get a few crafts' worth to start with.
     plan_path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
     if plan_path and os.path.exists(plan_path):

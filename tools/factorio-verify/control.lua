@@ -101,6 +101,44 @@ end
 -- (params.seeds, plan.json "seeds", e.g. Py's farms feeding each other) too. Only what the machine is short of: this
 -- runs again through the first half of the warm-up (see seed_tick), which starts loops whose crafts do not line up (Py's
 -- ammonia -> formamide -> formic acid -> ammonia). Returns whether the machine takes any of them.
+-- A warm start (params.prime_all): two crafts' worth of each ingredient (one of a carrier); fluids at a temperature
+-- the recipe takes (a product's of the same name, a seeded one, or the fluid's default).
+local function warm_start(run, e, r)
+  local carrier = {}
+  for _, name in pairs(run.params.seed_carriers or {}) do carrier[name] = true end
+  for _, ing in pairs(r.ingredients) do
+    if ing.type == "item" then
+      pcall(function()
+        local want = math.ceil(ing.amount * (carrier[ing.name] and 1 or 2))
+        local have = e.get_item_count(ing.name)
+        if have < want then e.insert { name = ing.name, count = want - have } end
+      end)
+    else
+      pcall(function()
+        local temps = (run.params.seed_temps or {})[ing.name] or {}
+        local cands = {}
+        for _, t in pairs(temps) do cands[#cands + 1] = t end
+        cands[#cands + 1] = prototypes.fluid[ing.name].default_temperature
+        local t = nil
+        for _, c in ipairs(cands) do
+          if (ing.minimum_temperature == nil or c >= ing.minimum_temperature) and (ing.maximum_temperature == nil or c <= ing.maximum_temperature) then t = c; break end
+        end
+        if not t then t = ing.minimum_temperature or cands[1] end
+        for k = 1, (e.fluids_count or 0) do
+          local f = e.get_fluid_filter(k)
+          local proto = e.get_fluid_box_prototype(k)
+          if proto and proto.index == nil and proto[1] then proto = proto[1] end
+          if f and f.name == ing.name and proto and proto.production_type == "input" then
+            if not pcall(function() e.set_fluid(k, { name = ing.name, amount = ing.amount * 2, temperature = t }) end) then
+              pcall(function() e.set_fluid(k, { name = ing.name, amount = ing.amount, temperature = t }) end)
+            end
+          end
+        end
+      end)
+    end
+  end
+end
+
 -- Whether a machine making [item] stands with a full output: adding more of a ring's carrier would gridlock it.
 local function ring_jammed(run, item)
   run.carrier_makers = run.carrier_makers or {}
@@ -323,6 +361,9 @@ local function start(params)
       -- Catalysts (an item or fluid the recipe takes and gives back): a new build starts with none in its loop, so
       -- each such machine gets a few crafts' worth (plan.Port.priming; a real game fills the loop once by hand).
       if r and prime(run, e, r) then run.primes[#run.primes + 1] = { e = e, r = r, pf0 = e.products_finished } end
+      -- params.prime_all: a warm start, every machine given two crafts' worth of everything it takes (one of what a
+      -- loop only passes round), so a check shows whether the factory runs once going, apart from how it starts.
+      if r and run.params.prime_all then warm_start(run, e, r) end
       if t == "rocket-silo" then run.silos = run.silos or {}; run.silos[#run.silos + 1] = { e = e, launches = 0, failed = 0 } end
     elseif t == "inserter" then
       run.inserters[#run.inserters + 1] = { e = e, held_all = true, moved = false, samples = 0 }
