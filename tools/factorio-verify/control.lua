@@ -423,6 +423,37 @@ local function start(params)
     if s and not s.mixed then s.overflow = true; s.loader.disabled_by_script = true end
   end
 
+  -- Belt networks (belts joined through their neighbours, undergrounds and splitters): which ones each machine's
+  -- inserters take from (run.feeds, for the governor) and drop onto (run.drops, for overflow sinks).
+  do
+    local parent = {}
+    local function find(x) while parent[x] ~= x do parent[x] = parent[parent[x]]; x = parent[x] end return x end
+    for _, b in pairs(run.belts) do if b.e.valid then parent[b.e.unit_number] = b.e.unit_number end end
+    local function union(a, c) if parent[a] and parent[c] then local ra, rc = find(a), find(c); if ra ~= rc then parent[ra] = rc end end end
+    for _, b in pairs(run.belts) do
+      local e = b.e
+      if e.valid then
+        for _, o in pairs((e.belt_neighbours or {}).outputs or {}) do union(e.unit_number, o.unit_number) end
+        if e.type == "underground-belt" and e.underground_belt_neighbour then union(e.unit_number, e.underground_belt_neighbour.unit_number) end
+      end
+    end
+    run.feeds, run.drops, run.net_of = {}, {}, {}
+    for u in pairs(parent) do run.net_of[u] = find(u) end
+    for _, i in pairs(run.inserters) do
+      local d, pk = i.e.valid and i.e.drop_target, i.e.valid and i.e.pickup_target
+      if d and pk and parent[pk.unit_number] then
+        local f = run.feeds[d.unit_number] or {}
+        f[find(pk.unit_number)] = true
+        run.feeds[d.unit_number] = f
+      end
+      if d and pk and parent[d.unit_number] then
+        local f = run.drops[pk.unit_number] or {}
+        f[find(d.unit_number)] = true
+        run.drops[pk.unit_number] = f
+      end
+    end
+  end
+
   run.build = {
     blueprint_entities = #bp_entities, ghosts = entity_ghosts, tiles = tiles, revived = revived, failed = failed, modules_inserted = modules,
     power_networks = networks, power_networks_unwired = unwired, entities = counts,
@@ -476,12 +507,23 @@ local function flows(run, counting)
   end
   -- A surplus: some maker of the item stands with a full output (an item no machine here is known to make: the belt
   -- backing up decides alone).
-  local function surplus(item)
+  -- Per belt network [net] when known: a maker that drops onto it stands full. Any maker anywhere let every overflow of
+  -- the item drain (Py science 2: one coke oven blocked on one belt, and the overflow after the fluidized-coke block
+  -- took 2/s of coke while the steel and graphite on other belts had none).
+  local function full(e)
+    return e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output)
+  end
+  local function surplus(item, net)
     local ms = run.makers[item]
     if not ms or #ms == 0 then return true end
-    for _, e in pairs(ms) do
-      if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output) then return true end
+    local on = false
+    if net then
+      for _, e in pairs(ms) do
+        if e.valid and (run.drops[e.unit_number] or {})[net] then on = true; if full(e) then return true end end
+      end
     end
+    if on then return false end
+    for _, e in pairs(ms) do if full(e) then return true end end
     return false
   end
   for _, s in pairs(run.sinks) do
@@ -514,7 +556,7 @@ local function flows(run, counting)
         for i = 1, 2 do
           local ok, line = pcall(function() return b.get_transport_line(i) end)
           if ok and line then
-            for _, it in pairs(line.get_contents()) do if overflow[it.name] then mine = true; if surplus(it.name) then extra = true end end end
+            for _, it in pairs(line.get_contents()) do if overflow[it.name] then mine = true; if surplus(it.name, run.net_of and run.net_of[b.unit_number]) then extra = true end end end
             if line.get_item_count() >= 3 then full = true end
           end
         end
@@ -824,7 +866,8 @@ script.on_event(defines.events.on_tick, function()
   end
   seed_tick(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (1) times its plan,
-  -- plus 3 crafts, waits while another machine stands short of one of its item ingredients: it takes no more than its
+  -- plus 3 crafts, waits while a machine fed from the same belt stands short of one of its item ingredients (one item
+  -- runs on many separate belts; holding a barrel filler for one on another belt starved its own users): it takes no more than its
   -- share while others go without, as it would once the belts and pipes after it were full (Py logistic science: a
   -- zogna incubator early on the petri-dish belt, its fluid filling a 250-tile pipe, ran at 7.6 times its plan and
   -- took every dish the bacteria machine further on waited for). Holding every machine ahead of 1.5 times its plan
@@ -832,15 +875,21 @@ script.on_event(defines.events.on_tick, function()
   if run.params.governor and game.tick % 60 == 0 then
     local secs = (game.tick - run.t0) / 60
     local factor = run.params.governor_factor or 1
+    -- Item -> belt networks along which some machine stands short of it.
     local starved = {}
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid and (e.status == defines.entity_status.item_ingredient_shortage or e.status == defines.entity_status.no_ingredients) then
         local r = e.get_recipe()
         local inv = r and e.get_inventory(defines.inventory.crafter_input)
-        if inv then
+        local feeds = run.feeds and run.feeds[e.unit_number]
+        if inv and feeds then
           for _, ing in pairs(r.ingredients) do
-            if ing.type == "item" and inv.get_item_count(ing.name) < ing.amount then starved[ing.name] = true end
+            if ing.type == "item" and inv.get_item_count(ing.name) < ing.amount then
+              local s = starved[ing.name] or {}
+              for net in pairs(feeds) do s[net] = true end
+              starved[ing.name] = s
+            end
           end
         end
       end
@@ -854,9 +903,12 @@ script.on_event(defines.events.on_tick, function()
         local hold = false
         if g then
           m.gov0 = m.gov0 or e.products_finished
-          if e.products_finished - m.gov0 > g * secs * factor + 3 then
+          local feeds = run.feeds and run.feeds[e.unit_number]
+          if feeds and e.products_finished - m.gov0 > g * secs * factor + 3 then
             for _, ing in pairs(r.ingredients) do
-              if ing.type == "item" and starved[ing.name] then hold = true; break end
+              local s = ing.type == "item" and starved[ing.name]
+              if s then for net in pairs(feeds) do if s[net] then hold = true; break end end end
+              if hold then break end
             end
           end
         end
