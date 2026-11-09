@@ -662,6 +662,7 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
         emptyMap(), full.beltTier, emptyList(), outputs, beltStack = full.beltStack,
         // Leftovers sharing a mixed belt: the block hands its share on to the factory's edge like any item.
         mixed = full.mixed.filterKeys { item -> machines.any { item in it.itemProducts } },
-        utilization = full.utilization.filterKeys { r -> machines.any { it.recipe == r } }, headroom = full.headroom)
+        utilization = full.utilization.filterKeys { r -> machines.any { it.recipe == r } }, headroom = full.headroom,
+        seeds = full.seeds, seedCarriers = full.seedCarriers)
     return BlockPlan(b, plan, ids, linkOfPort, linksOfPort)
 }

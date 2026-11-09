@@ -1910,7 +1910,12 @@ class PathFinder(internal val p: RouteProblem) {
         // An overflow (a 0/s output, plan.overflowItems) is no chain of its own, which nothing would feed: it ends a
         // chain from the producers past the consumers (step 3), taking what they leave.
         val overflowOuts = ArrayDeque(outputs.filter { it.rate <= 1e-9 })
-        outputs.filter { it.rate > 1e-9 }.forEach { o ->
+        // A loop's carrier (Py's barrels) going on to one other block: one chain from every maker here past every user
+        // here and on to that port, so whatever the makers have to spare goes on. Chains by planned shares fed the port
+        // from makers that only run once the loop does (Py logistic science: block 3's link to the water-barrel filler
+        // came from its cottongut breeders, idle at the start, while its barrel maker stood full beside its own fillers).
+        val carrierOut = outputs.singleOrNull()?.takeIf { net.item in plan.seedCarriers && it.rate > 1e-9 && sources.isEmpty() && producers.isNotEmpty() }
+        outputs.filter { it.rate > 1e-9 && it !== carrierOut }.forEach { o ->
             val pieces = if (plan.ports[o.base.port!!].single) 1 else maxOf(1, kotlin.math.ceil(o.rate / beltCap - 1e-9).toInt())
             repeat(pieces) {
                 val r = o.rate / pieces
@@ -1968,6 +1973,11 @@ class PathFinder(internal val p: RouteProblem) {
         pending.forEach { (s, ps) -> ps.forEach { p -> addChain(net, p.parts, s, p.srcRate, p.out, p.outRate, rectOf) } }
         // 3. The rest from producers.
         val rest = need.filter { it.value > 1e-9 }.map { (c, r) -> part(c, r, pickRate) }
+        if (carrierOut != null) {
+            val (parts, _) = fromProducers(prodLeft.values.sum(), portCenter(carrierOut))
+            addChain(net, rest + parts, null, 0.0, carrierOut, carrierOut.rate, rectOf)
+            return
+        }
         // An item with an overflow here: as few chains as its belts need, however many machines they pass, each ending at
         // an overflow. More chains than overflows left the rest dead-ending at a consumer, and when it stood still their
         // producers stood full (Py logistic science's starch makers, blocked by their biomass).
