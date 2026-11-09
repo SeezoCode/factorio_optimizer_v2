@@ -503,6 +503,9 @@ def main():
                     help="every machine standing short of an ingredient gets it, counted per item: 'plan' (default) up to its "
                          "planned use, so what was fed is where the factory's own supply falls short; 'full' as much as it takes, "
                          "so what still stands is the layout's own fault")
+    ap.add_argument("--feed-stop", type=float, default=None, metavar="S",
+                    help="with --feed-short: stop feeding S game seconds in (a bootstrap); measured after, the factory shows "
+                         "whether it keeps itself going")
     ap.add_argument("--governor", type=float, nargs="?", const=1.0, default=None, metavar="FACTOR",
                     help="steady state: a machine ahead of FACTOR (default 1) times its planned crafts (plus 3) waits while another "
                          "machine is short of one of its ingredients, as full buffers would make it; without it a consumer early on "
@@ -551,6 +554,8 @@ def main():
         params["prime_all"] = True
     if args.feed_short:
         params["feed_short"] = args.feed_short
+        if args.feed_stop is not None:
+            params["feed_stop"] = args.feed_stop
         fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
         if fp and os.path.exists(fp):
             rates = defaultdict(dict)
@@ -560,6 +565,11 @@ def main():
                     g = item.split("#")[0]
                     rates[rn][g] = max(rates[rn].get(g, 0.0), rate)
             params["feed_rates"] = dict(rates)
+            crafts = defaultdict(float)
+            for m in json.load(open(fp)).get("machines", []):
+                rn = m["recipe"].split("#")[0].split("@")[0]
+                crafts[rn] = max(crafts[rn], m.get("crafts", 0.0))
+            params["feed_crafts"] = dict(crafts)
     if args.governor is not None:
         gp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
         if gp and os.path.exists(gp):

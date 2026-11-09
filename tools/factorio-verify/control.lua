@@ -871,6 +871,9 @@ end
 local function feed_short(run)
   local mode = run.params.feed_short
   if not mode or game.tick % 60 ~= 0 then return end
+  -- params.feed_stop: feeding ends that many game seconds in (a bootstrap, as a player fills a new factory's loops by
+  -- hand); measured after it, the factory shows whether it keeps itself going.
+  if run.params.feed_stop and (game.tick - run.t0) / 60 >= run.params.feed_stop then return end
   run.fed = run.fed or {}
   run.fed_measure = run.fed_measure or {}
   local function record(ing, d)
@@ -897,7 +900,14 @@ local function feed_short(run)
         local rate = rates[ing.name] or 0
         m.fb[ing.name] = math.min((m.fb[ing.name] or ing.amount * 2) + rate, math.max(ing.amount * 2, rate * 60))
       end
-      if not FEED_SHORT[e.status] then return end
+      -- Only a machine standing short for a while: 10 s, or two of its planned crafts' time (between deliveries a
+      -- machine waits as a matter of course, and feeding it then took the belts' place: raw ore-quartz, which the edge
+      -- brings without limit, came out fed at 100% of its use).
+      if not FEED_SHORT[e.status] then m.short_s = 0; return end
+      m.short_s = (m.short_s or 0) + 1
+      local c = (run.params.feed_crafts or {})[r.name]
+      if m.short_s < math.max(10, c and c > 0 and 2 / c or 10) then return end
+      m.short_s = 0
       for _, ing in pairs(r.ingredients) do
         local give = math.min(ing.amount * 2 - count(ing), m.fb[ing.name])
         if ing.type == "item" then give = math.floor(give) end
