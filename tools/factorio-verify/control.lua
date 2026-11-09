@@ -139,22 +139,6 @@ local function warm_start(run, e, r)
   end
 end
 
--- Whether a machine making [item] stands with a full output: adding more of a ring's carrier would gridlock it.
-local function ring_jammed(run, item)
-  run.carrier_makers = run.carrier_makers or {}
-  local ms = run.carrier_makers[item]
-  if not ms then
-    ms = {}
-    for _, m in pairs(run.machines or {}) do
-      local r = m.recipe and prototypes.recipe[m.recipe]
-      if r then for _, p in pairs(r.products) do if p.name == item then ms[#ms + 1] = m.e end end end
-    end
-    run.carrier_makers[item] = ms
-  end
-  for _, e in pairs(ms) do if e.valid and e.status == defines.entity_status.full_output then return true end end
-  return false
-end
-
 local function prime(run, e, r, crafted, rec)
   local back, made_at, seeded = {}, {}, {}
   for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature end
@@ -165,12 +149,12 @@ local function prime(run, e, r, crafted, rec)
   for _, ing in pairs(r.ingredients) do
     if back[ing.name] then
       any = true
-      if ing.type == "item" and crafted and carrier[ing.name] and (ring_jammed(run, ing.name) or (rec and (rec.carrier_topups or 0) >= 5)) then
-        -- (a loop that has started: what it only passes round is added to only while none of its makers stands full,
-        -- and at most five times: too many gridlock the ring, too few starve it, and a fixed amount fits no ring)
+      if ing.type == "item" and crafted and carrier[ing.name] then
+        -- (a loop that has started holds what was put in: added to after that, Py science 2's two-machine brick ring,
+        -- passing bricks hand to hand, took in 75 bricks, both outputs filled, and each refused the other's bricks.
+        -- Too few only slow a ring; too many lock it.)
       elseif ing.type == "item" then
-        local want = math.ceil(ing.amount * (carrier[ing.name] and 1.5 or (seeded[ing.name] and 5 or 2)))
-        if crafted and carrier[ing.name] and rec then rec.carrier_topups = (rec.carrier_topups or 0) + 1 end
+        local want = math.ceil(ing.amount * (carrier[ing.name] and 1 or (seeded[ing.name] and 5 or 2)))
         -- (A catalyst the machine also gives to others, Py's moss farm's coarse, is topped up like a seed: the
         -- classifier took the first batch and the farm stood short of the 15 it needs.)
         pcall(function()
@@ -954,8 +938,8 @@ script.on_event(defines.events.on_tick, function()
   end
   seed_tick(run)
   feed_short(run)
-  -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (1) times its plan,
-  -- plus 3 crafts, waits while a machine fed from the same belt stands short of one of its item ingredients (one item
+  -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (2) times its plan,
+  -- plus 10 crafts, waits while a machine fed from the same belt stands short of one of its item ingredients (one item
   -- runs on many separate belts; holding a barrel filler for one on another belt starved its own users): it takes no more than its
   -- share while others go without, as it would once the belts and pipes after it were full (Py logistic science: a
   -- zogna incubator early on the petri-dish belt, its fluid filling a 250-tile pipe, ran at 7.6 times its plan and
@@ -963,7 +947,7 @@ script.on_event(defines.events.on_tick, function()
   -- instead also slowed the loops that must run ahead to fill up (bones and bonemeal, barrels), and they jammed.
   if run.params.governor and game.tick % 60 == 0 then
     local secs = (game.tick - run.t0) / 60
-    local factor = run.params.governor_factor or 1
+    local factor = run.params.governor_factor or 2
     -- Item -> belt networks along which some machine stands short of it.
     local starved = {}
     for _, m in pairs(run.machines) do
@@ -993,7 +977,9 @@ script.on_event(defines.events.on_tick, function()
         if g then
           m.gov0 = m.gov0 or e.products_finished
           local feeds = run.feeds and run.feeds[e.unit_number]
-          if feeds and e.products_finished - m.gov0 > g * secs * factor + 3 then
+          -- (Plus 10 crafts: a machine planned at 0.0001 crafts/s is a few crafts ahead for hours after a warm start, and
+          -- holding it at 1 times its plan plus 3 stopped the rare things such machines make.)
+          if feeds and e.products_finished - m.gov0 > g * secs * factor + 10 then
             for _, ing in pairs(r.ingredients) do
               local s = ing.type == "item" and starved[ing.name]
               if s then for net in pairs(feeds) do if s[net] then hold = true; break end end end

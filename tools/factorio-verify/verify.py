@@ -506,8 +506,8 @@ def main():
     ap.add_argument("--feed-stop", type=float, default=None, metavar="S",
                     help="with --feed-short: stop feeding S game seconds in (a bootstrap); measured after, the factory shows "
                          "whether it keeps itself going")
-    ap.add_argument("--governor", type=float, nargs="?", const=1.0, default=None, metavar="FACTOR",
-                    help="steady state: a machine ahead of FACTOR (default 1) times its planned crafts (plus 3) waits while another "
+    ap.add_argument("--governor", type=float, nargs="?", const=2.0, default=None, metavar="FACTOR",
+                    help="steady state: a machine ahead of FACTOR (default 2) times its planned crafts (plus 10) waits while another "
                          "machine is short of one of its ingredients, as full buffers would make it; without it a consumer early on "
                          "a belt whose output fills hours of pipe takes everything first")
     ap.add_argument("--keep", action="store_true", help="keep the temporary game folder (log, save)")
