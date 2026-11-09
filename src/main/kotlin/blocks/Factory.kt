@@ -164,12 +164,14 @@ fun runFactory(
     }
     // Previews (stitched alongside the block search) and the final factory may both offer a factory.
     fun consider(r: Pair<Factory, FpState>?, what: String): Boolean = synchronized(sayLock) { considerLocked(r, what) }
-    fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String, squeezeCap: Double? = null, tries: Int? = null) =
+    fun assemble(sp: Split, bpl: List<BlockPlan>, vs: List<List<TrialResult>>, start: FpState?, what: String, squeezeCap: Double? = null, tries: Int? = null,
+                 seedShift: Long = 0) =
         runCatching {
             // Compaction gets blocks.compact_s, or else the time left for stitching (at least half a minute).
             val squeeze0 = cfg.compactS ?: maxOf(30.0, minOf(left(), config.search.timeBudgetS * (1 - cfg.blockTimeShare)))
             val squeeze = squeezeCap?.let { minOf(it, squeeze0) } ?: squeeze0
-            assembleFactory(data, config, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong(),
+            val cfgSeed = if (seedShift == 0L) config else config.copy(search = config.search.copy(seed = config.search.seed + seedShift))
+            assembleFactory(data, cfgSeed, tuning, plan, sp, bpl, vs, start, ::say, what, System.currentTimeMillis() + (squeeze * 1000).toLong(),
                 { consider(it, "$what (compacting)") }, tries, debugDir = File(out, "failed_stitches"))
         }
             .getOrElse { e -> say("$what: failed with $e"); e.printStackTrace(); null }
@@ -265,7 +267,15 @@ fun runFactory(
     deadline = maxOf(deadline, System.currentTimeMillis() + ((finalReserve + config.search.timeBudgetS * later) * 1000).toLong())
 
     // 2. Floorplan the finished blocks and stitch them. Keep the smallest valid factory.
-    val first = assemble(split, bps, variants, previewState ?: split.geometry.state, "factory")
+    var first = assemble(split, bps, variants, previewState ?: split.geometry.state, "factory")
+    // Routed but not valid (Py science 2: a corridor belt feeding another's side), and nothing valid yet: floorplan
+    // afresh, at most three times, rather than end with no factory.
+    var retry = 0L
+    while ((first == null || !first.first.success) && best == null && retry < 3 && !engine.stopNow) {
+        retry++
+        say("factory: no valid factory from that floorplan; floorplanning afresh ($retry of 3)")
+        first = assemble(split, bps, variants, null, "factory", seedShift = 7919L * retry)
+    }
     if ((first == null || !first.first.success) && best == null) {
         first?.let { writeFactory(it.first, out, config, data, input.seeds, input.seedCarriers.toSet()) }
         say("done: no valid factory")
