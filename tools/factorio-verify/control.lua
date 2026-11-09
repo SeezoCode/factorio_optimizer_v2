@@ -451,6 +451,13 @@ local function start(params)
         f[find(d.unit_number)] = true
         run.drops[pk.unit_number] = f
       end
+      -- The inserters bringing things into each machine (for --flow's quotas).
+      if d and CRAFTERS[d.type] then
+        run.into = run.into or {}
+        local l = run.into[d.unit_number] or {}
+        l[#l + 1] = i.e
+        run.into[d.unit_number] = l
+      end
       -- Machine to machine (direct insertion): which machines each one hands its products to.
       if d and pk and CRAFTERS[d.type] and CRAFTERS[pk.type] then
         run.hands = run.hands or {}
@@ -563,7 +570,15 @@ local function flows(run, counting)
         for i = 1, 2 do
           local ok, line = pcall(function() return b.get_transport_line(i) end)
           if ok and line then
-            for _, it in pairs(line.get_contents()) do if overflow[it.name] then mine = true; if surplus(it.name, run.net_of and run.net_of[b.unit_number]) then extra = true end end end
+            local net = run.net_of and run.net_of[b.unit_number]
+            for _, it in pairs(line.get_contents()) do
+              if overflow[it.name] then
+                mine = true
+                -- (--flow: not while a machine on this network waits for it: a by-product its own chain needs stays for it)
+                local waits = run.params.flow and run.short and net and run.short.net[it.name] and run.short.net[it.name][net]
+                if surplus(it.name, net) and not waits then extra = true end
+              end
+            end
             if line.get_item_count() >= 3 then full = true end
           end
         end
@@ -966,11 +981,11 @@ script.on_event(defines.events.on_tick, function()
   -- others need (Py logistic science: a sand washer at 16 times its plan), and planning can rarely pick one product to
   -- stop it, as nearly every Py product feeds back into the others through loops. Unlike holding machines to their plan,
   -- this lets them run ahead for as long as users wait, filling long belts.
-  if run.params.pull and game.tick % 60 == 0 and run.drops then
+  -- What machines stand short of, every second (for --pull and --flow): item -> belt networks along which one waits for
+  -- it, machine -> items it waits for, fluids one waits for. (A machine switched off waits for nothing.)
+  if (run.params.pull or run.params.flow) and game.tick % 60 == 0 and run.drops then
     local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
       [defines.entity_status.fluid_ingredient_shortage] = true }
-    local target = {}
-    for _, n in pairs(run.params.pull_wanted or {}) do target[n] = true end
     local short_net, short_at, short_fluid = {}, {}, {}
     for _, m in pairs(run.machines) do
       local e = m.e
@@ -993,6 +1008,12 @@ script.on_event(defines.events.on_tick, function()
         end
       end
     end
+    run.short = { net = short_net, at = short_at, fluid = short_fluid }
+  end
+  if run.params.pull and game.tick % 60 == 0 and run.short then
+    local short_net, short_at, short_fluid = run.short.net, run.short.at, run.short.fluid
+    local target = {}
+    for _, n in pairs(run.params.pull_wanted or {}) do target[n] = true end
     run.pulled_off = 0
     for _, m in pairs(run.machines) do
       local e = m.e
@@ -1016,6 +1037,47 @@ script.on_event(defines.events.on_tick, function()
         local off = known and not wanted
         if off then run.pulled_off = run.pulled_off + 1 end
         if off or e.disabled_by_script then e.disabled_by_script = off end
+      end
+    end
+  end
+  -- params.flow: quotas. A machine that has taken more of an item than its plan allows so far (flow_rates: per second,
+  -- times 1.5, plus two crafts' worth) gets the inserters bringing that item stopped while another machine on the same
+  -- belt network stands short of it: no user early on a belt takes what those further on need (Py logistic science: the
+  -- petri-dish-bacteria machine took all 100 dishes, 12 times its plan, and the zogna incubator after it got none). A
+  -- user waiting itself is never stopped; one nobody else waits behind takes what it likes.
+  if run.params.flow and game.tick % 60 == 0 and run.short and run.into then
+    local secs = (game.tick - run.t0) / 60
+    run.quota_held = 0
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+      local ins = e.valid and run.into[e.unit_number]
+      if r and ins then
+        local rates = (run.params.flow_rates or {})[r.name] or {}
+        m.fq = m.fq or { pf0 = e.products_finished, c0 = {}, item_of = {} }
+        local capped = {}
+        local mine = run.short.at[e.unit_number] or {}
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "item" and not mine[ing.name] then
+            local c0 = m.fq.c0[ing.name]
+            if c0 == nil then c0 = e.get_item_count(ing.name); m.fq.c0[ing.name] = c0 end
+            local taken = (e.products_finished - m.fq.pf0) * ing.amount + e.get_item_count(ing.name) - c0
+            if taken > (rates[ing.name] or 0) * secs * 1.5 + ing.amount * 2 then
+              local sn = run.short.net[ing.name]
+              if sn then for net in pairs((run.feeds or {})[e.unit_number] or {}) do if sn[net] then capped[ing.name] = true; break end end end
+            end
+          end
+        end
+        for _, i in pairs(ins) do
+          if i.valid then
+            local h = i.held_stack
+            if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
+            local it = m.fq.item_of[i.unit_number]
+            local off = it ~= nil and capped[it] == true
+            if off then run.quota_held = run.quota_held + 1 end
+            if off or i.disabled_by_script then i.disabled_by_script = off end
+          end
+        end
       end
     end
   end

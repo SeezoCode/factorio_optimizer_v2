@@ -506,6 +506,10 @@ def main():
     ap.add_argument("--feed-stop", type=float, default=None, metavar="S",
                     help="with --feed-short: stop feeding S game seconds in (a bootstrap); measured after, the factory shows "
                          "whether it keeps itself going")
+    ap.add_argument("--flow", action="store_true",
+                    help="flow control: --pull, plus quotas (a machine ahead of 1.5 times its planned intake of an item has the "
+                         "inserters bringing it stopped while another machine on the same belt waits for it), and overflows keep "
+                         "an item while a machine on their belt waits for it")
     ap.add_argument("--pull", action="store_true",
                     help="production follows demand: a machine runs only while a user of one of its products (on a belt it drops "
                          "onto, a machine it hands to, or for a fluid anywhere) stands short of it, or it makes a target")
@@ -555,6 +559,19 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
+    if args.flow:
+        args.pull = True
+        params["flow"] = True
+        fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        if fp and os.path.exists(fp):
+            rates = defaultdict(dict)
+            for m in json.load(open(fp)).get("machines", []):
+                rn = m["recipe"].split("#")[0].split("@")[0]
+                for item, rate in m.get("demand", {}).items():
+                    g = item.split("#")[0]
+                    rates[rn][g] = max(rates[rn].get(g, 0.0), rate)
+            params["flow_rates"] = dict(rates)
+        print("flow: quotas on what each machine takes, production by demand, overflows keep what users wait for")
     if args.pull:
         params["pull"] = True
         params["pull_wanted"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
