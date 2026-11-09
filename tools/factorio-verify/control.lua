@@ -467,9 +467,30 @@ local function flows(run, counting)
             if line.get_item_count() >= 3 then full = true end
           end
         end
+        -- Backed up along its own chain: the 8 belts before the loader (or all of a shorter chain) hold items on a lane
+        -- (2 or more: a curve's inner lane holds fewer). A maker standing full somewhere is no sign this chain has more
+        -- than its users take (Py logistic science's barrels left by one chain's overflow while fillers on other chains
+        -- had none).
+        local function backed_up()
+          local cur, n = b, 0
+          while cur and cur.valid and n < 8 do
+            local lane_full = false
+            for i = 1, 2 do
+              local ok, line = pcall(function() return cur.get_transport_line(i) end)
+              if ok and line and line.get_item_count() >= 2 then lane_full = true end
+            end
+            if not lane_full then return false end
+            n = n + 1
+            local nxt = ((cur.belt_neighbours or {}).inputs or {})[1]
+            if not nxt and cur.type == "underground-belt" and cur.belt_to_ground_type == "output" then nxt = cur.underground_belt_neighbour end
+            if not nxt then return true end
+            cur = nxt
+          end
+          return true
+        end
         if mine or s.overflow then
           s.overflow = true
-          if not (full and extra) then s.loader.disabled_by_script = true elseif not (caps and s.inv.get_item_count() >= 20) then s.loader.disabled_by_script = false end
+          if not (full and extra and backed_up()) then s.loader.disabled_by_script = true elseif not (caps and s.inv.get_item_count() >= 20) then s.loader.disabled_by_script = false end
         end
       end
     end
