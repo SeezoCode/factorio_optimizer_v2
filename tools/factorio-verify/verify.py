@@ -506,6 +506,9 @@ def main():
     ap.add_argument("--feed-stop", type=float, default=None, metavar="S",
                     help="with --feed-short: stop feeding S game seconds in (a bootstrap); measured after, the factory shows "
                          "whether it keeps itself going")
+    ap.add_argument("--pull", action="store_true",
+                    help="production follows demand: a machine runs only while a user of one of its products (on a belt it drops "
+                         "onto, a machine it hands to, or for a fluid anywhere) stands short of it, or it makes a target")
     ap.add_argument("--governor", type=float, nargs="?", const=2.0, default=None, metavar="FACTOR",
                     help="steady state: a machine ahead of FACTOR (default 2) times its planned crafts (plus 10) waits while another "
                          "machine is short of one of its ingredients, as full buffers would make it; without it a consumer early on "
@@ -552,6 +555,10 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
+    if args.pull:
+        params["pull"] = True
+        params["pull_wanted"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
+        print("pull: a machine runs only while a user of one of its products waits for it")
     if args.feed_short:
         params["feed_short"] = args.feed_short
         if args.feed_stop is not None:

@@ -443,6 +443,13 @@ local function start(params)
         f[find(d.unit_number)] = true
         run.drops[pk.unit_number] = f
       end
+      -- Machine to machine (direct insertion): which machines each one hands its products to.
+      if d and pk and CRAFTERS[d.type] and CRAFTERS[pk.type] then
+        run.hands = run.hands or {}
+        local f = run.hands[pk.unit_number] or {}
+        f[d.unit_number] = true
+        run.hands[pk.unit_number] = f
+      end
     end
   end
 
@@ -945,6 +952,65 @@ script.on_event(defines.events.on_tick, function()
   -- zogna incubator early on the petri-dish belt, its fluid filling a 250-tile pipe, ran at 7.6 times its plan and
   -- took every dish the bacteria machine further on waited for). Holding every machine ahead of 1.5 times its plan
   -- instead also slowed the loops that must run ahead to fill up (bones and bonemeal, barrels), and they jammed.
+  -- params.pull: a machine runs only while a machine that uses one of its products stands short of it, on a belt network
+  -- it drops onto (or one it hands to directly; for a fluid, anywhere), or it makes a target. Production follows demand:
+  -- a machine whose every product has a way out (overflows, by-product drains) otherwise never stops and eats inputs
+  -- others need (Py logistic science: a sand washer at 16 times its plan), and planning can rarely pick one product to
+  -- stop it, as nearly every Py product feeds back into the others through loops. Unlike holding machines to their plan,
+  -- this lets them run ahead for as long as users wait, filling long belts.
+  if run.params.pull and game.tick % 60 == 0 and run.drops then
+    local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
+      [defines.entity_status.fluid_ingredient_shortage] = true }
+    local target = {}
+    for _, n in pairs(run.params.pull_wanted or {}) do target[n] = true end
+    local short_net, short_at, short_fluid = {}, {}, {}
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      if e.valid and not e.disabled_by_script and SHORT[e.status] then
+        local r = e.get_recipe()
+        if r then
+          for _, ing in pairs(r.ingredients) do
+            if ing.type == "item" then
+              if e.get_item_count(ing.name) < ing.amount then
+                local sn = short_net[ing.name] or {}
+                for net in pairs((run.feeds or {})[e.unit_number] or {}) do sn[net] = true end
+                short_net[ing.name] = sn
+                short_at[e.unit_number] = short_at[e.unit_number] or {}
+                short_at[e.unit_number][ing.name] = true
+              end
+            elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
+              short_fluid[ing.name] = true
+            end
+          end
+        end
+      end
+    end
+    run.pulled_off = 0
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local r = e.valid and e.get_recipe()
+      if r then
+        local drops, hands = run.drops[e.unit_number] or {}, (run.hands or {})[e.unit_number] or {}
+        local wanted, known = false, false
+        for _, p in pairs(r.products) do
+          if target[p.name] then wanted = true; known = true
+          elseif p.type == "fluid" then
+            known = true
+            if short_fluid[p.name] then wanted = true end
+          else
+            local sn = short_net[p.name]
+            for net in pairs(drops) do known = true; if sn and sn[net] then wanted = true end end
+            for u in pairs(hands) do known = true; if short_at[u] and short_at[u][p.name] then wanted = true end end
+          end
+          if wanted then break end
+        end
+        -- (A machine whose outputs could not be traced keeps running.)
+        local off = known and not wanted
+        if off then run.pulled_off = run.pulled_off + 1 end
+        if off or e.disabled_by_script then e.disabled_by_script = off end
+      end
+    end
+  end
   if run.params.governor and game.tick % 60 == 0 then
     local secs = (game.tick - run.t0) / 60
     local factor = run.params.governor_factor or 2
