@@ -510,8 +510,20 @@ local function finish(run)
               local proto = e.get_fluid_box_prototype(k)
               if proto and proto.index == nil and proto[1] then proto = proto[1] end
               local f = e.get_fluid(k); local flt = e.get_fluid_filter(k)
+              -- Where the game puts the box's pipe connections (the tile a pipe must be on), and whether one is there.
+              local conns = {}
+              local okc, errc = pcall(function()
+                for _, c in pairs(e.get_fluid_box_pipe_connections(k)) do
+                  local at = c.target_position or c.position
+                  if at then
+                    local tp = bp_pos(run, at)
+                    conns[#conns + 1] = { x = tp.x, y = tp.y, linked = c.target ~= nil, type = c.connection_type, flow = c.flow_direction }
+                  end
+                end
+              end)
+              if not okc then conns = { { error = tostring(errc) } } end
               o[#o + 1] = { io = proto and proto.production_type or "?", name = (f and f.name) or (flt and flt.name) or nil,
-                amount = f and f.amount or 0, temperature = f and f.temperature or nil }
+                amount = f and f.amount or 0, temperature = f and f.temperature or nil, conns = conns }
             end
           end)
           return o end)(),

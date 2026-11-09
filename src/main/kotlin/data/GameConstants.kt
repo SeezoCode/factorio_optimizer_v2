@@ -331,20 +331,26 @@ object GameConstants {
     fun baseFluidConnections(machine: String): List<FluidConnection> = fluidsOf(machine)?.first ?: emptyList()
 
     /**
-     * A machine's fluid connections from its exported fluid boxes ([w] x [h], facing north): per box, its first
-     * plain connection, numbered among boxes of the same flow in box order. A box both ways counts as an input.
+     * A machine's fluid connections from its exported fluid boxes ([w] x [h], facing north): every plain connection of
+     * each box, numbered by box among boxes of the same flow in box order (a box with two, Py's soil extractor passing
+     * water through east to west, has both under one number: before, only the first was known, and a pipe of another
+     * fluid on the second tile joined the box in game). A box both ways counts as an input.
      */
     fun fluidConnectionsOf(w: Int, h: Int, boxes: List<FluidBoxData>): List<FluidConnection> {
         val out = ArrayList<FluidConnection>()
         var inputs = 0; var outputs = 0
         boxes.sortedBy { it.index }.forEach { fb ->
             if (fb.productionType == "none") return@forEach
-            val c = fb.connections.orEmpty().firstOrNull { it.connectionType == "normal" && it.direction != null && it.positions.isNotEmpty() } ?: return@forEach
-            val d = Dir.fromName(c.direction!!)
-            val p = c.positions[0]
-            val tx = kotlin.math.floor(p.x + w / 2.0 + 1e-6).toInt(); val ty = kotlin.math.floor(p.y + h / 2.0 + 1e-6).toInt()
+            val cs = fb.connections.orEmpty().filter { it.connectionType == "normal" && it.direction != null && it.positions.isNotEmpty() }
+            if (cs.isEmpty()) return@forEach
             val flow = if (fb.productionType == "output") Flow.OUTPUT else Flow.INPUT
-            out += FluidConnection(flow, if (flow == Flow.INPUT) ++inputs else ++outputs, tx + d.dx, ty + d.dy, d)
+            val no = if (flow == Flow.INPUT) ++inputs else ++outputs
+            cs.forEach { c ->
+                val d = Dir.fromName(c.direction!!)
+                val p = c.positions[0]
+                val tx = kotlin.math.floor(p.x + w / 2.0 + 1e-6).toInt(); val ty = kotlin.math.floor(p.y + h / 2.0 + 1e-6).toInt()
+                out += FluidConnection(flow, no, tx + d.dx, ty + d.dy, d)
+            }
         }
         return out
     }

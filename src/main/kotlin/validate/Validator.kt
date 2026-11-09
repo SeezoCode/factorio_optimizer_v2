@@ -1295,6 +1295,10 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             if (ents[j].kind in pipeKinds && opensTo(j, c.side.opposite)) { join(ents.size + k, j); attached[k] = true }
             if (ents[j].kind == Kind.TANK && tankOpens(j).any { (u, e) -> u == c.tile && e == c.side.opposite }) { join(ents.size + k, j); attached[k] = true }
         }
+        // Connections of one box are one network through it (Py's soil extractor passes water from east to west).
+        connList.withIndex().groupBy { (_, mc) -> Triple(mc.first, mc.second.flow, mc.second.index) }.values.forEach { box ->
+            box.zipWithNext().forEach { (a, b) -> join(ents.size + a.index, ents.size + b.index) }
+        }
         // What each network holds.
         val supplies = HashMap<Int, MutableSet<String>>()
         val drains = HashMap<Int, MutableSet<String>>()
