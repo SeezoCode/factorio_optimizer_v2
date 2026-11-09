@@ -475,6 +475,10 @@ def main():
             # Where they are, so their sinks start closed (by item alone, the first ones through would leave).
             params["overflow_at"] = [[o["x"] + 0.5, o["y"] + 0.5] for o in ports.get("outputs", [])
                                      if not o.get("fluid") and o["item"].split("#")[0] in overflow]
+        # Mixed belts (leftovers, plan.mixed) always leave: their sinks are never held back as overflows, whatever they carry.
+        mixed_at = [[o["x"] + 0.5, o["y"] + 0.5] for o in ports.get("outputs", []) if o["item"].startswith("mixed-")]
+        if mixed_at:
+            params["mixed_at"] = mixed_at
         rates = defaultdict(float)
         for o in ports.get("outputs", []):
             if not o.get("fluid") and o["rate"] > 1e-12 and o["item"].split("#")[0] not in overflow:
@@ -501,26 +505,34 @@ def main():
             if "seedCarriers" in plan_json:
                 carrier_names = plan_json["seedCarriers"]
             else:
-                # An older plan: a seed whose every maker turns another item into it one for one (plan.loopCarriers).
+                # An older plan: a seed that comes back round to itself through one-for-one steps (plan.loopCarriers).
                 ms = plan_json.get("machines", [])
+                def same(a, b): return abs(a - b) <= 1e-6 * max(a, b) + 1e-12
                 def one_for_one(item):
-                    makers = [m for m in ms if m.get("products", {}).get(item, 0) > 1e-12]
-                    def takes_alike(m):
-                        r = m["products"][item]
-                        ins = {**m.get("demand", {}), **m.get("fluidDemand", {})}
-                        return any(q != item and abs(v - r) <= 1e-6 * max(r, v) + 1e-12 for q, v in ins.items())
-                    return bool(makers) and all(takes_alike(m) for m in makers)
+                    seen, todo = {item}, [item]
+                    while todo:
+                        x = todo.pop()
+                        for m in ms:
+                            rx = m.get("demand", {}).get(x, m.get("fluidDemand", {}).get(x))
+                            if rx is None:
+                                continue
+                            for y, ry in m.get("products", {}).items():
+                                if y != x and same(rx, ry):
+                                    if y == item:
+                                        return True
+                                    if y not in seen:
+                                        seen.add(y); todo.append(y)
+                    return False
                 carrier_names = [x for x in raw if one_for_one(x)]
             carriers = sorted({s.split("#")[0] for s in carrier_names})
             # Each recipe's planned use of each seed per machine: top-ups keep within it (with room to start up).
+            # (Every ingredient: catalysts are topped up too, within the same cap.)
             seed_rates = defaultdict(dict)
-            seed_games = {s.split("#")[0] for s in raw}
             for m in plan_json.get("machines", []):
                 rn = m["recipe"].split("#")[0].split("@")[0]
                 for item, rate in {**m.get("demand", {}), **m.get("fluidDemand", {})}.items():
                     g = item.split("#")[0]
-                    if g in seed_games:
-                        seed_rates[rn][g] = max(seed_rates[rn].get(g, 0.0), rate)
+                    seed_rates[rn][g] = max(seed_rates[rn].get(g, 0.0), rate)
             if seed_rates:
                 params["seed_rates"] = {k: v for k, v in seed_rates.items()}
             if carriers:

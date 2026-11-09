@@ -155,7 +155,7 @@ fun runFactory(
         val b = best
         if (b != null && area(f) >= area(b)) { say("$what: ${f.layout.w} x ${f.layout.h} is not smaller than ${b.layout.w} x ${b.layout.h}"); return false }
         best = f; bestState = r.second
-        writeFactory(f, out, config, data, input.seeds)
+        writeFactory(f, out, config, data, input.seeds, input.seedCarriers.toSet())
         saves++
         if (config.search.stopAfter > 0 && saves >= config.search.stopAfter) { deadline = System.currentTimeMillis(); engineRef?.stopForGood() }
         say("$what: ${f.layout.w} x ${f.layout.h} (${area(f)} tiles), saved")
@@ -267,7 +267,7 @@ fun runFactory(
     // 2. Floorplan the finished blocks and stitch them. Keep the smallest valid factory.
     val first = assemble(split, bps, variants, previewState ?: split.geometry.state, "factory")
     if ((first == null || !first.first.success) && best == null) {
-        first?.let { writeFactory(it.first, out, config, data, input.seeds) }
+        first?.let { writeFactory(it.first, out, config, data, input.seeds, input.seedCarriers.toSet()) }
         say("done: no valid factory")
         return first?.first
     }
@@ -1360,9 +1360,9 @@ private fun sideOf(t: Tile, w: Int, h: Int): Dir = when {
     t.x == 0 -> Dir.W; t.x == w - 1 -> Dir.E; t.y == 0 -> Dir.N; else -> Dir.S
 }
 
-private fun writeFactory(f: Factory, out: File, config: RunConfiguration, data: RootData, seeds: List<String>) {
+private fun writeFactory(f: Factory, out: File, config: RunConfiguration, data: RootData, seeds: List<String>, carriers: Set<String> = emptySet()) {
     val l = power.withSeedRequests(power.withFarmModules(power.withOverflowValves(f.layout, f.outputs,
-        byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), data, config), seeds, data)
+        byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), data, config), seeds, data, carriers)
     File(out, "best_output_string.txt").writeText(l.toBlueprintString(config.buildQuality()))
     File(out, "best_blueprint.json").writeText(l.toBlueprint(config.buildQuality()).toJson())
     if (!config.testMode) power.testCopy(l, f.sources, f.outputs, config).let { tc ->

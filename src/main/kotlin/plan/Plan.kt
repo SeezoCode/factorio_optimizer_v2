@@ -377,7 +377,7 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
     }
     // Overflows: a 0/s output for by-products of production loops (see [overflowItems]).
     val overflow = if (config.byproductOverflow == "off") emptySet()
-        else overflowItems(machines, lp.supply.keys, outputs.keys + mixed.keys).filter {
+        else overflowItems(machines, lp.supply.keys, outputs.keys + mixed.keys, coupled = config.byproductOverflow == "all").filter {
             if (isFluid(it)) data.items.containsKey(GameConstants.OVERFLOW_VALVE) else portMode && config.byproductOverflow == "all"
         }.toSet()
     overflow.sorted().forEach { item ->
@@ -543,13 +543,16 @@ private fun loopGraph(machines: List<MachineInstance>, supplied: Set<String>): P
  * users were in loops not yet running, so its pipe filled, tar distillation stopped, and so did every loop. Such an
  * item also gets an output of 0/s that takes only what its users leave (a belt past them that ends at the port; for a
  * fluid, an overflow valve at the port, which lets fluid out only above 80% full). Items a machine also takes back (its
- * catalysts) and items already leaving are left out.
+ * catalysts) and items already leaving are left out. With [coupled], also every product of a machine whose other
+ * products have users, loops or not: Py science 1's moss farm makes moss and coarse in one craft; its moss backed up
+ * behind a science lab waiting for flasks, and the coarse it then stopped making was where the flasks' iron oxide came
+ * from.
  */
-fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leaving: Set<String>): Set<String> {
+fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leaving: Set<String>, coupled: Boolean = false): Set<String> {
     val (made, next) = loopGraph(machines, supplied)
     val loops = stronglyConnected(made, next)
     val inLoops = loops.flatten().toSet()
-    if (inLoops.isEmpty()) return emptySet()
+    if (inLoops.isEmpty() && !coupled) return emptySet()
     fun takes(m: MachineInstance) = m.demand.keys + m.fluidDemand.keys
     fun inLoop(m: MachineInstance) = m.products.keys.any { it in inLoops } && takes(m).any { it in inLoops }
     val loopOf = HashMap<String, Set<String>>().also { m -> loops.forEach { s -> s.forEach { m[it] = s } } }
@@ -560,7 +563,8 @@ fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leavin
         products.forEach { p ->
             if (p in takes(m) || p in leaving || p in supplied || carrier(p, machines, loopOf)) return@forEach
             val users = machines.filter { (it.demand[p] ?: it.fluidDemand[p] ?: 0.0) > 1e-12 }
-            if (users.isNotEmpty() && (p in inLoops || inLoop(m) || users.any { inLoop(it) })) out += p
+            val othersUsed = coupled && products.any { o -> o != p && machines.any { (it.demand[o] ?: it.fluidDemand[o] ?: 0.0) > 1e-12 } }
+            if (users.isNotEmpty() && (p in inLoops || inLoop(m) || users.any { inLoop(it) } || othersUsed)) out += p
         }
     }
     return out
@@ -574,11 +578,29 @@ fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leavin
  */
 private fun carrier(p: String, machines: List<MachineInstance>, loopOf: Map<String, Set<String>>): Boolean {
     val loop = loopOf[p] ?: return false
+    fun same(a: Double, b: Double) = kotlin.math.abs(a - b) <= 1e-6 * maxOf(a, b) + 1e-12
     val makers = machines.filter { (it.products[p] ?: 0.0) > 1e-12 }
-    return makers.isNotEmpty() && makers.all { m ->
-        val r = m.products.getValue(p)
-        (m.demand + m.fluidDemand).any { (q, rq) -> q != p && q in loop && kotlin.math.abs(rq - r) <= 1e-6 * maxOf(r, rq) + 1e-12 }
+    if (makers.isEmpty() || !makers.all { m ->
+            val r = m.products.getValue(p)
+            (m.demand + m.fluidDemand).any { (q, rq) -> q != p && q in loop && same(rq, r) }
+        }) return false
+    // And back round to itself through one-for-one steps at one rate: a machine taking x at that rate and giving y at
+    // it (a sap tree mulched gives one sap seed, but a tree takes five: the loop grows, and its trees are no carrier).
+    val rate = makers.sumOf { it.products.getValue(p) }
+    val seen = hashSetOf(p); val queue = ArrayDeque(listOf(p))
+    while (queue.isNotEmpty()) {
+        val x = queue.removeFirst()
+        machines.forEach { m ->
+            val rx = m.demand[x] ?: m.fluidDemand[x] ?: return@forEach
+            m.products.forEach { (y, ry) ->
+                if (y in loop && same(rx, ry) && (same(ry, rate) || makers.size > 1)) {
+                    if (y == p) return true
+                    if (seen.add(y)) queue += y
+                }
+            }
+        }
     }
+    return false
 }
 
 /** Strongly connected parts of the graph [next] over [nodes] with more than one item (Tarjan). */

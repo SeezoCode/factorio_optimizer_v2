@@ -192,7 +192,7 @@ class Search(
     private fun writeBest(t: TrialResult, n: Int) {
         // Overflow outputs get their valves (outside the box, on the port's side).
         val l = power.withSeedRequests(power.withOverflowValves(t.layout!!, t.outputs.ifEmpty { t.route?.outputs ?: emptyList() },
-            byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), plan.seeds, data)
+            byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), plan.seeds, data, plan.seedCarriers.toSet())
             .copy(label = "factorio-optimizer ${t.w}x${t.h}")
         val bp = l.toBlueprintString(config.buildQuality())
         out.mkdirs()

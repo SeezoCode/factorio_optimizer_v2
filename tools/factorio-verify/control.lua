@@ -111,10 +111,12 @@ local function prime(run, e, r, crafted, rec)
   for _, ing in pairs(r.ingredients) do
     if back[ing.name] then
       any = true
-      if ing.type == "item" and crafted and (carrier[ing.name] or not seeded[ing.name]) then
-        -- (a loop that has started: what it only passes round, or a catalyst, stays as it is)
+      if ing.type == "item" and crafted and carrier[ing.name] then
+        -- (a loop that has started: what it only passes round stays as it is)
       elseif ing.type == "item" then
-        local want = math.ceil(ing.amount) * (seeded[ing.name] and 5 or 2)
+        local want = math.ceil(ing.amount * (carrier[ing.name] and 1.5 or (seeded[ing.name] and 5 or 2)))
+        -- (A catalyst the machine also gives to others, Py's moss farm's coarse, is topped up like a seed: the
+        -- classifier took the first batch and the farm stood short of the 15 it needs.)
         pcall(function()
           local have = e.get_item_count(ing.name)
           local add = want - have
@@ -323,9 +325,14 @@ local function start(params)
           c.infinity_container_filters = {}
           c.remove_unfiltered_items = false
           local s = { chest = c, loader = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
-          -- An overflow port's sink (params.overflow_at): closed until its belt backs up.
+          -- An overflow port's sink (params.overflow_at): closed until its belt backs up. A mixed belt's (params.mixed_at)
+          -- always takes: it carries only leftovers, whatever items on it are overflows elsewhere (Py science 1's
+          -- leftovers belt, with stone on it, stayed shut and stopped the lime that the moss farm's CO2 came with).
+          for _, at in pairs(run.params.mixed_at or {}) do
+            if math.abs(s.pos.x - at[1]) + math.abs(s.pos.y - at[2]) <= 3.5 then s.mixed = true end
+          end
           for _, at in pairs(run.params.overflow_at or {}) do
-            if math.abs(s.pos.x - at[1]) + math.abs(s.pos.y - at[2]) <= 3.5 then s.overflow = true; e.disabled_by_script = true end
+            if not s.mixed and math.abs(s.pos.x - at[1]) + math.abs(s.pos.y - at[2]) <= 3.5 then s.overflow = true; e.disabled_by_script = true end
           end
           run.sinks[#run.sinks + 1] = s
         else
@@ -420,7 +427,7 @@ local function flows(run, counting)
     -- backed up and a maker of the item stands full: the factory's own users always take first, however fast they
     -- run, and a belt that runs on past its users to the edge fills up as their buffer instead of draining what
     -- passed them (Py science 2's stone-brick ring, which nothing adds to, starved that way).
-    if next(overflow) and s.loader.valid then
+    if next(overflow) and s.loader.valid and not s.mixed then
       local belts = (s.loader.belt_neighbours or {}).inputs or {}
       local b = belts[1]
       if b and b.valid then

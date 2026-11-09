@@ -59,16 +59,19 @@ fun withFarmModules(layout: geom.Layout, data: data.RootData, config: RunConfigu
         e.copy(modules = plan.machineModules(data, config, r, e.name).takeIf { it.isNotEmpty() })
     })
 
-fun withSeedRequests(layout: geom.Layout, seeds: List<String>, data: data.RootData): geom.Layout {
+fun withSeedRequests(layout: geom.Layout, seeds: List<String>, data: data.RootData, carriers: Set<String> = emptySet()): geom.Layout {
     val items = seeds.filter { it in data.items }.toSet()
     if (items.isEmpty()) return layout
     return layout.copy(entities = layout.entities.map { e ->
         if (e.kind != Kind.MACHINE || e.recipe == null) return@map e
         val r = data.recipes[e.recipe] ?: data.recipes[gameNameOf(e.recipe)] ?: return@map e
         val solid = r.ingredients.filter { !it.isFluid }
+        // Five crafts' worth of a seed a loop uses up; one and a half of one it only passes round (a carrier): a ring
+        // of two machines handing bricks to each other directly holds little, and Py science 1's 100 warm bricks filled
+        // both their outputs, after which neither took anything (a machine with a full output takes no ingredients).
         val asks = solid.withIndex().filter { it.value.name in items }.map { (i, ing) ->
             val stack = data.items[ing.name]?.stackSize ?: 50
-            Triple(ing.name, i, minOf(stack, kotlin.math.ceil(ing.amount * 5).toInt()))
+            Triple(ing.name, i, minOf(stack, kotlin.math.ceil(ing.amount * (if (ing.name in carriers) 1.5 else 5.0)).toInt()))
         }
         if (asks.isEmpty()) e else e.copy(seeds = asks)
     })
