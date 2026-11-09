@@ -101,21 +101,37 @@ end
 -- (params.seeds, plan.json "seeds", e.g. Py's farms feeding each other) too. Only what the machine is short of: this
 -- runs again through the first half of the warm-up (see seed_tick), which starts loops whose crafts do not line up (Py's
 -- ammonia -> formamide -> formic acid -> ammonia). Returns whether the machine takes any of them.
-local function prime(run, e, r, fluids_only)
+local function prime(run, e, r, crafted, rec)
   local back, made_at, seeded = {}, {}, {}
   for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature end
   for _, name in pairs(run.params.seeds or {}) do back[name] = true; seeded[name] = true end
+  local carrier = {}
+  for _, name in pairs(run.params.seed_carriers or {}) do carrier[name] = true end
   local any = false
   for _, ing in pairs(r.ingredients) do
     if back[ing.name] then
       any = true
-      if ing.type == "item" and fluids_only then
-        -- (a top-up of a loop that has started: items stay as they are)
+      if ing.type == "item" and crafted and (carrier[ing.name] or not seeded[ing.name]) then
+        -- (a loop that has started: what it only passes round, or a catalyst, stays as it is)
       elseif ing.type == "item" then
         local want = math.ceil(ing.amount) * (seeded[ing.name] and 5 or 2)
         pcall(function()
           local have = e.get_item_count(ing.name)
-          if have < want then e.insert { name = ing.name, count = want - have } end
+          local add = want - have
+          -- A top-up once the loop runs: within 5 times the plan's use by this machine since the start (Py science
+          -- 1's seaweed burner, fed whenever short, crafted 1375 times instead of about 15 and filled its belts with ash).
+          if crafted and rec then
+            local rate = ((run.params.seed_rates or {})[r.name] or {})[ing.name]
+            if rate then
+              rec.given = rec.given or {}
+              local allowed = rate * 5 * (game.tick - run.t0) / 60 + want
+              add = math.min(add, math.floor(allowed - (rec.given[ing.name] or 0)))
+            end
+          end
+          if add > 0 then
+            local n = e.insert { name = ing.name, count = add }
+            if rec then rec.given = rec.given or {}; rec.given[ing.name] = (rec.given[ing.name] or 0) + n end
+          end
         end)
       else
         local ok_, err = pcall(function()
@@ -151,20 +167,27 @@ local function prime(run, e, r, fluids_only)
 end
 
 -- Tops up the primed machines every 2 s through the first half of the warm-up.
--- Top-ups go only to a machine standing short of ingredients, at most three times, and items only to one that has
--- not crafted yet: topping up loops that run floods them (Py science 2's stone-brick heat ring: bricks are only
--- heated and cooled, never used up, so every top-up stayed in the ring until its belts were full, every machine's
--- output was full, and a machine with a full output takes no ingredients: gridlock). Fluids are topped up after
--- the first craft too: chemical loops whose crafts do not line up (Py's ammonia -> formamide -> formic acid).
-local SEED_TOPUPS = 3
+-- Top-ups go only to a machine standing short of ingredients (see seed_tick for how often). Items a loop only passes round
+-- (params.seed_carriers) only until the machine has crafted: topping those up floods the loop (Py science 2's
+-- stone-brick heat ring: bricks are only heated and cooled, so every top-up stayed in the ring until its belts were
+-- full, every machine's output was full, and a machine with a full output takes no ingredients: gridlock). Seeds a
+-- loop uses up (Py science 1's seaweed: its fertilizer also needs ash that three other users share) are topped up
+-- until the loop runs; fluids too (chemical loops whose crafts do not line up: ammonia -> formamide -> formic acid).
+local SEED_TOPUPS = 10
 local function seed_tick(run)
-  if run.phase ~= "warmup" or game.tick - run.t0 >= run.warmup / 2 or game.tick % 120 ~= 0 then return end
+  -- Through the whole warm-up (never while measuring: a loop that cannot keep itself going shows there).
+  if run.phase ~= "warmup" or game.tick % 120 ~= 0 then return end
   local short = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
     [defines.entity_status.fluid_ingredient_shortage] = true }
   for _, p in pairs(run.primes or {}) do
-    if p.e.valid and short[p.e.status] and (p.topups or 0) < SEED_TOPUPS then
-      p.topups = (p.topups or 0) + 1
-      prime(run, p.e, p.r, p.e.products_finished > (p.pf0 or 0))
+    if p.e.valid and short[p.e.status] then
+      local crafted = p.e.products_finished > (p.pf0 or 0)
+      -- After the first craft only seeds a loop uses up (prime leaves carriers alone then), as often as it stands short;
+      -- before it, at most SEED_TOPUPS times.
+      if crafted or (p.topups or 0) < SEED_TOPUPS then
+        p.topups = (p.topups or 0) + 1
+        prime(run, p.e, p.r, crafted, p)
+      end
     end
   end
 end

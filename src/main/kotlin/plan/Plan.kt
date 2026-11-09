@@ -135,6 +135,11 @@ data class ProductionPlan(
     val launched: Map<String, Double> = emptyMap(),
     /** Items (and fluids) to put in by hand once so that the plan's production loops can start (see [loopSeeds]). */
     val seeds: List<String> = emptyList(),
+    /**
+     * Of [seeds], those their loop only passes round one for one (heat bricks, barrels, cages): put in once, never
+     * more (more would fill the loop until nothing moves). The others are used up, and a loop is fed them until it runs.
+     */
+    val seedCarriers: List<String> = emptyList(),
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -476,7 +481,15 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         utilization = crafts.associate { (c, _) -> c.recipe.name to utilOf(c.recipe.name) },
         headroom = if (tuning.planner.headroomCheck) tuning.planner.maxUtilization else 1.0,
         seeds = seeds,
+        seedCarriers = seeds.filter { it in loopCarriers(machines, lp.supply.keys) },
     )
+}
+
+/** Items of production loops that their loop only passes round one for one (see [carrier]). */
+fun loopCarriers(machines: List<MachineInstance>, supplied: Set<String>): Set<String> {
+    val (made, next) = loopGraph(machines, supplied)
+    val loopOf = HashMap<String, Set<String>>().also { m -> stronglyConnected(made, next).forEach { s -> s.forEach { m[it] = s } } }
+    return loopOf.keys.filter { carrier(it, machines, loopOf) }.toSet()
 }
 
 /**

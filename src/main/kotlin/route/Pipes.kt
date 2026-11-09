@@ -42,6 +42,8 @@ internal class PipeRouter(private val pf: PathFinder) {
 
     /** -1: any fluid; -2: no pipe; n >= 0: only fluid net n (its machine connection tile or fixed port). */
     private val connNet = IntArray(N) { -1 }
+    /** On a machine's connection tile: the direction into the machine (a pipe-to-ground there opening that way joins it). */
+    private val connInto = IntArray(N) { -1 }
     private val pipeCount = IntArray(N)
     private val pipeOwner = IntArray(N) { -1 }
     /** Joinable pipe ends of other nets next to each tile. */
@@ -68,6 +70,7 @@ internal class PipeRouter(private val pf: PathFinder) {
                 if (!dims.inFull(c.tile.x, c.tile.y)) return@forEach
                 val i = dims.idx(c.tile)
                 connNet[i] = c.fluid?.let { netOfFluid[it] } ?: -2
+                connInto[i] = c.side.opposite.ordinal
             }
         }
         fluidNets.forEachIndexed { idx, net ->
@@ -190,7 +193,8 @@ internal class PipeRouter(private val pf: PathFinder) {
             val t = s / 5
             val k = s % 5
             val gS = pf.gArr[s]
-            if (k == 0 && pf.goalStamp[t] == pf.goalGen && pf.par[s] != -1) return s
+            // A connection reached as a pipe, or by a pipe-to-ground coming up on it facing the machine (see below).
+            if ((k == 0 || connInto[t] == k - 1) && pf.goalStamp[t] == pf.goalGen && pf.par[s] != -1) return s
             val dirs = if (k != 0) (k - 1)..(k - 1) else if (pf.par[s] == -1 && entryIn[t] >= 0) entryIn[t]..entryIn[t] else 0..3
             for (d in dirs) {
                 val q = t + pf.dIdx[d]
@@ -208,7 +212,11 @@ internal class PipeRouter(private val pf: PathFinder) {
                     // Not under a block of a factory: its own pipe-to-ground on this line would pair with ours.
                     if (pf.noTunnel[e]) break
                     chanAcc += chanCost(axis * N + e)
-                    if (!pipeOk(e, n.idx) || connNet[e] >= 0) continue
+                    // An exit may come up on a connection tile it is going to, facing into the machine: it joins only the
+                    // machine there, not a pipe of another fluid on the next connection (Py's methanol reactor makes
+                    // z3-reagent from carbon sulfide and methanol taken on neighbouring tiles).
+                    val into = connNet[e] == n.idx && connInto[e] == d && pf.goalStamp[e] == pf.goalGen
+                    if (!pipeOk(e, n.idx) || (connNet[e] >= 0 && !into)) continue
                     val cost = gS + pipeCost(q, false) + pipeCost(e, false) + (tun.ugPenalty + tun.ugPenaltyPerTile * j).toFloat() + chanAcc
                     relax(st(e, d + 1), s, cost, hw)
                 }

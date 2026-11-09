@@ -41,6 +41,8 @@ data class PlacedEntity(
     val blacklist: List<String>? = null,
     /** Crafting machines: items for construction bots to bring into input slots once (production loop seeds): item, slot, count. */
     val seeds: List<Triple<String, Int, Int>>? = null,
+    /** Infinity pipes (test copies): hold the pipe at most this full (0..1), [drain] or not. */
+    val keepAtMost: Double? = null,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)

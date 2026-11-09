@@ -497,6 +497,34 @@ def main():
                     temps[name].append(float(t))
             if temps:
                 params["seed_temps"] = dict(temps)
+            plan_json = json.load(open(plan_path))
+            if "seedCarriers" in plan_json:
+                carrier_names = plan_json["seedCarriers"]
+            else:
+                # An older plan: a seed whose every maker turns another item into it one for one (plan.loopCarriers).
+                ms = plan_json.get("machines", [])
+                def one_for_one(item):
+                    makers = [m for m in ms if m.get("products", {}).get(item, 0) > 1e-12]
+                    def takes_alike(m):
+                        r = m["products"][item]
+                        ins = {**m.get("demand", {}), **m.get("fluidDemand", {})}
+                        return any(q != item and abs(v - r) <= 1e-6 * max(r, v) + 1e-12 for q, v in ins.items())
+                    return bool(makers) and all(takes_alike(m) for m in makers)
+                carrier_names = [x for x in raw if one_for_one(x)]
+            carriers = sorted({s.split("#")[0] for s in carrier_names})
+            # Each recipe's planned use of each seed per machine: top-ups keep within it (with room to start up).
+            seed_rates = defaultdict(dict)
+            seed_games = {s.split("#")[0] for s in raw}
+            for m in plan_json.get("machines", []):
+                rn = m["recipe"].split("#")[0].split("@")[0]
+                for item, rate in {**m.get("demand", {}), **m.get("fluidDemand", {})}.items():
+                    g = item.split("#")[0]
+                    if g in seed_games:
+                        seed_rates[rn][g] = max(seed_rates[rn].get(g, 0.0), rate)
+            if seed_rates:
+                params["seed_rates"] = {k: v for k, v in seed_rates.items()}
+            if carriers:
+                params["seed_carriers"] = carriers
             print(f"seeding production loops with {', '.join(raw)}")
     params = {k: v for k, v in params.items() if v is not None}
     report = run_game(args, bp, params, enabled, have)

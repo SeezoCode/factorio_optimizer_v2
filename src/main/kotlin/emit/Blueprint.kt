@@ -139,7 +139,8 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                     buildJsonObject {
                         put("name", gameName(fluid))
                         temperatureOf(fluid)?.let { put("temperature", it) }
-                        if (e.drain) { put("percentage", 0.0); put("mode", "exactly") } else { put("percentage", 1.0); put("mode", "at-least") }
+                        if (e.keepAtMost != null) { put("percentage", e.keepAtMost); put("mode", "at-most") }
+                        else if (e.drain) { put("percentage", 0.0); put("mode", "exactly") } else { put("percentage", 1.0); put("mode", "at-least") }
                     }
                 }
                 else -> null

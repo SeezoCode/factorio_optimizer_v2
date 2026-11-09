@@ -214,7 +214,11 @@ data class TestCopy(val layout: geom.Layout, val warnings: List<String>)
  * its lanes cannot take a loader (it fills both lanes); it gets the test-mode feeder with inserters instead,
  * where there is room. Nothing inside the box changes.
  */
-fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<OutputSpec>, config: RunConfiguration): TestCopy {
+fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<OutputSpec>, config: RunConfiguration): TestCopy {
+    // Overflow valves come out: their fluid outputs are held at most half full instead (see below), a valve back where
+    // that has no room.
+    val valves = layout0.entities.filter { it.kind == Kind.VALVE }
+    val layout = layout0.copy(entities = layout0.entities.filter { it.kind != Kind.VALVE })
     val w = layout.w; val h = layout.h
     val loader = GameConstants.LOADERS[config.beltTier] ?: "express-loader"
     val occupied = HashSet<Tile>()
@@ -238,10 +242,10 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     // An infinity pipe next to a fluid port, on a side the port's pipe connects to, touching no pipe of another fluid.
     // Where it would (two fluid ports side by side), a pipe-to-ground pair carries the feed out first: it touches
     // nothing on its way, and the infinity pipe at its far end is clear of the neighbour's feed.
-    fun fluidFeed(tile: Tile, fluid: String, drain: Boolean): Boolean {
+    fun fluidFeed(tile: Tile, fluid: String, drain: Boolean, keepAtMost: Double? = null): Boolean {
         val sides = fluidSides(byTile[tile], outward(tile))
         sides.firstOrNull { d -> pipeFits(tile + d, fluid, tile) }?.let { d ->
-            (tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = fluid, drain = drain)) }
+            (tile + d).let { take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, it.x, it.y, fluid = fluid, drain = drain, keepAtMost = keepAtMost)) }
             return true
         }
         for (d in sides) {
@@ -252,7 +256,7 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
                 if (!free(far) || !pipeFits(end, fluid, far)) continue
                 take(PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, near.x, near.y, d.opposite, fluid = fluid))
                 take(PlacedEntity(GameConstants.PIPE_TO_GROUND, Kind.PIPE_UG, far.x, far.y, d, fluid = fluid))
-                take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, end.x, end.y, fluid = fluid, drain = drain))
+                take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, end.x, end.y, fluid = fluid, drain = drain, keepAtMost = keepAtMost))
                 return true
             }
         }
@@ -264,10 +268,14 @@ fun testCopy(layout: geom.Layout, sources: List<SourceSpec>, outputs: List<Outpu
     sources.filter { it.fluid && it.rate > 1e-12 }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
     // A fluid output with an overflow valve (see withOverflowValves) is drained behind it; an overflow without one
     // (a 0/s output, see plan.overflowItems) gets one; any other output is drained at its port.
-    fun valveAt(o: OutputSpec) = (layout.entities + out).firstOrNull { it.kind == Kind.VALVE && it.tile.manhattan(o.tile) == 1 }
+    fun valveAt(o: OutputSpec) = valves.firstOrNull { it.tile.manhattan(o.tile) == 1 }
     outputs.filter { it.fluid && it.rate > 1e-12 && valveAt(it) == null }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
     outputs.filter { it.fluid && (it.rate <= 1e-12 || valveAt(it) != null) }.forEach { o ->
-        val valve = valveAt(o) ?: overflowValve(o, byTile, w, h) { free(it) }?.also { take(it) }
+        // Held at most half full: the users in the factory keep their fluid, and a producer always has room for a batch.
+        // Behind an overflow valve (it passes above 80% full) a producer whose batch does not fit the last fifth of its
+        // box stood still (Py science 1's washers, 100 muddy sludge a craft, and nexelit with them).
+        if (fluidFeed(o.tile, o.item, drain = true, keepAtMost = 0.5)) return@forEach
+        val valve = valveAt(o)?.also { if (free(it.tile)) take(it) } ?: overflowValve(o, byTile, w, h) { free(it) }?.also { take(it) }
         val end = valve?.let { it.tile + it.dir.opposite }
         if (valve == null || end == null || !free(end)) { warnings += "no room for the overflow of ${o.item} at ${o.tile}"; return@forEach }
         take(PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, end.x, end.y, fluid = o.item, drain = true))
