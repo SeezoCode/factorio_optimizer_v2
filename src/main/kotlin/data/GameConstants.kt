@@ -435,7 +435,9 @@ object GameConstants {
         exportedFluids = machines.filter { it.fluidBoxes != null || energyBox(it) != null }.associate {
             it.name to (fluidConnectionsOf(it.width, it.height, recipeBoxes(it) + listOfNotNull(energyBox(it))) to (it.fluidBoxesOffWhenNoFluidRecipe == true))
         }
-        fuelBoxes = machines.mapNotNull { m -> energyBox(m)?.let { m.name to exportedFluids.getValue(m.name).first.count { it.flow == Flow.INPUT } } }.toMap()
+        // The energy box's number: the last input box's (not the count of input connections, which a box with two,
+        // Py's glassworks burning tar east to west, made one too many: the tar had no connection and no consumers).
+        fuelBoxes = machines.mapNotNull { m -> energyBox(m)?.let { m.name to exportedFluids.getValue(m.name).first.filter { it.flow == Flow.INPUT }.maxOf { it.index } } }.toMap()
         machineTypes = data.entities.values.filterIsInstance<CraftingEntity>().associate { it.name to it.type }
         SUPPORTED_MACHINES = (BASE_MACHINES + SPACE_AGE_MACHINES + extra.map { it.name }).distinct()
 
