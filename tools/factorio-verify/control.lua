@@ -656,7 +656,7 @@ local function finish(run)
   local report = {
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
-    inserters = #run.inserters, belts = #run.belts,
+    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure,
     research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
                  bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
                  belt_stack_size_bonus = game.forces.player.belt_stack_size_bonus },
@@ -849,6 +849,40 @@ local function finish(run)
   log("factorio-optimizer-verify: wrote " .. REPORT)
 end
 
+-- params.feed_short: every machine standing short of an ingredient gets it (as a warm start does: two crafts' worth),
+-- and what was put in is counted per item (run.fed; run.fed_measure while measuring). With supply never short, what
+-- still stands is the layout's own fault (an output with no way out, an inserter missing); what had to be fed shows
+-- where the factory's own supply falls short, without everything behind it starving too.
+local FEED_SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
+  [defines.entity_status.fluid_ingredient_shortage] = true }
+local function feed_short(run)
+  if not run.params.feed_short or game.tick % 60 ~= 0 then return end
+  run.fed = run.fed or {}
+  run.fed_measure = run.fed_measure or {}
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    if e.valid and FEED_SHORT[e.status] then
+      local r = e.get_recipe()
+      if r then pcall(function()
+        local before = {}
+        for _, ing in pairs(r.ingredients) do
+          before[ing.name] = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
+        end
+        warm_start(run, e, r)
+        for _, ing in pairs(r.ingredients) do
+          local now = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
+          local d = now - before[ing.name]
+          if d > 0 then
+            local k = ing.type == "item" and ing.name or ("[" .. ing.name .. "]")
+            run.fed[k] = (run.fed[k] or 0) + d
+            if run.phase == "measure" then run.fed_measure[k] = (run.fed_measure[k] or 0) + d end
+          end
+        end
+      end) end
+    end
+  end
+end
+
 script.on_event(defines.events.on_tick, function()
   local run = storage.run
   if not run or run.phase == "done" or run.phase == nil then return end
@@ -865,6 +899,7 @@ script.on_event(defines.events.on_tick, function()
     end
   end
   seed_tick(run)
+  feed_short(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (1) times its plan,
   -- plus 3 crafts, waits while a machine fed from the same belt stands short of one of its item ingredients (one item
   -- runs on many separate belts; holding a barrel filler for one on another belt starved its own users): it takes no more than its

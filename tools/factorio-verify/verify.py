@@ -302,6 +302,18 @@ def planned_crafts(args):
     return {r: tot[r] / n[r] for r in tot}
 
 
+def planned_use(args):
+    """Item or fluid -> planned use per second (plan.json demands), by the game's name."""
+    path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    if not path or not os.path.exists(path):
+        return {}
+    use = defaultdict(float)
+    for m in json.load(open(path)).get("machines", []):
+        for k, v in {**m.get("demand", {}), **m.get("fluidDemand", {})}.items():
+            use[k.split("#")[0]] += v
+    return use
+
+
 def judge(report, ports, args):
     """Prints the report; returns the list of failures."""
     fails, notes = [], []
@@ -359,6 +371,18 @@ def judge(report, ports, args):
     no_recipe = [m for m in machines if not m.get("recipe")]
     if no_recipe:
         fails.append(f"{len(no_recipe)} machines have no recipe")
+
+    fed = report.get("fed_measure") or {}
+    if report.get("fed") is not None:
+        use = planned_use(args)
+        print(f"\nFed by the check while measured (the factory's own supply fell short), per second:")
+        rows = sorted(fed.items(), key=lambda kv: -kv[1])
+        for k, n in rows[:40]:
+            u = use.get(k.strip("[]").split("#")[0], 0.0)
+            print(f"  {k:40} {fmt(n / secs):>10}  planned use {fmt(u):>8}" + (f"  ({100 * n / secs / u:.0f}%)" if u > 1e-12 else ""))
+        if not rows:
+            print("  nothing")
+        notes.append(f"fed by the check: {len(rows)} items (the layout ran with every machine supplied; see above)")
 
     outs = [dict(o, fluid=False) for o in report["outputs"]] + \
            [{"x": d["x"], "y": d["y"], "per_s": {d["fluid"]: d["per_s"]}, "fluid": True} for d in report["fluid_outputs"]]
@@ -475,6 +499,9 @@ def main():
                          "factory cannot look good by over-making one pack while starving another)")
     ap.add_argument("--dump", action="store_true", help="also write every belt's lanes, inserter and pipe to the report")
     ap.add_argument("--prime-all", action="store_true", help="warm start: every machine starts with two crafts' worth of its ingredients")
+    ap.add_argument("--feed-short", action="store_true",
+                    help="every machine standing short of an ingredient gets it, and what was fed is counted per item: what still "
+                         "stands is the layout's fault, what had to be fed is where the factory's own supply falls short")
     ap.add_argument("--governor", type=float, nargs="?", const=1.0, default=None, metavar="FACTOR",
                     help="steady state: a machine ahead of FACTOR (default 1) times its planned crafts (plus 3) waits while another "
                          "machine is short of one of its ingredients, as full buffers would make it; without it a consumer early on "
@@ -521,6 +548,8 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
+    if args.feed_short:
+        params["feed_short"] = True
     if args.governor is not None:
         gp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
         if gp and os.path.exists(gp):
