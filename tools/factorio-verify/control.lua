@@ -908,8 +908,9 @@ local function feed_short(run)
       local c = (run.params.feed_crafts or {})[r.name]
       if m.short_s < math.max(10, c and c > 0 and 2 / c or 10) then return end
       m.short_s = 0
+      -- Only what it lacks for a craft (topping up every ingredient counted those it had plenty of as fed).
       for _, ing in pairs(r.ingredients) do
-        local give = math.min(ing.amount * 2 - count(ing), m.fb[ing.name])
+        local give = count(ing) < ing.amount and math.min(ing.amount * 2 - count(ing), m.fb[ing.name]) or 0
         if ing.type == "item" then give = math.floor(give) end
         if give > 0 then
           local done = ing.type == "item" and e.insert { name = ing.name, count = give }
