@@ -855,31 +855,59 @@ end
 -- where the factory's own supply falls short, without everything behind it starving too.
 local FEED_SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
   [defines.entity_status.fluid_ingredient_shortage] = true }
+local function feed_temperature(run, ing)
+  local cands = {}
+  for _, t in pairs((run.params.seed_temps or {})[ing.name] or {}) do cands[#cands + 1] = t end
+  cands[#cands + 1] = prototypes.fluid[ing.name].default_temperature
+  for _, c in ipairs(cands) do
+    if (ing.minimum_temperature == nil or c >= ing.minimum_temperature) and (ing.maximum_temperature == nil or c <= ing.maximum_temperature) then return c end
+  end
+  return ing.minimum_temperature or cands[1]
+end
+
+-- "full": as much as a warm start gives, whenever short (does the layout work with supply never short?). "plan": each
+-- machine at most its planned use (params.feed_rates, per second, from two crafts' worth at the start), so what was fed
+-- is what the factory's own supply left short of the plan.
 local function feed_short(run)
-  if not run.params.feed_short or game.tick % 60 ~= 0 then return end
+  local mode = run.params.feed_short
+  if not mode or game.tick % 60 ~= 0 then return end
   run.fed = run.fed or {}
   run.fed_measure = run.fed_measure or {}
+  local function record(ing, d)
+    local k = ing.type == "item" and ing.name or ("[" .. ing.name .. "]")
+    run.fed[k] = (run.fed[k] or 0) + d
+    if run.phase == "measure" then run.fed_measure[k] = (run.fed_measure[k] or 0) + d end
+  end
   for _, m in pairs(run.machines) do
     local e = m.e
-    if e.valid and FEED_SHORT[e.status] then
-      local r = e.get_recipe()
-      if r then pcall(function()
+    local r = e.valid and e.get_recipe()
+    if r then pcall(function()
+      local function count(ing) return ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0) end
+      if mode == "full" then
+        if not FEED_SHORT[e.status] then return end
         local before = {}
-        for _, ing in pairs(r.ingredients) do
-          before[ing.name] = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
-        end
+        for _, ing in pairs(r.ingredients) do before[ing.name] = count(ing) end
         warm_start(run, e, r)
-        for _, ing in pairs(r.ingredients) do
-          local now = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
-          local d = now - before[ing.name]
-          if d > 0 then
-            local k = ing.type == "item" and ing.name or ("[" .. ing.name .. "]")
-            run.fed[k] = (run.fed[k] or 0) + d
-            if run.phase == "measure" then run.fed_measure[k] = (run.fed_measure[k] or 0) + d end
-          end
+        for _, ing in pairs(r.ingredients) do local d = count(ing) - before[ing.name]; if d > 0 then record(ing, d) end end
+        return
+      end
+      local rates = (run.params.feed_rates or {})[r.name] or {}
+      m.fb = m.fb or {}
+      for _, ing in pairs(r.ingredients) do
+        local rate = rates[ing.name] or 0
+        m.fb[ing.name] = math.min((m.fb[ing.name] or ing.amount * 2) + rate, math.max(ing.amount * 2, rate * 60))
+      end
+      if not FEED_SHORT[e.status] then return end
+      for _, ing in pairs(r.ingredients) do
+        local give = math.min(ing.amount * 2 - count(ing), m.fb[ing.name])
+        if ing.type == "item" then give = math.floor(give) end
+        if give > 0 then
+          local done = ing.type == "item" and e.insert { name = ing.name, count = give }
+            or e.insert_fluid { name = ing.name, amount = give, temperature = feed_temperature(run, ing) }
+          if done and done > 0 then m.fb[ing.name] = m.fb[ing.name] - done; record(ing, done) end
         end
-      end) end
-    end
+      end
+    end) end
   end
 end
 

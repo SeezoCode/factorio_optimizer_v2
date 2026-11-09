@@ -499,9 +499,10 @@ def main():
                          "factory cannot look good by over-making one pack while starving another)")
     ap.add_argument("--dump", action="store_true", help="also write every belt's lanes, inserter and pipe to the report")
     ap.add_argument("--prime-all", action="store_true", help="warm start: every machine starts with two crafts' worth of its ingredients")
-    ap.add_argument("--feed-short", action="store_true",
-                    help="every machine standing short of an ingredient gets it, and what was fed is counted per item: what still "
-                         "stands is the layout's fault, what had to be fed is where the factory's own supply falls short")
+    ap.add_argument("--feed-short", nargs="?", const="plan", choices=["plan", "full"], default=None,
+                    help="every machine standing short of an ingredient gets it, counted per item: 'plan' (default) up to its "
+                         "planned use, so what was fed is where the factory's own supply falls short; 'full' as much as it takes, "
+                         "so what still stands is the layout's own fault")
     ap.add_argument("--governor", type=float, nargs="?", const=1.0, default=None, metavar="FACTOR",
                     help="steady state: a machine ahead of FACTOR (default 1) times its planned crafts (plus 3) waits while another "
                          "machine is short of one of its ingredients, as full buffers would make it; without it a consumer early on "
@@ -549,7 +550,16 @@ def main():
     if args.prime_all:
         params["prime_all"] = True
     if args.feed_short:
-        params["feed_short"] = True
+        params["feed_short"] = args.feed_short
+        fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        if fp and os.path.exists(fp):
+            rates = defaultdict(dict)
+            for m in json.load(open(fp)).get("machines", []):
+                rn = m["recipe"].split("#")[0].split("@")[0]
+                for item, rate in {**m.get("demand", {}), **m.get("fluidDemand", {})}.items():
+                    g = item.split("#")[0]
+                    rates[rn][g] = max(rates[rn].get(g, 0.0), rate)
+            params["feed_rates"] = dict(rates)
     if args.governor is not None:
         gp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
         if gp and os.path.exists(gp):
