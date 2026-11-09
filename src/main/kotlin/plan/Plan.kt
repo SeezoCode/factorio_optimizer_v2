@@ -164,12 +164,13 @@ fun inserterRate(name: String, config: RunConfiguration, fromBelt: Boolean, toBe
     val spec = GameConstants.inserter(name)
     val (normal, bulk) = GameConstants.handSizes(config.research.inserterCapacity)
     val hand = if (spec.bulk) bulk else normal
+    val f = config.inserters.speedFactor
     var rate = spec.baseRate * hand * (if (fromBelt) config.inserters.beltPickupDerate else 1.0)
-    if (!spec.bulk || hand <= 1) return rate
-    val belt = runCatching { GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput }.getOrNull() ?: return rate
+    if (!spec.bulk || hand <= 1) return rate * f
+    val belt = runCatching { GameConstants.beltTier(config.beltTier, config.beltStackSize).throughput }.getOrNull() ?: return rate * f
     if (fromBelt) rate = minOf(rate, hand / (1.0 / spec.baseRate + hand / (BULK_PICKUP_SHARE * belt)))
     if (toBelt && name != GameConstants.STACK_INSERTER) rate = minOf(rate, hand / (1.0 / spec.baseRate + hand / (BULK_DROP_SHARE * belt)))
-    return rate
+    return rate * f
 }
 
 /**

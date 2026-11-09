@@ -316,6 +316,11 @@ data class ConfigSource(
 data class InserterConfig(
     val allowed: List<String> = listOf("inserter", "long-handed-inserter", "fast-inserter"),
     @SerialName("belt_pickup_derate") val beltPickupDerate: Double = 0.7,
+    /**
+     * The speed the planner and router count every inserter at, as a share of its real one (below 1: more inserters, or
+     * faster ones, than the plan's rates need; the game runs them at full speed).
+     */
+    @SerialName("speed_factor") val speedFactor: Double = 1.0,
 )
 
 /**
