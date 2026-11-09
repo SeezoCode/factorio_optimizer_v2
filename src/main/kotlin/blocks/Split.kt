@@ -509,6 +509,12 @@ fun linksFor(
         if (overflow) makers.forEach { b ->
             if (flows.keys.none { it.first == b || it.second == b } && raw.none { it.item == net.item && (it.from == b || it.to == b) }) emit(b, EDGE, 0.0)
         }
+        // And from each block that receives it and makes none, after its own users (Py's logistic science: ash went
+        // from three blocks to one whose users stood still; with no way out, the burners' ash boxes filled and they
+        // stopped). 57 of its 222 overflows had no way out of the factory.
+        if (overflow) flows.keys.map { it.second }.filter { it >= 0 && it !in makers }.distinct().forEach { b ->
+            if (raw.none { it.item == net.item && it.from == b }) emit(b, EDGE, 0.0)
+        }
     }
 
     // Sides: a port faces what it connects to; sides whose ports leave the factory straight out take nothing else.

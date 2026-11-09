@@ -584,16 +584,16 @@ private fun carrier(p: String, machines: List<MachineInstance>, loopOf: Map<Stri
             val r = m.products.getValue(p)
             (m.demand + m.fluidDemand).any { (q, rq) -> q != p && q in loop && same(rq, r) }
         }) return false
-    // And back round to itself through one-for-one steps at one rate: a machine taking x at that rate and giving y at
-    // it (a sap tree mulched gives one sap seed, but a tree takes five: the loop grows, and its trees are no carrier).
-    val rate = makers.sumOf { it.products.getValue(p) }
+    // And back round to itself through one-for-one steps: machines each taking x and giving y at one rate (a sap tree
+    // mulched gives one sap seed, but a tree takes five: the loop grows, and its trees are no carrier). A step may be
+    // split over machines (Py science 1's bricks are warmed by two recipe variants at their own rates).
     val seen = hashSetOf(p); val queue = ArrayDeque(listOf(p))
     while (queue.isNotEmpty()) {
         val x = queue.removeFirst()
         machines.forEach { m ->
             val rx = m.demand[x] ?: m.fluidDemand[x] ?: return@forEach
             m.products.forEach { (y, ry) ->
-                if (y in loop && same(rx, ry) && (same(ry, rate) || makers.size > 1)) {
+                if (y in loop && same(rx, ry)) {
                     if (y == p) return true
                     if (seen.add(y)) queue += y
                 }

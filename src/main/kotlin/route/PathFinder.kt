@@ -1932,7 +1932,9 @@ class PathFinder(internal val p: RouteProblem) {
                 val ps = pending.remove(s).orEmpty()
                 val through = ps.firstOrNull()
                 if (through != null) addChain(net, mine + through.parts, s, through.srcRate + mine.sumOf { it.rate }, through.out, through.outRate, rectOf)
-                else if (mine.isNotEmpty()) addChain(net, mine, s, mine.sumOf { it.rate }, null, 0.0, rectOf)
+                // With nothing made here, an overflow ends the chain the port feeds, past its consumers: what they
+                // leave goes out (an item a block only receives; see Split's overflows).
+                else if (mine.isNotEmpty()) addChain(net, mine, s, mine.sumOf { it.rate }, if (producers.isEmpty()) overflowOuts.removeFirstOrNull() else null, 0.0, rectOf)
                 else idleSources += s
                 // More outputs passing through this port still get chains: their output ports must exist (a second
                 // belt at the port fails the trial's one-belt check rather than leaving an output out).

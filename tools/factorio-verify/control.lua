@@ -101,6 +101,22 @@ end
 -- (params.seeds, plan.json "seeds", e.g. Py's farms feeding each other) too. Only what the machine is short of: this
 -- runs again through the first half of the warm-up (see seed_tick), which starts loops whose crafts do not line up (Py's
 -- ammonia -> formamide -> formic acid -> ammonia). Returns whether the machine takes any of them.
+-- Whether a machine making [item] stands with a full output: adding more of a ring's carrier would gridlock it.
+local function ring_jammed(run, item)
+  run.carrier_makers = run.carrier_makers or {}
+  local ms = run.carrier_makers[item]
+  if not ms then
+    ms = {}
+    for _, m in pairs(run.machines or {}) do
+      local r = m.recipe and prototypes.recipe[m.recipe]
+      if r then for _, p in pairs(r.products) do if p.name == item then ms[#ms + 1] = m.e end end end
+    end
+    run.carrier_makers[item] = ms
+  end
+  for _, e in pairs(ms) do if e.valid and e.status == defines.entity_status.full_output then return true end end
+  return false
+end
+
 local function prime(run, e, r, crafted, rec)
   local back, made_at, seeded = {}, {}, {}
   for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature end
@@ -111,10 +127,12 @@ local function prime(run, e, r, crafted, rec)
   for _, ing in pairs(r.ingredients) do
     if back[ing.name] then
       any = true
-      if ing.type == "item" and crafted and carrier[ing.name] then
-        -- (a loop that has started: what it only passes round stays as it is)
+      if ing.type == "item" and crafted and carrier[ing.name] and (ring_jammed(run, ing.name) or (rec and (rec.carrier_topups or 0) >= 5)) then
+        -- (a loop that has started: what it only passes round is added to only while none of its makers stands full,
+        -- and at most five times: too many gridlock the ring, too few starve it, and a fixed amount fits no ring)
       elseif ing.type == "item" then
         local want = math.ceil(ing.amount * (carrier[ing.name] and 1.5 or (seeded[ing.name] and 5 or 2)))
+        if crafted and carrier[ing.name] and rec then rec.carrier_topups = (rec.carrier_topups or 0) + 1 end
         -- (A catalyst the machine also gives to others, Py's moss farm's coarse, is topped up like a seed: the
         -- classifier took the first batch and the farm stood short of the 15 it needs.)
         pcall(function()
@@ -395,6 +413,14 @@ local function flows(run, counting)
       if r then for _, p in pairs(r.products) do
         if overflow[p.name] then run.makers[p.name] = run.makers[p.name] or {}; table.insert(run.makers[p.name], m.e) end
       end end
+      -- A burner makes its fuel's burnt result too (Py's ash).
+      pcall(function()
+        local inv = m.e.get_inventory(defines.inventory.fuel)
+        for _, it in pairs(inv and inv.get_contents() or {}) do
+          local b = prototypes.item[it.name] and prototypes.item[it.name].burnt_result
+          if b and overflow[b.name] then run.makers[b.name] = run.makers[b.name] or {}; table.insert(run.makers[b.name], m.e) end
+        end
+      end)
     end
   end
   -- A surplus: some maker of the item stands with a full output (an item no machine here is known to make: the belt
@@ -402,7 +428,9 @@ local function flows(run, counting)
   local function surplus(item)
     local ms = run.makers[item]
     if not ms or #ms == 0 then return true end
-    for _, e in pairs(ms) do if e.valid and e.status == defines.entity_status.full_output then return true end end
+    for _, e in pairs(ms) do
+      if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output) then return true end
+    end
     return false
   end
   for _, s in pairs(run.sinks) do

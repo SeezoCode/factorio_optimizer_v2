@@ -5,6 +5,7 @@ import com.google.ortools.linearsolver.MPSolver
 import config.PlannerTuning
 import config.RunConfiguration
 import data.FurnaceEntity
+import data.GameConstants
 import data.RocketSiloEntity
 import data.AssemblingMachineEntity
 import data.Recipe
@@ -228,9 +229,12 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         if (main != null && main in sourced) return@mapNotNull null
         // recipe_overrides: only the chosen recipe may make that item.
         if (overrides.any { (item, chosen) -> chosen != r.name && r.products.any { it.name == item } }) return@mapNotNull null
-        // A farm with no module it can take does not work.
+        // A farm with no module it can take does not work. A furnace-type machine picks its recipe from what comes in:
+        // a recipe it shares its ingredients with another of the machine's is not one it can be told to make (Py's
+        // compost plant took sporopollenin for biomass, not the planned fungal substrate).
         val m = machines.firstOrNull { r.inAny(data.craftingCategories(it)) && (!needsModules(data, it) || farmModule(data, it, r) != null) &&
-            fixedRecipeOf(data, it).let { f -> f == null || f == gameName(r.name) } } ?: return@mapNotNull null
+            fixedRecipeOf(data, it).let { f -> f == null || f == gameName(r.name) } &&
+            (GameConstants.takesRecipe(it) || !furnaceAmbiguous(data, r, it)) } ?: return@mapNotNull null
         // Modules and the planned beacons make the machine faster (see Modules.kt).
         RecipeChoice(r, m, moduleSpeed(data, config, r, m, plannedBeacons(data, config, r, m)))
     }
@@ -473,4 +477,15 @@ private fun fixedCharge(
     val st = solver.solve()
     if (st != MPSolver.ResultStatus.OPTIMAL && st != MPSolver.ResultStatus.FEASIBLE) return null
     return Triple(x.mapValues { it.value.solutionValue() }, s.mapValues { it.value.solutionValue() }, out.mapValues { it.value.solutionValue() })
+}
+
+
+/** Whether another recipe [machine] (a furnace: it picks its recipe from its input) can make takes the same items as [r]. */
+private fun furnaceAmbiguous(data: RootData, r: Recipe, machine: String): Boolean {
+    val cats = data.craftingCategories(machine)
+    // Fluids count: Py's barrel machine fills a barrel with whatever fluid it is given.
+    fun takes(x: Recipe) = x.ingredients.map { gameName(it.name) }.toSet()
+    val mine = takes(r)
+    if (r.ingredients.none { !it.isFluid }) return false
+    return data.recipes.values.any { o -> o.name != r.name && gameName(o.name) != gameName(r.name) && o.hidden != true && o.inAny(cats) && takes(o) == mine }
 }
