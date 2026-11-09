@@ -45,6 +45,19 @@ class ValidatorTest {
     }
 
     @Test
+    fun `an inserter with more filters than slots is caught`() {
+        // Py logistic science: the game left out a long-handed inserter given a 7-item blacklist (it has 3 slots there).
+        val many = listOf("bones", "brain", "cage", "guts", "meat", "mukmoux-fat", "skin")
+        val layout = Layout(8, 8, listOf(
+            PlacedEntity("long-handed-inserter", geom.Kind.INSERTER, 2, 2, Dir.N, blacklist = many),
+            PlacedEntity("fast-inserter", geom.Kind.INSERTER, 5, 2, Dir.N, blacklist = many.take(2)),
+        ))
+        val errors = check("filter_slots", layout, base)
+        assertTrue(errors.any { it.type == ErrorType.UNSUPPORTED && it.tile == Tile(2, 2) && "filter slots" in it.message }, "$errors")
+        assertTrue(errors.none { it.type == ErrorType.UNSUPPORTED && it.tile == Tile(5, 2) }, "$errors")
+    }
+
+    @Test
     fun `a dead end into another net's belt contaminates it`() {
         val layout = Layout(8, 8, listOf(
             belt(3, 0, Dir.S, 1), belt(3, 1, Dir.S, 1), belt(3, 2, Dir.S, 1), belt(3, 3, Dir.S, 1),

@@ -183,6 +183,12 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 }
             }
         }
+        // The game drops an inserter given more filters than it has slots (Py's long-handed inserter has 3).
+        ents.filter { it.kind == Kind.INSERTER && (it.item != null || it.blacklist != null) }.forEach { ins ->
+            val slots = GameConstants.INSERTERS[ins.name]?.filterSlots ?: return@forEach
+            val filters = ins.blacklist?.size ?: 1
+            if (filters > slots) err(ErrorType.UNSUPPORTED, ins.tile, "${ins.name} has $filters filters but $slots filter slots: the game leaves it out")
+        }
     }
 
     // ---- 3. underground pairing, simulated with the game's nearest-same-axis rule ----

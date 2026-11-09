@@ -1681,6 +1681,20 @@ class PathFinder(internal val p: RouteProblem) {
             ?: allowed.maxByOrNull { inserterRate(it, config, fromBelt, ontoBelt) }!!
     }
 
+    /**
+     * [name], or an allowed inserter of its reach with slots for [filters] filters: the game drops an inserter given
+     * more than it has (Py logistic science: a long-handed inserter, 3 slots, with a 7-item blacklist never got built,
+     * its slaughterhouse's pineal glands never left, and the whole factory stood).
+     */
+    private fun withFilterSlots(name: String, filters: Int): String {
+        val spec = GameConstants.inserter(name)
+        if (filters <= spec.filterSlots) return name
+        return config.inserters.allowed.mapNotNull { GameConstants.INSERTERS[it] }
+            .filter { it.reach == spec.reach && it.filterSlots >= filters && it.baseRate >= spec.baseRate - 1e-9 }
+            .minByOrNull { it.tierCost }?.name
+            ?: name.also { log += "no allowed inserter of reach ${spec.reach} has $filters filter slots ($name has ${spec.filterSlots}): the game drops it" }
+    }
+
     private fun entities(): List<PlacedEntity> {
         val out = ArrayList<PlacedEntity>()
         // An inserter taking from a machine with several item products is filtered to the one it carries.
@@ -1701,7 +1715,9 @@ class PathFinder(internal val p: RouteProblem) {
         di.forEach { link ->
             val share = link.flow / link.tiles.size
             val name = chooseInserter(share, fromBelt = false, long = link.long)
-            link.tiles.forEach { out += PlacedEntity(name, Kind.INSERTER, it.x, it.y, link.insDir, item = filterFor(link.producer, link.item)) }
+            val filter = filterFor(link.producer, link.item)
+            val named = withFilterSlots(name, if (filter != null) 1 else 0)
+            link.tiles.forEach { out += PlacedEntity(named, Kind.INSERTER, it.x, it.y, link.insDir, item = filter) }
         }
         nets.forEach { n ->
             val r = routed[n.idx] ?: return@forEach
@@ -1723,20 +1739,24 @@ class PathFinder(internal val p: RouteProblem) {
                 val name = chooseInserter(v.rate / v.k, fromBelt = v.role == Role.CONSUMER, long = opt.long, ontoBelt = v.role == Role.PRODUCER)
                 // A recycler takes whatever it is given: its inserters are filtered to what it should recycle.
                 val mixedOut = v.role == Role.PRODUCER && v.base.item in mixedNames
+                // Onto a mixed belt: one inserter takes every product that goes there, the machine's others left out: a
+                // filter of the one product when only one goes there (fewest filters), else a blacklist of the others.
+                val products = if (mixedOut) plan.machines[v.machine!!].itemProducts.keys else emptySet()
+                val toMixed = products.filter { plan.mixed[it] == v.base.item }.sorted()
                 val item = if (v.role == Role.CONSUMER) v.base.item.takeIf { v.machine != null && plan.machines[v.machine!!].machine == "recycler" }
-                    else if (mixedOut) null else filterFor(v.machine, v.base.item)
-                // Onto a mixed belt: one inserter takes every product that goes there, the machine's others left out.
-                val blacklist = if (!mixedOut) null else plan.machines[v.machine!!].itemProducts.keys.filter { plan.mixed[it] != v.base.item }.sorted().ifEmpty { null }
+                    else if (mixedOut) toMixed.singleOrNull()?.takeIf { products.size > 1 } else filterFor(v.machine, v.base.item)
+                val blacklist = if (!mixedOut || toMixed.size == 1) null else products.filter { plan.mixed[it] != v.base.item }.sorted().ifEmpty { null }
                 // Spoilage: out of a machine of several products that holds something spoiling, an inserter leaves the
                 // other products in (a blacklist) and so takes its own and the spoilage.
                 val spoilOut = blacklist == null && item != null && v.role == Role.PRODUCER && config.spoilage.mode == "drain" &&
                     v.machine != null && spoilProne(plan.machines[v.machine!!])
                 if (spoilOut) {
                     val others = plan.machines[v.machine!!].itemProducts.keys.filter { it != item }.sorted()
-                    out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, net = n.planId, blacklist = others)
+                    out += PlacedEntity(withFilterSlots(name, others.size), Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, net = n.planId, blacklist = others)
                     return@forEach
                 }
-                out += PlacedEntity(name, Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId, blacklist = blacklist)
+                val filters = if (item != null) 1 else blacklist?.size ?: 0
+                out += PlacedEntity(withFilterSlots(name, filters), Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId, blacklist = blacklist)
             }
         }
         pipes?.let { out += it.entities() }

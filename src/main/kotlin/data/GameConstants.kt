@@ -76,6 +76,8 @@ object GameConstants {
         val bulk: Boolean = false,
         /** Relative cost used when picking the cheapest type that meets a rate. */
         val tierCost: Int,
+        /** Filter slots: the game drops an inserter given more filters than this (Py: 2 for the inserter, 3 long-handed). */
+        val filterSlots: Int = if (filterable) 5 else 0,
     )
 
     /** The base game's values (hand-checked); loaded exporter data may change them ([register]). */
@@ -461,8 +463,10 @@ object GameConstants {
             val reach = kotlin.math.round(kotlin.math.abs(i.pickup.y)).toInt().coerceAtLeast(1)
             val swing = i.rotationSpeed * 60
             val known = BASE_INSERTERS[i.name]
-            if (known != null) known.copy(reach = reach, baseRate = if (kotlin.math.abs(swing - known.baseRate) <= 0.15) known.baseRate else swing)
-            else InserterSpec(i.name, reach, (i.filterCount ?: 0) > 0, swing, bulk = i.bulk == true, tierCost = 10 + (i.rotationSpeed * 100).toInt())
+            val slots = i.filterCount ?: known?.filterSlots ?: 0
+            if (known != null) known.copy(reach = reach, baseRate = if (kotlin.math.abs(swing - known.baseRate) <= 0.15) known.baseRate else swing,
+                filterable = slots > 0, filterSlots = slots)
+            else InserterSpec(i.name, reach, slots > 0, swing, bulk = i.bulk == true, tierCost = 10 + (i.rotationSpeed * 100).toInt(), filterSlots = slots)
         }.associateBy { it.name }
         POLES = BASE_POLES + lg.poles.orEmpty().filter { it.hidden != true }.map { PoleSpec(it.name, it.width, it.supplyAreaDistance, it.maxWireDistance) }.associateBy { it.name }
     }
