@@ -1343,8 +1343,11 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             if (want == null) err(ErrorType.CIRCUIT, ents[m].tile, "${ents[m].recipe} works on a $f condition but takes no $f from pipes")
             else if (wired.none { tankRoots[it] == want }) err(ErrorType.CIRCUIT, ents[m].tile, "${ents[m].recipe} works on a $f condition but no tank or pipe on its $f pipes is wired to it")
         }
-        connList.forEachIndexed { k, (m, c) ->
-            val f = c.fluid ?: return@forEachIndexed
+        // Per box: one with two connections (Py's soil extractor) is fed through either.
+        connList.withIndex().groupBy { (_, mc) -> Triple(mc.first, mc.second.flow, mc.second.index) }.values.forEach { box ->
+            val k = box.firstOrNull { attached[it.index] }?.index ?: box.first().index
+            val (m, c) = connList[k]
+            val f = c.fluid ?: return@forEach
             val r = find(ents.size + k)
             val linked = attached[k]
             val tiny = machineInfo(ents[m])?.fluidDemand?.get(f)?.let { it <= TINY_RATE } == true
