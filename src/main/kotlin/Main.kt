@@ -111,6 +111,10 @@ fun main(args: Array<String>) {
             untilStopped = flags.containsKey("until-stopped"))
         println(if (f == null) "factory: no result" else "factory: ${f.layout.w}x${f.layout.h} score ${"%.1f".format(f.score)}, " +
             if (f.success) "valid" else "${f.errors.size} validation errors")
+        // Done: a preview stitch still widening on another thread must not keep the program alive (Py logistic science's
+        // ran on for over an hour after its factory was saved, and the in-game check behind it never started).
+        System.out.flush()
+        kotlin.system.exitProcess(0)
     } else search.runSearch(data, config, tuning, plan, out)
 }
 
