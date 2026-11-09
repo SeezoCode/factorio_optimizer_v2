@@ -1107,6 +1107,54 @@ it: the end of a belt past its last inserter stands still in a working factory t
 included, goes to `<out>/verify_report.json`. Mods come from the job's `data` file (`--mods`, `--no-space-age`
 to override), and the job's `research` and `belt_stack_size` are applied to the game.
 
+#### Starting a deep factory, and controlling its flow
+
+A big modded factory (Py's logistic science: 325 machines, breeding and barrel loops, crafts every hour or three)
+neither starts nor settles in a few game hours on its own, so the check has modes for both. None of them change the
+blueprint: they are the check's own help or control, run by the verify mod.
+
+- **Seeds** (always): items the plan's production loops need to start (`plan.json` "seeds") are put into the machines
+  that take them, and topped up while the warm-up runs and their machine stands short. A loop's carriers (barrels,
+  cages, heat bricks: every item its ring passes on one for one) get one craft's worth once and nothing after; too
+  many lock a ring of machines passing items hand to hand.
+- `--prime-all`: a warm start. Every machine gets two crafts' worth of what it takes (one of a carrier), burners five
+  of their fuel. Furnace-type machines have no recipe until something arrives; their planned recipe comes along in the
+  blueprint as a tag.
+- `--feed-short [plan|full]`: every machine that has stood short for a while (10 s, or two of its planned crafts' time)
+  gets the ingredient it lacks, at most its planned use (`plan`, the default), or as much as it takes (`full`). The
+  report then lists what was fed per second next to the plan's use: with supply never short, what still stands is the
+  layout's own fault, and what had to be fed is where the factory's own supply falls short.
+- `--feed-stop S`: feed for the first S game seconds only, as a player fills a new factory's loops by hand, then see
+  whether it keeps itself going.
+- `--governor [F]`: a machine ahead of F times its plan (default 2) plus 10 crafts waits while a machine on the same
+  belt network stands short of one of its ingredients. It holds back the corridors' filling as well, and has not
+  helped so far.
+- `--pull`: production follows demand. A machine runs only while a machine that uses one of its products stands short
+  of it (on a belt network it drops onto, a machine it hands to directly; for a fluid, anywhere; a burner without fuel
+  counts as short of its fuel), or it makes a target. A machine whose every product has a way out (overflows, drained
+  by-products) otherwise never stops and eats inputs others need.
+- `--flow`: `--pull` plus quotas (a machine that has taken more of an item than 1.5 times its planned intake, plus two
+  crafts' worth, has the inserters bringing it stopped while another machine on the same belt waits for it), overflows
+  that keep an item while a machine on their belt waits for it, and belt gates (the belt just past an overflow's last
+  user stops while a user upstream waits, so items queue in front of their users instead of passing them).
+
+The progress lines show the machines working, the targets' crafts so far, and what flow control holds back. "Machines
+finished nothing" counts only machines the plan has crafting at least once while measured, and machines under half
+their plan are listed. Under `--pull` and `--flow` most machines stand switched off at any moment; that is the point.
+
+With `--dump` (and a mod recording belt networks: the current one does), these help find why:
+
+```
+python3 tools/factorio-verify/why.py out logistic-science-pack --recipes data/pyanodon.json --depth 12   # what each machine waits for, down the chain
+python3 tools/factorio-verify/nets.py out sand                                                           # each belt network of an item: makers, users, items on it, edge ports
+python3 tools/factorio-verify/stall.py out --recipes data/pyanodon.json                                  # items idle machines are short of
+python3 tools/factorio-verify/pipes.py out                                                               # fluid boxes joined to a pipe of another fluid
+```
+
+Py's logistic science so far (warm start, 4 hours' warm-up, 20 minutes measured): on its own 0 to 33% of its 0.02/s
+(it varies from run to run); with `--flow` 58 to 63%; fed up to its plan, 100%. Py science 1 and automation science
+pass on their own. See `docs/NIGHT_LOG_2026-11-09.md` for what each mode found.
+
 Tried so far: small vanilla test runs (red and green science, circuits from ore, plastic from oil with cracking,
 uncommon gears with quality modules and a mixed output belt, processing units) pass, and so does the Krastorio 2
 plastic job (40/s planned from three advanced chemical plants; the game makes 45/s, as every machine runs flat out).
