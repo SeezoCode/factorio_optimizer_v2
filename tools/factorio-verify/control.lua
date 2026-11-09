@@ -103,7 +103,24 @@ end
 -- ammonia -> formamide -> formic acid -> ammonia). Returns whether the machine takes any of them.
 -- A warm start (params.prime_all): two crafts' worth of each ingredient (one of a carrier); fluids at a temperature
 -- the recipe takes (a product's of the same name, a seeded one, or the fluid's default).
+-- Items the plan has a machine of recipe [r] take that the recipe does not: its fuel (a burner's biomass, coal).
+local function fuel_items(run, r)
+  local out = {}
+  local ings = {}
+  for _, ing in pairs(r.ingredients) do ings[ing.name] = true end
+  for item in pairs((run.params.demand_of or {})[r.name] or {}) do
+    if not ings[item] and prototypes.item[item] then out[#out + 1] = item end
+  end
+  return out
+end
+
 local function warm_start(run, e, r)
+  -- A burner's fuel too (it only ever got the recipe's ingredients: Py logistic science's biomass powerplant, heating
+  -- the molten salt the outlet gas ring is reheated with, never ran).
+  pcall(function()
+    local fuel = e.get_fuel_inventory()
+    if fuel then for _, f in pairs(fuel_items(run, r)) do if fuel.get_item_count(f) < 5 then fuel.insert { name = f, count = 5 } end end end
+  end)
   local carrier = {}
   for _, name in pairs(run.params.seed_carriers or {}) do carrier[name] = true end
   for _, ing in pairs(r.ingredients) do
@@ -985,22 +1002,25 @@ script.on_event(defines.events.on_tick, function()
   -- it, machine -> items it waits for, fluids one waits for. (A machine switched off waits for nothing.)
   if (run.params.pull or run.params.flow) and game.tick % 60 == 0 and run.drops then
     local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
-      [defines.entity_status.fluid_ingredient_shortage] = true }
+      [defines.entity_status.fluid_ingredient_shortage] = true, [defines.entity_status.no_fuel] = true }
     local short_net, short_at, short_fluid = {}, {}, {}
+    local function wait_for(e, item)
+      local sn = short_net[item] or {}
+      for net in pairs((run.feeds or {})[e.unit_number] or {}) do sn[net] = true end
+      short_net[item] = sn
+      short_at[e.unit_number] = short_at[e.unit_number] or {}
+      short_at[e.unit_number][item] = true
+    end
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid and not e.disabled_by_script and SHORT[e.status] then
         local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         if r then
+          -- (A burner without fuel waits for its fuel, which is no ingredient of the recipe.)
+          if e.status == defines.entity_status.no_fuel then for _, f in pairs(fuel_items(run, r)) do wait_for(e, f) end end
           for _, ing in pairs(r.ingredients) do
             if ing.type == "item" then
-              if e.get_item_count(ing.name) < ing.amount then
-                local sn = short_net[ing.name] or {}
-                for net in pairs((run.feeds or {})[e.unit_number] or {}) do sn[net] = true end
-                short_net[ing.name] = sn
-                short_at[e.unit_number] = short_at[e.unit_number] or {}
-                short_at[e.unit_number][ing.name] = true
-              end
+              if e.get_item_count(ing.name) < ing.amount then wait_for(e, ing.name) end
             elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
               short_fluid[ing.name] = true
             end

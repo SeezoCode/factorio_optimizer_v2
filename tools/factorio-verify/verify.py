@@ -559,6 +559,17 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
+    # Each recipe's planned intake per machine (items), fuel included: what a burner without fuel waits for, and what a
+    # warm start puts in its fuel slot.
+    dp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    if dp and os.path.exists(dp):
+        demand_of = defaultdict(dict)
+        for m in json.load(open(dp)).get("machines", []):
+            rn = m["recipe"].split("#")[0].split("@")[0]
+            for item, rate in m.get("demand", {}).items():
+                g = item.split("#")[0]
+                demand_of[rn][g] = max(demand_of[rn].get(g, 0.0), rate)
+        params["demand_of"] = dict(demand_of)
     if args.flow:
         args.pull = True
         params["flow"] = True
