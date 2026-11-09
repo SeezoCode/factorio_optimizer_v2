@@ -618,6 +618,27 @@ def main():
                                         seen.add(y); todo.append(y)
                     return False
                 carrier_names = [x for x in raw if one_for_one(x)]
+            # And every item on their rings (one-for-one steps from them): Py's heat bricks are seeded as the warm ones,
+            # and the stone bricks the same ring passes on got a warm start's two crafts' worth on top (Py science 2: 74
+            # bricks in a two-machine ring, both outputs full, each machine waiting for the other).
+            ms_all = plan_json.get("machines", [])
+            def reach(item):
+                def same(a, b): return abs(a - b) <= 1e-6 * max(a, b) + 1e-12
+                seen, todo = {item}, [item]
+                while todo:
+                    x = todo.pop()
+                    for m in ms_all:
+                        rx = m.get("demand", {}).get(x, m.get("fluidDemand", {}).get(x))
+                        if rx is None:
+                            continue
+                        for y, ry in m.get("products", {}).items():
+                            if y not in seen and same(rx, ry):
+                                seen.add(y); todo.append(y)
+                return seen
+            # (Only items that lead back round to it: rates that merely happen to match took in brains and cages.)
+            def ring(item):
+                return {y for y in reach(item) if item in reach(y)}
+            carrier_names = sorted({y for c in carrier_names for y in ring(c)})
             carriers = sorted({s.split("#")[0] for s in carrier_names})
             # Each recipe's planned use of each seed per machine: top-ups keep within it (with room to start up).
             # (Every ingredient: catalysts are topped up too, within the same cap.)
