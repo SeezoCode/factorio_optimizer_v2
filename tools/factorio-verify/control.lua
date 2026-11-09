@@ -823,20 +823,45 @@ script.on_event(defines.events.on_tick, function()
     end
   end
   seed_tick(run)
-  -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of 1.5x its plan (plus 3 crafts to start)
-  -- waits, as it would once the belts and pipes after it were full (a consumer early on a belt whose output fills hours
-  -- of pipe otherwise takes everything that consumers further on need).
+  -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (1) times its plan,
+  -- plus 3 crafts, waits while another machine stands short of one of its item ingredients: it takes no more than its
+  -- share while others go without, as it would once the belts and pipes after it were full (Py logistic science: a
+  -- zogna incubator early on the petri-dish belt, its fluid filling a 250-tile pipe, ran at 7.6 times its plan and
+  -- took every dish the bacteria machine further on waited for). Holding every machine ahead of 1.5 times its plan
+  -- instead also slowed the loops that must run ahead to fill up (bones and bonemeal, barrels), and they jammed.
   if run.params.governor and game.tick % 60 == 0 then
     local secs = (game.tick - run.t0) / 60
+    local factor = run.params.governor_factor or 1
+    local starved = {}
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      if e.valid and (e.status == defines.entity_status.item_ingredient_shortage or e.status == defines.entity_status.no_ingredients) then
+        local r = e.get_recipe()
+        local inv = r and e.get_inventory(defines.inventory.crafter_input)
+        if inv then
+          for _, ing in pairs(r.ingredients) do
+            if ing.type == "item" and inv.get_item_count(ing.name) < ing.amount then starved[ing.name] = true end
+          end
+        end
+      end
+    end
+    run.held = 0
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid then
         local r = e.get_recipe()
         local g = r and run.params.governor[r.name]
+        local hold = false
         if g then
           m.gov0 = m.gov0 or e.products_finished
-          e.disabled_by_script = e.products_finished - m.gov0 > g * secs * 1.5 + 3
+          if e.products_finished - m.gov0 > g * secs * factor + 3 then
+            for _, ing in pairs(r.ingredients) do
+              if ing.type == "item" and starved[ing.name] then hold = true; break end
+            end
+          end
         end
+        if hold then run.held = run.held + 1 end
+        if hold or e.disabled_by_script then e.disabled_by_script = hold end
       end
     end
   end

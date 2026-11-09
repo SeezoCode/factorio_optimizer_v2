@@ -290,6 +290,18 @@ def fmt(v):
     return f"{v:.3f}".rstrip("0").rstrip(".") if v else "0"
 
 
+def planned_crafts(args):
+    """Recipe -> planned crafts per second of one of its machines (the mean over the plan's machines), from plan.json."""
+    path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    if not path or not os.path.exists(path):
+        return {}
+    tot, n = defaultdict(float), defaultdict(int)
+    for m in json.load(open(path)).get("machines", []):
+        r = m["recipe"].split("#")[0].split("@")[0]
+        tot[r] += m.get("crafts", 0.0); n[r] += 1
+    return {r: tot[r] / n[r] for r in tot}
+
+
 def judge(report, ports, args):
     """Prints the report; returns the list of failures."""
     fails, notes = [], []
@@ -326,8 +338,24 @@ def judge(report, ports, args):
         for m in sorted(listed, key=lambda m: (m["y"], m["x"])):
             print(f"  {'(%g,%g)' % (m['x'], m['y']):>14}  {m['name']:28} {(m.get('recipe') or '-'):34} {m['crafts']:>6} "
                   f"{m['crafts_per_min']:>7.2f} {m['progress']:>8.2f}  {m['status']} ({m['usual_status']})")
-    dead = [m for m in machines if m["crafts"] == 0]
-    dead_msg = f"{len(dead)} machines finished nothing while measured" if dead else None
+    # Against the plan (plan.json: crafts per second of each machine, by recipe): a Py machine at 0.0001 crafts/s makes
+    # nothing in 20 minutes as planned, so "finished nothing" counts only machines planned to craft at least once.
+    planned = planned_crafts(args)
+    def expected(m):
+        r = (m.get("recipe") or "").split("#")[0].split("@")[0]
+        return planned[r] * secs if r in planned else None
+    if planned:
+        dead = [m for m in machines if m["crafts"] == 0 and (expected(m) is None or expected(m) >= 1)]
+        slow = [m for m in machines if expected(m) is not None and expected(m) >= 2 and 0 < m["crafts"] < 0.5 * expected(m)]
+        quiet = sum(1 for m in machines if m["crafts"] == 0) - len(dead)
+        dead_msg = (f"{len(dead)} machines finished nothing while measured, of those planned to craft at least once "
+                    f"({quiet} more were planned to craft less than once)") if dead else None
+        if slow:
+            notes.append(f"{len(slow)} machines made under half their planned crafts: " +
+                         ", ".join(f"{m.get('recipe')} {m['crafts']}/{expected(m):.0f}" for m in sorted(slow, key=lambda m: m['crafts'] / expected(m))[:12]))
+    else:
+        dead = [m for m in machines if m["crafts"] == 0]
+        dead_msg = f"{len(dead)} machines finished nothing while measured" if dead else None
     no_recipe = [m for m in machines if not m.get("recipe")]
     if no_recipe:
         fails.append(f"{len(no_recipe)} machines have no recipe")
@@ -447,9 +475,10 @@ def main():
                          "factory cannot look good by over-making one pack while starving another)")
     ap.add_argument("--dump", action="store_true", help="also write every belt's lanes, inserter and pipe to the report")
     ap.add_argument("--prime-all", action="store_true", help="warm start: every machine starts with two crafts' worth of its ingredients")
-    ap.add_argument("--governor", action="store_true",
-                    help="steady state: hold each machine to 1.5x its planned crafts (plus 3 to start), as full buffers would; "
-                         "without it a consumer early on a belt whose output fills hours of pipe takes everything first")
+    ap.add_argument("--governor", type=float, nargs="?", const=1.0, default=None, metavar="FACTOR",
+                    help="steady state: a machine ahead of FACTOR (default 1) times its planned crafts (plus 3) waits while another "
+                         "machine is short of one of its ingredients, as full buffers would make it; without it a consumer early on "
+                         "a belt whose output fills hours of pipe takes everything first")
     ap.add_argument("--keep", action="store_true", help="keep the temporary game folder (log, save)")
     args = ap.parse_args()
 
@@ -492,7 +521,7 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
-    if args.governor:
+    if args.governor is not None:
         gp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
         if gp and os.path.exists(gp):
             per = defaultdict(float)
@@ -500,7 +529,8 @@ def main():
                 rn = m["recipe"].split("#")[0].split("@")[0]
                 per[rn] = max(per[rn], m.get("crafts", 0.0))
             params["governor"] = {k: v for k, v in per.items() if v > 0}
-            print(f"governor: {len(per)} recipes held to 1.5x their planned crafts")
+            params["governor_factor"] = args.governor
+            print(f"governor: a machine ahead of {args.governor:g}x its planned crafts waits while another is short of its ingredients")
     # Production loops the planner found (plan.json "seeds"): their machines get a few crafts' worth to start with.
     plan_path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
     if plan_path and os.path.exists(plan_path):
