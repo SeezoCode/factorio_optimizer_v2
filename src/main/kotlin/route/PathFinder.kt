@@ -1744,8 +1744,9 @@ class PathFinder(internal val p: RouteProblem) {
                 val products = if (mixedOut) plan.machines[v.machine!!].itemProducts.keys else emptySet()
                 val toMixed = products.filter { plan.mixed[it] == v.base.item }.sorted()
                 val item = if (v.role == Role.CONSUMER) v.base.item.takeIf { v.machine != null && plan.machines[v.machine!!].machine == "recycler" }
-                    else if (mixedOut) toMixed.singleOrNull()?.takeIf { products.size > 1 } else filterFor(v.machine, v.base.item)
-                val blacklist = if (!mixedOut || toMixed.size == 1) null else products.filter { plan.mixed[it] != v.base.item }.sorted().ifEmpty { null }
+                    // (By the game's name: a raw by-product is "stone#byproduct" here, "stone" to the machine and the game.)
+                    else if (mixedOut) toMixed.singleOrNull()?.takeIf { products.size > 1 }?.let { data.gameName(it) } else filterFor(v.machine, v.base.item)
+                val blacklist = if (!mixedOut || toMixed.size == 1) null else products.filter { plan.mixed[it] != v.base.item }.map { data.gameName(it) }.distinct().sorted().ifEmpty { null }
                 // Spoilage: out of a machine of several products that holds something spoiling, an inserter leaves the
                 // other products in (a blacklist) and so takes its own and the spoilage.
                 val spoilOut = blacklist == null && item != null && v.role == Role.PRODUCER && config.spoilage.mode == "drain" &&

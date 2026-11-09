@@ -3,6 +3,7 @@ import geom.Dir
 import geom.Layout
 import geom.PlacedEntity
 import geom.Tile
+import geom.pickupTile
 import validate.ErrorType
 import validate.MachineSpec
 import validate.OutputSpec
@@ -55,6 +56,22 @@ class ValidatorTest {
         val errors = check("filter_slots", layout, base)
         assertTrue(errors.any { it.type == ErrorType.UNSUPPORTED && it.tile == Tile(2, 2) && "filter slots" in it.message }, "$errors")
         assertTrue(errors.none { it.type == ErrorType.UNSUPPORTED && it.tile == Tile(5, 2) }, "$errors")
+    }
+
+    @Test
+    fun `a filter of the one product a machine sends to the mixed belt takes the belt's share`() {
+        // Py logistic science: the slaughterhouse's pineal glands (and crushers' stone#byproduct) leave on the mixed belt;
+        // the plan counts them as the belt's product, the inserter is filtered to the item itself (by the game's name).
+        val machine = e("assembling-machine-3", 2, 0, recipe = "iron-gear-wheel")
+        val out = listOf(Dir.N, Dir.S, Dir.E, Dir.W).map { e("fast-inserter", 3, 3, it) }.first { it.pickupTile.y in 0..2 && it.pickupTile.x in 2..4 }
+        val mi = MachineSpec("iron-gear-wheel", setOf("iron-plate"), products = mapOf("iron-gear-wheel" to 1.0, "mixed-1" to 0.5),
+            filterAliases = mapOf("stone#byproduct" to "mixed-1", "stone" to "mixed-1"))
+        val layout = Layout(8, 8, listOf(machine, out.copy(item = "stone")))
+        val errors = check("mixed_filter", layout, base.copy(machines = mapOf(Tile(2, 0) to mi)))
+        assertTrue(errors.none { it.type == ErrorType.INSERTER_WRONG_ITEM }, "$errors")
+        // Without the alias the filter names an item the machine does not make.
+        val bad = check("mixed_filter_bad", layout, base.copy(machines = mapOf(Tile(2, 0) to mi.copy(filterAliases = emptyMap()))))
+        assertTrue(bad.any { it.type == ErrorType.INSERTER_WRONG_ITEM }, "$bad")
     }
 
     @Test

@@ -93,6 +93,18 @@ class BlueprintTest {
     }
 
     @Test
+    fun `inserter filters carry the game's item names`() {
+        // A raw resource made as a by-product is "stone#byproduct" in a plan; the game only knows stone.
+        val l = Layout(6, 3, listOf(
+            PlacedEntity("fast-inserter", Kind.INSERTER, 0, 0, Dir.N, item = "stone#byproduct"),
+            PlacedEntity("fast-inserter", Kind.INSERTER, 2, 0, Dir.N, blacklist = listOf("iron-ore#byproduct", "meat")),
+        ))
+        val bp = l.toBlueprint()
+        assertEquals(listOf("stone"), bp.entities[0].filters!!.map { it.name })
+        assertEquals(listOf("iron-ore", "meat"), bp.entities[1].filters!!.map { it.name })
+    }
+
+    @Test
     fun `inserter pickup and drop follow the direction`() {
         val ins = Fixtures.e("long-handed-inserter", 5, 5, Dir.N)
         assertEquals(Tile(5, 3), ins.pickupTile)

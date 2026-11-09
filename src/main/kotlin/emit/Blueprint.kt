@@ -108,7 +108,8 @@ fun withQuality(name: String, quality: String?): String = if (quality == null ||
 
 /** Layout -> 2.0 blueprint. Entity numbers are layout index + 1. */
 fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
-    fun filter(i: Int, item: String) = splitQuality(item).let { (n, ql) -> BpItemFilter(i, n, ql, if (ql != null) "=" else null) }
+    // By the game's name ("stone#byproduct" is stone).
+    fun filter(i: Int, item: String) = splitQuality(item).let { (n, ql) -> BpItemFilter(i, gameName(n), ql, if (ql != null) "=" else null) }
     val bpEntities = entities.mapIndexed { i, e ->
         BpEntity(
             entityNumber = i + 1,

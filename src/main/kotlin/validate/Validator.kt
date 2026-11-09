@@ -66,6 +66,11 @@ data class MachineSpec(
     val fullRates: Map<String, Double> = emptyMap(),
     /** Fluid ingredients per second (null: unknown, every fluid input is checked). */
     val fluidDemand: Map<String, Double>? = null,
+    /**
+     * A filter's item -> the product it stands for here: a product leaving on a mixed belt counts as the belt (one
+     * product, its name), and an inserter filtered to it (by its own or the game's name) takes the belt's share.
+     */
+    val filterAliases: Map<String, String> = emptyMap(),
 ) {
     /** Item products leaving the machine, with their rates. */
     val outputs: Map<String, Double> get() = products.ifEmpty { if (outputRate > 0) mapOf(product to outputRate) else emptyMap() }
@@ -389,7 +394,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
      * (a group of items leaving on a mixed belt counts as one); else the machine's product.
      */
     private fun takes(ins: PlacedEntity, mi: MachineSpec): String =
-        ins.item ?: ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl }.singleOrNull() } ?: mi.product
+        ins.item?.let { mi.filterAliases[it] ?: it } ?: ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl }.singleOrNull() } ?: mi.product
 
     // ---- 5. inserter ends ----
     private fun checkInserterEnds() {
@@ -408,7 +413,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 if (ins.item == null && mi.multiProduct && (left == null || left.size != 1)) {
                     err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} takes ${(left ?: mi.outputs.keys).sorted()} out of ${pick.recipe}; it needs a filter that leaves one")
                 }
-                if (ins.item != null && ins.item !in mi.outputs) err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} is filtered to ${ins.item}, which ${pick.recipe} does not make")
+                if (ins.item != null && (mi.filterAliases[ins.item] ?: ins.item) !in mi.outputs) err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} is filtered to ${ins.item}, which ${pick.recipe} does not make")
             }
         }
     }

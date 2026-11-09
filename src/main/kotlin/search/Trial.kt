@@ -5,6 +5,7 @@ import config.Tuning
 import config.reservedRects
 import data.GameConstants
 import data.RootData
+import data.gameName
 import geom.Dir
 import geom.Kind
 import geom.Layout
@@ -79,6 +80,7 @@ fun validationSpec(
             fluidOut = inst.fluidOut,
             fluidDemand = inst.fluidDemand,
             products = items.takeIf { it.size > 1 } ?: emptyMap(),
+            filterAliases = inst.itemProducts.keys.mapNotNull { p -> plan.mixed[p]?.let { m -> listOf(p to m, gameName(p) to m) } }.flatten().toMap(),
             sinks = plan.terminals.filter { it.machine == pm.id && it.role == Role.SINK }.groupBy { it.item }.mapValues { (_, ts) -> ts.sumOf { it.rate } },
             beaconNeed = beaconNeed(inst.crafts, inst.beaconCrafts),
             // Intermediates up to [ProductionPlan.headroom] of full speed, targets flat out (outputs to the edge are
