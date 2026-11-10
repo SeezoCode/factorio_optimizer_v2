@@ -513,6 +513,14 @@ belts and pipes, in one blueprint:
    different floorplans and the smallest valid factory wins. Poles cover the whole factory and
    the result is validated end to end against the full plan. A pipe port right beside another fluid's pipe is
    left through a pipe-to-ground pair.
+
+   Stitch time grows fast with the traffic between blocks, and widening near the trouble costs a whole routing each
+   time (up to half an hour on a big factory). For Py's big sciences, start wide: Py science 3 (681 machines, 953
+   ports between blocks, 60 a block) never stitched with corridors of 12 (1,300 to 3,200 conflicts after half an hour)
+   and routed at the first try with `"corridor": 20` (612 x 653). The preview stitch took 44 s with 12 blocks
+   (logistic), 64 s with 15, 5 minutes with 18 (chemical), and over 27 minutes, without routing, from 24 blocks up
+   with corridors of 12. Bigger blocks mean fewer of them, but a block of 70 Py machines with many fluids did not
+   route at any size: around 30 machines a block (`max_machines` 30 to 32, `fluid_weight` 1.5) is what worked.
 5. Rows and columns that only straight belts, straight pipes or underground spans cross are removed
    (`compact`, on by default; the factory is validated again, and kept as stitched if that ever fails).
    Compaction then continues for `compact_s` seconds (default: the stitching share of the budget; `--compact=<s>`
