@@ -89,7 +89,8 @@ data class SourceSpec(
 )
 
 /** Items (or a fluid) leaving the layout from a belt (pipe) on this tile at this rate (output ports). */
-data class OutputSpec(val tile: Tile, val item: String, val rate: Double, val fluid: Boolean = false, val port: Int = -1)
+/** [local]: the item ends in a chest beside the factory's block (blocks.local_sinks): an inserter takes it off [tile]. */
+data class OutputSpec(val tile: Tile, val item: String, val rate: Double, val fluid: Boolean = false, val port: Int = -1, val local: Boolean = false)
 
 data class ValidationSpec(
     /** Machine top-left tile -> what it should do. Machines missing here get item checks from their recipe only. */
@@ -450,7 +451,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                         err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} moves $item into ${drop.recipe}, which does not use it")
                     }
                 }
-                Kind.CHEST -> if (pick.kind != Kind.MACHINE && !isDrain(ins)) err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "chest is fed from ${pick.name}, not a machine")
+                // (A local sink's inserter takes its by-product off the end of the belt: blocks.local_sinks.)
+                Kind.CHEST -> if (pick.kind != Kind.MACHINE && !isDrain(ins) && spec.outputs.none { it.local && it.tile == ins.pickupTile })
+                    err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "chest is fed from ${pick.name}, not a machine")
                 else -> {}
             }
         }
@@ -1103,6 +1106,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             when {
                 e == null || !e.kind.beltFamily -> err(ErrorType.OUTPUT_MISSING, o.tile, "output port of ${o.item} has no belt")
                 belts.items[i]?.contains(o.item) != true -> err(ErrorType.OUTPUT_MISSING, o.tile, "no ${o.item} reaches its output port")
+                o.local -> if (ents.none { it.kind == Kind.INSERTER && it.pickupTile == o.tile && entityAt(it.dropTile)?.kind.let { k -> k == Kind.CHEST || k == Kind.INFINITY_CHEST } })
+                    err(ErrorType.OUTPUT_MISSING, o.tile, "nothing takes the ${o.item} at its sink into a chest")
                 e.outputTile?.let { it in box } != false -> err(ErrorType.OUTPUT_MISSING, o.tile, "the belt at the ${o.item} output port does not lead out of the box")
             }
         }

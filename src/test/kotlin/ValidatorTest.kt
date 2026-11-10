@@ -153,6 +153,21 @@ class ValidatorTest {
     }
 
     @Test
+    fun `a local sink is a belt end inside the box with an inserter into a chest`() {
+        // Iron ends at (3,1), well inside the box; an inserter at (3,2) takes it into a chest at (3,3).
+        fun layout(withSink: Boolean) = Layout(6, 5, listOf(belt(1, 1, Dir.E, 1), belt(2, 1, Dir.E, 1), belt(3, 1, Dir.E, 1)) +
+            (if (withSink) listOf(e("fast-inserter", 3, 2, Dir.N), e("steel-chest", 3, 3)) else emptyList()))
+        val spec = base.copy(checkRates = true,
+            sources = listOf(SourceSpec(Tile(1, 1), "iron-plate", 0.05)),
+            outputs = listOf(OutputSpec(Tile(3, 1), "iron-plate", 0.05, local = true)))
+        assertEquals(emptyList(), check("local_sink", layout(true), spec))
+        assertHas(check("local_sink_missing", layout(false), spec), ErrorType.OUTPUT_MISSING, Tile(3, 1))
+        // As an edge port the same end is wrong: it does not lead out of the box.
+        val edge = spec.copy(outputs = listOf(OutputSpec(Tile(3, 1), "iron-plate", 0.05)))
+        assertHas(check("local_sink_as_edge", layout(true), edge), ErrorType.OUTPUT_MISSING, Tile(3, 1))
+    }
+
+    @Test
     fun `an inserter picks from a dead-end splitter half`() {
         // Iron runs east along y=4; the splitter at x=3 covers (3,4) and (3,5); its south half leads nowhere. The
         // gear assembler below takes iron from that half; a second assembler picks from the end-of-belt splitter at

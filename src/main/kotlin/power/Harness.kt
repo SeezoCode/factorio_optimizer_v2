@@ -8,6 +8,8 @@ import geom.Dir
 import geom.Kind
 import geom.PlacedEntity
 import geom.Tile
+import geom.dropTile
+import geom.pickupTile
 import plan.inserterCount
 import plan.inserterRate
 import validate.OutputSpec
@@ -178,7 +180,7 @@ fun buildHarness(
     }
     // Outputs after inputs: an input's feeder must run straight out, an output's void inserters can go either side.
     val pickCap = inserterRate(insName, config, fromBelt = true)
-    outputs.filter { !it.fluid }.forEach { o ->
+    outputs.filter { !it.fluid && !it.local }.forEach { o ->
         val d = byTile[o.tile]?.dir
         if (d == null || inBox(o.tile + d)) { warnings += "output of ${o.item} at ${o.tile} does not leave the box"; return@forEach }
         val k = inserterCount(o.rate, pickCap)
@@ -221,7 +223,13 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
     // Overflow valves come out: their fluid outputs are held at most half full instead (see below), a valve back where
     // that has no room.
     val valves = layout0.entities.filter { it.kind == Kind.VALVE }
-    val layout = layout0.copy(entities = layout0.entities.filter { it.kind != Kind.VALVE })
+    // Local sinks (blocks.local_sinks): their chest becomes an infinity chest the in-game check empties.
+    val sinkChests = outputs.filter { it.local && !it.fluid }.mapNotNull { o ->
+        layout0.entities.firstOrNull { it.kind == Kind.INSERTER && it.pickupTile == o.tile }?.dropTile
+    }.toSet()
+    val layout = layout0.copy(entities = layout0.entities.filter { it.kind != Kind.VALVE }.map { e ->
+        if (e.kind == Kind.CHEST && e.tile in sinkChests) PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, e.x, e.y) else e
+    })
     val w = layout.w; val h = layout.h
     val loader = GameConstants.LOADERS[config.beltTier] ?: "express-loader"
     val occupied = HashSet<Tile>()
@@ -300,7 +308,7 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
         take(loaderAt(tile, d, true)!!)
         tile.step(d, 3).let { take(PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, it.x, it.y, item = group[0].item)) }
     }
-    outputs.filter { !it.fluid }.forEach { o ->
+    outputs.filter { !it.fluid && !it.local }.forEach { o ->
         val d = byTile[o.tile]?.dir
         if (d == null || inBox(o.tile + d) || loaderAt(o.tile, d, false) == null) { warnings += "no room to empty ${o.item} at ${o.tile}"; return@forEach }
         take(loaderAt(o.tile, d, false)!!)

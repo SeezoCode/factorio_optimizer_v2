@@ -114,6 +114,13 @@ local function fuel_items(run, r)
   return out
 end
 
+-- The belt a sink takes from: its loader's input, or for a local sink (an inserter into a chest beside a block) the
+-- belt the inserter picks from.
+local function sink_belt(s)
+  if s.belt then return s.belt.valid and s.belt or nil end
+  return s.loader and s.loader.valid and ((s.loader.belt_neighbours or {}).inputs or {})[1] or nil
+end
+
 local function warm_start(run, e, r)
   -- A burner's fuel too (it only ever got the recipe's ingredients: Py logistic science's biomass powerplant, heating
   -- the molten salt the outlet gas ring is reheated with, never ran).
@@ -393,7 +400,7 @@ local function start(params)
         if e.loader_type == "input" then
           c.infinity_container_filters = {}
           c.remove_unfiltered_items = false
-          local s = { chest = c, loader = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
+          local s = { chest = c, loader = e, gate = e, inv = c.get_inventory(defines.inventory.chest), pos = bp_pos(run, e.position), items = {} }
           run.sinks[#run.sinks + 1] = s
         else
           local keep = {}
@@ -414,6 +421,33 @@ local function start(params)
     end
   end
 
+  -- Local sinks (blocks.local_sinks): an inserter taking a small by-product off the end of its belt inside the box,
+  -- into a chest beside it (an infinity chest in the test copy). It counts what arrives as a loader's sink does, and
+  -- closes as an overflow's loader would (the inserter is its gate). It is no machine's inserter: left out of the
+  -- inserter reports and the belt networks' feeds.
+  do
+    local function find(p, pred)
+      for _, x in pairs(surface.find_entities_filtered { area = { { p.x - 0.05, p.y - 0.05 }, { p.x + 0.05, p.y + 0.05 } }, force = force }) do
+        if pred(x) then return x end
+      end
+    end
+    local keep = {}
+    for _, i in pairs(run.inserters) do
+      local e = i.e
+      local c = e.valid and find(e.drop_position, function(x) return x.type == "infinity-container" end)
+      if c then
+        c.infinity_container_filters = {}
+        c.remove_unfiltered_items = false
+        local b = find(e.pickup_position, function(x) return BELTS[x.type] end)
+        run.sinks[#run.sinks + 1] = { chest = c, gate = e, belt = b, inv = c.get_inventory(defines.inventory.chest),
+          pos = bp_pos(run, e.position), items = {}, ["local"] = true }
+      else
+        keep[#keep + 1] = i
+      end
+    end
+    run.inserters = keep
+  end
+
   -- An overflow port's sink (params.overflow_at): closed until its belt backs up. A mixed belt's (params.mixed_at)
   -- always takes: it carries only leftovers, whatever items on it are overflows elsewhere (Py science 1's leftovers
   -- belt, with stone on it, stayed shut and stopped the lime that the moss farm's CO2 came with). Each port marks the one
@@ -430,7 +464,7 @@ local function start(params)
   for _, at in pairs(run.params.mixed_at or {}) do local s = nearest_sink(at); if s then s.mixed = true end end
   for _, at in pairs(run.params.overflow_at or {}) do
     local s = nearest_sink(at)
-    if s and not s.mixed then s.overflow = true; s.loader.disabled_by_script = true end
+    if s and not s.mixed then s.overflow = true; s.gate.disabled_by_script = true end
   end
 
   -- Belt networks (belts joined through their neighbours, undergrounds and splitters): which ones each machine's
@@ -497,7 +531,7 @@ local function start(params)
   if run.params.flow and run.pick_belts then
     run.gates = {}
     for _, sk in pairs(run.sinks) do
-      local b = sk.overflow and sk.loader.valid and ((sk.loader.belt_neighbours or {}).inputs or {})[1]
+      local b = sk.overflow and sk.gate.valid and sink_belt(sk)
       if b then
         local seen, queue, head, gate, toward = { [b.unit_number] = true }, { { b, nil } }, 1, nil, {}
         while head <= #queue and head < 3000 do
@@ -625,15 +659,14 @@ local function flows(run, counting)
           s.inv.remove { name = it.name, quality = it.quality, count = n }
         end
       end
-      if caps then s.loader.disabled_by_script = s.inv.get_item_count() >= 20 end
+      if caps then s.gate.disabled_by_script = s.inv.get_item_count() >= 20 end
     end
     -- An overflow (params.overflow: items the factory also uses) takes only while the belt into its loader is
     -- backed up and a maker of the item stands full: the factory's own users always take first, however fast they
     -- run, and a belt that runs on past its users to the edge fills up as their buffer instead of draining what
     -- passed them (Py science 2's stone-brick ring, which nothing adds to, starved that way).
-    if next(overflow) and s.loader.valid and not s.mixed then
-      local belts = (s.loader.belt_neighbours or {}).inputs or {}
-      local b = belts[1]
+    if next(overflow) and s.gate.valid and not s.mixed then
+      local b = sink_belt(s)
       if b and b.valid then
         local mine, full, extra = false, false, false
         for i = 1, 2 do
@@ -674,7 +707,7 @@ local function flows(run, counting)
         end
         if mine or s.overflow then
           s.overflow = true
-          if not (full and extra and backed_up()) then s.loader.disabled_by_script = true elseif not (caps and s.inv.get_item_count() >= 20) then s.loader.disabled_by_script = false end
+          if not (full and extra and backed_up()) then s.gate.disabled_by_script = true elseif not (caps and s.inv.get_item_count() >= 20) then s.gate.disabled_by_script = false end
         end
       end
     end
@@ -799,9 +832,9 @@ local function finish(run)
   for _, s in pairs(run.sinks) do
     local rates = {}
     for k, v in pairs(s.items) do rates[k] = v / secs end
-    local b = s.loader.valid and ((s.loader.belt_neighbours or {}).inputs or {})[1]
+    local b = s.gate.valid and sink_belt(s)
     report.outputs[#report.outputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates, net = b and (run.net_of or {})[b.unit_number] or nil,
-      overflow = s.overflow or nil, mixed = s.mixed or nil }
+      overflow = s.overflow or nil, mixed = s.mixed or nil, ["local"] = s["local"] or nil }
   end
   for _, s in pairs(run.sources) do
     local rates = {}

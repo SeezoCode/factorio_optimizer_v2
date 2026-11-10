@@ -448,6 +448,16 @@ data class BlocksConfig(
      * routed at any size.
      */
     @SerialName("fluid_weight") val fluidWeight: Double = 0.75,
+    /**
+     * Small by-products end in a chest just outside their block instead of running to the factory's edge: every item
+     * (not a fluid, never a target) the whole factory makes less than this many of per second, its 0/s overflows
+     * among them, leaves its block's port into an inserter and a [localSinkChest]. Fewer ports on the factory's edge,
+     * fewer belts through the corridors, and blocks free to sit anywhere: of Py production science's 471 outputs, 397
+     * are 0/s overflows. Null: off. (In a real game the chest fills, slowly: an active provider chest hands what comes
+     * to the logistic network.)
+     */
+    @SerialName("local_sinks") val localSinks: Double? = null,
+    @SerialName("local_sink_chest") val localSinkChest: String = "steel-chest",
     /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,
     /** Price of a belt between blocks when splitting (a port on each block and a belt through the corridors). */

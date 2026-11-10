@@ -51,6 +51,19 @@ class TestCopyTest {
     }
 
     @Test
+    fun `a local sink's chest becomes an infinity chest and gets no loader`() {
+        val belt = PlacedEntity("fast-transport-belt", Kind.BELT, 3, 1, Dir.E)
+        val ins = PlacedEntity("fast-inserter", Kind.INSERTER, 3, 2, Dir.N)
+        val chest = PlacedEntity("steel-chest", Kind.CHEST, 3, 3, Dir.N)
+        val tc = power.testCopy(Layout(9, 9, listOf(belt, ins, chest)), emptyList(),
+            listOf(OutputSpec(belt.tile, "iron-plate", 0.05, local = true)), config)
+        assertTrue(tc.warnings.isEmpty(), "${tc.warnings}")
+        assertTrue(tc.layout.entities.none { it.kind == Kind.LOADER_IN || it.kind == Kind.LOADER_OUT })
+        assertEquals(Tile(3, 3), tc.layout.entities.single { it.kind == Kind.INFINITY_CHEST }.tile)
+        assertTrue(tc.layout.entities.none { it.kind == Kind.CHEST })
+    }
+
+    @Test
     fun `a corner input belt is loaded from behind, not from its side`() {
         // Bottom-right corner, heading north: both east and south are outward; east would side-load one lane only.
         val belt = PlacedEntity("fast-transport-belt", Kind.BELT, 8, 8, Dir.N)

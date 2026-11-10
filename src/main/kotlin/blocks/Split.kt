@@ -31,6 +31,8 @@ data class Link(
     val routed: Boolean = false, val fromSide: String? = null, val toSide: String? = null,
     /** The link sharing this one's belt, one item per lane (-1: none). */
     val pair: Int = -1,
+    /** An output that ends in a chest just outside its block's port (blocks.local_sinks), not at the factory's edge. */
+    val local: Boolean = false,
 ) {
     /** Between two blocks: one belt, routed through the corridors. */
     val inner: Boolean get() = from >= 0 && to >= 0
@@ -596,6 +598,22 @@ class BlockPlan(
 )
 
 /** The plan of block [b]: its machines, their terminals, and an input or output port per link it is part of. */
+/**
+ * [split] with the output links of small by-products local ([BlocksConfig.localSinks]): items, not targets, that the
+ * whole factory makes less than [below] of per second (a mixed belt counts what all of its items make). They keep
+ * their block port, need no factory edge, and run through no corridor: the stitch ends each in a chest.
+ */
+fun withLocalSinks(split: Split, below: Double?, targets: Set<String>): Split {
+    if (below == null) return split
+    val plan = split.plan
+    val mixedRate = plan.mixed.entries.groupBy({ it.value }, { plan.outputs[it.key] ?: 0.0 }).mapValues { it.value.sum() }
+    fun rate(item: String) = mixedRate[item] ?: plan.outputs[item] ?: 0.0
+    val links = split.links.map { l ->
+        if (l.from >= 0 && l.to == EDGE && !l.fluid && l.item !in targets && rate(l.item) < below) l.copy(local = true, routed = true) else l
+    }
+    return Split(split.blocks, links, split.warnings, split.geometry, split.plan, split.partition, split.ports)
+}
+
 fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning, shared: Boolean = false): BlockPlan =
     blockPlan(full, split.blocks[b], split.links, b, tuning, shared)
 
