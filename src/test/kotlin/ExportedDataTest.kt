@@ -109,6 +109,31 @@ class ExportedDataTest {
     }
 
     @Test
+    fun `a machine that puts its products in front of it keeps that tile free`() {
+        // Py's wood processing unit, 6 x 6, places what it makes 3.3 tiles south of its centre (facing north).
+        val am3 = data.entities.getValue("assembling-machine-3") as AssemblingMachineEntity
+        val wpu = am3.copy(name = "test-wpu", width = 6, height = 6, vectorToPlaceResult = Vec(-0.5, 3.3))
+        try {
+            GameConstants.register(data.copy(entities = data.entities + ("test-wpu" to wpu)))
+            // Facing north at (10, 10): the tile below its bottom row, left of centre.
+            assertEquals(geom.Tile(12, 16), GameConstants.resultTile("test-wpu", 6, 6, 10, 10, 0, false))
+            // Facing south: the tile above its top row, right of centre (Py science 3's wpu at (600, 140), its
+            // yotoi leaves landing on the underground entrance at (600, 136)).
+            assertEquals(geom.Tile(600, 136), GameConstants.resultTile("test-wpu", 6, 6, 597, 137, 2, false))
+            assertEquals(null, GameConstants.resultTile("assembling-machine-3", 3, 3, 0, 0, 0, false))
+            // A belt there is an error; an inserter is not.
+            fun errs(on: geom.PlacedEntity) = validate.validate(geom.Layout(30, 30, listOf(
+                geom.PlacedEntity("test-wpu", geom.Kind.MACHINE, 10, 10, geom.Dir.N, recipe = "iron-gear-wheel", w = 6, h = 6), on)),
+                validate.ValidationSpec(requirePower = false, checkRates = false, recipeInfo = validate.recipeInfoFrom(data)))
+                .filter { it.type == validate.ErrorType.UNSUPPORTED && "in front of it" in it.message }
+            assertEquals(1, errs(geom.PlacedEntity("transport-belt", geom.Kind.BELT, 12, 16, geom.Dir.E)).size)
+            assertEquals(0, errs(geom.PlacedEntity("inserter", geom.Kind.INSERTER, 12, 16, geom.Dir.N)).size)
+        } finally {
+            GameConstants.register(data)
+        }
+    }
+
+    @Test
     fun `a furnace a mod turns into an assembling machine gets its recipe in the blueprint`() {
         assertTrue(!GameConstants.takesRecipe("electric-furnace"))
         // Krastorio 2 makes the base furnaces assembling machines: they accept nothing until a recipe is set.

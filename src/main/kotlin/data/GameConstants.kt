@@ -314,6 +314,22 @@ object GameConstants {
 
     /** Fluid connections of machines the built-in table lacks, from loaded exporter data (see [register]). */
     @Volatile private var exportedFluids: Map<String, Pair<List<FluidConnection>, Boolean>> = emptyMap()
+
+    /**
+     * Machines that put what they make straight onto the tile in front of them (vector_to_place_result: Py's wood
+     * processing units, classifiers, casting units, sand, soil and sap extractors): that tile, machine facing north,
+     * relative to its top-left tile. Whatever stands there gets the products (a belt there carries them away, wanted or
+     * not: Py science 3's yotoi leaves rode a wood-seed belt to its end and stopped the seeds); with nothing there,
+     * they stay in the machine for its inserters.
+     */
+    @Volatile private var resultTiles: Map<String, Pair<Int, Int>> = emptyMap()
+
+    /** The tile [machine] (w x h at x, y, turned [rot] quarter turns, [mirror]ed) puts its products onto, if it has one. */
+    fun resultTile(machine: String, w: Int, h: Int, x: Int, y: Int, rot: Int, mirror: Boolean): Tile? {
+        val (dx, dy) = resultTiles[machine] ?: return null
+        val (px, py) = placeConnection(FluidConnection(Flow.OUTPUT, 0, dx, dy, Dir.N), w, h, rot, mirror)
+        return Tile(x + px, y + py)
+    }
     @Volatile private var fuelBoxes: Map<String, Int> = emptyMap()
 
     /** The input number of the box a fluid-burning machine takes its fuel fluid through (null: it burns none). */
@@ -441,6 +457,10 @@ object GameConstants {
         // Py's glassworks burning tar east to west, made one too many: the tar had no connection and no consumers).
         fuelBoxes = machines.mapNotNull { m -> energyBox(m)?.let { m.name to exportedFluids.getValue(m.name).first.filter { it.flow == Flow.INPUT }.maxOf { it.index } } }.toMap()
         machineTypes = data.entities.values.filterIsInstance<CraftingEntity>().associate { it.name to it.type }
+        resultTiles = machines.mapNotNull { m ->
+            val v = when (m) { is AssemblingMachineEntity -> m.vectorToPlaceResult; is FurnaceEntity -> m.vectorToPlaceResult; else -> null }
+            v?.let { m.name to (kotlin.math.floor(it.x + m.width / 2.0 + 1e-6).toInt() to kotlin.math.floor(it.y + m.height / 2.0 + 1e-6).toInt()) }
+        }.toMap()
         SUPPORTED_MACHINES = (BASE_MACHINES + SPACE_AGE_MACHINES + extra.map { it.name }).distinct()
 
         val lg = data.logistics

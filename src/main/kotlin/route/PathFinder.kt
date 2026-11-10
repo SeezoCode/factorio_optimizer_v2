@@ -318,6 +318,11 @@ class PathFinder(internal val p: RouteProblem) {
             if (plan.machines[m.id].machine != "recycler") return@forEach
             GameConstants.recyclerOutputTiles(placement.rect(plan, m), m.rot).forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }
         }
+        // So does any machine with a result tile (Py's wood processing units, extractors, casting units).
+        placement.machines.forEach { m ->
+            val pm = plan.machines[m.id]
+            GameConstants.resultTile(pm.machine, pm.w, pm.h, m.x, m.y, m.rot.ordinal, m.mirror)?.let { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }
+        }
         // Used fluid connection tiles hold a pipe end; belts never go there.
         placement.machines.forEach { m -> placement.connections(plan, m).filter { it.fluid != null }.forEach { c -> if (dims.inFull(c.tile.x, c.tile.y)) allowNet[dims.idx(c.tile)] = -2 } }
         p.obstacles.forEach { if (dims.inFull(it.x, it.y)) allowNet[dims.idx(it)] = -2 }

@@ -290,6 +290,12 @@ local function export(player)
         energy_consumption = energy, drain = drain, energy_source = source, fuel_categories = fuel,
         width = e.tile_width, height = e.tile_height, flags = keys(e.flags), hidden = e.hidden,
         fluid_boxes = fluid_boxes(e), fluid_boxes_off_when_no_fluid_recipe = e.fluid_boxes_off_when_no_fluid_recipe,
+        -- Where it puts what it makes, from its centre facing north (Py's wood processing units drop onto the tile in
+        -- front of them): nothing may stand there but what is meant to take it.
+        vector_to_place_result = (function()
+          local ok, v = pcall(function() return e.vector_to_place_result end)
+          if ok and v then return { x = v.x or v[1], y = v.y or v[2] } end
+        end)(),
       }
       for _, q in pairs(data.quality_names) do
         info.crafting_speed[q] = e.get_crafting_speed(q)

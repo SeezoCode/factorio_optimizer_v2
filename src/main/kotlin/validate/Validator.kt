@@ -187,6 +187,14 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                     err(ErrorType.UNSUPPORTED, t, "the recycler at ${m.tile} would drop its results onto ${it.name}")
                 }
             }
+            // A machine that puts what it makes onto the tile in front of it (Py's wood processing units): a belt,
+            // chest, loader or machine there gets it, wanted or not.
+            GameConstants.resultTile(m.name, m.w, m.h, m.x, m.y, m.dir.ordinal, m.mirror)?.let { t ->
+                entityAt(t)?.takeIf { it.kind.beltFamily || it.kind == Kind.CHEST || it.kind == Kind.INFINITY_CHEST ||
+                    it.kind == Kind.LOADER_IN || it.kind == Kind.LOADER_OUT || it.kind == Kind.MACHINE }?.let {
+                    err(ErrorType.UNSUPPORTED, t, "${m.name} at ${m.tile} puts what it makes onto the tile in front of it, where ${it.name} stands")
+                }
+            }
         }
         // The game drops an inserter given more filters than it has slots (Py's long-handed inserter has 3).
         ents.filter { it.kind == Kind.INSERTER && (it.item != null || it.blacklist != null) }.forEach { ins ->

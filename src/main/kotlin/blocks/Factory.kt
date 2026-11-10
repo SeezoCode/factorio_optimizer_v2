@@ -1265,8 +1265,10 @@ fun stitchRoute(
         starts[l.id]?.let { (t, d) -> note(t, "start of ${linkName(l)}, out of its port heading $d") }
         ends[l.id]?.let { (t, d) -> note(t, "end of ${linkName(l)}, into its port heading $d") }
     }
+    // A machine at a block's edge may put what it makes onto a corridor tile (Py's wood processing units): none there.
+    val resultTiles = entities.filter { it.kind == Kind.MACHINE }.mapNotNull { GameConstants.resultTile(it.name, it.w, it.h, it.x, it.y, it.dir.ordinal, it.mirror) }
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
-        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree + portTargets, noTunnel = noTunnel,
+        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree + portTargets + resultTiles, noTunnel = noTunnel,
         beltBias = besideBelts.associateWith { 40.0 },
         // 6 minutes, then on only while it converges, 30 at most: a big factory's corridors otherwise rip up and reroute
         // for hours (Py science 2), but a bigger one needs more than 6 minutes' worth of iterations.
