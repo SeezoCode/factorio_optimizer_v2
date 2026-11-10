@@ -90,6 +90,13 @@ data class RunConfiguration(
      * in a packed block of a factory often cannot be routed), "off".
      */
     @SerialName("byproduct_overflow") val byproductOverflow: String = "fluids",
+    /**
+     * How short a belt chain may come up, as a share of what its consumers take, when a machine puts one item onto
+     * separate belts (the game divides it by inserter speed, not as planned) before the layout is rejected
+     * (SPLIT_OUTPUT). Once belts back up the rest goes the other way, and flow control (`verify.py --flow`, the
+     * factory-flow mod) evens it out; Py's breeding farms, 0.05/s of fish onto two belts, failed a block at every size.
+     */
+    @SerialName("split_output_tolerance") val splitOutputTolerance: Double = 0.08,
     /** Fuel for burner machines (stone and steel furnaces). */
     val fuel: String = "coal",
     /** Fuel fluid for machines that burn one (Py's glassworks); default: the raw fluid that holds the most energy. */

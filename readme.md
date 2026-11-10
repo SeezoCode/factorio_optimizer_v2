@@ -95,7 +95,9 @@ utility at 1.18/s. Two causes:
   running flat out, less what producers ahead of it bring, at most its inserters' share of the machine) and
   flags those layouts; the router keeps such a producer whole on one chain when the other chain's producers have
   spare speed, and otherwise drops its shares after its chains' other producers. Re-solving the flagged blocks
-  gives a factory (221 x 254) in which chemical science holds 2/s.
+  gives a factory (221 x 254) in which chemical science holds 2/s. A chain may come up 8% short before it is an
+  error; `"split_output_tolerance"` changes that (Py jobs, checked under flow control, use 0.25: a breeding farm's
+  0.05/s of fish onto two belts failed a block of production science at every size).
 - **Heavy oil for lubricant.** The heavy-oil crackers are meant to work only on oil lubricant leaves, through a
   circuit condition, but every blueprint wrote the condition's switch as `circuit_enable_disable`, and 2.0 reads
   `circuit_enabled`: in game the crackers ignored their condition, took the heavy oil, and lubricant ran at about

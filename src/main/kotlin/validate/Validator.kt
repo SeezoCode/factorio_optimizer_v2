@@ -104,6 +104,8 @@ data class ValidationSpec(
     /** "infinity-pipe" or "manual". */
     val fluidMode: String = "infinity-pipe",
     val checkRates: Boolean = true,
+    /** See [config.RunConfiguration.splitOutputTolerance]. */
+    val splitTolerance: Double = Validator.SPLIT_TOLERANCE,
     /** Effective items/s of an inserter by name, picking from a belt or not. */
     /** Items/s of an inserter: its name, whether it picks from a belt, whether it drops onto one. */
     val inserterRate: (String, Boolean, Boolean) -> Double = { name, fromBelt, _ -> GameConstants.inserter(name).baseRate * (if (fromBelt) 0.7 else 1.0) },
@@ -607,7 +609,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         }
         splitProducers(comp, toBelt).forEach { (key, chains) ->
             val (m, item) = key
-            val (f, miss) = worst[item]?.takeIf { it.first > SPLIT_TOLERANCE } ?: return@forEach
+            val (f, miss) = worst[item]?.takeIf { it.first > spec.splitTolerance } ?: return@forEach
             err(ErrorType.SPLIT_OUTPUT, ents[m].tile, "${ents[m].recipe} puts $item onto ${chains.size} separate belts; the game divides its output " +
                 "between them by inserter speed wherever there is room, not as planned, and then ${fmt(miss)}/s of $item is missing " +
                 "(up to ${(f * 100).toInt()}% of what one belt's consumers take)")
@@ -1402,7 +1404,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
 
     private fun fmt(d: Double) = "%.2f".format(d)
 
-    private companion object {
+    companion object {
         /**
          * How far below plan a split producer may leave a belt chain (what its consumers and output ports take)
          * before it is an error. Splits leave small gaps the model cannot place exactly (which of two such
