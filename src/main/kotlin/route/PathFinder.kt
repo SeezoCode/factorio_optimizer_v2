@@ -65,6 +65,11 @@ class RouteProblem(
     val netGuides: Map<Int, List<Tile>> = emptyMap(),
     val guideCell: Int = 4,
     val guidePenalty: Double = 4.0,
+    /**
+     * With [netGuides]: a net's search keeps within this many cells of its coarse route (and near its own port tiles);
+     * where no path fits there, it searches the whole factory. 0: no bound.
+     */
+    val guideBound: Int = 3,
 )
 
 data class RouteStats(val belts: Int, val undergrounds: Int, val inserters: Int)
@@ -581,17 +586,34 @@ class PathFinder(internal val p: RouteProblem) {
     private var guideGen = 0
     private var guided = false
     private val guidePen = p.guidePenalty.toFloat()
-    /** Marks the tiles of net [planId]'s coarse cells and the cells around them, for its search. */
-    private fun guideFor(planId: Int) {
-        val cells = p.netGuides[planId]
+    /** Tiles net's search may use (RouteProblem.guideBound), stamped with [guideGen]. */
+    private val boundStamp = IntArray(N)
+    private var bounded = false
+    /** Marks the tiles of net [n]'s coarse cells and the cells around them, and how far its search may go, for its search. */
+    private fun guideFor(n: RNet) {
+        val cells = p.netGuides[n.planId]
         guided = cells != null
+        bounded = false
         if (cells == null) return
         guideGen++
         val c = p.guideCell
         for (cell in cells) for (y in (cell.y - 1) * c until (cell.y + 2) * c) for (x in (cell.x - 1) * c until (cell.x + 2) * c) {
             if (dims.inFull(x, y)) guideStamp[dims.idx(x, y)] = guideGen
         }
+        val b = p.guideBound
+        if (b <= 0) return
+        bounded = true
+        for (cell in cells) for (y in (cell.y - b) * c until (cell.y + b + 1) * c) for (x in (cell.x - b) * c until (cell.x + b + 1) * c) {
+            if (dims.inFull(x, y)) boundStamp[dims.idx(x, y)] = guideGen
+        }
+        // Its ports may lie further out than its coarse route's first cell (past what a block builds outside its box).
+        val r = 2 * c + b * c
+        (n.portTiles.toList() + n.outTiles.toList()).forEach { t ->
+            val x0 = dims.x(t); val y0 = dims.y(t)
+            for (y in y0 - r..y0 + r) for (x in x0 - r..x0 + r) if (dims.inFull(x, y)) boundStamp[dims.idx(x, y)] = guideGen
+        }
     }
+    private fun outOfBound(q: Int) = bounded && boundStamp[q] != guideGen
 
     /** Taken for heating: off the grid, a machine or obstacle, or used. */
     private fun walled(t: Int): Boolean = t !in 0 until N || allowNet[t] == -2 || occTile[t] > 0
@@ -726,6 +748,14 @@ class PathFinder(internal val p: RouteProblem) {
      * Returns the index into doneState/doneOpt, or -1.
      */
     private fun search(n: RNet, starts: List<Start>, final: Boolean, leg1: Boolean, banned: Set<Int> = emptySet()): Int {
+        val r = searchRounds(n, starts, final, leg1, banned)
+        if (r >= 0 || !bounded) return r
+        // Nothing within its corridor's bound: the whole factory.
+        bounded = false
+        try { return searchRounds(n, starts, final, leg1, banned) } finally { bounded = true }
+    }
+
+    private fun searchRounds(n: RNet, starts: List<Start>, final: Boolean, leg1: Boolean, banned: Set<Int>): Int {
         forbidGen++
         for (round in 0..tun.repairRestarts) {
             val r = searchOnce(n, starts, final, leg1, banned)
@@ -829,7 +859,7 @@ class PathFinder(internal val p: RouteProblem) {
 
             // Belt step (B1).
             val q = t + dIdx[d]
-            if (!placeable(q)) continue
+            if (!placeable(q) || outOfBound(q)) continue
             val resQ = if (resStamp[q] == goalGen) res else 0f
             for (nd in 0..3) {
                 if (nd == (d + 2) % 4) continue
@@ -853,7 +883,7 @@ class PathFinder(internal val p: RouteProblem) {
                         val e = q + dIdx[d] * j
                         if (ownChanStamp[ch0 + e] == stamp || noTunnel[e]) break
                         chanAcc += chanCost(ch0 + e)
-                        if (!placeable(e)) continue
+                        if (!placeable(e) || outOfBound(e)) continue
                         val cost = gS + bc + beltCost(e, deadEndsTaken(e, AK_UG_OUT, d)) + (if (resStamp[e] == goalGen) res else 0f) +
                             (tun.ugPenalty + tun.ugPenaltyPerTile * j).toFloat() + chanAcc
                         relax(st(e, d, UG_EXIT), s, cost)
@@ -1206,7 +1236,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun routeNetFrom(n: RNet, startTerm: Int, startOpts: List<Int>?): Boolean {
         stamp++
         cur = n.idx
-        guideFor(n.planId)
+        guideFor(n)
         // Weaving undergrounds of a slower tier only on chains whose flow fits one of its lanes (each item its own
         // lane on a lane pair): which lane the items ride on is up to the inserters and belts upstream, so a chain
         // that only fits the slower tier with its lanes evenly loaded overflows a lane as soon as they are not (in a

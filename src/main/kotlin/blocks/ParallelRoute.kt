@@ -36,11 +36,14 @@ fun routeCorridors(problem: RouteProblem, threads: Int, say: (String) -> Unit = 
         n.id to n.terminals.mapNotNull { t -> plan.terminals.getOrNull(t)?.port?.let { plan.ports.getOrNull(it) } }
             .flatMap { p -> p.specs.mapNotNull { s -> if (s.x != null && s.y != null) Tile(s.x, s.y) else null } }
     }
+    // The groups get a third of the time left: what they leave clashing is routed again afterwards anyway.
+    val third = (minOf(problem.deadlineMs, t0 + 6 * 3_600_000L) - t0) / 3
+    val budget = Deadlines(t0 + third, t0 + third / 3, t0 + third * 2 / 3)
     val pool = Executors.newFixedThreadPool(groups.size) { r -> Thread(r).apply { isDaemon = true } }
     val parts = try {
         groups.map { ids ->
             val others = plan.nets.filter { it.id !in ids.toSet() }.flatMap { portTiles[it.id].orEmpty() }
-            pool.submit<Pair<List<Int>, RouteResult>> { ids to route(subProblem(problem, ids, obstacles = problem.obstacles + others)) }
+            pool.submit<Pair<List<Int>, RouteResult>> { ids to route(subProblem(problem, ids, obstacles = problem.obstacles + others, deadlines = budget)) }
         }.map { it.get() }
     } finally { pool.shutdownNow() }
     // Each net's entities, by its id in the whole problem.
@@ -58,8 +61,11 @@ fun routeCorridors(problem: RouteProblem, threads: Int, say: (String) -> Unit = 
     val keptTiles = keptEnts.flatMap { it.rect.tiles() }.toSet()
     val pointed = keptEnts.flatMap { e -> fedFrom(e) }.toSet()
     val spans = undergroundSpans(keptEnts).flatMap { it.second }.toSet()
+    // Where the groups found congestion, the second pass knows from the start (their histories added up).
+    val warm = parts.map { it.second.rawHistory }.filter { it.isNotEmpty() }.takeIf { hs -> hs.isNotEmpty() && hs.all { it.size == hs[0].size } }
+        ?.let { hs -> FloatArray(hs[0].size) { i -> hs.sumOf { it[i].toDouble() }.toFloat() } }
     val last = if (again.isEmpty()) null else route(subProblem(problem, again.sorted(),
-        obstacles = problem.obstacles + keptTiles + pointed, noTunnel = problem.noTunnel + spans))
+        obstacles = problem.obstacles + keptTiles + pointed, noTunnel = problem.noTunnel + spans, warm = warm ?: problem.warmHistory))
     val againIds = again.sorted()
     val lastEnts = last?.entities?.map { e -> e.copy(net = e.net?.let { againIds.getOrNull(it) }) }.orEmpty()
     // The kept belts and the second pass checked against each other once more: anything still clashing is a conflict.
@@ -114,16 +120,20 @@ fun splitByGuides(ids: List<Int>, guides: Map<Int, List<Tile>>, k: Int): List<Li
     return halve(ids, k).filter { it.isNotEmpty() }
 }
 
+/** When a routing stops: at [hard], negotiating at [negotiation], and once past [soft] when it no longer converges. */
+private class Deadlines(val hard: Long, val soft: Long, val negotiation: Long)
+
 /** [problem] for the nets [ids] alone (numbered 0 on in that order), with [obstacles] and [noTunnel] in place of its own. */
-private fun subProblem(problem: RouteProblem, ids: List<Int>, obstacles: Set<Tile> = problem.obstacles, noTunnel: Set<Tile> = problem.noTunnel): RouteProblem {
+private fun subProblem(problem: RouteProblem, ids: List<Int>, obstacles: Set<Tile> = problem.obstacles, noTunnel: Set<Tile> = problem.noTunnel,
+                       deadlines: Deadlines? = null, warm: FloatArray? = problem.warmHistory): RouteProblem {
     val byId = problem.plan.nets.associateBy { it.id }
     val plan: ProductionPlan = problem.plan.copy(nets = ids.mapIndexed { i, id -> byId.getValue(id).copy(id = i) })
     val guides = ids.withIndex().mapNotNull { (i, id) -> problem.netGuides[id]?.let { i to it } }.toMap()
     return RouteProblem(plan, problem.config, problem.tuning, problem.placement, obstacles = obstacles, tileBias = problem.tileBias,
-        beltBias = problem.beltBias, warmHistory = problem.warmHistory, debugDir = null, endgameSeed = problem.endgameSeed,
-        noTunnel = noTunnel, deadlineMs = problem.deadlineMs, softDeadlineMs = problem.softDeadlineMs,
-        negotiationDeadlineMs = problem.negotiationDeadlineMs, netGuides = guides, guideCell = problem.guideCell,
-        guidePenalty = problem.guidePenalty)
+        beltBias = problem.beltBias, warmHistory = warm, debugDir = null, endgameSeed = problem.endgameSeed,
+        noTunnel = noTunnel, deadlineMs = deadlines?.hard ?: problem.deadlineMs, softDeadlineMs = deadlines?.soft ?: problem.softDeadlineMs,
+        negotiationDeadlineMs = deadlines?.negotiation ?: problem.negotiationDeadlineMs, netGuides = guides, guideCell = problem.guideCell,
+        guidePenalty = problem.guidePenalty, guideBound = problem.guideBound)
 }
 
 /** The tiles [e] puts its items onto: in front of a belt, an underground's exit, or both halves of a splitter. */
