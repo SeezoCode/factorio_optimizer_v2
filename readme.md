@@ -337,7 +337,7 @@ Unknown keys are an error. Everything except `targets` has a default.
   "blocks": { "max_machines": 120, "size_by": "weight", "overflow_cost": 1.0, "hard_max": 1.5,
               "lanes": null, "park_after": 4, "restitch_share": 0.03,
               "split_at": ["iron-plate", "copper-plate"], "corridor": 4,
-              "link_belt_share": 0.9, "belt_weight": 0.0, "split_at_weight": 0.1, "block_time_share": 0.9,
+              "link_belt_share": 0.9, "belt_weight": 0.0, "fluid_weight": 0.75, "split_at_weight": 0.1, "block_time_share": 0.9,
               "link_cost": 1.0, "fluid_link_cost": 3.0, "block_cost": 4.0, "aspect_weight": 0.5, "wire_weight": 2.0,
               "pass_through": false, "lane_pairs": true, "rotate": true, "floorplan_tries": 3,
               "compact_s": null, "shape_variants": [], "shape_variant_s": null,
@@ -458,7 +458,9 @@ belts and pipes, in one blueprint:
    the search time follows its weight. `belt_weight` (default 0) adds that much weight per belt's worth of items a
    machine takes or makes, for blocks of machines that fill belts (foundries casting cable); on a ten-science job
    with foundries 1 to 2 changed the cable blocks little (6 foundries and 9 assemblers to 5 and 8), since the
-   typical recipe gets heavier too. `"size_by": "machines"` keeps the old hard cap of `max_machines`
+   typical recipe gets heavier too. `fluid_weight` (default 0.75) is what each fluid a machine takes or makes
+   weighs; pipes need more room than belts (no two fluids may touch), and a higher value makes blocks of many fluid
+   machines smaller (Py's animal farms with three fluid inputs side by side). `"size_by": "machines"` keeps the old hard cap of `max_machines`
    machines. The split pays for what it cuts: every item a block makes more or less of than it uses
    is a port on that block and a belt (or pipe) through the corridors, so it costs `link_cost` per belt
    (`fluid_link_cost` per pipe port), plus a little per belt's worth of rate, plus `block_cost` per block.

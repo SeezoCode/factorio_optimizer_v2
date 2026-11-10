@@ -44,7 +44,7 @@ fun machineWeights(plan: ProductionPlan, cfg: BlocksConfig, beltThroughput: Doub
     plan.terminals.forEach { t ->
         val m = t.machine ?: return@forEach
         if (t.role == Role.SOURCE || t.role == Role.OUTPUT) return@forEach
-        w[m] += if (t.fluid) 0.75 else 0.5 * t.k
+        w[m] += if (t.fluid) cfg.fluidWeight else 0.5 * t.k
         // Belts' worth of items in and out: a foundry casting cable fills a belt and more, however few inserters.
         if (!t.fluid && beltThroughput > 0) w[m] += cfg.beltWeight * t.rate / beltThroughput
     }

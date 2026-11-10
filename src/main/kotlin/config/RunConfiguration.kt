@@ -434,6 +434,13 @@ data class BlocksConfig(
      * machines that fill belts (foundries, beaconed assemblers) come out smaller, with fewer belts to route.
      */
     @SerialName("belt_weight") val beltWeight: Double = 0.0,
+    /**
+     * With [sizeBy] "weight": what each fluid a machine takes or makes weighs (an item weighs half an inserter's
+     * worth). Pipes take more room than belts (no two fluids may touch), so a higher value makes blocks of many fluid
+     * machines smaller: Py science 3's block of animal farms, each with three fluid inputs two tiles apart, never
+     * routed at any size.
+     */
+    @SerialName("fluid_weight") val fluidWeight: Double = 0.75,
     /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,
     /** Price of a belt between blocks when splitting (a port on each block and a belt through the corridors). */
