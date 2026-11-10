@@ -40,12 +40,13 @@
     }
   ],
   "blocks": {
-    "max_machines": 20,
+    "max_machines": 32,
     "size_by": "weight",
     "lanes": 5,
-    "corridor": 12,
+    "corridor": 20,
     "compact": false,
-    "lane_pairs": false
+    "lane_pairs": false,
+    "fluid_weight": 1.5
   },
   "fluids": {
     "pipe": "ht-pipes",
