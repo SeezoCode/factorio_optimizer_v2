@@ -227,9 +227,13 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
     val sinkChests = outputs.filter { it.local && !it.fluid }.mapNotNull { o ->
         layout0.entities.firstOrNull { it.kind == Kind.INSERTER && it.pickupTile == o.tile }?.dropTile
     }.toSet()
-    val layout = layout0.copy(entities = layout0.entities.filter { it.kind != Kind.VALVE }.map { e ->
+    // (Wire ends follow the entities left: poles' copper wires, the gates' and crackers' circuit wires.)
+    val kept = layout0.entities.indices.filter { layout0.entities[it].kind != Kind.VALVE }
+    val newIndex = kept.withIndex().associate { (j, i) -> i to j }
+    val layout = layout0.copy(entities = kept.map { layout0.entities[it] }.map { e ->
         if (e.kind == Kind.CHEST && e.tile in sinkChests) PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, e.x, e.y) else e
-    })
+    }, wires = layout0.wires.mapNotNull { (a, b) -> newIndex[a]?.let { x -> newIndex[b]?.let { y -> x to y } } },
+        circuitWires = layout0.circuitWires.mapNotNull { (a, b, c) -> newIndex[a]?.let { x -> newIndex[b]?.let { y -> Triple(x, y, c) } } })
     val w = layout.w; val h = layout.h
     val loader = GameConstants.LOADERS[config.beltTier] ?: "express-loader"
     val occupied = HashSet<Tile>()

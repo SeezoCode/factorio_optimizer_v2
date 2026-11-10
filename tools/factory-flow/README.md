@@ -12,6 +12,8 @@ Once a second, for the machines of a tagged blueprint:
 - **Quotas**: a machine that has taken more of an item than its plan allows so far (planned intake × 1.5, plus two
   crafts) has the inserters bringing that item stopped while a machine still behind its own plan waits for it, anywhere
   in the factory. For a fluid, the machine itself stops. A machine nobody behind plan waits behind takes what it likes.
+  An inserter taking from a belt its own machine drops onto (a catalyst's own return loop) is never stopped: its
+  returns could not come back.
 - **Gates**: on each overflow port's belt, the belt just past the last machine taking from it stops while a machine on
   that belt waits, or while no machine putting onto it stands with a full output. Items queue in front of their users,
   and the overflow only takes what would otherwise stop a maker. When the belt past the last user is an underground or

@@ -164,8 +164,8 @@ local function warm_start(run, e, r)
 end
 
 local function prime(run, e, r, crafted, rec)
-  local back, made_at, seeded = {}, {}, {}
-  for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature end
+  local back, made_at, seeded, own = {}, {}, {}, {}
+  for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature; own[p.name] = true end
   for _, name in pairs(run.params.seeds or {}) do back[name] = true; seeded[name] = true end
   local carrier = {}
   for _, name in pairs(run.params.seed_carriers or {}) do carrier[name] = true end
@@ -179,6 +179,10 @@ local function prime(run, e, r, crafted, rec)
         -- Too few only slow a ring; too many lock it.)
       elseif ing.type == "item" then
         local want = math.ceil(ing.amount * (carrier[ing.name] and 1 or (seeded[ing.name] and 5 or 2)))
+        -- Once it has crafted, an item it gives back itself only while it lacks a craft's worth, up to that: topped up
+        -- past what its inserters fill to, it takes nothing from its own return loop, and its returns pile up until it
+        -- stands full for good (Py production's ulric corral, topped up to 5 bedding while it waited for raw fiber).
+        if crafted and own[ing.name] then want = ing.amount end
         -- (A catalyst the machine also gives to others, Py's moss farm's coarse, is topped up like a seed: the
         -- classifier took the first batch and the farm stood short of the 15 it needs.)
         pcall(function()
@@ -1316,7 +1320,9 @@ script.on_event(defines.events.on_tick, function()
             if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
             local it = m.fq.item_of[i.unit_number]
             local net = (run.ins_net or {})[i.unit_number]
-            local off = it ~= nil and (capped[it] == true or (returned[it] == true and net ~= nil and not drops[net]))
+            -- (Never one taking from its own return loop, a belt it drops onto: held, its returns could not come back.)
+            local own_loop = net ~= nil and drops[net] == true
+            local off = it ~= nil and not own_loop and (capped[it] == true or (returned[it] == true and net ~= nil))
             if off then run.quota_held = run.quota_held + 1 end
             if off or i.disabled_by_script then i.disabled_by_script = off end
           end

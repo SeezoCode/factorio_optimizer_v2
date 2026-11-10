@@ -29,6 +29,8 @@ enum class ErrorType {
     COLD, HEAT_DISCONNECTED,
     SPOILAGE_STUCK, SPOILAGE_CLOGS,
     SPLIT_OUTPUT,
+    /** Machines that give back what they take, wired so that their returns can get stuck for good (see checkDeadlocks). */
+    DEADLOCK,
 }
 
 data class ValidationError(val type: ErrorType, val tile: Tile, val message: String) {
@@ -150,6 +152,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         checkInserterEnds()
         belts.propagateItems()
         checkInserterItems(belts)
+        checkDeadlocks(belts)
         checkOutputs(belts)
         if (spec.checkRates) checkRates(belts) else checkReachabilityOnly(belts)
         checkPower()
@@ -455,6 +458,89 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
                 Kind.CHEST -> if (pick.kind != Kind.MACHINE && !isDrain(ins) && spec.outputs.none { it.local && it.tile == ins.pickupTile })
                     err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "chest is fed from ${pick.name}, not a machine")
                 else -> {}
+            }
+        }
+    }
+
+    // ---- deadlocks ----
+    /**
+     * Machines that give back what they take (Py's catalysts), wired so that the game can stop them for good. A machine
+     * stops once its output holds a couple of crafts' worth; when it alone could have emptied the belt its returns go
+     * to, it never starts again.
+     * 1. Per belt chain and item: every machine taking the item from the chain also puts it back there, the chain has
+     *    no other way out (no other user, output port or chest), and something else feeds it too (another machine or a
+     *    port). Once the chain is full, the returns cannot go down. (Py production science: two plutonium
+     *    transmutations, taking 40 pu-241 and giving back 24, on one belt from the pu-240 transmutation.)
+     * 2. A machine's own loop (a chain only it puts the item onto and takes it from) while it also gets the item from
+     *    elsewhere: each such inserter must be gated on the loop (works only while the item is under 1 on a circuit
+     *    network with a belt of the loop reading it, see route.addLoopGates). Else, with its input full from there, its
+     *    returns pile up on the loop and in its output until it stops. (The ulric corral, 2 bedding in its output.)
+     */
+    private fun checkDeadlocks(belts: BeltGraph) {
+        val comp = belts.components()
+        class Use { val puts = HashSet<Int>(); val takes = HashSet<Int>(); var outside = false; var outlet = false }
+        val uses = HashMap<Pair<Int, String>, Use>()
+        fun use(c: Int, item: String) = uses.getOrPut(c to item) { Use() }
+        val ported = HashSet<Int>()
+        val inserters = ents.indices.filter { ents[it].kind == Kind.INSERTER }
+        /** Items inserter [ins] takes off belt [p] (its filter, else what is on the belt and [into] uses, if given). */
+        fun offBelt(ins: PlacedEntity, p: Int, into: MachineSpec?): Set<String> {
+            val on = belts.items[p] ?: emptySet()
+            return on.filter { (ins.item == null || it == ins.item) && (into == null || it in into.ingredients) }.toSet()
+        }
+        for (i in inserters) {
+            val ins = ents[i]
+            val p = indexAt(ins.pickupTile); val d = indexAt(ins.dropTile)
+            if (p == null || d == null) continue
+            if (ents[d].kind.beltFamily) {
+                val c = comp.getValue(d)
+                val item = if (ents[p].kind.beltFamily) null else carriedByInserter(ins, belts)
+                when {
+                    item == null -> belts.items[d]?.forEach { use(c, it).outside = true }
+                    ents[p].kind == Kind.MACHINE -> use(c, item).puts += p
+                    else -> use(c, item).outside = true
+                }
+            }
+            if (ents[p].kind.beltFamily) {
+                val c = comp.getValue(p)
+                when (ents[d].kind) {
+                    Kind.MACHINE -> machineInfo(ents[d])?.let { mi -> offBelt(ins, p, mi).forEach { use(c, it).takes += d } }
+                    else -> offBelt(ins, p, null).forEach { use(c, it).outlet = true }
+                }
+            }
+        }
+        spec.sources.filter { !it.fluid }.forEach { s -> indexAt(s.tile)?.takeIf { ents[it].kind.beltFamily }?.let { use(comp.getValue(it), s.item).outside = true } }
+        spec.outputs.filter { !it.fluid }.forEach { o -> indexAt(o.tile)?.takeIf { ents[it].kind.beltFamily }?.let { use(comp.getValue(it), o.item).outlet = true } }
+        // Loaders (a test copy's ports) feed or empty the chains beside them.
+        ents.forEachIndexed { i, e ->
+            if (e.kind != Kind.LOADER_IN && e.kind != Kind.LOADER_OUT) return@forEachIndexed
+            e.rect.tiles().flatMap { t -> Dir.entries.map { t + it } }.mapNotNull { indexAt(it) }.filter { it != i && ents[it].kind.beltFamily }.forEach { ported += comp.getValue(it) }
+        }
+        uses.forEach { (key, u) ->
+            val (c, item) = key
+            if (c in ported || u.takes.isEmpty() || u.outlet) return@forEach
+            if (u.puts.containsAll(u.takes) && (u.puts.size >= 2 || u.outside)) {
+                val m = ents[u.takes.first()]
+                err(ErrorType.DEADLOCK, m.tile, "${m.recipe} takes $item from a belt it gives it back onto, and only machines giving it back take from " +
+                    "that belt, which ${if (u.outside) "something else" else "another machine"} feeds too: once it is full they cannot put their returns down, " +
+                    "stand with a full output, and nothing empties it")
+                return@forEach
+            }
+            if (u.outside || u.puts.size != 1 || u.takes != u.puts) return@forEach
+            // Machine m's own loop of item: its other inserters bringing the item must be gated on the loop.
+            val m = u.takes.single()
+            for (i in inserters) {
+                val ins = ents[i]
+                if (indexAt(ins.dropTile) != m) continue
+                val p = indexAt(ins.pickupTile) ?: continue
+                if (ents[p].kind.beltFamily && comp.getValue(p) == c) continue
+                val brings = if (ents[p].kind.beltFamily) item in offBelt(ins, p, machineInfo(ents[m])) else carriedByInserter(ins, belts) == item
+                if (!brings) continue
+                val cond = ins.circuit
+                val gated = cond != null && !cond.fluid && cond.signal == item && cond.comparator == "<" && cond.constant <= 1 &&
+                    circuitNetworkOf(i).any { j -> ents[j].readBelt && ents[j].kind.beltFamily && comp[j] == c }
+                if (!gated) err(ErrorType.DEADLOCK, ins.tile, "${ents[m].recipe} gets $item back on its own loop and also from here, with no gate " +
+                    "(work only while the loop is empty): with its input kept full from here, its returns pile up until its output is full and it stops")
             }
         }
     }

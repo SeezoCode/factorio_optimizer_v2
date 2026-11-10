@@ -188,8 +188,8 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                     }
                 }
             },
-            controlBehavior = e.circuit?.let { c ->
-                buildJsonObject {
+            controlBehavior = if (e.circuit == null && !e.readBelt) null else buildJsonObject {
+                e.circuit?.let { c ->
                     // 2.0's key (checked in game: a machine built from "circuit_enable_disable" ignores its condition).
                     put("circuit_enabled", true)
                     put("circuit_condition", buildJsonObject {
@@ -198,6 +198,8 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                         put("comparator", c.comparator)
                     })
                 }
+                // Read contents, mode 2: what the whole belt holds (0 pulse, 1 this belt only).
+                if (e.readBelt) { put("circuit_read_hand_contents", true); put("circuit_contents_read_mode", 2) }
             },
         )
     }
@@ -247,6 +249,7 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
                 CircuitCondition(sig["name"]?.jsonPrimitive?.content ?: return@let null, c["comparator"]?.jsonPrimitive?.content ?: "<",
                     c["constant"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0, sig["type"]?.jsonPrimitive?.content == "fluid")
             },
+            readBelt = kind.beltFamily && b.controlBehavior?.get("circuit_read_hand_contents")?.jsonPrimitive?.content == "true",
             modules = b.items?.let { reqs ->
                 val slots = sortedMapOf<Int, String>()
                 reqs.forEach { r ->

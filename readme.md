@@ -880,9 +880,16 @@ than recipes and machine sizes, and the program handles it from the exported dat
 - **Temperatures.** A fluid made at several temperatures becomes fluids of their own, `steam#500`, `steam#250` (at its
   default temperature it keeps its plain name); an ingredient that takes a range becomes one recipe variant per
   temperature made in it. Blueprints get the game's names back.
-- **Catalysts** (a recipe giving back some of what it takes, formamide's methanol): the machine's output and input of
-  it join one pipe or belt, so it feeds itself. When nothing else makes or brings it, the block gets a 0/s input to
-  fill the loop once in a new build (the in-game check does that itself).
+- **Catalysts** (a recipe giving back some of what it takes: formamide's methanol, the ulric corral's bedding,
+  plutonium transmutation's pu-241): a fluid's output and input join one pipe, so the machine feeds itself. An item
+  gets the machine's own return loop, a belt from its output of the item round to its own input, as much as it gives
+  back; what else it needs comes from the item's other belts through inserters that work only while that loop is
+  empty (a green wire to the loop, whose belt reads what the whole belt holds: `item < 1`). So it always uses its
+  returns first, and since it takes more than it gives back the loop never fills. Fed back from a shared belt, or
+  from its loop while another belt kept its input full, its returns had no room: its output filled, the game stopped
+  it, and nothing else emptied that belt (Py production science stood for good on its ulric corral, 2 bedding in its
+  output). The validator calls both shapes `DEADLOCK`. When nothing else makes or brings it, the block gets a 0/s
+  input to fill the loop once in a new build (the in-game check does that itself).
 - **Farms** (machines with a -100% base speed that run on animals or plants as modules) are filled with their module
   (Py's own default for each farm), counted at that speed, and the blueprint asks for the modules.
 - **Fuel**: burner machines' fuel leaves its burnt result (Py's ash), taken out like a product; machines burning a
@@ -984,7 +991,7 @@ narrow, fluids pinned side by side) rather than the box.
 | 3 | `route` | Negotiated-congestion routing: belt chains leg by leg with A* over (tile, heading, belt/underground), splitter branches, pipe trees with pipe-to-ground, and a rip-up-and-reroute endgame around the last conflicts |
 | 4 | `power` | Beacon lattice and set cover, pole set cover and MST wiring (lattice fallback), test-mode harness |
 | 5 | `search` | Box size search (gentle growth to a first success, then bisection), K seeds per size in parallel, warm starts, anytime outputs, calibration |
-| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone; a machine putting one item onto separate belts divides it as the game does (by inserter speed, wherever there is room), not as planned. Lanes are checked per item and belt chain with a lane-true split (inserters drop on the far lane, sideloads on the near one); only an item whose draws that split cannot meet falls back to one that ignores lanes |
+| — | `validate` | Re-derives belts, lanes, splitters, underground pairing, items, order-aware rates, power, fluid networks and ports from the entity list alone; a machine putting one item onto separate belts divides it as the game does (by inserter speed, wherever there is room), not as planned; machines that give back what they take, wired so that their returns can get stuck for good, are a `DEADLOCK`. Lanes are checked per item and belt chain with a lane-true split (inserters drop on the far lane, sideloads on the near one); only an item whose draws that split cannot meet falls back to one that ignores lanes |
 | — | `emit`, `viz` | Blueprint 2.0 encode/decode, PNG renders |
 
 Two things go beyond the original plan and are described in [docs/TUNING.md](docs/TUNING.md): nets with many
@@ -1119,6 +1126,13 @@ the way, and whether a producer standing with full output can reach the machine 
 producers reach which consumers, what each made and took in game against the plan, and the blocks each network
 runs through (`--all` includes networks that kept up), so a network whose producers run flat out while a consumer
 starves shows up as short.
+
+`python3 tools/factorio-verify/blocks.py out --job my_job.json` checks each block of a factory of blocks in game on
+its own (its test copy: every input from an infinity chest, every output taken off without limit; `--parallel 3` at a time, 30
+minutes warm-up and 10 measured by default). A factory's own check shows only the first thing that stops it, while
+here a machine standing with a full output is stuck by its block's wiring alone; those holding one of their own
+ingredients in their output (a returned catalyst that cannot go back) are listed as `DEADLOCK`. Each block's check
+goes to `block_N/verify.txt`, the summary to `out/blocks_check.txt`.
 
 `tools/factorio-verify/bench.py` does both for a set of jobs: solves each (optionally with tuning overrides, a time
 budget and threads), checks it in game, and writes one line per job (box, belts, undergrounds, inserters, what came

@@ -33,7 +33,7 @@ data class PlacedEntity(
     val drain: Boolean = false,
     val w: Int = defaultSize(name, kind, dir).first,
     val h: Int = defaultSize(name, kind, dir).second,
-    /** Machines: works only while this condition holds on its circuit network (null: always). */
+    /** Machines and inserters: works only while this condition holds on its circuit network (null: always). */
     val circuit: CircuitCondition? = null,
     /** Machines and beacons: modules in their slots, in slot order (blueprint item requests). */
     val modules: List<String>? = null,
@@ -43,6 +43,8 @@ data class PlacedEntity(
     val seeds: List<Triple<String, Int, Int>>? = null,
     /** Infinity pipes (test copies): hold the pipe at most this full (0..1), [drain] or not. */
     val keepAtMost: Double? = null,
+    /** Belts: put what the whole belt holds on its circuit network (a catalyst's return loop, see route.addLoopGates). */
+    val readBelt: Boolean = false,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)

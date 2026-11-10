@@ -186,6 +186,8 @@ class PathFinder(internal val p: RouteProblem) {
         val srcPort2: Int = -1,
     )
     private val nets = ArrayList<RNet>()
+    /** Chains that are a machine's own return loop (a catalyst's output back to its own input, see the chain setup). */
+    private val loopNets = HashSet<Int>()
 
     // ---- dynamic congestion state ----
     internal val occTile = IntArray(N)
@@ -346,8 +348,29 @@ class PathFinder(internal val p: RouteProblem) {
         val beltCap = tier.throughput * tun.chainBeltShare
         plan.beltNets.forEach { net ->
             val ts = net.terminals.mapNotNull { eff[it] }
-            val consumers = ts.filter { it.base.role == Role.CONSUMER && it.base.machine != null }
-            val producers = ts.filter { it.base.role == Role.PRODUCER }
+            var consumers = ts.filter { it.base.role == Role.CONSUMER && it.base.machine != null }
+            var producers = ts.filter { it.base.role == Role.PRODUCER }
+            // A machine that gives back some of what it takes (Py's catalysts: the ulric corral takes 1 bedding and gives
+            // back 0 or 1, plutonium transmutation takes 40 pu-241 and gives back 24) first gets its own return loop: a
+            // chain from its output of the item to its own input, as much as it gives back and takes. Only the rest of
+            // its need comes from the item's other belts, through an inserter that works only while the loop is empty
+            // (route.addLoopGates). Fed back from a shared belt instead, its returns had no room once that belt was full,
+            // its output filled up, the game stopped it, and nothing else ever emptied that belt (Py production science:
+            // the corral stood so with 2 bedding in its output, two transmutations with 50 pu-241 each).
+            if (net.item !in mixedNames) {
+                val makers = producers.filter { it.base.machine != null }.associateBy { it.base.machine!! }
+                consumers.filter { it.base.machine in makers }.forEach { c ->
+                    val pr = makers.getValue(c.base.machine!!)
+                    val own = min(c.rate, pr.rate)
+                    if (own <= 1e-9) return@forEach
+                    val pickRate = bestInserterRate(config, fromBelt = true)
+                    loopNets += nets.size
+                    addChain(net, listOf(EffectiveTerminal(c.base, own, inserterCount(own, pickRate)), EffectiveTerminal(pr.base, own, inserterCount(own, dropRate))),
+                        null, 0.0, null, 0.0, rectOf)
+                    consumers = consumers.mapNotNull { t -> if (t !== c) t else (t.rate - own).takeIf { it > 1e-9 }?.let { r -> EffectiveTerminal(t.base, r, inserterCount(r, pickRate)) } }
+                    producers = producers.mapNotNull { t -> if (t !== pr) t else (t.rate - own).takeIf { it > 1e-9 }?.let { r -> EffectiveTerminal(t.base, r, inserterCount(r, dropRate)) } }
+                }
+            }
             val source = ts.firstOrNull { it.base.role == Role.SOURCE }
             val output = ts.firstOrNull { it.base.role == Role.OUTPUT }
             if ((consumers.isEmpty() && output == null) || (producers.isEmpty() && source == null)) return@forEach
@@ -494,7 +517,9 @@ class PathFinder(internal val p: RouteProblem) {
             }
         }
         fun chainFlow(net: Int) = nets[net].sourceRate + nets[net].terms.filter { vts[it].role == Role.PRODUCER }.sumOf { vts[it].rate }
-        val split = vts.filter { it.role == Role.PRODUCER && it.machine != null }.groupBy { it.base.id }.values.filter { ps -> ps.map { it.net }.distinct().size > 1 }
+        // (A machine's own return loop keeps its share: moved onto the loop, the rest would fill it.)
+        val split = vts.filter { it.role == Role.PRODUCER && it.machine != null }.groupBy { it.base.id }.values
+            .filter { ps -> ps.map { it.net }.distinct().size > 1 && ps.none { it.net in loopNets } }
         for (parts in split) {
             val major = parts.maxByOrNull { it.rate }!!
             val minors = parts.filter { it !== major }
@@ -1722,7 +1747,9 @@ class PathFinder(internal val p: RouteProblem) {
             val name = chooseInserter(share, fromBelt = false, long = link.long)
             val filter = filterFor(link.producer, link.item)
             val named = withFilterSlots(name, if (filter != null) 1 else 0)
-            link.tiles.forEach { out += PlacedEntity(named, Kind.INSERTER, it.x, it.y, link.insDir, item = filter) }
+            // (With its item's net, so that a catalyst's other supply is known by it too: see addLoopGates.)
+            val net = plan.nets.firstOrNull { it.item == link.item && !it.fluid }?.id
+            link.tiles.forEach { out += PlacedEntity(named, Kind.INSERTER, it.x, it.y, link.insDir, item = filter, net = net) }
         }
         nets.forEach { n ->
             val r = routed[n.idx] ?: return@forEach

@@ -491,4 +491,66 @@ class ValidatorTest {
         val right = check("curve_drop_free", layout(), base.copy(sources = listOf(SourceSpec(Tile(0, 3), "iron-plate", 1.0, lane = 1))))
         assertTrue(right.none { it.type == ErrorType.INSERTER_WRONG_ITEM }, "$right")
     }
+
+    // A catalyst machine (a centrifuge taking 4 uranium-235 and giving back 3, as Py's ulric corral its bedding) at (2,2).
+    private val catalyst = MachineSpec("uranium-235", setOf("uranium-235", "uranium-238"),
+        products = mapOf("uranium-235" to 0.3, "uranium-238" to 0.1))
+    private fun catalystMachine() = listOf(e("centrifuge", 2, 2, recipe = "kovarex-enrichment-process"))
+    /** Its own return loop: out at (2,5) onto (2,6) -> (3,6), back in at (3,5). */
+    private fun ownLoop() = listOf(e("fast-inserter", 2, 5, Dir.N, item = "uranium-235").copy(net = 1), belt(2, 6, Dir.E, 1), belt(3, 6, Dir.E, 1),
+        e("fast-inserter", 3, 5, Dir.S).copy(net = 1))
+    /** Supply from a port at (6,1) down to (6,3), in at (5,3). */
+    private fun supply() = listOf(belt(6, 1, Dir.S, 1), belt(6, 2, Dir.S, 1), belt(6, 3, Dir.S, 1), e("fast-inserter", 5, 3, Dir.E).copy(net = 1))
+    private val catalystSpec get() = base.copy(machines = mapOf(Tile(2, 2) to catalyst), sources = listOf(SourceSpec(Tile(6, 1), "uranium-235", 0.1)))
+    private fun deadlocks(errors: List<ValidationError>) = errors.filter { it.type == ErrorType.DEADLOCK }
+
+    @Test
+    fun `a machine's own return loop beside an ungated supply is a deadlock, gated it is not`() {
+        val ungated = Layout(9, 9, catalystMachine() + ownLoop() + supply())
+        val found = deadlocks(check("deadlock_loop_ungated", ungated, catalystSpec))
+        assertEquals(listOf(Tile(5, 3)), found.map { it.tile }, "$found")
+        // The supply inserter works only while the loop's belt (reading the whole belt) holds no uranium-235.
+        val ents = ungated.entities.map { e ->
+            when {
+                e.x == 5 && e.y == 3 -> e.copy(circuit = geom.CircuitCondition("uranium-235", "<", 1, fluid = false))
+                e.x == 3 && e.y == 6 -> e.copy(readBelt = true)
+                else -> e
+            }
+        }
+        val wire = Triple(ents.indexOfFirst { it.x == 5 && it.y == 3 }, ents.indexOfFirst { it.x == 3 && it.y == 6 }, data.GameConstants.WIRE_GREEN)
+        assertEquals(emptyList(), deadlocks(check("deadlock_loop_gated", Layout(9, 9, ents, circuitWires = listOf(wire)), catalystSpec)))
+        // Gated but not wired to the loop: still a deadlock.
+        assertEquals(1, deadlocks(check("deadlock_loop_unwired", Layout(9, 9, ents), catalystSpec)).size)
+        // Its own loop and nothing else: fine.
+        assertEquals(emptyList(), deadlocks(check("deadlock_loop_alone", Layout(9, 9, catalystMachine() + ownLoop()), catalystSpec.copy(sources = emptyList()))))
+    }
+
+    @Test
+    fun `returns onto a belt a port feeds and only their machine takes from are a deadlock`() {
+        // The port's belt runs (0,6) -> (3,6) past the loop's ends: the centrifuge puts back at (2,6), takes at (3,6).
+        val shared = Layout(9, 9, catalystMachine() + ownLoop() + listOf(belt(0, 6, Dir.E, 1), belt(1, 6, Dir.E, 1)))
+        val spec = catalystSpec.copy(sources = listOf(SourceSpec(Tile(0, 6), "uranium-235", 0.1)))
+        assertEquals(listOf(Tile(2, 2)), deadlocks(check("deadlock_shared", shared, spec)).map { it.tile })
+        // Another user further on (a chest here) takes what the centrifuge cannot: no deadlock.
+        val onward = Layout(9, 9, catalystMachine() + ownLoop().map { if (it.x == 3 && it.y == 6) belt(3, 6, Dir.E, 1) else it } +
+            listOf(belt(0, 6, Dir.E, 1), belt(1, 6, Dir.E, 1), belt(4, 6, Dir.E, 1), e("fast-inserter", 4, 7, Dir.N), e("steel-chest", 4, 8)))
+        assertEquals(emptyList(), deadlocks(check("deadlock_shared_onward", onward, spec)))
+    }
+
+    @Test
+    fun `the gate pass finds a machine's own loop and gates its other supply`() {
+        val ungated = Layout(9, 9, catalystMachine() + ownLoop() + supply())
+        val g = route.addLoopGates(ungated.entities, emptyList()) { "uranium-235" }
+        val gated = Layout(9, 9, g.entities, circuitWires = g.circuitWires)
+        assertEquals(geom.CircuitCondition("uranium-235", "<", 1, fluid = false), g.entities.single { it.x == 5 && it.y == 3 }.circuit)
+        assertEquals(1, g.circuitWires.size)
+        assertTrue(g.entities.single { it.x == 3 && it.y == 6 }.readBelt || g.entities.single { it.x == 2 && it.y == 6 }.readBelt)
+        assertEquals(emptyList(), deadlocks(check("deadlock_gate_pass", gated, catalystSpec)))
+        // Again on its own result: nothing doubled.
+        val again = route.addLoopGates(g.entities, g.circuitWires) { "uranium-235" }
+        assertEquals(g.circuitWires, again.circuitWires)
+        // A belt shared with a port is no loop: nothing gated there.
+        val shared = route.addLoopGates(Layout(9, 9, catalystMachine() + ownLoop() + listOf(belt(1, 6, Dir.E, 1), e("fast-inserter", 1, 7, Dir.N).copy(net = 1), e("steel-chest", 1, 8))).entities, emptyList()) { "uranium-235" }
+        assertTrue(shared.entities.none { it.circuit != null })
+    }
 }

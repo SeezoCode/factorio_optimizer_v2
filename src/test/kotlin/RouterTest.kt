@@ -67,7 +67,7 @@ class RouterTest {
         val r = RouteSupport.fixture("t2_di")
         assertRoutedClean(r)
         assertEquals(2, r.result.di.size, "both cable machines feed the circuit machine directly")
-        assertTrue(r.result.entities.none { it.net != null && r.plan.nets[it.net!!].item == "copper-cable" }, "no cable belt is needed")
+        assertTrue(r.result.entities.none { it.kind.beltFamily && it.net != null && r.plan.nets[it.net!!].item == "copper-cable" }, "no cable belt is needed")
     }
 
     @Test

@@ -153,6 +153,20 @@ fun unstitchable(bp: BlockPlan, r: TrialResult): String? {
     return null
 }
 
+/**
+ * Why resumed layout [r] of a block (of [plan]) would lock up in game, or null: a machine that gives back what it takes
+ * fed back from a shared belt (see validate's DEADLOCK), which older versions of the router made. Its own return loops
+ * are gated first (route.addLoopGates), as the search and the factory gate them.
+ */
+fun deadlockOf(data: data.RootData, config: RunConfiguration, plan: ProductionPlan, r: TrialResult): String? {
+    val lay = r.layout ?: return null
+    val placement = r.placement ?: return null
+    val g = route.addLoopGates(lay.entities, lay.circuitWires) { n -> plan.nets.getOrNull(n)?.item?.takeIf { it !in plan.mixed.values } }
+    val spec = search.validationSpec(data, plan, config, placement, r.sources, requirePower = false, outputs = r.outputs)
+    return validate.validate(Layout(lay.w, lay.h, g.entities, circuitWires = g.circuitWires), spec)
+        .firstOrNull { it.type == validate.ErrorType.DEADLOCK }?.let { "would lock up in game: ${it.message} (at ${it.tile})" }
+}
+
 /** The layouts saved for block [b] in [out] (empty if none). */
 fun loadBlock(out: File, b: Int): List<TrialResult> {
     val f = File(out, "resume/block_${b + 1}.json").takeIf { it.exists() } ?: return emptyList()

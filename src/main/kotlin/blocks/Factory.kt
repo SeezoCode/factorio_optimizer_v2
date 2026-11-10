@@ -184,7 +184,7 @@ fun runFactory(
     val loaded: List<List<TrialResult?>> = split.blocks.indices.map { b ->
         if (!resume) return@map emptyList()
         loadBlock(out, b).mapIndexed { i, r ->
-            val why = unstitchable(bps[b], r) ?: return@mapIndexed r
+            val why = unstitchable(bps[b], r) ?: deadlockOf(data, config, bps[b].plan, r) ?: return@mapIndexed r
             say("block ${b + 1}: resumed layout ${i + 1} (${r.w} x ${r.h}) dropped: $why")
             null
         }
@@ -1352,7 +1352,11 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         w: Int, h: Int, rects: List<Rect>, reserved: List<Rect>, notes: MutableList<String>,
     ): Factory {
         // Crackers work only on what other machines leave of their oil: a tank per block and red wires.
-        val ctl = route.addSurplusControl(ents, plan, config, w, h, rects)
+        val ctl0 = route.addSurplusControl(ents, plan, config, w, h, rects)
+        // A catalyst's machine takes from its own return loop first (route.addLoopGates): the blocks' wires are not
+        // stitched over, so the gates are found and wired again on the whole factory.
+        val ctl = route.addLoopGates(ctl0.entities, ctl0.circuitWires) { n -> plan.nets.getOrNull(n)?.item?.takeIf { it !in plan.mixed.values } }
+            .let { g -> route.SurplusControl(g.entities, g.circuitWires, ctl0.notes + g.notes) }
         notes += ctl.notes
         val harness = if (config.testMode) buildHarness(srcs, ctl.entities, w, h, config, outs) else null
         var all: List<PlacedEntity> = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }

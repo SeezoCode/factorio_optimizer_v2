@@ -438,7 +438,9 @@ local function control()
             if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
             local it = m.fq.item_of[i.unit_number]
             local net = T.ins_net[i.unit_number]
-            if it ~= nil and (capped[it] or (returned[it] and net ~= nil and not drops[net])) then
+            -- (Never one taking from its own return loop, a belt it drops onto: held, its returns could not come back.)
+            local own_loop = net ~= nil and drops[net] ~= nil and drops[net] ~= false
+            if it ~= nil and not own_loop and (capped[it] or (returned[it] and net ~= nil)) then
               held[i.unit_number] = i
               stats.held = stats.held + 1
               if not i.disabled_by_script then i.disabled_by_script = true end
