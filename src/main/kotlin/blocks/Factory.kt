@@ -246,7 +246,8 @@ fun runFactory(
         },
         stitch = { layouts ->
             // A preview is quick: one floorplan (from the last preview's) and a short squeeze; the final factory gets the rest.
-            val r = assemble(split, bps, layouts, previewState, "preview", squeezeCap = 20.0, tries = 1)
+            // (Several floorplans side by side, the stitch having every core: blocks wait meanwhile.)
+            val r = assemble(split, bps, layouts, previewState, "preview", squeezeCap = 20.0)
             if (r != null && r.first.success) { previewState = r.second; consider(r, "preview") }
             r?.first?.takeIf { it.success }?.let { f -> Triple(f.blockRects, f.layout.w, f.layout.h) }
         },
@@ -573,15 +574,17 @@ fun assembleFactory(
 ): Pair<Factory, FpState>? {
     val cfg = config.blocks!!
     val input = floorplanInput(plan, split, variants, cfg, config, bps = bps)
-    // search.stop_after: the first valid factory is wanted, from one floorplan (each more costs up to 8 routings).
-    val tries = if (config.search.stopAfter > 0) 1 else (triesOverride ?: cfg.floorplanTries).coerceAtLeast(1)
+    // Floorplans side by side, one per thread (search.stop_after: the first that routes is taken).
+    val tries = (triesOverride ?: cfg.floorplanTries).coerceAtLeast(1)
     val t0 = System.currentTimeMillis()
     // 1. Every floorplan routed, tightened and squeezed, side by side on the job's threads, for a quarter of the time.
     val threads = config.search.threads.coerceAtLeast(1)
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(minOf(tries, threads))
+    // (Daemon threads: tries still routing when the first one is taken do not keep the run from ending.)
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(minOf(tries, threads)) { r -> Thread(r).apply { isDaemon = true } }
     val stitchings: List<Stitching> = try {
-        (0 until tries).map { t ->
-            pool.submit<Stitching?> {
+        val done = java.util.concurrent.ExecutorCompletionService<Stitching?>(pool)
+        (0 until tries).forEach { t ->
+            done.submit {
                 val label = if (tries > 1) "$what (floorplan ${t + 1}/$tries)" else what
                 val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 1009L * t)
                 val st = if (t == 0) start?.takeIf { it.plus.size == input.blocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(input.blocks.size)) } else null
@@ -594,8 +597,15 @@ fun assembleFactory(
                     s
                 }
             }
-        }.mapNotNull { runCatching { it.get() }.getOrElse { e -> say("$what: a floorplan failed with $e"); null } }
-    } finally { pool.shutdown() }
+        }
+        val got = ArrayList<Stitching>()
+        for (i in 0 until tries) {
+            val s = runCatching { done.take().get() }.getOrElse { e -> say("$what: a floorplan failed with $e"); null } ?: continue
+            got += s
+            if (config.search.stopAfter > 0) break
+        }
+        got
+    } finally { pool.shutdownNow() }
     if (stitchings.isEmpty()) return null
     // 2. Compaction, until the time is up, of the smallest floorplans side by side (two when there are threads for
     //    it): squeeze; when that stalls, floorplan again from the current arrangement with a fresh seed and a lighter
@@ -930,8 +940,10 @@ fun stitchRoute(
     val outputs = ArrayList<OutputSpec>()
     /** Local sinks (blocks.local_sinks): the link, its port's last belt, and the way that belt points. */
     val localSinks = ArrayList<Triple<Link, Tile, Dir>>()
-    /** Robot links' receiving ends (blocks.bot_links): the link, its port's first belt, and the way out of the block. */
+    /** Robot links' ends (blocks.bot_links): the link, its port's belt, and the way out of the block (sending ends with
+     *  their output). */
     val botInputs = ArrayList<Triple<Link, Tile, Dir>>()
+    val botOutputs = ArrayList<Pair<Triple<Link, Tile, Dir>, OutputSpec>>()
     // (On the ring, or on the box's own edge row: fluid ports start with a pipe-to-ground there.)
     fun outsideOnSide(t: Tile, side: String?) = when (side) { "N" -> t.y <= 0; "S" -> t.y >= H - 1; "W" -> t.x <= 0; "E" -> t.x >= W - 1; else -> false }
     fun inBounds(t: Tile) = t.x in 0 until W && t.y in 0 until H
@@ -946,14 +958,19 @@ fun stitchRoute(
             val group = bps[b].linksOfPort[o.port] ?: return@forEach
             val l = split.links[group[0]]
             val t = Tile(o.tile.x + ox[b], o.tile.y + oy[b])
-            if (l.local || l.bot) {
+            // A robot link's sending end: its provider chest stub is decided below, once both ends are known.
+            if (l.bot && !o.fluid) {
+                botOutputs += Triple(l, t, byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")) to o
+                return@forEach
+            }
+            if (l.local) {
                 // (A pipe port: out of the block on the side it was searched with, else whichever side leads out.)
                 val rect = Rect(ox[b], oy[b], results[b].w, results[b].h)
                 val d = if (o.fluid) (listOfNotNull(side(l.fromSide, b)) + Dir.entries).firstOrNull { (t + it) !in rect }
                     ?: return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} port is not on its edge")
                     else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
                 localSinks += Triple(l, t, d)
-                outputs += o.copy(tile = t, port = -1, local = true, sink = if (o.fluid) t + d else null, bot = l.bot)
+                outputs += o.copy(tile = t, port = -1, local = true, sink = if (o.fluid) t + d else null)
                 return@forEach
             }
             if (!l.throughCorridor) {
@@ -993,7 +1010,59 @@ fun stitchRoute(
             ends[l.id] = (t + out) to out.opposite
         }
     }
-    val corridorLinks = split.links.filter { (it.throughCorridor || it.id in detoured) && !it.local && !it.bot }
+    // Robot links: room for a chest stub on the two tiles out of each port (straight on, else out of a side, off the
+    // block) at both ends, or the link runs through the corridors as a belt after all (Py production: block 6 sat
+    // against its neighbour where its lime requester was to go, and the floorplan widened for nothing).
+    val blockTiles0 = HashSet<Tile>()
+    for (b in 0 until k) for (y in oy[b] until oy[b] + results[b].h) for (x in ox[b] until ox[b] + results[b].w) blockTiles0 += Tile(x, y)
+    arr.reserved.forEach { r -> blockTiles0 += r.tiles() }
+    val stubTaken = HashSet<Tile>()
+    // Where corridor belts and pipes leave or reach their ports, and the tile past that: no chest or void goes there
+    // (Py production: four belts found their ports walled in, "goals reachable 0", at every width).
+    val heads = HashSet<Tile>()
+    fun addHead(t: Tile, out: Dir) { heads += t; heads += t + out }
+    starts.values.forEach { (t, d) -> addHead(t, d) }
+    ends.values.forEach { (t, d) -> addHead(t, d.opposite) }
+    fun roomFor(t: Tile, d: Dir, b: Int): Dir? {
+        val rect = Rect(ox[b], oy[b], results[b].w, results[b].h)
+        return (listOf(d) + listOf(d.cw, d.ccw).filter { (t + it) !in rect }).firstOrNull { s ->
+            listOf(t + s, t.step(s, 2)).all { u -> inBounds(u) && u !in blockTiles0 && u !in byTile && u !in stubTaken && u !in heads }
+        }
+    }
+    // Local sinks' chests first (they have no other way out), then the robot links'.
+    // (One with no room is a dead end, a note: its by-product backs up into its users. Py production: block 23's eva
+    // port sat against another block, and the floorplan widened for nothing.)
+    val stubDir = HashMap<Int, Dir>()
+    val noRoom = HashSet<Tile>()
+    for ((l, t, d) in localSinks) if (!l.fluid) {
+        val s = roomFor(t, d, l.from)
+        if (s == null) { noRoom += t; note(t, "no room for the chest of block ${l.from + 1}'s ${l.item}: it backs up into its users"); continue }
+        stubTaken += listOf(t + s, t.step(s, 2)); stubDir[l.id] = s
+    }
+    localSinks.removeAll { (l, t, _) -> !l.fluid && t in noRoom }
+    outputs.removeAll { it.local && !it.fluid && it.tile in noRoom }
+    val botFallback = HashSet<Int>()
+    val keptInputs = ArrayList<Triple<Link, Tile, Dir>>()
+    val outOf = botOutputs.associateBy { it.first.first.id }
+    val inOf = botInputs.associateBy { it.first.id }
+    for (id in (outOf.keys + inOf.keys).toSortedSet()) {
+        val o = outOf[id]; val i = inOf[id]
+        val so = o?.let { (e, _) -> roomFor(e.second, e.third, e.first.from) }
+        val si = i?.let { roomFor(it.second, it.third, it.first.to) }
+        if (o != null && i != null && so != null && si != null) {
+            val (e, spec) = o
+            stubTaken += listOf(e.second + so, e.second.step(so, 2), i.second + si, i.second.step(si, 2))
+            localSinks += Triple(e.first, e.second, so)
+            stubDir[id] = so
+            outputs += spec.copy(tile = e.second, port = -1, local = true, bot = true)
+            keptInputs += Triple(i.first, i.second, si)
+        } else {
+            botFallback += id
+            o?.let { (e, _) -> starts[id] = (e.second + e.third) to e.third; addHead(e.second + e.third, e.third); note(e.second, "robot link ${e.first.item}: no room for its chests, a belt instead") }
+            i?.let { ends[id] = (it.second + it.third) to it.third.opposite; addHead(it.second + it.third, it.third) }
+        }
+    }
+    val corridorLinks = split.links.filter { (it.throughCorridor || it.id in detoured) && !it.local && (!it.bot || it.id in botFallback) }
     corridorLinks.filter { (it.from >= 0 && it.id !in starts) || (it.to >= 0 && it.id !in ends) }.takeIf { it.isNotEmpty() }?.let { miss ->
         return StitchAttempt(null, emptyList(), "a block port is missing: " + miss.take(3).joinToString { l ->
             val b = if (l.from >= 0 && l.id !in starts) l.from else l.to
@@ -1044,10 +1113,10 @@ fun stitchRoute(
                 val v0 = t + dir
                 for (k in 0..8) {
                     val chain = (1..k).map { v0.step(dir, it) }
-                    if ((listOf(v0) + chain).any { !free(it) || it in pipeHeads }) return null
+                    if ((listOf(v0) + chain).any { !free(it) || it in pipeHeads || it in stubTaken || it in heads }) return null
                     if ((listOf(v0) + chain).drop(1).any { p -> listOf(dir.cw, dir.ccw).any { s -> byTile[p + s]?.kind in fluidKinds } }) return null
                     val v = fluidVoidAt(name, recipe, chain.lastOrNull() ?: v0, dir.opposite) ?: return null
-                    if (v.rect.tiles().any { !free(it) || it == v0 || it in chain || it in pipeHeads }) continue
+                    if (v.rect.tiles().any { !free(it) || it == v0 || it in chain || it in pipeHeads || it in stubTaken || it in heads }) continue
                     return listOf(PlacedEntity(GameConstants.OVERFLOW_VALVE, Kind.VALVE, v0.x, v0.y, dir.opposite, fluid = l.item, net = netOfItem[l.item])) +
                         chain.map { PlacedEntity(config.fluids.pipe, Kind.PIPE, it.x, it.y, fluid = l.item, net = netOfItem[l.item]) } + v
                 }
@@ -1070,7 +1139,7 @@ fun stitchRoute(
         }
         // Straight on from the belt's end, else (an inserter takes from a belt on any side) out of either side, off the block.
         val rect = Rect(ox[l.from], oy[l.from], results[l.from].w, results[l.from].h)
-        val s = (listOf(d) + listOf(d.cw, d.ccw).filter { (t + it) !in rect }).firstOrNull { free(t + it) && free(t.step(it, 2)) }
+        val s = stubDir[l.id] ?: (listOf(d) + listOf(d.cw, d.ccw).filter { (t + it) !in rect }).firstOrNull { free(t + it) && free(t.step(it, 2)) }
             ?: return StitchAttempt(null, listOf(a, c), "no room for the chest of block ${l.from + 1}'s ${l.item} at $a")
         val chest = if (l.bot) config.blocks!!.botProviderChest else config.blocks!!.localSinkChest
         listOf(PlacedEntity(sinkInserter, Kind.INSERTER, (t + s).x, (t + s).y, s.opposite, net = netOfItem[l.item]),
@@ -1078,7 +1147,7 @@ fun stitchRoute(
     }
     // Robot links' receiving ends: a requester chest asking for ten minutes' worth (at least 10), an inserter from it
     // onto the port's first belt.
-    for ((l, t, d) in botInputs) {
+    for ((l, t, d) in keptInputs) {
         val rect = Rect(ox[l.to], oy[l.to], results[l.to].w, results[l.to].h)
         val s = (listOf(d) + listOf(d.cw, d.ccw).filter { (t + it) !in rect }).firstOrNull { free(t + it) && free(t.step(it, 2)) }
             ?: return StitchAttempt(null, listOf(t + d, t.step(d, 2)), "no room for the requester of block ${l.to + 1}'s ${l.item} at ${t + d}")
