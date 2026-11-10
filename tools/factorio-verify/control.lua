@@ -370,6 +370,12 @@ local function start(params)
   end
   local modules = fulfil_proxies(surface)
   local networks, unwired = power(run, surface, force, maxx + run.dx + 6, miny + run.dy)
+  -- Robot links (blocks.bot_links): logistic robots into every roboport, as a player would put them in.
+  if params.robots_per_roboport and params.robots_per_roboport > 0 and prototypes.item["logistic-robot"] then
+    for _, r in pairs(surface.find_entities_filtered { type = "roboport", force = force }) do
+      pcall(function() r.insert { name = "logistic-robot", count = params.robots_per_roboport } end)
+    end
+  end
 
   -- Furnace-type machines' planned recipes (blueprint tags; the game sets theirs only once something arrives).
   local planned = {}
@@ -492,6 +498,33 @@ local function start(params)
       if e.valid then
         for _, o in pairs((e.belt_neighbours or {}).outputs or {}) do union(e.unit_number, o.unit_number) end
         if e.type == "underground-belt" and e.underground_belt_neighbour then union(e.unit_number, e.underground_belt_neighbour.unit_number) end
+      end
+    end
+    -- Robot links (params.bots, blocks.bot_links): the belt into a provider chest and the belts out of requester chests
+    -- of the same item are one network, as robots carry between them (pull then reaches the makers behind a provider).
+    if run.params.bots then
+      local function chest_at(b)
+        local p = { b.x + 0.5 + run.dx, b.y + 0.5 + run.dy }
+        return surface.find_entities_filtered { position = p, type = "logistic-container", force = force }[1]
+      end
+      local function belt_at(p)
+        for _, x in pairs(surface.find_entities_filtered { area = { { p.x - 0.05, p.y - 0.05 }, { p.x + 0.05, p.y + 0.05 } }, force = force }) do
+          if BELTS[x.type] then return x end
+        end
+      end
+      local function inside(c, p) return math.abs(p.x - c.position.x) < 0.5 and math.abs(p.y - c.position.y) < 0.5 end
+      local first = {}
+      local function join(item, belt)
+        if not (belt and parent[belt.unit_number]) then return end
+        if first[item] then union(first[item], belt.unit_number) else first[item] = belt.unit_number end
+      end
+      for _, b in pairs(run.params.bots.providers or {}) do
+        local c = chest_at(b)
+        if c then for _, i in pairs(run.inserters) do if i.e.valid and inside(c, i.e.drop_position) then join(b.item, belt_at(i.e.pickup_position)) end end end
+      end
+      for _, b in pairs(run.params.bots.requesters or {}) do
+        local c = chest_at(b)
+        if c then for _, i in pairs(run.inserters) do if i.e.valid and inside(c, i.e.pickup_position) then join(b.item, belt_at(i.e.drop_position)) end end end
       end
     end
     run.feeds, run.drops, run.net_of = {}, {}, {}

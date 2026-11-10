@@ -4,7 +4,9 @@ import data.GameConstants
 
 enum class Kind { MACHINE, BELT, UG_IN, UG_OUT, SPLITTER, INSERTER, CHEST, POLE, INFINITY_PIPE, INFINITY_CHEST, PIPE, PIPE_UG, TANK, BEACON, LOADER_IN, LOADER_OUT, HEAT_PIPE,
     /** An overflow valve (dir: the side it takes from; it lets out on the other). */
-    VALVE;
+    VALVE,
+    /** A roboport (blocks.bot_links). */
+    ROBOPORT;
 
     val beltFamily: Boolean get() = this == BELT || this == UG_IN || this == UG_OUT || this == SPLITTER
 }
@@ -45,6 +47,8 @@ data class PlacedEntity(
     val keepAtMost: Double? = null,
     /** Belts: put what the whole belt holds on its circuit network (a catalyst's return loop, see route.addLoopGates). */
     val readBelt: Boolean = false,
+    /** Requester chests: how many of [item] they ask the logistic network for (blocks.bot_links). */
+    val request: Int? = null,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)
@@ -59,6 +63,7 @@ data class PlacedEntity(
             Kind.POLE -> GameConstants.footprint(name)
             Kind.TANK -> 3 to 3
             Kind.BEACON -> 3 to 3
+            Kind.ROBOPORT -> GameConstants.ROBOPORT_SIZE to GameConstants.ROBOPORT_SIZE
             Kind.LOADER_IN, Kind.LOADER_OUT -> if (dir.axis == 1) 1 to 2 else 2 to 1
             else -> 1 to 1
         }
@@ -82,6 +87,7 @@ data class PlacedEntity(
                 name in GameConstants.LOADERS.values -> if (ugType == "input") Kind.LOADER_IN else Kind.LOADER_OUT
                 name == GameConstants.HEAT_PIPE -> Kind.HEAT_PIPE
                 name == GameConstants.OVERFLOW_VALVE -> Kind.VALVE
+                name == GameConstants.ROBOPORT -> Kind.ROBOPORT
                 else -> error("Unknown entity '$name'")
             }
         }

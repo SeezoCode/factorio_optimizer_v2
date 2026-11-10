@@ -16,6 +16,8 @@ import blocks.splitPlan
 import blocks.Link
 import blocks.Split
 import blocks.withLocalSinks
+import blocks.withBotLinks
+import blocks.sharedOutputs
 import config.BlocksConfig
 import geom.Dir
 import geom.Rect
@@ -196,5 +198,37 @@ class FloorplanTest {
         assertEquals(emptyList(), linkMismatches(split.plan, split.blocks, split.links))
         assertTrue(split.warnings.none { it.startsWith("SPLIT MISMATCH") }, split.warnings.joinToString("\n"))
         println("slivers: " + split.warnings.filter { "sliver" in it })
+    }
+
+    @Test
+    fun `small links between blocks go by robots, off the sides their blocks keep to the factory's edge`() {
+        val plan = buildPlan(TestData.data, plasticJob, handTuning)
+        val base = splitPlan(plan, BlocksConfig(maxMachines = 3, sizeBy = "machines"), 30.0)
+        val links = listOf(
+            Link(0, "plastic-bar", 6.0, 0, EDGE, false, fromSide = "E"),          // to the edge: block 0 keeps east
+            Link(1, "coal", 0.02, 0, 1, false, fromSide = "E", toSide = "W"),       // small, between blocks: robots, off east
+            Link(2, "iron-plate", 5.0, 0, 1, false, fromSide = "S", toSide = "N"),  // big: a belt
+            Link(3, "petroleum-gas", 0.01, 0, 1, true, fromSide = "S", toSide = "N"), // a fluid: a pipe
+        )
+        val split = withBotLinks(Split(base.blocks, links, base.warnings, base.geometry, base.plan, base.partition, base.ports), 0.1)
+        assertEquals(listOf("coal"), split.links.filter { it.bot }.map { it.item })
+        assertTrue(split.links.single { it.item == "coal" }.fromSide != "E")
+        assertEquals(links, withBotLinks(Split(base.blocks, links, base.warnings, base.geometry, base.plan, base.partition, base.ports), null).links)
+        // Robot links share no output port.
+        assertTrue(sharedOutputs(base.plan, split.links, 0, handTuning).none { g -> g.any { it.bot } })
+    }
+
+    @Test
+    fun `roboports cover the robot chests as one network`() {
+        // Two chests 300 tiles apart in an empty 400 x 60 box: each covered, and roboports in between join them.
+        val chests = listOf(geom.Tile(10, 30), geom.Tile(310, 30))
+        val r = power.placeRoboports(emptyList(), chests, 400, 60)
+        assertEquals(emptyList(), r.notes)
+        val radius = data.GameConstants.ROBOPORT_LOGISTIC_RADIUS
+        fun covers(p: geom.PlacedEntity, t: geom.Tile) = kotlin.math.abs(t.x + 0.5 - (p.x + 2.0)) <= radius && kotlin.math.abs(t.y + 0.5 - (p.y + 2.0)) <= radius
+        assertTrue(chests.all { c -> r.roboports.any { covers(it, c) } })
+        // Sorted along x, each within reach of the next.
+        val xs = r.roboports.sortedBy { it.x }
+        assertTrue(xs.zipWithNext().all { (a, b) -> kotlin.math.abs(a.x - b.x) <= 2 * radius && kotlin.math.abs(a.y - b.y) <= 2 * radius }, "$xs")
     }
 }

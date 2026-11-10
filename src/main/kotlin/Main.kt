@@ -20,6 +20,8 @@ import java.time.format.DateTimeFormatter
  *                                 write src/main/resources/tuning.json (with --budget=<s> per job, default 60)
  *   --verify-kit=<dir>            write the in-game verification blueprints (see docs/VERIFY.md)
  *   --render=<dir>                redraw <dir>/best.png from its best_output_string.txt and ports.json (with ports)
+ *   --render-blocks=<dir>         a factory run's blocks with no picture (resumed layouts): blueprint, picture and test
+ *                                 copy from resume/block_N.json into block_N
  *   --resume=<dir>                continue a factory-of-blocks run in <dir>: its saved split and finished blocks are
  *                                 kept (and refined), missing blocks are searched, then it floorplans and stitches
  *                                 again (the job is the one saved there unless --config is given); a bare --resume
@@ -38,12 +40,13 @@ fun main(args: Array<String>) {
         val eq = it.indexOf('=')
         if (eq < 0) it.removePrefix("--") to "true" else it.substring(2, eq) to it.substring(eq + 1)
     }
-    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact", "plain", "until-stopped", "ui", "port", "test-copy")
+    val known = setOf("config", "tuning", "engine", "out", "calibrate", "budget", "verify-kit", "print-tuning", "render", "resume", "compact", "plain", "until-stopped", "ui", "port", "test-copy", "render-blocks")
     (flags.keys - known).takeIf { it.isNotEmpty() }?.let { error("Unknown flags: $it (known: $known)") }
 
     flags["render"]?.let { dir -> renderOutput(java.io.File(dir)); return }
 
     flags["test-copy"]?.let { dir -> writeTestCopy(java.io.File(dir), flags["config"]); return }
+    flags["render-blocks"]?.let { dir -> renderBlocks(java.io.File(dir), flags["config"]); return }
 
     if (flags.containsKey("ui")) { ui.Server(java.io.File(".").canonicalFile, flags["port"]?.toInt() ?: 8765).start(); return }
 
@@ -129,6 +132,35 @@ private fun fail(msg: String): Nothing {
  * Writes <dir>/test_output_string.txt and test_feeds.txt again from the run's best layout and ports.json, with this
  * version's harness (the job from [config], else <dir>/resume/job.json, else the defaults).
  */
+/**
+ * Blocks of the factory run in [dir] whose folder has no picture (a resumed layout no search improved on, from runs
+ * before searches wrote one for it): each block's saved layout (resume/block_N.json) written into its folder as
+ * blueprint, picture and test copy.
+ */
+private fun renderBlocks(dir: java.io.File, config: String?) {
+    val job = config?.let { RunConfiguration.load(it) } ?: blocks.savedJob(dir) ?: error("no job: pass --config or a run with resume/job.json")
+    val data = loadRootData(job.data ?: "recipes.json")
+    var b = 0
+    while (java.io.File(dir, "resume/block_${b + 1}.json").isFile) {
+        val out = java.io.File(dir, "block_${b + 1}")
+        val r = blocks.loadBlock(dir, b).firstOrNull()
+        val lay = r?.layout
+        if (r != null && lay != null && !java.io.File(out, "best.png").exists()) {
+            out.mkdirs()
+            val l = power.withOverflowValves(lay, r.outputs, byproducts = power.hasOverflowValve(data), targets = job.targets.map { it.name }.toSet())
+            java.io.File(out, "best_output_string.txt").writeText(l.toBlueprintString(job.buildQuality()))
+            java.io.File(out, "best_blueprint.json").writeText(l.toBlueprint(job.buildQuality()).toJson())
+            power.testCopy(l, r.sources, r.outputs, job).let { tc ->
+                java.io.File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(job.buildQuality()))
+                java.io.File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
+            }
+            viz.renderLayout(l, java.io.File(out, "best.png"), viz.RenderOptions(ports = viz.portLabels(r.sources, r.outputs), title = "${r.w}x${r.h} (resumed)"))
+            println("block ${b + 1}: ${r.w} x ${r.h}, wrote ${java.io.File(out, "best.png")}")
+        }
+        b++
+    }
+}
+
 private fun writeTestCopy(dir: java.io.File, config: String?) {
     val json = kotlinx.serialization.json.Json
     val ports = json.parseToJsonElement(java.io.File(dir, "ports.json").readText()) as kotlinx.serialization.json.JsonObject

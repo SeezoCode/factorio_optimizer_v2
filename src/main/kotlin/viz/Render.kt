@@ -197,6 +197,13 @@ fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions(
                 g.drawOval(sx(e.x + 0.15), sy(e.y + 0.15), ((e.w - 0.3) * px).toInt(), ((e.h - 0.3) * px).toInt())
             }
             Kind.BELT -> arrow(cx, cy, e.dir, 0.8, netColor(e), (px / 6f).coerceAtLeast(2f))
+            // A roboport: a dark square with a lighter middle.
+            Kind.ROBOPORT -> {
+                g.color = Color(90, 90, 110)
+                g.fillRect(sx(e.x + 0.1), sy(e.y + 0.1), ((e.w - 0.2) * px).toInt(), ((e.h - 0.2) * px).toInt())
+                g.color = Color(200, 200, 230)
+                g.fillRect(sx(e.x + e.w / 2.0 - 0.6), sy(e.y + e.h / 2.0 - 0.6), (1.2 * px).toInt(), (1.2 * px).toInt())
+            }
             // An overflow valve: an arrow the way it lets fluid out.
             Kind.VALVE -> arrow(cx, cy, e.dir.opposite, 0.6, Color(200, 120, 40), (px / 6f).coerceAtLeast(2f))
             Kind.UG_IN, Kind.UG_OUT -> {

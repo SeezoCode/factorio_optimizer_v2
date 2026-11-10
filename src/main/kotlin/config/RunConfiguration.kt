@@ -458,6 +458,16 @@ data class BlocksConfig(
      */
     @SerialName("local_sinks") val localSinks: Double? = null,
     @SerialName("local_sink_chest") val localSinkChest: String = "steel-chest",
+    /**
+     * Small items between blocks go by logistic robots: every link of an item (not a fluid) between two blocks carrying
+     * less than this many per second ends at its sending block's port in an inserter and a [botProviderChest], and starts
+     * at its receiving block's port at a [botRequesterChest] (asking for ten minutes' worth) and an inserter, with no belt
+     * through the corridors (Py production science: 444 of its 636 links between blocks carry under 0.1/s). Roboports
+     * go over those chests, one network; the robots go in by hand. Null: off.
+     */
+    @SerialName("bot_links") val botLinks: Double? = null,
+    @SerialName("bot_provider_chest") val botProviderChest: String = "passive-provider-chest",
+    @SerialName("bot_requester_chest") val botRequesterChest: String = "requester-chest",
     /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,
     /** Price of a belt between blocks when splitting (a port on each block and a belt through the corridors). */

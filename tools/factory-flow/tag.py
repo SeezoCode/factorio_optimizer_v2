@@ -105,6 +105,13 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
         if e and any(e["name"].endswith(b) for b in BELTS):
             e.setdefault("tags", {})["flow"] = {"overflow": base(o["item"])}
             ends += 1
+    # Robot links (blocks.bot_links): their provider and requester chests carry the item, so the mod treats the belts
+    # into and out of them as one (pull reaches the makers behind a provider).
+    for role in ("providers", "requesters"):
+        for b in (ports.get("bots") or {}).get(role, []):
+            e = by_tile.get((b["x"], b["y"]))
+            if e:
+                e.setdefault("tags", {})["flow"] = {"bot": base(b["item"])}
     return machines, ends
 
 

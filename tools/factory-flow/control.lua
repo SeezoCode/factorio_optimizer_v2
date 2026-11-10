@@ -38,6 +38,7 @@ local function setting(name) return settings.global["factory-flow-" .. name].val
 local function init()
   storage.machines = storage.machines or {}   -- unit number -> { e, take, target, recipe, fq, off, stop, held }
   storage.ends = storage.ends or {}           -- unit number -> { e, item }: overflow ports' last belts
+  storage.bots = storage.bots or {}           -- unit number -> { e, item }: robot links' provider and requester chests
   storage.stats = storage.stats or {}
   storage.dirty = true
 end
@@ -71,6 +72,9 @@ local function on_built(ev)
     storage.machines[e.unit_number] = { e = e, take = f.take or {}, target = f.target, recipe = tags.recipe, carriers = f.carriers }
   elseif f and f.overflow and BELTS[e.type] then
     storage.ends[e.unit_number] = { e = e, item = f.overflow }
+  elseif f and f.bot and e.type == "logistic-container" then
+    storage.bots = storage.bots or {}
+    storage.bots[e.unit_number] = { e = e, item = f.bot }
   end
   if CRAFTERS[e.type] or BELTS[e.type] or e.type == "inserter" then storage.dirty = true end
 end
@@ -85,6 +89,7 @@ local function on_removed(ev)
   if not (e and e.valid and e.unit_number) then return end
   storage.machines[e.unit_number] = nil
   storage.ends[e.unit_number] = nil
+  if storage.bots then storage.bots[e.unit_number] = nil end
   local a = (storage.anchors or {})[e.unit_number]
   if a then
     if a.anchor.valid then a.anchor.destroy() end
@@ -160,6 +165,31 @@ local function rebuild()
         end
       end
     end
+  end
+  -- Robot links (blocks.bot_links, tagged chests): the belt into a provider chest and those out of requester chests of
+  -- one item count as one network, as robots carry between them.
+  local rep = {}
+  for _, c in pairs(storage.bots or {}) do
+    local e = c.e
+    if e.valid then
+      local bb = e.bounding_box
+      for _, i in pairs(e.surface.find_entities_filtered { area = { { bb.left_top.x - 3, bb.left_top.y - 3 }, { bb.right_bottom.x + 3, bb.right_bottom.y + 3 } }, type = "inserter" }) do
+        local d = i.drop_target or at(e.surface, i.drop_position)
+        local pk = i.pickup_target or at(e.surface, i.pickup_position)
+        local belt = (d and d.unit_number == e.unit_number and pk and BELTS[pk.type] and pk)
+          or (pk and pk.unit_number == e.unit_number and d and BELTS[d.type] and d)
+        if belt then
+          local n = net(belt)
+          rep[c.item] = rep[c.item] or n
+          rep[n] = rep[c.item]
+        end
+      end
+    end
+  end
+  if next(rep) then
+    local function remap(t) for k, s in pairs(t) do local o = {}; for n in pairs(s) do o[rep[n] or n] = true end; t[k] = o end end
+    remap(T.feeds); remap(T.drops)
+    for k, n in pairs(T.ins_net) do T.ins_net[k] = rep[n] or n end
   end
   -- Gates: walking up from each overflow port's last belt, the belt just past the first one a machine takes from.
   for _, en in pairs(storage.ends) do

@@ -169,6 +169,10 @@ object GameConstants {
     const val INFINITY_PIPE = "infinity-pipe"
     /** Pyanodon's overflow valve: passes fluid on only while its input side is over 80% full (overflow outputs). */
     const val OVERFLOW_VALVE = "py-overflow-valve"
+    /** A roboport (4 x 4) and how far its logistic area reaches from its centre, as in the base game. */
+    const val ROBOPORT = "roboport"
+    const val ROBOPORT_SIZE = 4
+    const val ROBOPORT_LOGISTIC_RADIUS = 25
 
     /**
      * 1x2 loaders by belt tier (editor-only in 2.0; the test copy uses them to feed and empty ports at full belt

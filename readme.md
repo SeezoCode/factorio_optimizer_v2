@@ -204,6 +204,8 @@ Ctrl-C stops the search and rewrites the best result first. Other flags:
 - `--calibrate=<job>,<job>,... --budget=<s>`: refits `tuning.json` from short searches.
 - `--verify-kit=<dir>`: in-game check blueprints (see [docs/VERIFY.md](docs/VERIFY.md)).
 - `--render=<dir>`: redraws `best.png` of an output folder from its blueprint and `ports.json`.
+- `--render-blocks=<dir>`: a factory run's blocks that have no picture (layouts carried over by `--resume` that no
+  search improved on; runs now write those themselves): blueprint, picture and test copy from `resume/block_N.json`.
 - `--resume=<dir>`: continues a factory-of-blocks run in that output folder. The split and every block's best
   layout were saved in `<dir>/resume/`; blocks without one are searched, and the others keep shrinking from where
   they were for the time given, then the factory is stitched and validated again. Useful after stopping a run, to
@@ -381,7 +383,17 @@ Unknown keys are an error. Everything except `targets` has a default.
   liquids, exhaust pipe for gases): past its port pipe an overflow valve (the block's own users keep what they need:
   it lets out only above 80% full), then that building, turned to take from it. Fluids the program renamed
   (`steam#250` and other temperatures) still leave at the edge. The test copy holds such a port at most half full
-  with an infinity pipe instead, as for an overflow at the edge.
+  with an infinity pipe instead, as for an overflow at the edge. Where no void fits beside a port (rare), the port is
+  left a dead end and a note says so.
+- `blocks.bot_links` (items/s, off by default): a small item between two blocks goes by logistic robots instead of
+  a belt through the corridors (Py production science: 444 of its 636 links between blocks carry under 0.1/s). The
+  sending block's port belt ends in an inserter into `blocks.bot_provider_chest` (default `passive-provider-chest`),
+  the receiving block's port starts at a `blocks.bot_requester_chest` (default `requester-chest`, asking for ten
+  minutes' worth, at least 10) and an inserter. Roboports go over all those chests as one network (each chest within
+  a roboport's logistic area, the roboports joined along free corridor spots); the robots go in by hand (the in-game
+  check puts 20 in each roboport, `--robots N`). `ports.json` lists the chests under `bots`, and flow control (check
+  and mod, through `tag.py`) counts each item's provider and requester belts as one, so pull still reaches the
+  makers behind a provider.
 - Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
   (lubricant, or oil leaving the block), one of that oil's pipes gets a red wire to the cracking plants, which work
   only while that pipe is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns it off;

@@ -2,6 +2,7 @@ import emit.decodeBlueprint
 import emit.decodeToJson
 import emit.toBlueprint
 import emit.toBlueprintString
+import emit.toJson
 import emit.toLayout
 import geom.Dir
 import geom.Kind
@@ -131,5 +132,18 @@ class VerifyKitTest {
             val back = decodeBlueprint(c.layout.toBlueprintString()).toLayout(c.layout.w, c.layout.h)
             assertEquals(c.layout.entities.map { it.stripped() }, back.entities.map { it.stripped() }, c.id)
         }
+    }
+
+    @Test
+    fun `a requester chest keeps its request and a roboport round trips`() {
+        val l = Layout(10, 10, listOf(
+            PlacedEntity("requester-chest", geom.Kind.CHEST, 1, 1, item = "iron-plate", request = 30),
+            PlacedEntity("passive-provider-chest", geom.Kind.CHEST, 2, 1),
+            PlacedEntity("roboport", geom.Kind.ROBOPORT, 4, 4),
+        ))
+        val back = emit.decodeBlueprint(l.toBlueprintString()).toLayout(10, 10)
+        assertEquals(l.entities.map { it.stripped() }, back.entities.map { it.stripped() })
+        val json = l.toBlueprint().toJson()
+        kotlin.test.assertTrue("request_filters" in json && "\"count\":30" in json, json)
     }
 }

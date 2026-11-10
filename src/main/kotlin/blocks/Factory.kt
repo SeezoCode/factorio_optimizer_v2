@@ -124,6 +124,7 @@ fun runFactory(
             maxUtilization = tuning.planner.maxUtilization).also { saveSplit(out, config, it) }
     val valves = power.hasOverflowValve(data)
     split = withLocalSinks(split, cfg.localSinks, config.targets.map { it.name }.toSet()) { f -> valves && data.fluidVoid(f) != null }
+    split = withBotLinks(split, cfg.botLinks)
     // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
     val plan = split.plan
     plan.write(File(out, "plan_rebalanced.json").path)
@@ -416,6 +417,7 @@ private fun sayPlan(split: Split, plan: ProductionPlan, say: (String) -> Unit) {
     say("  ${edge.count { !it.routed }} inputs and outputs leave their block straight out of the factory, ${edge.count { it.routed && !it.local }} run through the corridors to its edge" +
         edge.count { it.local && !it.fluid }.let { n -> if (n > 0) ", $n small by-products end in a chest beside their block" else "" } +
         edge.count { it.local && it.fluid }.let { n -> if (n > 0) ", $n small fluid by-products in a void beside it" else "" })
+    split.links.count { it.bot }.let { n -> if (n > 0) say("  $n small links between blocks go by logistic robots (of ${split.links.count { it.inner && !it.fluid }} item links between blocks)") }
 }
 
 /** [this] state with block [gone] removed (indices above it, reserved areas included, move down). */
@@ -928,6 +930,8 @@ fun stitchRoute(
     val outputs = ArrayList<OutputSpec>()
     /** Local sinks (blocks.local_sinks): the link, its port's last belt, and the way that belt points. */
     val localSinks = ArrayList<Triple<Link, Tile, Dir>>()
+    /** Robot links' receiving ends (blocks.bot_links): the link, its port's first belt, and the way out of the block. */
+    val botInputs = ArrayList<Triple<Link, Tile, Dir>>()
     // (On the ring, or on the box's own edge row: fluid ports start with a pipe-to-ground there.)
     fun outsideOnSide(t: Tile, side: String?) = when (side) { "N" -> t.y <= 0; "S" -> t.y >= H - 1; "W" -> t.x <= 0; "E" -> t.x >= W - 1; else -> false }
     fun inBounds(t: Tile) = t.x in 0 until W && t.y in 0 until H
@@ -942,14 +946,14 @@ fun stitchRoute(
             val group = bps[b].linksOfPort[o.port] ?: return@forEach
             val l = split.links[group[0]]
             val t = Tile(o.tile.x + ox[b], o.tile.y + oy[b])
-            if (l.local) {
+            if (l.local || l.bot) {
                 // (A pipe port: out of the block on the side it was searched with, else whichever side leads out.)
                 val rect = Rect(ox[b], oy[b], results[b].w, results[b].h)
                 val d = if (o.fluid) (listOfNotNull(side(l.fromSide, b)) + Dir.entries).firstOrNull { (t + it) !in rect }
                     ?: return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} port is not on its edge")
                     else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
                 localSinks += Triple(l, t, d)
-                outputs += o.copy(tile = t, port = -1, local = true, sink = if (o.fluid) t + d else null)
+                outputs += o.copy(tile = t, port = -1, local = true, sink = if (o.fluid) t + d else null, bot = l.bot)
                 return@forEach
             }
             if (!l.throughCorridor) {
@@ -971,6 +975,14 @@ fun stitchRoute(
         results[b].sources.forEach { s ->
             val l = split.links[bps[b].linkOfPort[s.port] ?: return@forEach]
             val t = Tile(s.tile.x + ox[b], s.tile.y + oy[b])
+            // A robot link: a requester chest and an inserter onto the port's first belt (see below), no corridor belt.
+            if (l.bot) {
+                val rect = Rect(ox[b], oy[b], results[b].w, results[b].h)
+                val d = (listOfNotNull(byTile[t]?.dir?.opposite, side(l.toSide, b)) + Dir.entries).firstOrNull { (t + it) !in rect }
+                    ?: return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} port is not on its edge")
+                botInputs += Triple(l, t, d)
+                return@forEach
+            }
             if (!l.throughCorridor) {
                 if (outsideOnSide(t, side(l.toSide, b)?.name)) { sources += s.copy(tile = t, port = -1); return@forEach }
                 if (s.fluid) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} input is not on the factory's edge")
@@ -981,7 +993,7 @@ fun stitchRoute(
             ends[l.id] = (t + out) to out.opposite
         }
     }
-    val corridorLinks = split.links.filter { (it.throughCorridor || it.id in detoured) && !it.local }
+    val corridorLinks = split.links.filter { (it.throughCorridor || it.id in detoured) && !it.local && !it.bot }
     corridorLinks.filter { (it.from >= 0 && it.id !in starts) || (it.to >= 0 && it.id !in ends) }.takeIf { it.isNotEmpty() }?.let { miss ->
         return StitchAttempt(null, emptyList(), "a block port is missing: " + miss.take(3).joinToString { l ->
             val b = if (l.from >= 0 && l.id !in starts) l.from else l.to
@@ -1005,6 +1017,19 @@ fun stitchRoute(
     fun free(t: Tile) = t.x in 0 until W && t.y in 0 until H && t !in blockTiles && t !in byTile
     // Local sinks: an inserter out of the port's last belt into a chest, on the two tiles just outside the block.
     val sinkInserter = listOf("fast-inserter", "inserter", "bulk-inserter").firstOrNull { it in config.inserters.allowed } ?: "inserter"
+    // (A fluid's void keeps clear of where corridor pipes leave or reach their ports: such a pipe may touch nothing of
+    // another fluid nor a machine, and may dive under with a pipe-to-ground pair. Py production: a sinkhole beside
+    // block 24's dms input left its pipe no way in, and the factory widened for nothing.)
+    val pipeHeads = HashSet<Tile>()
+    /** Local fluid ports no void found room beside (see below), and where the others' valves went. */
+    val voidless = HashSet<Tile>()
+    val valveAt = HashMap<Tile, Tile>()
+    corridorLinks.filter { it.fluid }.forEach { l ->
+        listOfNotNull(starts[l.id], ends[l.id]?.let { (t, d) -> t to d.opposite }).forEach { (t, d) ->
+            pipeHeads += t; pipeHeads += t + d.cw; pipeHeads += t + d.ccw
+            for (j in 1..GameConstants.PIPE_TO_GROUND_GAP + 2) { val u = t.step(d, j); pipeHeads += u; pipeHeads += u + d.cw; pipeHeads += u + d.ccw }
+        }
+    }
     for ((l, t, d) in localSinks) {
         val a = t + d; val c = t.step(d, 2)
         if (l.fluid) {
@@ -1014,24 +1039,53 @@ fun stitchRoute(
             // further on. Nothing of a fluid may lie beside those pipes.
             val (name, recipe) = GameConstants.fluidVoid(l.item) ?: return StitchAttempt(null, listOf(a), "nothing destroys ${l.item}")
             val fluidKinds = setOf(Kind.PIPE, Kind.PIPE_UG, Kind.TANK, Kind.INFINITY_PIPE, Kind.VALVE)
-            var placed: List<PlacedEntity>? = null
-            for (k in 0..6) {
-                val chain = (1..k).map { a.step(d, it) }
-                if ((listOf(a) + chain).any { !free(it) }) break
-                if (chain.any { p -> listOf(d.cw, d.ccw).any { s -> byTile[p + s]?.kind in fluidKinds } }) break
-                val v = fluidVoidAt(name, recipe, chain.lastOrNull() ?: a, d.opposite) ?: break
-                if (v.rect.tiles().any { !free(it) || it == a || it in chain }) continue
-                placed = listOf(PlacedEntity(GameConstants.OVERFLOW_VALVE, Kind.VALVE, a.x, a.y, d.opposite, fluid = l.item, net = netOfItem[l.item])) +
-                    chain.map { PlacedEntity(config.fluids.pipe, Kind.PIPE, it.x, it.y, fluid = l.item, net = netOfItem[l.item]) } + v
-                break
+            val rect = Rect(ox[l.from], oy[l.from], results[l.from].w, results[l.from].h)
+            fun along(dir: Dir): List<PlacedEntity>? {
+                val v0 = t + dir
+                for (k in 0..8) {
+                    val chain = (1..k).map { v0.step(dir, it) }
+                    if ((listOf(v0) + chain).any { !free(it) || it in pipeHeads }) return null
+                    if ((listOf(v0) + chain).drop(1).any { p -> listOf(dir.cw, dir.ccw).any { s -> byTile[p + s]?.kind in fluidKinds } }) return null
+                    val v = fluidVoidAt(name, recipe, chain.lastOrNull() ?: v0, dir.opposite) ?: return null
+                    if (v.rect.tiles().any { !free(it) || it == v0 || it in chain || it in pipeHeads }) continue
+                    return listOf(PlacedEntity(GameConstants.OVERFLOW_VALVE, Kind.VALVE, v0.x, v0.y, dir.opposite, fluid = l.item, net = netOfItem[l.item])) +
+                        chain.map { PlacedEntity(config.fluids.pipe, Kind.PIPE, it.x, it.y, fluid = l.item, net = netOfItem[l.item]) } + v
+                }
+                return null
             }
-            if (placed == null) return StitchAttempt(null, listOf(a, c), "no room for the void of block ${l.from + 1}'s ${l.item} at $a")
+            // Straight out, else (a plain pipe joins on every side) out of either side, off the block.
+            val sides = listOf(d) + (if (byTile[t]?.kind == Kind.PIPE) listOf(d.cw, d.ccw).filter { (t + it) !in rect } else emptyList())
+            val placed = sides.firstNotNullOfOrNull { along(it) }
+            if (placed == null) {
+                // No room anywhere (rare): the port stays a dead end, its fluid backing up into the block's own users. A
+                // note, not a failed stitch: the floorplan widened for nothing when it was one.
+                val what = (listOf(a, c)).joinToString { u -> byTile[u]?.let { "${it.kind.name.lowercase()} ${it.name}" } ?: if (u in blockTiles) "a block" else if (!inBounds(u)) "the edge" else "pipe heads" }
+                note(t, "no room for a void for block ${l.from + 1}'s ${l.item}: $what; it backs up into its users")
+                voidless += t
+                continue
+            }
             placed.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
+            valveAt[t] = placed[0].tile
             continue
         }
-        if (!free(a) || !free(c)) return StitchAttempt(null, listOf(a, c), "no room for the chest of block ${l.from + 1}'s ${l.item} at $a")
-        listOf(PlacedEntity(sinkInserter, Kind.INSERTER, a.x, a.y, d.opposite, net = netOfItem[l.item]),
-            PlacedEntity(config.blocks!!.localSinkChest, Kind.CHEST, c.x, c.y)).forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
+        // Straight on from the belt's end, else (an inserter takes from a belt on any side) out of either side, off the block.
+        val rect = Rect(ox[l.from], oy[l.from], results[l.from].w, results[l.from].h)
+        val s = (listOf(d) + listOf(d.cw, d.ccw).filter { (t + it) !in rect }).firstOrNull { free(t + it) && free(t.step(it, 2)) }
+            ?: return StitchAttempt(null, listOf(a, c), "no room for the chest of block ${l.from + 1}'s ${l.item} at $a")
+        val chest = if (l.bot) config.blocks!!.botProviderChest else config.blocks!!.localSinkChest
+        listOf(PlacedEntity(sinkInserter, Kind.INSERTER, (t + s).x, (t + s).y, s.opposite, net = netOfItem[l.item]),
+            PlacedEntity(chest, Kind.CHEST, t.step(s, 2).x, t.step(s, 2).y)).forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
+    }
+    // Robot links' receiving ends: a requester chest asking for ten minutes' worth (at least 10), an inserter from it
+    // onto the port's first belt.
+    for ((l, t, d) in botInputs) {
+        val rect = Rect(ox[l.to], oy[l.to], results[l.to].w, results[l.to].h)
+        val s = (listOf(d) + listOf(d.cw, d.ccw).filter { (t + it) !in rect }).firstOrNull { free(t + it) && free(t.step(it, 2)) }
+            ?: return StitchAttempt(null, listOf(t + d, t.step(d, 2)), "no room for the requester of block ${l.to + 1}'s ${l.item} at ${t + d}")
+        val c = t.step(s, 2)
+        listOf(PlacedEntity(sinkInserter, Kind.INSERTER, (t + s).x, (t + s).y, s, net = netOfItem[l.item]),
+            PlacedEntity(config.blocks!!.botRequesterChest, Kind.CHEST, c.x, c.y, item = l.item, request = maxOf(10, kotlin.math.ceil(l.rate * 600).toInt())))
+            .forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
     }
     /** The tile after a pipe-to-ground pair from [t] going [out] (port behind it), or null if no pair fits. */
     // Where each fluid link's corridor pipe starts: two of different fluids side by side would join, and nothing the
@@ -1371,7 +1425,11 @@ fun stitchRoute(
     sources += routed.sources.filter { it.port in edgePorts }.map { it.copy(port = -1) }
     outputs += routed.outputs.filter { it.port in edgePorts }.map { it.copy(port = -1) }
     val blockRects = (0 until k).map { b -> Rect(ox[b], oy[b], results[b].w, results[b].h) }
-    return StitchAttempt(Stitched(entities, machines, sources, outputs, W, H, blockRects, arr.reserved, results, arr.rot, tileNotes), emptyList(), "ok")
+    // A local fluid port's valve where it went; one with no void leaves the factory nowhere (an output inside it).
+    val outs = outputs.map { o ->
+        if (!o.fluid || !o.local) o else if (o.tile in voidless) o.copy(local = false, sink = null) else o.copy(sink = valveAt[o.tile] ?: o.sink)
+    }
+    return StitchAttempt(Stitched(entities, machines, sources, outs, W, H, blockRects, arr.reserved, results, arr.rot, tileNotes), emptyList(), "ok")
 }
 
 /** Test harness on the factory's ports, compaction, poles over everything, block borders, and validation. */
@@ -1390,6 +1448,14 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         val harness = if (config.testMode) buildHarness(srcs, ctl.entities, w, h, config, outs) else null
         var all: List<PlacedEntity> = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }
         harness?.warnings?.let { notes += it }
+        // Robot links (blocks.bot_links): roboports over their chests, one network (before the poles, which power them).
+        config.blocks?.takeIf { it.botLinks != null }?.let { cfg ->
+            val chests = all.filter { it.kind == Kind.CHEST && (it.name == cfg.botProviderChest || it.name == cfg.botRequesterChest) }.map { it.tile }
+            val robo = power.placeRoboports(all, chests, w, h, (rects.flatMap { it.tiles() } + reserved.flatMap { it.tiles() }).toSet())
+            all = all + robo.roboports
+            notes += robo.notes
+            if (robo.roboports.isNotEmpty()) notes += "${robo.roboports.size} roboports over ${chests.size} robot chests: put logistic robots in (the blueprint cannot carry them)"
+        }
         // Aquilo: one heat network over the whole factory, joining every block's own pipes and heating the corridors
         // (before the poles, unless heat.poles: then after them, so they are heated too).
         fun heatOf(es: List<PlacedEntity>) = power.placeHeatPipes(es, w, h, search.heatPortTiles(config.heat.edge, w, h), config.heat.poles, maxPorts = config.heat.ports)
@@ -1516,11 +1582,23 @@ fun factoryManifest(f: Factory): JsonObject {
             }
         }
         putJsonArray("outputs") {
-            f.outputs.forEach { o -> addJsonObject {
+            f.outputs.filter { !it.bot }.forEach { o -> addJsonObject {
                 put("item", o.item); put("rate", o.rate); put("fluid", o.fluid); put("x", o.tile.x); put("y", o.tile.y)
                 // A local sink: the port's last belt inside the factory, emptied into a chest beside it.
                 put("edge", if (o.local) "inside" else edge(o.tile.x, o.tile.y)); if (o.local) put("local", true)
             } }
+        }
+        // Robot links (blocks.bot_links): each provider chest with the item robots take from it, each requester chest with
+        // the item it asks for (the in-game check joins their belts as one, for flow control).
+        val ents = f.layout.entities
+        val chestAt = ents.filter { it.kind == Kind.CHEST }.associateBy { it.tile }
+        val providers = f.outputs.filter { it.bot }.mapNotNull { o ->
+            ents.firstOrNull { it.kind == Kind.INSERTER && it.pickupTile == o.tile && chestAt[it.dropTile] != null }?.let { o.item to it.dropTile }
+        }
+        val requesters = ents.filter { it.kind == Kind.CHEST && it.request != null && it.item != null }.map { it.item!! to it.tile }
+        if (providers.isNotEmpty() || requesters.isNotEmpty()) putJsonObject("bots") {
+            putJsonArray("providers") { providers.forEach { (item, t) -> addJsonObject { put("item", item); put("x", t.x); put("y", t.y) } } }
+            putJsonArray("requesters") { requesters.forEach { (item, t) -> addJsonObject { put("item", item); put("x", t.x); put("y", t.y) } } }
         }
         // Aquilo: where heat must be brought in (heat pipe tiles on the ring).
         if (f.heatPorts.isNotEmpty()) putJsonArray("heat_ports") { f.heatPorts.forEach { p -> addJsonObject { put("x", p.x); put("y", p.y); put("edge", edge(p.x, p.y)) } } }

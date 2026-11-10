@@ -33,6 +33,8 @@ data class Link(
     val pair: Int = -1,
     /** An output that ends in a chest just outside its block's port (blocks.local_sinks), not at the factory's edge. */
     val local: Boolean = false,
+    /** A small item between two blocks that logistic robots carry (blocks.bot_links): chests at both ports, no belt. */
+    val bot: Boolean = false,
 ) {
     /** Between two blocks: one belt, routed through the corridors. */
     val inner: Boolean get() = from >= 0 && to >= 0
@@ -626,6 +628,29 @@ fun withLocalSinks(split: Split, below: Double?, targets: Set<String>, voids: (S
     return Split(split.blocks, links, split.warnings, split.geometry, split.plan, split.partition, split.ports)
 }
 
+/**
+ * [split] with its small links between blocks carried by logistic robots ([BlocksConfig.botLinks]): every item link
+ * (not a fluid, not sharing a belt with another item) between two blocks carrying less than [below] per second. Each
+ * keeps its two block ports; the stitch puts a provider chest at one and a requester chest at the other, and no belt
+ * through the corridors. A port on a side its block keeps to the factory's edge moves off it (its chest would stand
+ * outside the factory).
+ */
+fun withBotLinks(split: Split, below: Double?): Split {
+    if (below == null) return split
+    val mixed = split.plan.mixed.values.toSet()
+    val marked = split.links.map { l ->
+        if (l.inner && !l.fluid && !l.local && l.pair < 0 && l.item !in mixed && l.rate < below) l.copy(bot = true) else l
+    }
+    val touch = Split(split.blocks, marked, split.warnings, split.geometry, split.plan, split.partition, split.ports).touch
+    fun off(b: Int, s: String?): String? {
+        val side = s?.let(Dir::fromName) ?: return s
+        if (side !in touch[b]) return s
+        return listOf(side.opposite, side.cw, side.ccw).firstOrNull { it !in touch[b] }?.name ?: s
+    }
+    val links = marked.map { l -> if (!l.bot) l else l.copy(fromSide = off(l.from, l.fromSide), toSide = off(l.to, l.toSide)) }
+    return Split(split.blocks, links, split.warnings, split.geometry, split.plan, split.partition, split.ports)
+}
+
 fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning, shared: Boolean = false): BlockPlan =
     blockPlan(full, split.blocks[b], split.links, b, tuning, shared)
 
@@ -636,7 +661,7 @@ fun blockPlan(full: ProductionPlan, split: Split, b: Int, tuning: Tuning, shared
  */
 fun sharedOutputs(full: ProductionPlan, links: List<Link>, b: Int, tuning: Tuning): List<List<Link>> {
     val cap = tuning.net.beltUtilisation * data.GameConstants.beltTier(full.beltTier, full.beltStack).throughput
-    return links.filter { it.from == b && it.inner && !it.fluid && it.pair < 0 }.groupBy { it.item to it.fromSide }.values.flatMap { ls ->
+    return links.filter { it.from == b && it.inner && !it.fluid && it.pair < 0 && !it.bot }.groupBy { it.item to it.fromSide }.values.flatMap { ls ->
         val groups = ArrayList<MutableList<Link>>()
         ls.sortedByDescending { it.rate }.forEach { l ->
             groups.firstOrNull { g -> g.size < 3 && g.sumOf { it.rate } + l.rate <= cap + 1e-9 }?.add(l) ?: groups.add(mutableListOf(l))

@@ -239,7 +239,7 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
     // holds the port's network at most half full instead, as for an overflow at the edge.
     val localFluid = outputs.filter { it.fluid && it.local && it.sink != null }
     // Local sinks (blocks.local_sinks): their chest becomes an infinity chest the in-game check empties.
-    val sinkChests = outputs.filter { it.local && !it.fluid }.mapNotNull { o ->
+    val sinkChests = outputs.filter { it.local && !it.fluid && !it.bot }.mapNotNull { o ->
         layout0.entities.firstOrNull { it.kind == Kind.INSERTER && it.pickupTile == o.tile }?.dropTile
     }.toSet()
     // (Wire ends follow the entities left: poles' copper wires, the gates' and crackers' circuit wires.)

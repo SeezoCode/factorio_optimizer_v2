@@ -146,6 +146,16 @@ fun unstitchable(bp: BlockPlan, r: TrialResult): String? {
     search.missingLinkPorts(bp.plan, r.sources, r.outputs).takeIf { it.isNotEmpty() }?.let { ps ->
         return "missing its " + ps.joinToString { "${it.item} ${if (it.output) "output" else "input"} (link ${bp.linkOfPort[it.id]})" }
     }
+    // A port on a side its block's plan no longer gives it: the split moved it (a local sink off a side its block keeps
+    // to the factory's edge, where its chest or void would stand outside the factory).
+    fun onSide(t: Tile, edge: String): Boolean = when (edge) {
+        "north" -> t.y <= 0; "south" -> t.y >= r.h - 1; "west" -> t.x <= 0; "east" -> t.x >= r.w - 1; else -> true
+    }
+    (r.outputs.map { it.port to it.tile } + r.sources.map { it.port to it.tile }).forEach { (port, t) ->
+        val p = bp.plan.ports.getOrNull(port) ?: return@forEach
+        if (p.specs.isEmpty() || p.specs.any { it.edge == null || it.edge == "any" || it.x != null }) return@forEach
+        if (p.specs.none { onSide(t, it.edge!!) }) return "its ${p.item} port is off the side its plan gives it (${p.specs.joinToString { it.edge!! }})"
+    }
     val tiles = r.sources.map { it.tile } + r.outputs.map { it.tile }
     r.sources.filter { it.lane >= 0 }.forEach { s ->
         if (tiles.any { it != s.tile && it.manhattan(s.tile) == 1 }) return "a port beside its ${s.item} lane pair's port"

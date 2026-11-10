@@ -97,7 +97,9 @@ data class SourceSpec(
  * overflow valve in the blueprint, so the block's own users keep what they need).
  */
 data class OutputSpec(val tile: Tile, val item: String, val rate: Double, val fluid: Boolean = false, val port: Int = -1, val local: Boolean = false,
-                      val sink: Tile? = null)
+                      val sink: Tile? = null,
+                      /** A local one whose chest is a provider chest robots empty (blocks.bot_links): no factory output. */
+                      val bot: Boolean = false)
 
 data class ValidationSpec(
     /** Machine top-left tile -> what it should do. Machines missing here get item checks from their recipe only. */
@@ -1307,7 +1309,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
     private fun checkPower() {
         val poles = ents.indices.filter { ents[it].kind == Kind.POLE }
         if (!spec.requirePower) return
-        val needs = ents.filter { it.kind == Kind.MACHINE || it.kind == Kind.INSERTER || it.kind == Kind.BEACON }
+        val needs = ents.filter { it.kind == Kind.MACHINE || it.kind == Kind.INSERTER || it.kind == Kind.BEACON || it.kind == Kind.ROBOPORT }
         needs.forEach { e ->
             val covered = poles.any { covers(ents[it], e.rect) }
             if (!covered) err(ErrorType.UNPOWERED, e.tile, "${e.name} is outside every pole's supply area")

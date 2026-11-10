@@ -549,6 +549,7 @@ def main():
                          "machine is short of one of its ingredients, as full buffers would make it; without it a consumer early on "
                          "a belt whose output fills hours of pipe takes everything first")
     ap.add_argument("--keep", action="store_true", help="keep the temporary game folder (log, save)")
+    ap.add_argument("--robots", type=int, default=20, help="logistic robots put into each roboport (robot links; default 20)")
     ap.add_argument("--debug-at", action="append", default=[], metavar="X,Y",
                     help="log flow control's pull inputs for the machine at X,Y (as the report gives it) to the report's debug")
     args = ap.parse_args()
@@ -625,6 +626,11 @@ def main():
         params["pull_wanted"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
         print("pull: a machine runs only while a user of one of its products waits for it")
     params["targets"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
+    # Robot links (blocks.bot_links): their chests, so flow control treats each item's provider and requester belts as
+    # one; the check puts logistic robots into the roboports.
+    if ports and ports.get("bots"):
+        params["bots"] = ports["bots"]
+        params["robots_per_roboport"] = args.robots
     if args.debug_at:
         params["debug_at"] = args.debug_at
     if args.feed_short:

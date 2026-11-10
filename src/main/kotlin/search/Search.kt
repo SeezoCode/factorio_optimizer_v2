@@ -68,6 +68,14 @@ class Search(
     /** Seeds used so far per size, so every retry at a size gets fresh ones. */
     private val seedsUsed = HashMap<Int, Int>()
 
+    init {
+        // A layout carried over from an earlier run (a resumed block) gets its files too (blueprint, test copy, picture):
+        // a block whose search found nothing better wrote none and showed no picture (Py production's smelter blocks).
+        initial?.takeIf { it.layout != null && !File(out, "best.png").exists() }?.let { t ->
+            runCatching { writeFiles(t, 0) }.onFailure { printer("could not write the resumed layout's files: $it") }
+        }
+    }
+
     /** Every box tried so far, in order: tries, successes, best score and the closest failure. */
     private class SizeStats(val w: Int, val h: Int) {
         var tries = 0; var ok = 0; var bestScore = Double.MAX_VALUE
@@ -190,6 +198,18 @@ class Search(
     }
 
     private fun writeBest(t: TrialResult, n: Int) {
+        val l = writeFiles(t, n)
+        renderLayout(l, File(out, "renders/improvement_%03d.png".format(n)), RenderOptions(title = "#$n ${t.w}x${t.h} score ${"%.1f".format(t.score)}"))
+        val imp = improvements.last()
+        File(out, "scores.tsv").appendText(
+            (if (n == 1) "elapsed_s\tw\th\tscore\tbelts\tundergrounds\tinserters\tseed\n" else "") +
+                "%.1f\t%d\t%d\t%.2f\t%d\t%d\t%d\t%d\n".format(imp.elapsedMs / 1000.0, imp.w, imp.h, imp.score, imp.belts, imp.undergrounds, imp.inserters, imp.seed))
+        scores += timestampToScore(clock(), t.score)
+        generateScoreGraph(scores, out.path + "/", yLabel = "Score (area + weighted entities)")
+    }
+
+    /** [t]'s blueprint, test copy, ports and picture in [out]; the layout as written. */
+    private fun writeFiles(t: TrialResult, n: Int): geom.Layout {
         // Overflow outputs get their valves (outside the box, on the port's side).
         val l = power.withSeedRequests(power.withOverflowValves(t.layout!!, t.outputs.ifEmpty { t.route?.outputs ?: emptyList() },
             byproducts = power.hasOverflowValve(data), targets = config.targets.map { it.name }.toSet()), plan.seeds, data, plan.seedCarriers.toSet())
@@ -206,13 +226,7 @@ class Search(
         File(out, "allSolves").mkdirs()
         File(out, "allSolves/%03d - %dx%d - %.1f.txt".format(n, t.w, t.h, t.score)).writeText(bp)
         renderLayout(l, File(out, "best.png"), RenderOptions(ports = viz.portLabels(t.sources, t.outputs), title = "${t.w}x${t.h} score ${"%.1f".format(t.score)} seed ${t.seed}"))
-        renderLayout(l, File(out, "renders/improvement_%03d.png".format(n)), RenderOptions(title = "#$n ${t.w}x${t.h} score ${"%.1f".format(t.score)}"))
-        val imp = improvements.last()
-        File(out, "scores.tsv").appendText(
-            (if (n == 1) "elapsed_s\tw\th\tscore\tbelts\tundergrounds\tinserters\tseed\n" else "") +
-                "%.1f\t%d\t%d\t%.2f\t%d\t%d\t%d\t%d\n".format(imp.elapsedMs / 1000.0, imp.w, imp.h, imp.score, imp.belts, imp.undergrounds, imp.inserters, imp.seed))
-        scores += timestampToScore(clock(), t.score)
-        generateScoreGraph(scores, out.path + "/", yLabel = "Score (area + weighted entities)")
+        return l
     }
 
     /** Ctrl-C: whatever is best so far is already on disk; rewrite it and note the interruption. */

@@ -24,6 +24,8 @@ Once a second, for the machines of a tagged blueprint:
   side feeds more users. (A belt cannot be stopped by script, so the mod puts
   a hidden, empty constant combinator under each gate belt, wires it to the belt, and closes the gate by turning on
   the belt's enable condition `signal-A > 0`, which never holds there.)
+- **Robot links** (`blocks.bot_links`): the belt into a tagged provider chest and the belts out of requester chests of
+  the same item count as one, as robots carry between them.
 - **Push**: a machine standing with a full output (or a full burnt result slot: its ash) gets the users of what is
   stuck in it going, even if nothing they make is waited for (a ring stops for good otherwise).
 

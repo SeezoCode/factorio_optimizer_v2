@@ -80,6 +80,8 @@ data class BpEntity(
     @SerialName("use_filters") val useFilters: Boolean? = null,
     val filters: List<BpItemFilter>? = null,
     @SerialName("filter_mode") val filterMode: String? = null,
+    /** A requester chest's requests: {sections: [{index, filters: [{index, name, quality, comparator, count}]}]}. VERIFY */
+    @SerialName("request_filters") val requestFilters: JsonObject? = null,
     val bar: Int? = null,
     val mirror: Boolean? = null,
     /** Circuit settings; for a crafting machine its enable condition. VERIFY (v19) */
@@ -155,10 +157,23 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
             // Filters leave out the quality, so they match an item of any quality.
             useFilters = if (e.kind == Kind.INSERTER && (e.item != null || e.blacklist != null)) true else null,
             filters = when {
-                (e.kind == Kind.CHEST || e.kind == Kind.INSERTER) && e.item != null -> listOf(filter(1, e.item))
+                (e.kind == Kind.CHEST && e.request == null || e.kind == Kind.INSERTER) && e.item != null -> listOf(filter(1, e.item))
                 e.kind == Kind.INSERTER && e.blacklist != null -> e.blacklist.mapIndexed { i, it -> filter(i + 1, it) }
                 else -> null
             },
+            requestFilters = if (e.kind == Kind.CHEST && e.request != null && e.item != null) buildJsonObject {
+                put("sections", buildJsonArray {
+                    add(buildJsonObject {
+                        put("index", 1)
+                        put("filters", buildJsonArray {
+                            add(buildJsonObject {
+                                val (n, ql) = splitQuality(e.item)
+                                put("index", 1); put("name", n); put("quality", ql ?: "normal"); put("comparator", "="); put("count", e.request)
+                            })
+                        })
+                    })
+                })
+            } else null,
             // A blacklist filter: takes everything but the listed items. VERIFY (v24)
             filterMode = if (e.kind == Kind.INSERTER && e.item == null && e.blacklist != null) "blacklist" else null,
             items = (e.modules.orEmpty().isNotEmpty() || e.seeds.orEmpty().isNotEmpty()).takeIf { it }?.let {
@@ -215,7 +230,15 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
 }
 
 private val Kind.hasDirection: Boolean
-    get() = this != Kind.CHEST && this != Kind.POLE && this != Kind.BEACON && this != Kind.INFINITY_CHEST && this != Kind.INFINITY_PIPE && this != Kind.PIPE
+    get() = this != Kind.CHEST && this != Kind.POLE && this != Kind.BEACON && this != Kind.INFINITY_CHEST && this != Kind.INFINITY_PIPE && this != Kind.PIPE &&
+        this != Kind.ROBOPORT
+
+/** A requester chest's first request: item (with quality) and count. */
+private fun requestOf(b: BpEntity): Pair<String, Int>? {
+    val f = b.requestFilters?.get("sections")?.jsonArray?.firstOrNull()?.jsonObject?.get("filters")?.jsonArray?.firstOrNull()?.jsonObject ?: return null
+    val name = f["name"]?.jsonPrimitive?.content ?: return null
+    return withQuality(name, f["quality"]?.jsonPrimitive?.content) to (f["count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0)
+}
 
 /** 2.0 blueprint -> layout. Inverse of [toBlueprint] for the entity types this tool emits. */
 fun Blueprint.toLayout(w: Int, h: Int): Layout {
@@ -233,7 +256,7 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
             item = when (kind) {
                 Kind.INFINITY_CHEST -> b.infinitySettings?.get("filters")?.jsonArray?.firstOrNull()
                     ?.jsonObject?.get("name")?.jsonPrimitive?.content
-                Kind.CHEST -> b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) }
+                Kind.CHEST -> b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) } ?: requestOf(b)?.first
                 Kind.INSERTER -> if (b.useFilters == true && b.filterMode != "blacklist") b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) } else null
                 else -> null
             },
@@ -250,6 +273,7 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
                     c["constant"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0, sig["type"]?.jsonPrimitive?.content == "fluid")
             },
             readBelt = kind.beltFamily && b.controlBehavior?.get("circuit_read_hand_contents")?.jsonPrimitive?.content == "true",
+            request = if (kind == Kind.CHEST) requestOf(b)?.second else null,
             modules = b.items?.let { reqs ->
                 val slots = sortedMapOf<Int, String>()
                 reqs.forEach { r ->
