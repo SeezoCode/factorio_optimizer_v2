@@ -610,8 +610,17 @@ fun overflowItems(machines: List<MachineInstance>, supplied: Set<String>, leavin
 private fun carrier(p: String, machines: List<MachineInstance>, loopOf: Map<String, Set<String>>): Boolean {
     val loop = loopOf[p] ?: return false
     fun same(a: Double, b: Double) = kotlin.math.abs(a - b) <= 1e-6 * maxOf(a, b) + 1e-12
+    fun takesLoop(m: MachineInstance) = (m.demand.keys + m.fluidDemand.keys).any { it != p && it in loop }
     val makers = machines.filter { (it.products[p] ?: 0.0) > 1e-12 }
-    if (makers.isEmpty() || !makers.all { m ->
+    // Makers off the loop (taking none of its items) are fine while users off the loop take all they make: the ring
+    // stays closed (Py chemical science's bricks: a stone brick furnace feeding planter boxes beside the heat-brick
+    // ring; the ring's return belt got an overflow, and the bricks that passed its user waited at the edge).
+    val (ringMakers, outside) = makers.partition { takesLoop(it) }
+    if (outside.isNotEmpty()) {
+        val usedOff = machines.filter { m -> m.products.keys.none { it in loop } }.sumOf { it.demand[p] ?: it.fluidDemand[p] ?: 0.0 }
+        if (outside.sumOf { it.products.getValue(p) } > usedOff * (1 + 1e-6) + 1e-12) return false
+    }
+    if (ringMakers.isEmpty() || !ringMakers.all { m ->
             val r = m.products.getValue(p)
             (m.demand + m.fluidDemand).any { (q, rq) -> q != p && q in loop && same(rq, r) }
         }) return false

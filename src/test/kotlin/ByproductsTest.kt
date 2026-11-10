@@ -139,5 +139,13 @@ class LoopSeedsTest {
         )
         val over = plan.overflowItems(ms, setOf("air", "salt"), setOf("science", "used-salt"))
         assertTrue("stone-brick" !in over && "warm-stone-brick" !in over, "bricks only go round: $over")
+        // A brick furnace beside the ring, its bricks all used off the ring (planter boxes): still a ring of carriers.
+        val furnace = m(4, mapOf("stone" to 0.2), mapOf("stone-brick" to 0.04))
+        val boxes = m(5, mapOf("stone-brick" to 0.04, "wood" to 0.02), mapOf("planter-box" to 0.01))
+        val beside = plan.overflowItems(ms + furnace + boxes, setOf("air", "salt", "stone", "wood"), setOf("science", "used-salt", "planter-box"))
+        assertTrue("stone-brick" !in beside && "warm-stone-brick" !in beside, "bricks only go round: $beside")
+        // One making more than is used off the ring would fill it up: then the bricks need their way out.
+        val more = m(4, mapOf("stone" to 0.5), mapOf("stone-brick" to 0.1))
+        assertTrue("stone-brick" in plan.overflowItems(ms + more + boxes, setOf("air", "salt", "stone", "wood"), setOf("science", "used-salt", "planter-box")))
     }
 }

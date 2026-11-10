@@ -25,7 +25,13 @@ item = a.item
 
 
 def amount(rec, side):
-    return sum(x.get("amount", 0) or 0 for x in rec.get(side, []) if x["name"] == item)
+    # (A range, as Py's 1 to 2 fiber from wood, counts at its middle.)
+    def one(x):
+        a = x.get("amount")
+        if a is None:
+            a = ((x.get("amount_min") or 0) + (x.get("amount_max") or 0)) / 2
+        return a * (x.get("probability") or 1)
+    return sum(one(x) for x in rec.get(side, []) if x["name"] == item)
 
 
 on_belts, belts = defaultdict(int), defaultdict(int)

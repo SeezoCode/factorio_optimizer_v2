@@ -19,7 +19,9 @@ local SHORT = {
   [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
   [defines.entity_status.fluid_ingredient_shortage] = true, [defines.entity_status.no_fuel] = true,
 }
-local FULL = { [defines.entity_status.full_output] = true, [defines.entity_status.full_burnt_result_output] = true }
+-- (Py's wood processing units say "waiting for space in destination" when their output is full.)
+local FULL = { [defines.entity_status.full_output] = true, [defines.entity_status.full_burnt_result_output] = true,
+  [defines.entity_status.waiting_for_space_in_destination] = true }
 
 local function setting(name) return settings.global["factory-flow-" .. name].value end
 
@@ -249,7 +251,8 @@ local function control()
   local push_net, push_at, push_fluid = {}, {}, {}
   for unit, m in pairs(storage.machines) do
     local e, r = m.e, recipes[unit]
-    if r and e.valid and not e.disabled_by_script and e.status == defines.entity_status.full_output then
+    if r and e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output
+        or e.status == defines.entity_status.waiting_for_space_in_destination) then
       local out = e.get_output_inventory()
       local items_stuck = false
       for _, p in pairs(r.products) do

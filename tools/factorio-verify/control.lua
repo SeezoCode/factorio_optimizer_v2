@@ -1064,7 +1064,8 @@ script.on_event(defines.events.on_tick, function()
     local push_net, push_at, push_fluid = {}, {}, {}
     for _, m in pairs(run.machines) do
       local e = m.e
-      if e.valid and not e.disabled_by_script and e.status == defines.entity_status.full_output then
+      if e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output
+          or e.status == defines.entity_status.waiting_for_space_in_destination) then
         local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         local out = r and e.get_output_inventory()
         if r then
@@ -1224,7 +1225,7 @@ script.on_event(defines.events.on_tick, function()
     local full = {}
     for _, m in pairs(run.machines) do
       local e = m.e
-      if e.valid and e.status == defines.entity_status.full_output then
+      if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.waiting_for_space_in_destination) then
         local r = e.get_recipe()
         if r then for _, p in pairs(r.products) do full[p.name] = true end end
       end
@@ -1260,7 +1261,7 @@ script.on_event(defines.events.on_tick, function()
     for _, g in pairs(run.gates) do
       if g.e.valid then
         -- Closed too unless a machine dropping onto the belt stands with a full output: the overflow only takes what
-        -- would stop a maker. (Py science 2: barrels the animals give back went past the water-barrel filler while it
+        -- would stop a maker. (Py's wood processing units say "waiting for space in destination" when full.) (Py science 2: barrels the animals give back went past the water-barrel filler while it
         -- was full, on to the sink, which kept the last 54 there, 60 tiles past the filler waiting for them.)
         if not g.makers then
           g.makers = {}
@@ -1270,7 +1271,8 @@ script.on_event(defines.events.on_tick, function()
         end
         local close = true
         for _, e in pairs(g.makers) do
-          if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output) then close = false; break end
+          if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output
+              or e.status == defines.entity_status.waiting_for_space_in_destination) then close = false; break end
         end
         for item, nets in pairs(run.short.net) do if overflow[item] and nets[g.net] then close = true; break end end
         if close then run.gates_closed = run.gates_closed + 1 end
