@@ -14,7 +14,11 @@ Once a second, for the machines of a tagged blueprint:
   in the factory. For a fluid, the machine itself stops. A machine nobody behind plan waits behind takes what it likes.
 - **Gates**: on each overflow port's belt, the belt just past the last machine taking from it stops while a machine on
   that belt waits, or while no machine putting onto it stands with a full output. Items queue in front of their users,
-  and the overflow only takes what would otherwise stop a maker.
+  and the overflow only takes what would otherwise stop a maker. (A belt cannot be stopped by script, so the mod puts
+  a hidden, empty constant combinator under each gate belt, wires it to the belt, and closes the gate by turning on
+  the belt's enable condition `signal-A > 0`, which never holds there.)
+- **Push**: a machine standing with a full output gets the users of what is stuck in it going, even if nothing they
+  make is waited for (a ring stops for good otherwise).
 
 Machines the mod switches off show "Disabled by script". Each rule can be turned off in the map settings (Mod settings →
 Map), as can the whole mod; turning a setting off starts everything the mod stopped again.
