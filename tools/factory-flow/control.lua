@@ -75,6 +75,11 @@ local function on_removed(ev)
   if not (e and e.valid and e.unit_number) then return end
   storage.machines[e.unit_number] = nil
   storage.ends[e.unit_number] = nil
+  local a = (storage.anchors or {})[e.unit_number]
+  if a then
+    if a.anchor.valid then a.anchor.destroy() end
+    storage.anchors[e.unit_number] = nil
+  end
   if CRAFTERS[e.type] or BELTS[e.type] or e.type == "inserter" then storage.dirty = true end
 end
 
@@ -172,16 +177,34 @@ local function rebuild()
       end
     end
   end
-  -- Gates from before that are no longer gates open again.
+  -- Each gate hangs on a circuit network of its own anchor (data.lua): a belt cannot be stopped by script, but one on
+  -- a network stops by its enable condition. Gates from before that are no longer gates run again.
   local now = {}
   for _, g in pairs(T.gates) do now[g.e.unit_number] = true end
-  for _, g in pairs((storage.topo or {}).gates or {}) do
-    if g.closed and g.e.valid and not now[g.e.unit_number] then g.e.disabled_by_script = false end
+  storage.anchors = storage.anchors or {}
+  for unit, a in pairs(storage.anchors) do
+    if not now[unit] then
+      if a.belt.valid then pcall(function() a.belt.get_or_create_control_behavior().circuit_enable_disable = false end) end
+      if a.anchor.valid then a.anchor.destroy() end
+      storage.anchors[unit] = nil
+    end
   end
   for _, g in pairs(T.gates) do
-    for _, old in pairs((storage.topo or {}).gates or {}) do
-      if old.e.valid and old.e.unit_number == g.e.unit_number then g.closed = old.closed end
+    local a = storage.anchors[g.e.unit_number]
+    if not (a and a.anchor.valid) then
+      local anchor = g.e.surface.create_entity { name = "factory-flow-gate-anchor", position = g.e.position, force = g.e.force }
+      local ok = anchor ~= nil and pcall(function()
+        g.e.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+          .connect_to(anchor.get_wire_connector(defines.wire_connector_id.circuit_red, true), false)
+        local cb = g.e.get_or_create_control_behavior()
+        cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
+        cb.circuit_enable_disable = false
+      end)
+      if not ok and anchor then anchor.destroy() end
+      a = ok and { anchor = anchor, belt = g.e, closed = false } or nil
+      storage.anchors[g.e.unit_number] = a
     end
+    g.anchor = a
   end
   storage.topo = T
   storage.dirty = false
@@ -196,9 +219,9 @@ local function release()
     for _, i in pairs(m.held or {}) do if i.valid then i.disabled_by_script = false end end
     m.held = nil
   end
-  for _, g in pairs((storage.topo or {}).gates or {}) do
-    if g.closed and g.e.valid then g.e.disabled_by_script = false end
-    g.closed = nil
+  for _, a in pairs(storage.anchors or {}) do
+    if a.closed and a.belt.valid then pcall(function() a.belt.get_or_create_control_behavior().circuit_enable_disable = false end) end
+    a.closed = false
   end
 end
 
@@ -282,6 +305,31 @@ local function control()
     return false
   end
 
+  -- Pull ahead (setting above 1): a machine working with less than that many crafts' worth of an item counts as
+  -- wanting it too, so its makers run ahead of it.
+  local want_net, want_at = short_net, short_at
+  local ahead = setting("pull-ahead")
+  if ahead > 1 then
+    want_net, want_at = {}, {}
+    for item, nets in pairs(short_net) do local c = {}; for n in pairs(nets) do c[n] = true end; want_net[item] = c end
+    for u, items in pairs(short_at) do local c = {}; for i in pairs(items) do c[i] = true end; want_at[u] = c end
+    for unit, m in pairs(storage.machines) do
+      local e, r = m.e, recipes[unit]
+      if r and e.valid and not e.disabled_by_script and e.status == defines.entity_status.working then
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "item" and e.get_item_count(ing.name) < ahead * ing.amount then
+            local wn = want_net[ing.name] or {}
+            for n in pairs(T.feeds[unit] or {}) do wn[n] = true end
+            want_net[ing.name] = wn
+            local a = want_at[unit] or {}
+            a[ing.name] = true
+            want_at[unit] = a
+          end
+        end
+      end
+    end
+  end
+
   -- Pull.
   if setting("pull") then
     for unit, m in pairs(storage.machines) do
@@ -302,9 +350,9 @@ local function control()
               known = true
               if short_fluid[p.name] then wanted = true end
             else
-              local sn = short_net[p.name]
+              local sn = want_net[p.name]
               for n in pairs(drops) do known = true; if sn and sn[n] then wanted = true end end
-              for u in pairs(hands) do known = true; if short_at[u] and short_at[u][p.name] then wanted = true end end
+              for u in pairs(hands) do known = true; if want_at[u] and want_at[u][p.name] then wanted = true end end
             end
             if wanted then break end
           end
@@ -401,9 +449,10 @@ local function control()
         end
         if short_net[g.item] and short_net[g.item][g.net] then close = true end
         if close then stats.gates_closed = stats.gates_closed + 1 end
-        if close ~= (g.closed == true) then
-          g.closed = close
-          g.e.disabled_by_script = close
+        local a = g.anchor
+        if a and a.anchor.valid and close ~= a.closed then
+          a.closed = close
+          pcall(function() g.e.get_or_create_control_behavior().circuit_enable_disable = close end)
         end
       end
     end

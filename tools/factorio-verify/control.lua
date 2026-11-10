@@ -510,6 +510,24 @@ local function start(params)
         if gate and gate.type == "transport-belt" then run.gates[#run.gates + 1] = { e = gate, net = run.net_of[gate.unit_number] } end
       end
     end
+    -- A belt cannot be stopped by script (disabled_by_script does nothing to it: Py science 2's barrels and chemical
+    -- science's chromite sand went on past "closed" gates), but one on a circuit network stops by its enable condition.
+    -- Every gate hangs on one empty network (a constant combinator beside the factory, wired by script): "signal-A > 0"
+    -- never holds there, so a gate with its enable condition on stands, one with it off runs.
+    if #run.gates > 0 then
+      local at = surface.find_non_colliding_position("constant-combinator", run.gates[1].e.position, 50, 1)
+      local anchor = at and surface.create_entity { name = "constant-combinator", position = at, force = force }
+      local ac = anchor and anchor.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+      for _, g in pairs(run.gates) do
+        g.wired = ac ~= nil and pcall(function()
+          g.e.get_wire_connector(defines.wire_connector_id.circuit_red, true).connect_to(ac, false)
+          local cb = g.e.get_or_create_control_behavior()
+          cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
+          cb.circuit_enable_disable = false
+        end)
+        if not g.wired then warnings[#warnings + 1] = "a belt gate could not be wired to a circuit network" end
+      end
+    end
   end
 
   run.build = {
@@ -1313,7 +1331,7 @@ script.on_event(defines.events.on_tick, function()
         if close then run.gates_closed = run.gates_closed + 1 end
         if close ~= (g.closed or false) then
           g.closed = close
-          if not pcall(function() g.e.disabled_by_script = close end) then pcall(function() g.e.active = not close end) end
+          if g.wired then pcall(function() g.e.get_or_create_control_behavior().circuit_enable_disable = close end) end
         end
       end
     end
