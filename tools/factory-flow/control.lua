@@ -154,7 +154,7 @@ local function rebuild()
   for _, en in pairs(storage.ends) do
     local b = en.e
     if b.valid then
-      local seen, queue, head, gate = { [b.unit_number] = true }, { { b, nil } }, 1, nil
+      local seen, queue, head, gate, toward = { [b.unit_number] = true }, { { b, nil } }, 1, nil, {}
       while head <= #queue and head < 5000 do
         local cur, child = queue[head][1], queue[head][2]
         head = head + 1
@@ -164,9 +164,11 @@ local function rebuild()
           ups = { cur.underground_belt_neighbour }
         end
         for _, u in pairs(ups) do
-          if u.valid and not seen[u.unit_number] then seen[u.unit_number] = true; queue[#queue + 1] = { u, cur } end
+          if u.valid and not seen[u.unit_number] then seen[u.unit_number] = true; toward[u.unit_number] = cur; queue[#queue + 1] = { u, cur } end
         end
       end
+      -- (An underground or splitter just past it: the first plain belt on toward the sink, a few tiles of queue more.)
+      while gate and gate.type ~= "transport-belt" do gate = toward[gate.unit_number] end
       if gate and gate.type == "transport-belt" then
         local g = { e = gate, item = en.item, net = net(gate), makers = {} }
         for unit in pairs(storage.machines) do

@@ -496,7 +496,7 @@ local function start(params)
     for _, sk in pairs(run.sinks) do
       local b = sk.overflow and sk.loader.valid and ((sk.loader.belt_neighbours or {}).inputs or {})[1]
       if b then
-        local seen, queue, head, gate = { [b.unit_number] = true }, { { b, nil } }, 1, nil
+        local seen, queue, head, gate, toward = { [b.unit_number] = true }, { { b, nil } }, 1, nil, {}
         while head <= #queue and head < 3000 do
           local cur, child = queue[head][1], queue[head][2]
           head = head + 1
@@ -504,9 +504,11 @@ local function start(params)
           local ups = (cur.belt_neighbours or {}).inputs or {}
           if cur.type == "underground-belt" and cur.belt_to_ground_type == "output" and cur.underground_belt_neighbour then ups = { cur.underground_belt_neighbour } end
           for _, u in pairs(ups) do
-            if u.valid and not seen[u.unit_number] then seen[u.unit_number] = true; queue[#queue + 1] = { u, cur } end
+            if u.valid and not seen[u.unit_number] then seen[u.unit_number] = true; toward[u.unit_number] = cur; queue[#queue + 1] = { u, cur } end
           end
         end
+        -- (An underground or splitter just past it: the first plain belt on toward the sink, a few tiles of queue more.)
+        while gate and gate.type ~= "transport-belt" do gate = toward[gate.unit_number] end
         if gate and gate.type == "transport-belt" then run.gates[#run.gates + 1] = { e = gate, net = run.net_of[gate.unit_number] } end
       end
     end
