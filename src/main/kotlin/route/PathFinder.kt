@@ -800,7 +800,7 @@ class PathFinder(internal val p: RouteProblem) {
                 seenGen[s.state] = gen
                 gArr[s.state] = s.g
                 par[s.state] = -1
-                heap.push(s.g + hWeight * minStep * dist[tile], s.state)
+                heap.push(s.g + hWeight * minStep * h(tile), s.state)
             }
             if (leg1) startOpt[tile] = s.opt
         }
@@ -961,12 +961,33 @@ class PathFinder(internal val p: RouteProblem) {
         seenGen[ns] = gen
         gArr[ns] = g
         par[ns] = from
-        heap.push(g + hWeight * minStep * dist[ns ushr 3], ns)
+        heap.push(g + hWeight * minStep * h(ns ushr 3), ns)
     }
 
     /** L1 distance from every tile to the nearest goal tile (two-pass chamfer). */
+    /** Goal tiles when there are few of them ([fewGoals]): the heuristic is the distance to the nearest, no transform. */
+    private val goalList = IntArray(16)
+    private var goalCount = 0
+    private var fewGoals = false
+    /** L1 distance from tile [t] to the nearest goal tile, for the A* heuristic. */
+    internal fun h(t: Int): Int {
+        if (!fewGoals) return dist[t]
+        val x = t % FW; val y = t / FW
+        var best = Int.MAX_VALUE
+        for (k in 0 until goalCount) { val g = goalList[k]; val v = kotlin.math.abs(g % FW - x) + kotlin.math.abs(g / FW - y); if (v < best) best = v }
+        return best
+    }
+
     internal fun distanceTransform() {
         val big = 1 shl 20
+        // A corridor net heads for one or two port tiles: their distance is cheaper than a pass over the whole factory.
+        goalCount = 0
+        fewGoals = true
+        for (i in 0 until N) if (goalStamp[i] == goalGen) {
+            if (goalCount == goalList.size) { fewGoals = false; break }
+            goalList[goalCount++] = i
+        }
+        if (fewGoals) return
         for (i in 0 until N) dist[i] = if (goalStamp[i] == goalGen) 0 else big
         val fh = dims.fullH
         for (y in 0 until fh) for (x in 0 until FW) {

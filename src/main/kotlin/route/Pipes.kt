@@ -182,7 +182,7 @@ internal class PipeRouter(private val pf: PathFinder) {
         sources.forEach { (t, g) ->
             val s = st(t, 0)
             pf.seenGen[s] = pf.gen; pf.gArr[s] = g; pf.par[s] = -1
-            pf.heap.push(g + hw * pf.dist[t], s)
+            pf.heap.push(g + hw * pf.h(t), s)
         }
         var budget = tun.maxExpansions
         while (!pf.heap.isEmpty()) {
@@ -232,7 +232,7 @@ internal class PipeRouter(private val pf: PathFinder) {
         if (pf.closedGen[ns] == pf.gen || ns in banned) return
         if (pf.seenGen[ns] == pf.gen && g >= pf.gArr[ns]) return
         pf.seenGen[ns] = pf.gen; pf.gArr[ns] = g; pf.par[ns] = from
-        pf.heap.push(g + hw * pf.dist[ns / 5], ns)
+        pf.heap.push(g + hw * pf.h(ns / 5), ns)
     }
 
     private fun pathOf(s: Int): List<Int> {
