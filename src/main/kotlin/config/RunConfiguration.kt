@@ -466,6 +466,12 @@ data class BlocksConfig(
      * go over those chests, one network; the robots go in by hand. Null: off.
      */
     @SerialName("bot_links") val botLinks: Double? = null,
+    /**
+     * How the stitch finds corridors wide enough (docs/STITCH_REWRITE.md): "router" routes every belt and pipe on the
+     * fine grid and widens where that fails; "global" first routes the links on a coarse grid of corridor capacities and
+     * widens where demand exceeds them, then routes finely once.
+     */
+    val stitch: String = "router",
     @SerialName("bot_provider_chest") val botProviderChest: String = "passive-provider-chest",
     @SerialName("bot_requester_chest") val botRequesterChest: String = "requester-chest",
     /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */

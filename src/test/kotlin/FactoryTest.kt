@@ -243,4 +243,29 @@ class FactoryTest {
         // Refining starts from the saved layouts, so no block gets bigger.
         (0..1).forEach { b -> assertTrue(blocks.loadBlock(out, b)[0].let { r -> r.w * r.h } <= saved[b], "block ${b + 1} grew") }
     }
+
+    @Test
+    fun `global routing widens the corridors before the fine stitch, pipe trees included`() {
+        val config = plasticJob.copy(blocks = BlocksConfig(maxMachines = 3, sizeBy = "machines", stitch = "global"),
+            search = SearchConfig(timeBudgetS = 40.0, seedsPerSize = 2, threads = 4, seed = 7))
+        val plan = buildPlan(TestData.data, config, handTuning)
+        val out = File("build/factory/plastic_global")
+        out.deleteRecursively()
+        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
+        assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+        assertTrue(File(out, "factory.txt").readText().contains("global routing"), "global routing did not run")
+    }
+
+    @Test
+    fun `global routing finds where too many links squeeze through a gap`() {
+        // Two blocks 20 tiles apart with a wall between, a gap of 4 rows in it: 6 links from one block's east edge to the other's west.
+        val blocked = listOf(geom.Rect(0, 0, 20, 40), geom.Rect(40, 0, 20, 40), geom.Rect(24, 0, 12, 18), geom.Rect(24, 22, 12, 18))
+        val rows = listOf(2, 8, 14, 26, 32, 38)
+        val links = rows.mapIndexed { i, y -> blocks.CoarseLink(i, geom.Tile(19, y), geom.Tile(40, y)) }
+        // (Ports sit on the blocks' edges: the cells they lie in are open on the corridor side.)
+        val narrow = blocks.globalRoute(60, 40, blocked, links)
+        assertTrue(narrow.overflow.isNotEmpty(), "6 links through 4 rows should overflow")
+        val wide = blocks.globalRoute(60, 40, blocked.take(2), links)
+        assertEquals(emptyList(), wide.overflow)
+    }
 }

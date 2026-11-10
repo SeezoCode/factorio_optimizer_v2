@@ -736,9 +736,77 @@ private class Stitching(
     val atConsumer = HashSet<Int>()
     private fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p), atConsumer, debugDir)
 
+    /** Corridor links as global routing sees them on [arr]: port to port, to a pipe tree's middle, or to an edge allowed. */
+    private fun coarseLinks(arr: Arrangement): List<CoarseLink> {
+        val tileOf = HashMap<Pair<Int, Boolean>, Tile>()   // (link, its output end?) -> tile
+        for (b in 0 until k) {
+            val r = input.shapes[b][arr.shape[b]].layout
+            val box = arr.boxes[b]
+            val closed = closedRect(arr, b)
+            // Each port's end: out of the block, past what it reaches outside its box, on the port's side.
+            fun outOf(t0: Tile): Tile {
+                val t = Tile(t0.x + box.x, t0.y + box.y)
+                val d = when { t.x < box.x -> Dir.W; t.x > box.x2 -> Dir.E; t.y < box.y -> Dir.N; t.y > box.y2 -> Dir.S
+                    t.x == box.x -> Dir.W; t.x == box.x2 -> Dir.E; t.y == box.y -> Dir.N; else -> Dir.S }
+                var u = t
+                while (u.x in closed.x..closed.x2 && u.y in closed.y..closed.y2) u += d
+                return u
+            }
+            r.outputs.forEach { o -> bps[b].linksOfPort[o.port]?.forEach { id -> tileOf[id to true] = outOf(o.tile) } }
+            r.sources.forEach { s -> bps[b].linkOfPort[s.port]?.let { id -> tileOf[id to false] = outOf(s.tile) } }
+        }
+        fun edgesFor(item: String, output: Boolean): Set<Dir> {
+            val specs = plan.ports.firstOrNull { it.item == item && it.output == output }?.specs ?: return Dir.entries.toSet()
+            return specs.flatMap { s -> if (s.edge == null || s.edge == "any") Dir.entries.toList() else listOf(Dir.fromName(s.edge)) }.toSet()
+        }
+        // A pipe tree between blocks: each block's pipe heads for the nearest other port of its tree.
+        val hubPorts = split.links.filter { it.hub }.groupBy { it.item }.mapValues { (_, ls) -> ls.mapNotNull { l -> (tileOf[l.id to true] ?: tileOf[l.id to false])?.let { l.id to it } } }
+        fun hubTarget(l: Link, p: Tile): Tile? = hubPorts[l.item].orEmpty().filter { it.first != l.id }.minByOrNull { it.second.manhattan(p) }?.second
+        return split.links.filter { it.throughCorridor && !it.local && !it.bot }.mapNotNull { l ->
+            val a = tileOf[l.id to true]; val c = tileOf[l.id to false]
+            when {
+                l.hub -> (a ?: c)?.let { p -> hubTarget(l, p)?.let { m -> CoarseLink(l.id, p, m) } }
+                a != null && c != null -> CoarseLink(l.id, a, c)
+                a != null -> CoarseLink(l.id, a, null, edgesFor(l.item, true))
+                c != null -> CoarseLink(l.id, c, null, edgesFor(l.item, false))
+                else -> null
+            }
+        }
+    }
+
+    /** Block [b]'s box on [arr] with what it reaches outside it (its ring and port ends). */
+    private fun closedRect(arr: Arrangement, b: Int): Rect {
+        val r = arr.boxes[b]; val q = arr.rot[b]
+        fun out(d: Dir) = reach[b][(d.ordinal - q).mod(4)]
+        return Rect(r.x - out(Dir.W), r.y - out(Dir.N), r.w + out(Dir.W) + out(Dir.E), r.h + out(Dir.N) + out(Dir.S))
+    }
+
+    /** blocks.stitch "global": corridors widened where global routing overflows, before fine routing (a few rounds). */
+    private fun fitGlobally() {
+        for (round in 0 until 8) {
+            val arr = layoutOf(fp)
+            // Blocks with what they reach outside their boxes (rings, port ends) are closed to corridors.
+            val closed = arr.boxes.indices.map { closedRect(arr, it) } + arr.reserved
+            val t0 = System.currentTimeMillis()
+            val g = globalRoute(arr.w, arr.h, closed, coarseLinks(arr))
+            val took = (System.currentTimeMillis() - t0) / 1000.0
+            if (g.overflow.isEmpty() && g.unreachable.isEmpty()) {
+                say("$what: global routing fits at ${fp.w} x ${fp.h} (${g.routed} links, ${g.rounds} rounds, ${"%.1f".format(took)} s)")
+                return
+            }
+            // (A link with no way at all: room near its ends.)
+            val stuck = coarseLinks(arr).filter { it.id in g.unreachable }.flatMap { listOfNotNull(it.from, it.to) }
+            say("$what: global routing at ${fp.w} x ${fp.h}: ${g.overflow.size} corridor sides over capacity (worst by ${g.worst})" +
+                (if (stuck.isNotEmpty()) ", ${g.unreachable.size} links with no way" else "") + " (${"%.1f".format(took)} s); widening there")
+            pads = grow(pads, arr, g.overflow.map { it.first } + stuck, emptySet(), k)
+            fp = planner.pack(fp.state, pads)
+        }
+    }
+
     fun start(from: FpState?) {
         fp = planner.optimise(from)
         if (fp.violations > 0) say("$what: the floorplan leaves ${fp.violations} block side(s) off the factory edge they need")
+        if (config.blocks?.stitch == "global") fitGlobally()
         // 8 widenings; moving a lane junction in front of its consumer is not one (Py science 2 had more than 8 to move,
         // one per attempt, and never routed).
         var widenings = 0
