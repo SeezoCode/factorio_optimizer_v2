@@ -380,13 +380,25 @@ local function control()
       if e.valid and r then
         m.fq = m.fq or { t0 = tick, pf0 = e.products_finished, c0 = {}, item_of = {} }
         local secs = (tick - m.fq.t0) / 60
+        local window = setting("quota-window") * 60   -- seconds; 0: since the machine was built
         local o = {}
         for _, ing in pairs(r.ingredients) do
           local have = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
           local c0 = m.fq.c0[ing.name]
           if c0 == nil then c0 = have; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + have - c0
-          if taken > (m.take[ing.name] or 0) * secs * factor + ing.amount * 2 then
+          local span = secs
+          -- (A window: what it took in that last stretch, so running ahead early on does not hold it for hours.)
+          if window > 0 then
+            m.fq.hist = m.fq.hist or {}
+            local h = m.fq.hist[ing.name]
+            if not h then h = { { tick = tick, taken = taken } }; m.fq.hist[ing.name] = h end
+            if tick - h[#h].tick >= 3600 then h[#h + 1] = { tick = tick, taken = taken } end
+            while #h > 1 and tick - h[2].tick >= window * 60 do table.remove(h, 1) end
+            span = (tick - h[1].tick) / 60
+            taken = taken - h[1].taken
+          end
+          if taken > (m.take[ing.name] or 0) * span * factor + ing.amount * 2 then
             o[ing.name] = true
           elseif (short_at[unit] and short_at[unit][ing.name]) or (fluid_at[unit] and fluid_at[unit][ing.name]) then
             behind[ing.name] = true

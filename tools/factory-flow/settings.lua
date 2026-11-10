@@ -4,5 +4,6 @@ data:extend({
   { type = "double-setting", name = "factory-flow-pull-ahead", setting_type = "runtime-global", default_value = 1, minimum_value = 1, maximum_value = 10, order = "b2" },
   { type = "bool-setting", name = "factory-flow-quotas", setting_type = "runtime-global", default_value = true, order = "c" },
   { type = "double-setting", name = "factory-flow-quota-factor", setting_type = "runtime-global", default_value = 1.5, minimum_value = 1, maximum_value = 100, order = "d" },
+  { type = "int-setting", name = "factory-flow-quota-window", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 600, order = "d2" },
   { type = "bool-setting", name = "factory-flow-gates", setting_type = "runtime-global", default_value = true, order = "e" },
 })
