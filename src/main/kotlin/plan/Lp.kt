@@ -10,6 +10,7 @@ import data.RocketSiloEntity
 import data.AssemblingMachineEntity
 import data.Recipe
 import data.RootData
+import data.fluidBoxes
 import data.craftingCategories
 import data.craftingSpeed
 import data.gameName
@@ -105,6 +106,19 @@ fun autoMachines(data: RootData, config: RunConfiguration, listed: List<String>)
         ranked.filter { it.burner >= 10 }.groupBy { fixedRecipeOf(data, it.name) }.values.forEach { out += it.first().name }
     }
     return out.toList()
+}
+
+/**
+ * Whether [machine] has a fluid box for each of [r]'s fluids: the game will not set a recipe with more fluids than
+ * boxes (Py's fish farm has two output boxes; its doused fish-egg recipe makes three fluids, and the router never
+ * found a pipe for the third). Machines whose boxes were not exported pass.
+ */
+fun fluidsFit(data: RootData, r: Recipe, machine: String): Boolean {
+    val boxes = (data.entities[machine] as? data.CraftingEntity)?.fluidBoxes ?: return true
+    val ins = boxes.count { it.productionType == "input" || it.productionType == "input-output" }
+    val outs = boxes.count { it.productionType == "output" || it.productionType == "input-output" }
+    val (fi, fo) = data.fluidBoxes(r, machine)
+    return (fi.values.maxOrNull() ?: 0) <= ins && (fo.values.maxOrNull() ?: 0) <= outs
 }
 
 /** The one recipe a machine is built to make, if any (Py's clay pit, the rocket silo). */
@@ -234,7 +248,7 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         // compost plant took sporopollenin for biomass, not the planned fungal substrate).
         val m = machines.firstOrNull { r.inAny(data.craftingCategories(it)) && (!needsModules(data, it) || farmModule(data, it, r) != null) &&
             fixedRecipeOf(data, it).let { f -> f == null || f == gameName(r.name) } &&
-            (GameConstants.takesRecipe(it) || !furnaceAmbiguous(data, r, it)) } ?: return@mapNotNull null
+            (GameConstants.takesRecipe(it) || !furnaceAmbiguous(data, r, it)) && fluidsFit(data, r, it) } ?: return@mapNotNull null
         // Modules and the planned beacons make the machine faster (see Modules.kt).
         RecipeChoice(r, m, moduleSpeed(data, config, r, m, plannedBeacons(data, config, r, m)))
     }

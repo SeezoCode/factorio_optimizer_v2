@@ -46,4 +46,24 @@ class FarmModulesTest {
         assertEquals("kmauts", farmModule(game, "rc", game.recipes.getValue("any-cub")))
         assertEquals("kmauts", farmModule(game, "rc"))
     }
+
+    @Test
+    fun `a machine with fewer fluid boxes than a recipe has fluids is not its machine`() {
+        val box = { i: Int, kind: String -> """{"index": $i, "production_type": "$kind", "connections": []}""" }
+        val d: RootData = recipeGson.fromJson("""{"game_version": "2.1", "groups": {}, "quality": {}, "quality_names": ["normal"],
+            "items": {}, "fluids": {},
+            "entities": {"farm": {"name": "farm", "type": "assembling-machine", "order": "a", "group": "g", "subgroup": "s",
+              "crafting_speed": {"normal": 1}, "crafting_categories": ["fish"], "allowed_effects": [], "module_inventory_size": 0,
+              "effect_receiver": {"uses_module_effects": true, "uses_beacon_effects": true, "uses_surface_effects": true},
+              "energy_consumption": 1000, "drain": 10, "energy_source": "electric", "width": 11, "height": 11, "flags": [],
+              "translated_name": "farm", "fluid_boxes": [${box(1, "input")}, ${box(2, "output")}, ${box(3, "output")}]}},
+            "recipes": {}}""", RootData::class.java)
+        fun r(outs: Int) = recipeGson.fromJson("""{"name": "eggs", "category": "fish",
+            "ingredients": [{"type": "fluid", "name": "water", "amount": 10}],
+            "products": [${(1..outs).joinToString(",") { """{"type": "fluid", "name": "f$it", "amount": 1}""" }}],
+            "allowed_effects": {}, "maximum_productivity": 3, "energy": 1, "order": "a", "group": "g", "subgroup": "s",
+            "enabled": true, "productivity_bonus": 0, "translated_name": "eggs"}""", data.Recipe::class.java)
+        kotlin.test.assertTrue(plan.fluidsFit(d, r(2), "farm"))
+        kotlin.test.assertTrue(!plan.fluidsFit(d, r(3), "farm"), "three fluid products, two output boxes")
+    }
 }
