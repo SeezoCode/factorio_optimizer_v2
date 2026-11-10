@@ -1167,8 +1167,9 @@ python3 tools/factorio-verify/pipes.py out                                      
 ```
 
 Py's logistic science so far (warm start, 4 hours' warm-up, 20 minutes measured): on its own 0 to 33% of its 0.02/s
-(it varies from run to run); with `--flow` 58 to 63%; fed up to its plan, 100%. Py science 1 and automation science
-pass on their own. See `docs/NIGHT_LOG_2026-11-09.md` for what each mode found.
+(it varies from run to run); with `--flow` 100% (the check putting in about 600 water barrels as the barrel ring's
+carriers over the warm-up); fed up to its plan, 100%. Py science 1 and automation science pass on their own and under
+`--flow` and `--flow-mod`. See `docs/NIGHT_LOG_2026-11-09.md` for what each mode found.
 
 Tried so far: small vanilla test runs (red and green science, circuits from ore, plastic from oil with cracking,
 uncommon gears with quality modules and a mixed output belt, processing units) pass, and so does the Krastorio 2
