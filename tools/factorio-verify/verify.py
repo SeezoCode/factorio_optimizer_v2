@@ -530,6 +530,8 @@ def main():
                     help="flow control: --pull, plus quotas (a machine ahead of 1.5 times its planned intake of an item has the "
                          "inserters bringing it stopped while another machine on the same belt waits for it), and overflows keep "
                          "an item while a machine on their belt waits for it")
+    ap.add_argument("--no-pull", action="store_true",
+                    help="with --flow: everything but pull (quotas, push, gates, carriers); machines run whenever they can")
     ap.add_argument("--pull-ahead", type=float, default=None, metavar="N",
                     help="with --pull or --flow: a machine working with less than N crafts' worth of an item also counts as "
                          "wanting it, so its makers run ahead of it (default 1: only once it stands short)")
@@ -598,7 +600,7 @@ def main():
                 demand_of[rn][g] = max(demand_of[rn].get(g, 0.0), rate)
         params["demand_of"] = dict(demand_of)
     if args.flow:
-        args.pull = True
+        args.pull = not args.no_pull
         params["flow"] = True
         fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
         if fp and os.path.exists(fp):
