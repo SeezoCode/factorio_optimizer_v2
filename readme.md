@@ -394,6 +394,12 @@ Unknown keys are an error. Everything except `targets` has a default.
   check puts 20 in each roboport, `--robots N`). `ports.json` lists the chests under `bots`, and flow control (check
   and mod, through `tag.py`) counts each item's provider and requester belts as one, so pull still reaches the
   makers behind a provider.
+- `blocks.stitch` (`"router"`, the default, or `"global"`): how the corridors between blocks are routed. `"global"`
+  first routes every corridor link on a coarse grid of 4 x 4 tile cells and widens the corridors wherever more links
+  must pass than there are rows, before any fine routing; the fine router then keeps each link near its coarse
+  route, and with 24 belt links or more routes them in groups side by side (the job's threads shared among the
+  floorplans routing at once), then routes the links that clashed, and the pipes, around the others. See
+  `docs/STITCH_REWRITE.md`.
 - Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
   (lubricant, or oil leaving the block), one of that oil's pipes gets a red wire to the cracking plants, which work
   only while that pipe is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns it off;

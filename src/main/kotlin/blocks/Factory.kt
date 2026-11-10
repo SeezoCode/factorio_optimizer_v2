@@ -597,7 +597,8 @@ fun assembleFactory(
                 val label = if (tries > 1) "$what (floorplan ${t + 1}/$tries)" else what
                 val params = FpParams(aspect = config.box.aspect, aspectWeight = cfg.aspectWeight, wireWeight = cfg.wireWeight, seed = config.search.seed + 1009L * t)
                 val st = if (t == 0) start?.takeIf { it.plus.size == input.blocks.size }?.let { s -> FpState(s.plus.clone(), s.minus.clone(), IntArray(input.blocks.size)) } else null
-                val s = Stitching(config, tuning, plan, split, bps, input, params, say, label, debugDir)
+                // The job's threads shared out among the floorplans routing at once.
+                val s = Stitching(config, tuning, plan, split, bps, input, params, say, label, debugDir, threads = maxOf(1, threads / minOf(tries, threads)))
                 s.start(st)
                 if (!s.routed) null
                 else {
@@ -700,6 +701,8 @@ private class Stitching(
     val config: RunConfiguration, val tuning: Tuning, val plan: ProductionPlan, val split: Split, val bps: List<BlockPlan>,
     val input: FloorplanInput, val params: FpParams, val say: (String) -> Unit, val what: String,
     val debugDir: File? = null,
+    /** Threads each stitch of this floorplan may route its corridors on (blocks.stitch "global"). */
+    val threads: Int = 1,
 ) {
     val k = split.blocks.size
     val planner = Floorplanner(input.blocks, input.nets, params)
@@ -734,7 +737,7 @@ private class Stitching(
         IntArray(k) { input.blocks[it].shapes[p.state.shape[it]].rot })
     /** Lane pairs whose junction next to the supplier did not route: theirs goes in front of the consumer. */
     val atConsumer = HashSet<Int>()
-    private fun route(p: FpPlan) = layoutOf(p).let { arr -> stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir, guidesFor(arr)) }
+    private fun route(p: FpPlan) = layoutOf(p).let { arr -> stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir, guidesFor(arr), threads) { say("$what: $it") } }
     /** blocks.stitch "global": each corridor link's coarse cells on [arr], for the fine router to keep to. */
     private fun guidesFor(arr: Arrangement): Map<Int, List<Tile>> =
         if (config.blocks?.stitch != "global") emptyMap()
@@ -818,7 +821,7 @@ private class Stitching(
         while (widenings < 8 && attempt < 8 + split.links.size) {
             attempt++
             val arr = layoutOf(fp)
-            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir, guidesFor(arr))
+            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir, guidesFor(arr), threads) { say("$what: $it") }
             if (r.stitched != null) { ok += r.stitched to fp.state; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 1) " (attempt $attempt)" else ""}"); break }
             if (!atConsumer.containsAll(r.badPairs)) {
                 atConsumer += r.badPairs
@@ -996,6 +999,9 @@ fun stitchRoute(
     debugDir: File? = null,
     /** Per link, the coarse cells (4 x 4 tiles) its global route runs through (blocks.stitch "global"). */
     guides: Map<Int, List<Tile>> = emptyMap(),
+    /** Threads the corridors may be routed on, in groups by their global routes (routeCorridors). */
+    threads: Int = 1,
+    say: (String) -> Unit = {},
 ): StitchAttempt {
     val k = bps.size
     val results = (0 until k).map { shapes[it][arr.shape[it]].layout }
@@ -1386,7 +1392,7 @@ fun stitchRoute(
     }
     // A machine at a block's edge may put what it makes onto a corridor tile (Py's wood processing units): none there.
     val resultTiles = entities.filter { it.kind == Kind.MACHINE }.mapNotNull { GameConstants.resultTile(it.name, it.w, it.h, it.x, it.y, it.dir.ordinal, it.mirror) }
-    val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
+    val routed = routeCorridors(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
         obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree + portTargets + resultTiles, noTunnel = noTunnel,
         beltBias = besideBelts.associateWith { 40.0 },
         netGuides = if (guides.isEmpty()) emptyMap() else linksOfNet.mapNotNull { (n, ls) ->
@@ -1396,7 +1402,7 @@ fun stitchRoute(
         // for hours (Py science 2), but a bigger one needs more than 6 minutes' worth of iterations.
         // (Negotiation 25 minutes at most, so the endgame has up to 8 for the last few conflicts.)
         deadlineMs = System.currentTimeMillis() + 1_980_000, softDeadlineMs = System.currentTimeMillis() + 360_000,
-        negotiationDeadlineMs = System.currentTimeMillis() + 1_500_000))
+        negotiationDeadlineMs = System.currentTimeMillis() + 1_500_000), threads, say)
     if (!routed.success) {
         // Trouble: conflict tiles, and where a pipe tree could not get to (else the ends of every link that did not route).
         val trouble = routed.conflicts + routed.unreached.ifEmpty {

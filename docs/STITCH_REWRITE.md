@@ -68,13 +68,24 @@ runs once the corridors are known to be wide enough:
 ### 3. Every core
 
 - Several floorplans side by side, the first that routes taken (done: commit 7b57704).
-- Detailed routing in parallel: links whose coarse corridors do not overlap are independent; groups of them route on
-  separate threads, then the conflicts between groups (few, at shared corridors) are negotiated as now.
+- Detailed routing in parallel (`blocks/ParallelRoute.kt`): the belt links are split into groups by where their
+  coarse routes run (the factory halved along its longer side, again and again), each group routed on its own
+  thread as if the others were not there (each keeps off the other links' port tiles). Then the belts of different
+  groups that meet (one tile, one feeding the other, an underground of the same direction and tier between another's
+  pair), the links that did not route, and every pipe are routed together around the belts that stay. A last check
+  of the joined result turns anything still clashing into conflicts for the widening.
 
 ### What stays
 
 The floorplanner (sequence pairs), shared outputs with splitters, lane-pair junctions, pipe trees between blocks
 (hub links), edge ports and their test harness, squeezing, validation, and everything inside blocks.
+
+## Status
+
+- Step 1: commit 4b91f33; ports keep their way out (the first four tiles straight out, for a pipe also beside them,
+  free of ends) since commit 56129b9.
+- Step 2: commit 2a9b05e.
+- Step 3: guidance in commit 56129b9; routing in groups side by side after it.
 
 ## Order of work
 
