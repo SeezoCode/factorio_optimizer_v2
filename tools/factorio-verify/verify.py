@@ -387,8 +387,11 @@ def judge(report, ports, args):
         fails.append(f"{len(no_recipe)} machines have no recipe")
 
     if report.get("bootstrapped"):
+        bm = report.get("bootstrapped_measure") or {}
         print("\nLoop carriers put in by the check (--flow, a loop starved for two minutes): " +
-              ", ".join(f"{k} {fmt(v)}" for k, v in sorted(report["bootstrapped"].items(), key=lambda kv: -kv[1])))
+              ", ".join(f"{k} {fmt(v)}" + (f" ({fmt(bm[k])} while measured)" if bm.get(k) else "")
+                        for k, v in sorted(report["bootstrapped"].items(), key=lambda kv: -kv[1])) +
+              ("" if bm else "; none while measured"))
     fed = report.get("fed_measure") or {}
     if report.get("fed") is not None:
         use = planned_use(args)
@@ -527,6 +530,9 @@ def main():
                     help="flow control: --pull, plus quotas (a machine ahead of 1.5 times its planned intake of an item has the "
                          "inserters bringing it stopped while another machine on the same belt waits for it), and overflows keep "
                          "an item while a machine on their belt waits for it")
+    ap.add_argument("--pull-ahead", type=float, default=None, metavar="N",
+                    help="with --pull or --flow: a machine working with less than N crafts' worth of an item also counts as "
+                         "wanting it, so its makers run ahead of it (default 1: only once it stands short)")
     ap.add_argument("--flow-mod", action="store_true",
                     help="the same flow control by the factory-flow mod (tools/factory-flow), as a player would run it: the test "
                          "copy is tagged by its tag.py, the mod is installed beside the check, and the factory is built raising "
@@ -604,6 +610,8 @@ def main():
                     rates[rn][g] = max(rates[rn].get(g, 0.0), rate)
             params["flow_rates"] = dict(rates)
         print("flow: quotas on what each machine takes, production by demand, overflows keep what users wait for")
+    if args.pull_ahead:
+        params["pull_ahead"] = args.pull_ahead
     if args.pull:
         params["pull"] = True
         params["pull_wanted"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
@@ -724,7 +732,10 @@ def main():
                                     {t["name"] for t in (job or {}).get("targets", [])}, recipes)
         bp = flow_tag.encode(bp_obj)
         params["raise_built"] = True
-        print(f"flow mod: {tagged} machines and {ends} overflow belts tagged; the factory-flow mod controls them")
+        # (Loop carriers as --flow puts them in: a player fills a new loop by hand.)
+        params["bootstrap"] = True
+        print(f"flow mod: {tagged} machines and {ends} overflow belts tagged; the factory-flow mod controls them, "
+              f"the check puts in loop carriers as a player would")
     params = {k: v for k, v in params.items() if v is not None}
     report = run_game(args, bp, params, enabled, have)
     report["mods"] = enabled

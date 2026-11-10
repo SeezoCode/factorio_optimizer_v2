@@ -722,7 +722,7 @@ local function finish(run)
   local report = {
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
-    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped,
+    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure,
     research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
                  bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
                  belt_stack_size_bonus = game.forces.player.belt_stack_size_bonus },
@@ -1027,7 +1027,7 @@ script.on_event(defines.events.on_tick, function()
   -- this lets them run ahead for as long as users wait, filling long belts.
   -- What machines stand short of, every second (for --pull and --flow): item -> belt networks along which one waits for
   -- it, machine -> items it waits for, fluids one waits for. (A machine switched off waits for nothing.)
-  if (run.params.pull or run.params.flow) and game.tick % 60 == 0 and run.drops then
+  if (run.params.pull or run.params.flow or run.params.bootstrap) and game.tick % 60 == 0 and run.drops then
     local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
       [defines.entity_status.fluid_ingredient_shortage] = true, [defines.entity_status.no_fuel] = true }
     local short_net, short_at, short_fluid, fluid_at = {}, {}, {}, {}
@@ -1091,10 +1091,38 @@ script.on_event(defines.events.on_tick, function()
         end
       end
     end
-    run.short = { net = short_net, at = short_at, fluid = short_fluid, fluid_at = fluid_at, push_net = push_net, push_at = push_at, push_fluid = push_fluid }
+    -- params.pull_ahead (N > 1): for pull, a machine working or waiting with less than N crafts' worth of an item
+    -- counts as wanting it too, so its makers run ahead of it instead of starting only once it has stopped (a maker's
+    -- craft and the belt trip then overlap the user's craft).
+    local low_net, low_at = short_net, short_at
+    local ahead = run.params.pull_ahead or 1
+    if ahead > 1 then
+      low_net, low_at = {}, {}
+      for item, nets in pairs(short_net) do local c = {}; for n in pairs(nets) do c[n] = true end; low_net[item] = c end
+      for u, items in pairs(short_at) do local c = {}; for i in pairs(items) do c[i] = true end; low_at[u] = c end
+      for _, m in pairs(run.machines) do
+        local e = m.e
+        if e.valid and not e.disabled_by_script and e.status == defines.entity_status.working then
+          local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+          if r then
+            for _, ing in pairs(r.ingredients) do
+              if ing.type == "item" and e.get_item_count(ing.name) < ahead * ing.amount then
+                local ln = low_net[ing.name] or {}
+                for net in pairs((run.feeds or {})[e.unit_number] or {}) do ln[net] = true end
+                low_net[ing.name] = ln
+                low_at[e.unit_number] = low_at[e.unit_number] or {}
+                low_at[e.unit_number][ing.name] = true
+              end
+            end
+          end
+        end
+      end
+    end
+    run.short = { net = short_net, at = short_at, fluid = short_fluid, fluid_at = fluid_at, push_net = push_net, push_at = push_at, push_fluid = push_fluid,
+      low_net = low_net, low_at = low_at }
   end
   if run.params.pull and game.tick % 60 == 0 and run.short then
-    local short_net, short_at, short_fluid = run.short.net, run.short.at, run.short.fluid
+    local short_net, short_at, short_fluid = run.short.low_net or run.short.net, run.short.low_at or run.short.at, run.short.fluid
     local target = {}
     for _, n in pairs(run.params.pull_wanted or {}) do target[n] = true end
     run.pulled_off = 0
@@ -1219,7 +1247,8 @@ script.on_event(defines.events.on_tick, function()
   -- least a craft's worth); then two more minutes. Py science 2's barrel loop never started: its water-barrel filler had
   -- no empty barrels, and the animals that give barrels back get them only with water barrels. (A ring with too many
   -- locks: a full maker stops this.)
-  if run.params.flow and game.tick % 60 == 0 and run.short then
+  -- (params.bootstrap: this alone, under another flow control such as the factory-flow mod: a player's carriers.)
+  if (run.params.flow or run.params.bootstrap) and game.tick % 60 == 0 and run.short then
     local carrier = {}
     for _, n in pairs(run.params.seed_carriers or {}) do carrier[n] = true end
     local full = {}
@@ -1246,7 +1275,13 @@ script.on_event(defines.events.on_tick, function()
               for _, ing in pairs(r.ingredients) do if ing.name == item then amount = ing.amount end end
               local rate = ((run.params.demand_of or {})[r.name] or {})[item] or 0
               local ok, done = pcall(function() return e.insert { name = item, count = math.max(amount, math.ceil(rate * 300)) } end)
-              if ok and done and done > 0 then run.bootstrapped[item] = (run.bootstrapped[item] or 0) + done end
+              if ok and done and done > 0 then
+                run.bootstrapped[item] = (run.bootstrapped[item] or 0) + done
+                if run.phase == "measure" then
+                  run.bootstrapped_measure = run.bootstrapped_measure or {}
+                  run.bootstrapped_measure[item] = (run.bootstrapped_measure[item] or 0) + done
+                end
+              end
               m.cshort[item] = game.tick
             end
           end
