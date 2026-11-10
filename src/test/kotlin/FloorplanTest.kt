@@ -13,6 +13,9 @@ import blocks.partitionPlan
 import blocks.rebalance
 import blocks.linkMismatches
 import blocks.splitPlan
+import blocks.Link
+import blocks.Split
+import blocks.withLocalSinks
 import config.BlocksConfig
 import geom.Dir
 import geom.Rect
@@ -97,6 +100,30 @@ class FloorplanTest {
         // size_by machines is the old cap.
         val old = partitionPlan(plan, cfg.copy(sizeBy = "machines"), 30.0, seed = 3)
         assertTrue(old.blocks.all { it.size <= 8 })
+    }
+
+    @Test
+    fun `small by-products end in chests, off the sides their block keeps to the factory's edge`() {
+        val plan = buildPlan(TestData.data, plasticJob, handTuning)
+        val base = splitPlan(plan, BlocksConfig(maxMachines = 3, sizeBy = "machines"), 30.0)
+        val p = base.plan.copy(outputs = mapOf("plastic-bar" to 6.0, "iron-plate" to 5.0, "stone" to 0.01, "wood" to 0.01, "coal" to 0.02))
+        val links = listOf(
+            Link(0, "plastic-bar", 6.0, 0, EDGE, false, fromSide = "E"),            // the target: straight out east
+            Link(1, "stone", 0.01, 0, EDGE, false, fromSide = "E"),                 // small, on that edge side: moves west
+            Link(2, "wood", 0.01, 0, EDGE, false, fromSide = "N"),                  // small, on a free side: stays
+            Link(3, "coal", 0.02, 0, EDGE, false, fromSide = "S", pair = 4),        // shares a belt with a big one: leaves
+            Link(4, "iron-plate", 5.0, 0, EDGE, false, fromSide = "S", pair = 3),
+            Link(5, "petroleum-gas", 0.01, 0, EDGE, true, fromSide = "E"),          // a fluid: leaves
+        )
+        val split = withLocalSinks(Split(base.blocks, links, base.warnings, base.geometry, p, base.partition, base.ports), 0.1, setOf("plastic-bar"))
+        val byItem = split.links.associateBy { it.item }
+        assertEquals(setOf("stone", "wood"), split.links.filter { it.local }.map { it.item }.toSet())
+        assertTrue(split.links.filter { it.local }.all { it.routed && it.throughCorridor })
+        assertEquals("W", byItem.getValue("stone").fromSide)
+        assertEquals("N", byItem.getValue("wood").fromSide)
+        assertEquals(setOf(Dir.E, Dir.S), split.touch[0])
+        // Off: nothing changes.
+        assertEquals(links, withLocalSinks(Split(base.blocks, links, base.warnings, base.geometry, p, base.partition, base.ports), null, emptySet()).links)
     }
 
     @Test

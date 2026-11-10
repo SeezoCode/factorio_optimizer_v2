@@ -608,8 +608,19 @@ fun withLocalSinks(split: Split, below: Double?, targets: Set<String>): Split {
     val plan = split.plan
     val mixedRate = plan.mixed.entries.groupBy({ it.value }, { plan.outputs[it.key] ?: 0.0 }).mapValues { it.value.sum() }
     fun rate(item: String) = mixedRate[item] ?: plan.outputs[item] ?: 0.0
-    val links = split.links.map { l ->
-        if (l.from >= 0 && l.to == EDGE && !l.fluid && l.item !in targets && rate(l.item) < below) l.copy(local = true, routed = true) else l
+    val byId = split.links.associateBy { it.id }
+    fun small(l: Link) = l.from >= 0 && l.to == EDGE && !l.fluid && l.item !in targets && rate(l.item) < below
+    // (Two items sharing a belt, one a lane: both end in the chest, or neither does.)
+    fun local(l: Link) = small(l) && (l.pair < 0 || byId[l.pair]?.let(::small) == true)
+    val marked = split.links.map { l -> if (local(l)) l.copy(local = true, routed = true) else l }
+    // A block keeps to the factory's edges its other outputs leave straight out of: a chest on such a side would stand
+    // outside the factory (Py production science: block 6's sodium carbonate on the north edge). Its port moves to
+    // the opposite side, or else a side across.
+    val touch = Split(split.blocks, marked, split.warnings, split.geometry, split.plan, split.partition, split.ports).touch
+    val links = marked.map { l ->
+        val side = l.fromSide?.let(Dir::fromName)
+        if (!l.local || side == null || side !in touch[l.from]) l
+        else listOf(side.opposite, side.cw, side.ccw).firstOrNull { it !in touch[l.from] }?.let { l.copy(fromSide = it.name) } ?: l
     }
     return Split(split.blocks, links, split.warnings, split.geometry, split.plan, split.partition, split.ports)
 }

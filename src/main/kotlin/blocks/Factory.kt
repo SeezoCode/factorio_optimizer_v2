@@ -411,7 +411,8 @@ private fun sayPlan(split: Split, plan: ProductionPlan, say: (String) -> Unit) {
         })
     }
     val edge = split.links.filter { (it.from == EDGE || it.to == EDGE) && !it.hub }
-    say("  ${edge.count { !it.routed }} inputs and outputs leave their block straight out of the factory, ${edge.count { it.routed }} run through the corridors to its edge")
+    say("  ${edge.count { !it.routed }} inputs and outputs leave their block straight out of the factory, ${edge.count { it.routed && !it.local }} run through the corridors to its edge" +
+        edge.count { it.local }.let { n -> if (n > 0) ", $n small by-products end in a chest beside their block" else "" })
 }
 
 /** [this] state with block [gone] removed (indices above it, reserved areas included, move down). */
