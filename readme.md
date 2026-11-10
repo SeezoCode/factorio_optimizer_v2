@@ -1140,6 +1140,9 @@ blueprint: they are the check's own help or control, run by the verify mod.
   stops while a user on it waits, or while no machine putting onto it stands with a full output, so items queue in
   front of their users and the overflow only takes what would stop a maker. A machine that has waited two minutes for a
   loop's carrier (barrels, cages, bricks) while no maker of it stands full gets five minutes of its planned use.
+- `--pull-ahead N`: with `--pull` or `--flow`, a machine working with less than N crafts' worth of an item also counts
+  as wanting it, so its makers run ahead of it (their crafts and the belt trip overlap its own) instead of starting
+  only once it stands short.
 - `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
   can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
   No carrier bootstrap (in a real game you put a loop's carriers in by hand once).

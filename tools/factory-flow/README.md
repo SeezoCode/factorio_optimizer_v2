@@ -20,7 +20,8 @@ Once a second, for the machines of a tagged blueprint:
 - **Push**: a machine standing with a full output gets the users of what is stuck in it going, even if nothing they
   make is waited for (a ring stops for good otherwise).
 
-Machines the mod switches off show "Disabled by script". Each rule can be turned off in the map settings (Mod settings →
+A setting, *pull ahead* (default 1), lets makers run while a user works with less than that many crafts of an
+ingredient, not only once it stands short. Machines the mod switches off show "Disabled by script". Each rule can be turned off in the map settings (Mod settings →
 Map), as can the whole mod; turning a setting off starts everything the mod stopped again.
 
 ## Use
