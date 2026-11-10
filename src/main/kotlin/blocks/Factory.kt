@@ -1415,8 +1415,10 @@ private fun writeFactory(f: Factory, out: File, config: RunConfiguration, data: 
         File(out, "test_output_string.txt").writeText(tc.layout.toBlueprintString(config.buildQuality()))
         File(out, "test_feeds.txt").writeText(if (tc.warnings.isEmpty()) "every port fed\n" else tc.warnings.joinToString("\n", postfix = "\n"))
     }
-    renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}"))
     File(out, "ports.json").writeText(strictJson.encodeToString(JsonObject.serializer(), factoryManifest(f)))
+    // (The picture last, and never at the cost of the factory: a render that fails leaves the rest written.)
+    runCatching { renderLayout(l, File(out, "best.png"), RenderOptions(errors = f.errors, ports = viz.portLabels(f.sources, f.outputs), title = "factory ${l.w}x${l.h} score ${"%.1f".format(f.score)}")) }
+        .onFailure { e -> System.err.println("best.png not written: $e") }
     // Where each block ended up (tiles of the factory, as the blueprint's positions), for viewers.
     File(out, "blocks.json").writeText(buildString {
         append("[\n")

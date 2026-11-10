@@ -78,7 +78,9 @@ private fun beltChains(layout: Layout): Map<Tile, Int> {
 fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions()) {
     System.setProperty("java.awt.headless", "true")
     val b = layout.bounds()
-    val px = opt.px
+    // Tiles get smaller on a big factory: Py science 4's 1043 x 1113 at 32 px a tile wanted a 4.7 GB image and the
+    // run ran out of memory after routing its factory. At most about 200 million pixels, at least 2 px a tile.
+    val px = minOf(opt.px, kotlin.math.sqrt(2.0e8 / ((b.w + 2.0) * (b.h + 2.0))).toInt()).coerceAtLeast(2)
     val legendLines = (if (opt.title != null) 1 else 0) + opt.errors.size.coerceAtMost(30) + opt.ports.size
     // Legend text scales with the tile size (14 px lines at 16 px tiles).
     val lineH = (px * 14 / 16).coerceAtLeast(14)
