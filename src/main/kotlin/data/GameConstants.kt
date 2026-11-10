@@ -343,6 +343,18 @@ object GameConstants {
     internal fun tableOnlyWithFluidRecipe(machine: String): Boolean = FLUID_TABLE[machine]?.second ?: false
 
     /** Assembling machines expose their connections only while set to a recipe with fluids. */
+    /** Fluid -> (building, recipe) destroying it, from the data (see [register]). */
+    private var FLUID_VOIDS: Map<String, Pair<String, String>> = emptyMap()
+
+    /**
+     * A building that destroys [fluid] and the recipe it does it with (Py's sinkhole for liquids, exhaust pipe for
+     * gases), or null. Fluids the program renamed (`#` variants: temperatures, by-products) have none.
+     */
+    fun fluidVoid(fluid: String): Pair<String, String>? = if ('#' in fluid || '@' in fluid) null else FLUID_VOIDS[fluid]
+
+    /** Whether [recipe] is one of those buildings' recipes (it destroys a fluid). */
+    fun isFluidVoidRecipe(recipe: String?): Boolean = recipe != null && FLUID_VOIDS.values.any { it.second == recipe }
+
     fun connectionsOnlyWithFluidRecipe(machine: String): Boolean = fluidsOf(machine)?.second ?: false
 
     /** Fluid connections of a machine facing north (empty for machines without fluids). */
@@ -462,6 +474,14 @@ object GameConstants {
             v?.let { m.name to (kotlin.math.floor(it.x + m.width / 2.0 + 1e-6).toInt() to kotlin.math.floor(it.y + m.height / 2.0 + 1e-6).toInt()) }
         }.toMap()
         SUPPORTED_MACHINES = (BASE_MACHINES + SPACE_AGE_MACHINES + extra.map { it.name }).distinct()
+        // Buildings destroying a fluid (Py's sinkhole and exhaust pipe): a furnace needing no power with one fluid input,
+        // whose recipes take only that fluid and make nothing; per fluid the smallest.
+        val voidRecipes = data.recipes.values.filter { r -> r.products.isEmpty() && r.ingredients.size == 1 && r.ingredients[0].isFluid }
+        FLUID_VOIDS = machines.filterIsInstance<FurnaceEntity>()
+            .filter { e -> e.energySource == "void" && exportedFluids[e.name]?.first?.count { it.flow == Flow.INPUT } == 1 }
+            .sortedBy { it.width * it.height }
+            .flatMap { e -> voidRecipes.filter { it.category in e.craftingCategories }.map { r -> r.ingredients[0].name to (e.name to r.name) } }
+            .groupBy({ it.first }, { it.second }).mapValues { it.value.first() }
 
         val lg = data.logistics
         if (lg == null) { BELT_TIERS = BASE_BELT_TIERS; INSERTERS = BASE_INSERTERS; POLES = BASE_POLES; return }

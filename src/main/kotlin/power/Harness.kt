@@ -86,6 +86,18 @@ fun withSeedRequests(layout: geom.Layout, seeds: List<String>, data: data.RootDa
  * blueprint to build.
  */
 fun withOverflowValves(layout: geom.Layout, outputs: List<OutputSpec>, byproducts: Boolean = false, targets: Set<String> = emptySet()): geom.Layout {
+    // A local fluid sink (blocks.local_sinks): the pipe between its port and the building destroying it becomes an
+    // overflow valve, so the block's own users keep what they need (same entity count: wires stay right).
+    val localSinks = outputs.filter { it.fluid && it.local && it.sink != null }.associateBy { it.sink!! }
+    val withLocal = if (localSinks.isEmpty()) layout else layout.copy(entities = layout.entities.map { e ->
+        val o = localSinks[e.tile]
+        if (o == null || e.kind != Kind.PIPE) e
+        else PlacedEntity(GameConstants.OVERFLOW_VALVE, Kind.VALVE, e.x, e.y, Dir.entries.first { o.tile + it == e.tile }.opposite, fluid = o.item)
+    })
+    return withEdgeValves(withLocal, outputs.filter { !it.local }, byproducts, targets)
+}
+
+private fun withEdgeValves(layout: geom.Layout, outputs: List<OutputSpec>, byproducts: Boolean, targets: Set<String>): geom.Layout {
     val overflows = outputs.filter { it.fluid && (it.rate <= 1e-12 || byproducts && it.item !in targets && it.rate <= VALVE_RATE) }
     if (overflows.isEmpty()) return layout
     val taken = HashSet<Tile>(); val byTile = HashMap<Tile, PlacedEntity>()
@@ -223,12 +235,19 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
     // Overflow valves come out: their fluid outputs are held at most half full instead (see below), a valve back where
     // that has no room.
     val valves = layout0.entities.filter { it.kind == Kind.VALVE }
+    // Local fluid sinks: their valve and the building destroying the fluid come out; an infinity pipe on the valve's tile
+    // holds the port's network at most half full instead, as for an overflow at the edge.
+    val localFluid = outputs.filter { it.fluid && it.local && it.sink != null }
     // Local sinks (blocks.local_sinks): their chest becomes an infinity chest the in-game check empties.
     val sinkChests = outputs.filter { it.local && !it.fluid }.mapNotNull { o ->
         layout0.entities.firstOrNull { it.kind == Kind.INSERTER && it.pickupTile == o.tile }?.dropTile
     }.toSet()
     // (Wire ends follow the entities left: poles' copper wires, the gates' and crackers' circuit wires.)
-    val kept = layout0.entities.indices.filter { layout0.entities[it].kind != Kind.VALVE }
+    val kept = layout0.entities.indices.filter { i ->
+        val e = layout0.entities[i]
+        e.kind != Kind.VALVE && !(e.kind == Kind.MACHINE && localFluid.isNotEmpty() && GameConstants.isFluidVoidRecipe(e.recipe)) &&
+            !(e.kind == Kind.PIPE && localFluid.any { it.sink == e.tile })
+    }
     val newIndex = kept.withIndex().associate { (j, i) -> i to j }
     val layout = layout0.copy(entities = kept.map { layout0.entities[it] }.map { e ->
         if (e.kind == Kind.CHEST && e.tile in sinkChests) PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, e.x, e.y) else e
@@ -281,11 +300,12 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
     // machines could not put the catalyst back. The in-game check fills those machines once instead.
     sources.filter { it.fluid && it.rate <= 1e-12 }.forEach { s -> warnings += "${s.item} at ${s.tile} only primes a catalyst loop: not fed" }
     sources.filter { it.fluid && it.rate > 1e-12 }.forEach { s -> if (!fluidFeed(s.tile, s.item, drain = false)) warnings += "no room to feed ${s.item} at ${s.tile}" }
+    localFluid.forEach { o -> val t = o.sink!!; out += PlacedEntity(GameConstants.INFINITY_PIPE, Kind.INFINITY_PIPE, t.x, t.y, fluid = o.item, drain = true, keepAtMost = 0.5); occupied += t }
     // A fluid output with an overflow valve (see withOverflowValves) is drained behind it; an overflow without one
     // (a 0/s output, see plan.overflowItems) gets one; any other output is drained at its port.
     fun valveAt(o: OutputSpec) = valves.firstOrNull { it.tile.manhattan(o.tile) == 1 }
-    outputs.filter { it.fluid && it.rate > 1e-12 && valveAt(it) == null }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
-    outputs.filter { it.fluid && (it.rate <= 1e-12 || valveAt(it) != null) }.forEach { o ->
+    outputs.filter { it.fluid && !it.local && it.rate > 1e-12 && valveAt(it) == null }.forEach { o -> if (!fluidFeed(o.tile, o.item, drain = true)) warnings += "no room to drain ${o.item} at ${o.tile}" }
+    outputs.filter { it.fluid && !it.local && (it.rate <= 1e-12 || valveAt(it) != null) }.forEach { o ->
         // Held at most half full: the users in the factory keep their fluid, and a producer always has room for a batch.
         // Behind an overflow valve (it passes above 80% full) a producer whose batch does not fit the last fifth of its
         // box stood still (Py science 1's washers, 100 muddy sludge a craft, and nexelit with them).

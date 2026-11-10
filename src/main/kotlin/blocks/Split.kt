@@ -601,15 +601,16 @@ class BlockPlan(
 /**
  * [split] with the output links of small by-products local ([BlocksConfig.localSinks]): items, not targets, that the
  * whole factory makes less than [below] of per second (a mixed belt counts what all of its items make). They keep
- * their block port, need no factory edge, and run through no corridor: the stitch ends each in a chest.
+ * their block port, need no factory edge, and run through no corridor: the stitch ends each in a chest. A fluid does
+ * too where [voids] has a building that destroys it (Py's sinkhole and exhaust pipe), which the stitch puts there.
  */
-fun withLocalSinks(split: Split, below: Double?, targets: Set<String>): Split {
+fun withLocalSinks(split: Split, below: Double?, targets: Set<String>, voids: (String) -> Boolean = { false }): Split {
     if (below == null) return split
     val plan = split.plan
     val mixedRate = plan.mixed.entries.groupBy({ it.value }, { plan.outputs[it.key] ?: 0.0 }).mapValues { it.value.sum() }
     fun rate(item: String) = mixedRate[item] ?: plan.outputs[item] ?: 0.0
     val byId = split.links.associateBy { it.id }
-    fun small(l: Link) = l.from >= 0 && l.to == EDGE && !l.fluid && l.item !in targets && rate(l.item) < below
+    fun small(l: Link) = l.from >= 0 && l.to == EDGE && (!l.fluid || voids(l.item)) && l.item !in targets && rate(l.item) < below
     // (Two items sharing a belt, one a lane: both end in the chest, or neither does.)
     fun local(l: Link) = small(l) && (l.pair < 0 || byId[l.pair]?.let(::small) == true)
     val marked = split.links.map { l -> if (local(l)) l.copy(local = true, routed = true) else l }

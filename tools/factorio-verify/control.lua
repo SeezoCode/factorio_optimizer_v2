@@ -39,6 +39,15 @@ end
 
 local function add(t, k, n) t[k] = (t[k] or 0) + n end
 
+-- An ingredient in a machine: in its input slots only. A Py farm runs on animals in its module slots, and a reproductive
+-- complex holding xeno as modules, short of the xeno its recipe takes, was never seen waiting for it: its maker stayed
+-- off for good (production science).
+local function held(e, name)
+  local inv = e.get_inventory(defines.inventory.crafter_input)
+  if inv then return inv.get_item_count(name) end
+  return e.get_item_count(name)
+end
+
 -- "name", or "name@quality" for anything but normal (as the solver writes items in ports.json).
 local function key(name, quality)
   quality = str(quality)
@@ -134,7 +143,7 @@ local function warm_start(run, e, r)
     if ing.type == "item" then
       pcall(function()
         local want = math.ceil(ing.amount * (carrier[ing.name] and 1 or 2))
-        local have = e.get_item_count(ing.name)
+        local have = held(e, ing.name)
         if have < want then e.insert { name = ing.name, count = want - have } end
       end)
     else
@@ -186,7 +195,7 @@ local function prime(run, e, r, crafted, rec)
         -- (A catalyst the machine also gives to others, Py's moss farm's coarse, is topped up like a seed: the
         -- classifier took the first batch and the farm stood short of the 15 it needs.)
         pcall(function()
-          local have = e.get_item_count(ing.name)
+          local have = held(e, ing.name)
           local add = want - have
           -- A top-up once the loop runs: within 5 times the plan's use by this machine since the start (Py science
           -- 1's seaweed burner, fed whenever short, crafted 1375 times instead of about 15 and filled its belts with ash).
@@ -784,7 +793,7 @@ local function finish(run)
   local report = {
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
-    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure,
+    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
     research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
                  bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
                  belt_stack_size_bonus = game.forces.player.belt_stack_size_bonus },
@@ -1020,7 +1029,7 @@ local function feed_short(run)
     local e = m.e
     local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
     if r then pcall(function()
-      local function count(ing) return ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0) end
+      local function count(ing) return ing.type == "item" and held(e, ing.name) or (e.get_fluid_count(ing.name) or 0) end
       if mode == "full" then
         if not FEED_SHORT[e.status] then return end
         local before = {}
@@ -1100,8 +1109,25 @@ script.on_event(defines.events.on_tick, function()
       short_at[e.unit_number] = short_at[e.unit_number] or {}
       short_at[e.unit_number][item] = true
     end
+    -- params.debug_at ("x,y" machine positions): each second's pull inputs and decision for those, in the report.
+    local dbg = {}
+    for _, k in pairs(run.params.debug_at or {}) do dbg[k] = true end
+    local function dlog(m, what)
+      if not dbg[m.pos.x .. "," .. m.pos.y] then return end
+      run.debug = run.debug or {}
+      if #run.debug < 400 then run.debug[#run.debug + 1] = game.tick .. " " .. m.pos.x .. "," .. m.pos.y .. " " .. what end
+    end
+    run.dlog = dlog
     for _, m in pairs(run.machines) do
       local e = m.e
+      if e.valid and dbg[m.pos.x .. "," .. m.pos.y] then
+        local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+        local ings = {}
+        for _, ing in pairs(r and r.ingredients or {}) do
+          ings[#ings + 1] = ing.name .. ":" .. ing.type .. ":" .. tostring(ing.type == "item" and held(e, ing.name) or e.get_fluid_count(ing.name)) .. "/" .. ing.amount
+        end
+        dlog(m, "status " .. tostring(e.status) .. " off " .. tostring(e.disabled_by_script) .. " recipe " .. tostring(r and r.name) .. " " .. table.concat(ings, " "))
+      end
       if e.valid and not e.disabled_by_script and SHORT[e.status] then
         local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         if r then
@@ -1109,7 +1135,7 @@ script.on_event(defines.events.on_tick, function()
           if e.status == defines.entity_status.no_fuel then for _, f in pairs(fuel_items(run, r)) do wait_for(e, f) end end
           for _, ing in pairs(r.ingredients) do
             if ing.type == "item" then
-              if e.get_item_count(ing.name) < ing.amount then wait_for(e, ing.name) end
+              if held(e, ing.name) < ing.amount then wait_for(e, ing.name) end
             elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
               short_fluid[ing.name] = true
               fluid_at[e.unit_number] = fluid_at[e.unit_number] or {}
@@ -1127,9 +1153,25 @@ script.on_event(defines.events.on_tick, function()
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output
-          or e.status == defines.entity_status.waiting_for_space_in_destination) then
+          or e.status == defines.entity_status.waiting_for_space_in_destination
+          or e.status == defines.entity_status.full_burnt_result_output) then
         local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         local out = r and e.get_output_inventory()
+        -- (What its fuel burns to, stuck in its burnt result slot, too: Py's basic oxygen furnace stood with its ash
+        -- slot full, the ash belt's one user switched off, and the slacked lime behind it never came.)
+        if r and e.status == defines.entity_status.full_burnt_result_output then
+          local burnt = e.get_burnt_result_inventory()
+          for k, c in pairs(burnt and burnt.get_contents() or {}) do
+            local name = type(c) == "table" and c.name or k
+            local pn = push_net[name] or {}
+            for net in pairs((run.drops or {})[e.unit_number] or {}) do pn[net] = true end
+            push_net[name] = pn
+            for u in pairs((run.hands or {})[e.unit_number] or {}) do
+              push_at[u] = push_at[u] or {}
+              push_at[u][name] = true
+            end
+          end
+        end
         if r then
           -- (A fluid only when no item is what stands in the way, and only one it holds: Py chemical science's tar
           -- refinery stood full of middle oil, its other three fluids drained.)
@@ -1168,7 +1210,7 @@ script.on_event(defines.events.on_tick, function()
           local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
           if r then
             for _, ing in pairs(r.ingredients) do
-              if ing.type == "item" and e.get_item_count(ing.name) < ahead * ing.amount then
+              if ing.type == "item" and held(e, ing.name) < ahead * ing.amount then
                 local ln = low_net[ing.name] or {}
                 for net in pairs((run.feeds or {})[e.unit_number] or {}) do ln[net] = true end
                 low_net[ing.name] = ln
@@ -1230,6 +1272,18 @@ script.on_event(defines.events.on_tick, function()
         end
         -- (A machine whose outputs could not be traced keeps running.)
         local off = known and not wanted
+        if run.dlog then
+          local ds = {}
+          for n in pairs(drops) do ds[#ds + 1] = tostring(n) end
+          local sw = {}
+          for _, p in pairs(r.products) do
+            local sn = short_net[p.name]
+            local ns = {}
+            if sn then for n in pairs(sn) do ns[#ns + 1] = tostring(n) end end
+            sw[#sw + 1] = p.name .. "<-[" .. table.concat(ns, " ") .. "]"
+          end
+          run.dlog(m, "pull recipe " .. r.name .. " drops [" .. table.concat(ds, " ") .. "] waited " .. table.concat(sw, "; ") .. " known " .. tostring(known) .. " wanted " .. tostring(wanted))
+        end
         if off then run.pulled_off = run.pulled_off + 1 end
         if off or e.disabled_by_script then e.disabled_by_script = off end
       end
@@ -1257,7 +1311,10 @@ script.on_event(defines.events.on_tick, function()
         local o = {}
         for _, ing in pairs(r.ingredients) do
           local c0 = m.fq.c0[ing.name]
-          local now = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
+          -- (A fluid held in its box counts up to two crafts' worth: Py's olefin barreler filled its box with 1000
+          -- olefin while it had no barrels, stood over its quota for hours, and the simik farms waiting for its
+          -- barrels never got one.)
+          local now = ing.type == "item" and held(e, ing.name) or math.min(e.get_fluid_count(ing.name) or 0, 2 * ing.amount)
           if c0 == nil then c0 = now; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + now - c0
           -- params.quota_window (seconds): what it took in that last stretch, not since the start, so that running

@@ -5,6 +5,8 @@ import data.SplitterData
 import data.UndergroundData
 import data.CraftingEntity
 import data.FluidBoxData
+import data.FurnaceEntity
+import data.Ingredient
 import data.GameConstants
 import data.PipeConnectionData
 import data.Vec
@@ -156,6 +158,55 @@ class ExportedDataTest {
         extra.forEach { e ->
             assertTrue(e.name in GameConstants.SUPPORTED_MACHINES, e.name)
             assertEquals(e.width to e.height, GameConstants.MACHINE_SIZES[e.name], e.name)
+        }
+    }
+
+    @Test
+    fun `a small fluid by-product ends in a building that destroys it, behind an overflow valve`() {
+        // As Py's sinkhole: a 3 x 3 furnace needing no power, one fluid input on its east side (facing north), and
+        // recipes that take one fluid and make nothing.
+        val furnace = data.entities.getValue("electric-furnace") as FurnaceEntity
+        val sink = furnace.copy(name = "test-sinkhole", width = 3, height = 3, energySource = "void", craftingCategories = listOf("test-runoff"),
+            fluidBoxes = listOf(FluidBoxData(1, "input", connections = listOf(PipeConnectionData("input", "normal", "E",
+                listOf(Vec(1.0, 0.0), Vec(0.0, 1.0), Vec(-1.0, 0.0), Vec(0.0, -1.0)))))))
+        val void = data.recipes.getValue("advanced-oil-processing").copy(name = "petroleum-gas-void", category = "test-runoff",
+            ingredients = listOf(Ingredient("fluid", name = "petroleum-gas", amount = 20000.0)), products = emptyList(), mainProduct = null)
+        val modded = data.copy(entities = data.entities + ("test-sinkhole" to sink), recipes = data.recipes + ("petroleum-gas-void" to void))
+        try {
+            GameConstants.register(modded)
+            assertEquals("test-sinkhole" to "petroleum-gas-void", GameConstants.fluidVoid("petroleum-gas"))
+            assertEquals(null, GameConstants.fluidVoid("petroleum-gas#300"))
+            assertEquals(null, GameConstants.fluidVoid("heavy-oil"))
+            val spec = validate.ValidationSpec(requirePower = false, checkRates = false, recipeInfo = validate.recipeInfoFrom(modded))
+            for (d in Dir.entries) {
+                // The port's pipe at (10,10), fed; the pipe out of it at a; the sinkhole beyond, turned to take from a.
+                val t = geom.Tile(10, 10); val a = t + d
+                val v = blocks.fluidVoidAt("test-sinkhole", "petroleum-gas-void", a, d.opposite)!!
+                assertTrue(a !in v.rect.tiles() && v.rect.tiles().any { it.manhattan(a) == 1 }, "$d: $v")
+                val port = geom.PlacedEntity("infinity-pipe", geom.Kind.INFINITY_PIPE, t.x, t.y, fluid = "petroleum-gas")
+                val pipe = geom.PlacedEntity("pipe", geom.Kind.PIPE, a.x, a.y, fluid = "petroleum-gas")
+                val errors = validate.validate(geom.Layout(30, 30, listOf(port, pipe, v)), spec)
+                assertEquals(emptyList(), errors.filter { it.type.name.startsWith("FLUID") || it.type == validate.ErrorType.OVERLAP }, "$d")
+                // As the stitch lays it: an overflow valve there instead, which joins only front and back (a pipe of
+                // another fluid beside it stays apart).
+                val valveHere = geom.PlacedEntity(GameConstants.OVERFLOW_VALVE, geom.Kind.VALVE, a.x, a.y, d.opposite, fluid = "petroleum-gas")
+                val side = a + d.cw
+                val other = geom.PlacedEntity("infinity-pipe", geom.Kind.INFINITY_PIPE, side.x, side.y, fluid = "water")
+                val withValve = validate.validate(geom.Layout(30, 30, listOf(port, valveHere, v) + (if (side in v.rect.tiles()) emptyList() else listOf(other))), spec)
+                assertEquals(emptyList(), withValve.filter { it.type.name.startsWith("FLUID") || it.type == validate.ErrorType.OVERLAP }, "$d valve")
+                // Without the sinkhole the gas has nowhere to go.
+                val out = validate.OutputSpec(t, "petroleum-gas", 0.0, fluid = true, local = true, sink = a)
+                // In the blueprint the pipe is an overflow valve taking from the port; in the test copy valve and
+                // sinkhole make way for an infinity pipe holding the port at most half full.
+                val bp = power.withOverflowValves(geom.Layout(30, 30, listOf(port.copy(kind = geom.Kind.PIPE, name = "pipe"), pipe, v)), listOf(out))
+                val valve = bp.entities.single { it.tile == a }
+                assertEquals(geom.Kind.VALVE, valve.kind); assertEquals(d.opposite, valve.dir)
+                val tc = power.testCopy(bp, emptyList(), listOf(out), TestData.job("t1")).layout
+                assertTrue(tc.entities.none { it.kind == geom.Kind.MACHINE || it.kind == geom.Kind.VALVE }, "$d: ${tc.entities}")
+                assertEquals(0.5, tc.entities.single { it.tile == a }.keepAtMost)
+            }
+        } finally {
+            GameConstants.register(data)
         }
     }
 }

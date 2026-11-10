@@ -52,3 +52,7 @@ fun RootData.craftingCategories(machine: String): List<String> = when (val entit
     is RocketSiloEntity -> entity.craftingCategories
     else -> emptyList()
 }
+
+/** A building that destroys [fluid] and the recipe it does it with, or null (see GameConstants.fluidVoid). */
+@Suppress("UnusedReceiverParameter")
+fun RootData.fluidVoid(fluid: String): Pair<String, String>? = GameConstants.fluidVoid(fluid)

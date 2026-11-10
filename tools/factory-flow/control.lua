@@ -23,6 +23,16 @@ local SHORT = {
 local FULL = { [defines.entity_status.full_output] = true, [defines.entity_status.full_burnt_result_output] = true,
   [defines.entity_status.waiting_for_space_in_destination] = true }
 
+
+-- An ingredient in a machine: in its input slots only. A Py farm runs on animals in its module slots, and a reproductive
+-- complex holding xeno as modules, short of the xeno its recipe takes, was never seen waiting for it: its maker stayed
+-- off for good (production science).
+local function held(e, name)
+  local inv = e.get_inventory(defines.inventory.crafter_input)
+  if inv then return inv.get_item_count(name) end
+  return e.get_item_count(name)
+end
+
 local function setting(name) return settings.global["factory-flow-" .. name].value end
 
 local function init()
@@ -261,7 +271,7 @@ local function control()
         if e.status == defines.entity_status.no_fuel then for _, f in pairs(fuels(m, r)) do wait(unit, f) end end
         for _, ing in pairs(r.ingredients) do
           if ing.type == "item" then
-            if e.get_item_count(ing.name) < ing.amount then wait(unit, ing.name) end
+            if held(e, ing.name) < ing.amount then wait(unit, ing.name) end
           elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
             short_fluid[ing.name] = true
             local a = fluid_at[unit] or {}
@@ -280,7 +290,23 @@ local function control()
   for unit, m in pairs(storage.machines) do
     local e, r = m.e, recipes[unit]
     if r and e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output
-        or e.status == defines.entity_status.waiting_for_space_in_destination) then
+        or e.status == defines.entity_status.waiting_for_space_in_destination
+        or e.status == defines.entity_status.full_burnt_result_output) then
+      -- (What its fuel burns to, stuck in its burnt result slot, too: Py's basic oxygen furnace stood with its ash slot
+      -- full and the ash belt's one user switched off.)
+      if e.status == defines.entity_status.full_burnt_result_output then
+        local burnt = e.get_burnt_result_inventory()
+        for k, c in pairs(burnt and burnt.get_contents() or {}) do
+          local name = type(c) == "table" and c.name or k
+          local pn = push_net[name] or {}
+          for n in pairs(T.drops[unit] or {}) do pn[n] = true end
+          push_net[name] = pn
+          for u in pairs(T.hands[unit] or {}) do
+            push_at[u] = push_at[u] or {}
+            push_at[u][name] = true
+          end
+        end
+      end
       local out = e.get_output_inventory()
       local items_stuck = false
       for _, p in pairs(r.products) do
@@ -322,7 +348,7 @@ local function control()
       local e, r = m.e, recipes[unit]
       if r and e.valid and not e.disabled_by_script and e.status == defines.entity_status.working then
         for _, ing in pairs(r.ingredients) do
-          if ing.type == "item" and e.get_item_count(ing.name) < ahead * ing.amount then
+          if ing.type == "item" and held(e, ing.name) < ahead * ing.amount then
             local wn = want_net[ing.name] or {}
             for n in pairs(T.feeds[unit] or {}) do wn[n] = true end
             want_net[ing.name] = wn
@@ -384,7 +410,8 @@ local function control()
         local window = setting("quota-window") * 60   -- seconds; 0: since the machine was built
         local o = {}
         for _, ing in pairs(r.ingredients) do
-          local have = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
+          -- (A fluid held in its box counts up to two crafts' worth: a full box is no fluid taken from anyone.)
+          local have = ing.type == "item" and held(e, ing.name) or math.min(e.get_fluid_count(ing.name) or 0, 2 * ing.amount)
           local c0 = m.fq.c0[ing.name]
           if c0 == nil then c0 = have; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + have - c0
@@ -431,7 +458,7 @@ local function control()
           end
         end
         local drops = T.drops[unit] or {}
-        local held = {}
+        local holding = {}
         for _, i in pairs(T.into[unit] or {}) do
           if i.valid then
             local h = i.held_stack
@@ -441,16 +468,16 @@ local function control()
             -- (Never one taking from its own return loop, a belt it drops onto: held, its returns could not come back.)
             local own_loop = net ~= nil and drops[net] ~= nil and drops[net] ~= false
             if it ~= nil and not own_loop and (capped[it] or (returned[it] and net ~= nil)) then
-              held[i.unit_number] = i
+              holding[i.unit_number] = i
               stats.held = stats.held + 1
               if not i.disabled_by_script then i.disabled_by_script = true end
             end
           end
         end
         for n, i in pairs(m.held or {}) do
-          if not held[n] and i.valid then i.disabled_by_script = false end
+          if not holding[n] and i.valid then i.disabled_by_script = false end
         end
-        m.held = held
+        m.held = holding
       end
     end
   end

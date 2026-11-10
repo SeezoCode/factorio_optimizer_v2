@@ -91,8 +91,13 @@ data class SourceSpec(
 )
 
 /** Items (or a fluid) leaving the layout from a belt (pipe) on this tile at this rate (output ports). */
-/** [local]: the item ends in a chest beside the factory's block (blocks.local_sinks): an inserter takes it off [tile]. */
-data class OutputSpec(val tile: Tile, val item: String, val rate: Double, val fluid: Boolean = false, val port: Int = -1, val local: Boolean = false)
+/**
+ * [local]: it ends beside the factory's block (blocks.local_sinks): an item in a chest an inserter fills from [tile]; a
+ * fluid in a building destroying it (Py's sinkhole), through [sink], the tile beside the port's pipe (a pipe here, an
+ * overflow valve in the blueprint, so the block's own users keep what they need).
+ */
+data class OutputSpec(val tile: Tile, val item: String, val rate: Double, val fluid: Boolean = false, val port: Int = -1, val local: Boolean = false,
+                      val sink: Tile? = null)
 
 data class ValidationSpec(
     /** Machine top-left tile -> what it should do. Machines missing here get item checks from their recipe only. */
@@ -1364,9 +1369,14 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             }
             return
         }
-        val pipeKinds = setOf(Kind.PIPE, Kind.PIPE_UG, Kind.INFINITY_PIPE)
+        // (An overflow valve joins only what lies in front of and behind it: a local fluid sink's, blocks.local_sinks.)
+        val pipeKinds = setOf(Kind.PIPE, Kind.PIPE_UG, Kind.INFINITY_PIPE, Kind.VALVE)
         val pipes = ents.indices.filter { ents[it].kind in pipeKinds }
-        fun opensTo(i: Int, d: Dir): Boolean = ents[i].kind != Kind.PIPE_UG || ents[i].dir == d
+        fun opensTo(i: Int, d: Dir): Boolean = when (ents[i].kind) {
+            Kind.PIPE_UG -> ents[i].dir == d
+            Kind.VALVE -> ents[i].dir.axis == d.axis
+            else -> true
+        }
         // Union-find over pipe entities and machine connections (ids after the entities).
         val connList = conns.flatMap { (m, cs) -> cs.map { m to it } }
         val parent = IntArray(ents.size + connList.size) { it }
@@ -1426,7 +1436,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
         spec.outputs.filter { it.fluid }.forEach { o ->
             val i = indexAt(o.tile)
             if (i == null || ents[i].kind !in pipeKinds) err(ErrorType.OUTPUT_MISSING, o.tile, "fluid output port of ${o.item} has no pipe")
-            else drains.getOrPut(find(i)) { mutableSetOf() } += o.item
+            // (A local one leaves through the building that destroys it: its connection is the drain.)
+            else if (!o.local) drains.getOrPut(find(i)) { mutableSetOf() } += o.item
         }
         connList.forEachIndexed { k, (m, c) ->
             if (!attached[k]) return@forEachIndexed

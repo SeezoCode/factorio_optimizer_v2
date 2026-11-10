@@ -6,6 +6,7 @@ import config.Tuning
 import config.strictJson
 import data.GameConstants
 import data.RootData
+import data.fluidVoid
 import emit.toBlueprint
 import emit.toBlueprintString
 import emit.toJson
@@ -121,7 +122,8 @@ fun runFactory(
         ?: splitPlan(input, cfg, tier.throughput, config.search.seed, config.box.aspect, config.reserved,
             pure = if (cfg.templates) Templates.columnRecipes(input, config, cfg.templateIngredients, cfg.templateMinMachines, cfg.maxMachines / 2, cfg.templateColumns) else emptyMap(),
             maxUtilization = tuning.planner.maxUtilization).also { saveSplit(out, config, it) }
-    split = withLocalSinks(split, cfg.localSinks, config.targets.map { it.name }.toSet())
+    val valves = power.hasOverflowValve(data)
+    split = withLocalSinks(split, cfg.localSinks, config.targets.map { it.name }.toSet()) { f -> valves && data.fluidVoid(f) != null }
     // Machine rates rebalanced for the split: blocks, stitching and validation all use this plan.
     val plan = split.plan
     plan.write(File(out, "plan_rebalanced.json").path)
@@ -412,7 +414,8 @@ private fun sayPlan(split: Split, plan: ProductionPlan, say: (String) -> Unit) {
     }
     val edge = split.links.filter { (it.from == EDGE || it.to == EDGE) && !it.hub }
     say("  ${edge.count { !it.routed }} inputs and outputs leave their block straight out of the factory, ${edge.count { it.routed && !it.local }} run through the corridors to its edge" +
-        edge.count { it.local }.let { n -> if (n > 0) ", $n small by-products end in a chest beside their block" else "" })
+        edge.count { it.local && !it.fluid }.let { n -> if (n > 0) ", $n small by-products end in a chest beside their block" else "" } +
+        edge.count { it.local && it.fluid }.let { n -> if (n > 0) ", $n small fluid by-products in a void beside it" else "" })
 }
 
 /** [this] state with block [gone] removed (indices above it, reserved areas included, move down). */
@@ -940,9 +943,13 @@ fun stitchRoute(
             val l = split.links[group[0]]
             val t = Tile(o.tile.x + ox[b], o.tile.y + oy[b])
             if (l.local) {
-                val d = byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
+                // (A pipe port: out of the block on the side it was searched with, else whichever side leads out.)
+                val rect = Rect(ox[b], oy[b], results[b].w, results[b].h)
+                val d = if (o.fluid) (listOfNotNull(side(l.fromSide, b)) + Dir.entries).firstOrNull { (t + it) !in rect }
+                    ?: return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} port is not on its edge")
+                    else byTile[t]?.dir ?: return StitchAttempt(null, listOf(t), "no belt at a port")
                 localSinks += Triple(l, t, d)
-                outputs += o.copy(tile = t, port = -1, local = true)
+                outputs += o.copy(tile = t, port = -1, local = true, sink = if (o.fluid) t + d else null)
                 return@forEach
             }
             if (!l.throughCorridor) {
@@ -1000,6 +1007,28 @@ fun stitchRoute(
     val sinkInserter = listOf("fast-inserter", "inserter", "bulk-inserter").firstOrNull { it in config.inserters.allowed } ?: "inserter"
     for ((l, t, d) in localSinks) {
         val a = t + d; val c = t.step(d, 2)
+        if (l.fluid) {
+            // A fluid: an overflow valve on the tile out of the port (it lets out only above 80% full, so the block's own
+            // users keep what they need; it joins only front and back), then the building that destroys the fluid,
+            // turned so its connection meets it, or, where that does not fit (two such ports side by side), a few pipes
+            // further on. Nothing of a fluid may lie beside those pipes.
+            val (name, recipe) = GameConstants.fluidVoid(l.item) ?: return StitchAttempt(null, listOf(a), "nothing destroys ${l.item}")
+            val fluidKinds = setOf(Kind.PIPE, Kind.PIPE_UG, Kind.TANK, Kind.INFINITY_PIPE, Kind.VALVE)
+            var placed: List<PlacedEntity>? = null
+            for (k in 0..6) {
+                val chain = (1..k).map { a.step(d, it) }
+                if ((listOf(a) + chain).any { !free(it) }) break
+                if (chain.any { p -> listOf(d.cw, d.ccw).any { s -> byTile[p + s]?.kind in fluidKinds } }) break
+                val v = fluidVoidAt(name, recipe, chain.lastOrNull() ?: a, d.opposite) ?: break
+                if (v.rect.tiles().any { !free(it) || it == a || it in chain }) continue
+                placed = listOf(PlacedEntity(GameConstants.OVERFLOW_VALVE, Kind.VALVE, a.x, a.y, d.opposite, fluid = l.item, net = netOfItem[l.item])) +
+                    chain.map { PlacedEntity(config.fluids.pipe, Kind.PIPE, it.x, it.y, fluid = l.item, net = netOfItem[l.item]) } + v
+                break
+            }
+            if (placed == null) return StitchAttempt(null, listOf(a, c), "no room for the void of block ${l.from + 1}'s ${l.item} at $a")
+            placed.forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
+            continue
+        }
         if (!free(a) || !free(c)) return StitchAttempt(null, listOf(a, c), "no room for the chest of block ${l.from + 1}'s ${l.item} at $a")
         listOf(PlacedEntity(sinkInserter, Kind.INSERTER, a.x, a.y, d.opposite, net = netOfItem[l.item]),
             PlacedEntity(config.blocks!!.localSinkChest, Kind.CHEST, c.x, c.y)).forEach { e -> entities += e; e.rect.tiles().forEach { byTile[it] = e } }
@@ -1425,6 +1454,22 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
 }
 
 /** The box side a port tile of a [w] x [h] block is on (on the ring around it, or on its edge). */
+/**
+ * Building [name] (a fluid void, see RootData.fluidVoid) set to [recipe], turned so that its one fluid connection takes
+ * from a pipe on [pipe] lying [toward] of it; null if no turn does.
+ */
+internal fun fluidVoidAt(name: String, recipe: String, pipe: Tile, toward: Dir): PlacedEntity? {
+    val c = GameConstants.baseFluidConnections(name).singleOrNull { it.flow == GameConstants.Flow.INPUT } ?: return null
+    val (w, h) = GameConstants.MACHINE_SIZES[name] ?: return null
+    for (rot in 0..3) {
+        if (GameConstants.placeSide(c, rot, false) != toward) continue
+        val (dx, dy) = GameConstants.placeConnection(c, w, h, rot, false)
+        val (rw, rh) = if (rot % 2 == 0) w to h else h to w
+        return PlacedEntity(name, Kind.MACHINE, pipe.x - dx, pipe.y - dy, Dir.entries[rot], recipe, w = rw, h = rh)
+    }
+    return null
+}
+
 private fun sideOf(t: Tile, w: Int, h: Int): Dir = when {
     t.x < 0 -> Dir.W; t.x >= w -> Dir.E; t.y < 0 -> Dir.N; t.y >= h -> Dir.S
     t.x == 0 -> Dir.W; t.x == w - 1 -> Dir.E; t.y == 0 -> Dir.N; else -> Dir.S

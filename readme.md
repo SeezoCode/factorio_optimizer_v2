@@ -377,7 +377,11 @@ Unknown keys are an error. Everything except `targets` has a default.
   in-game check counts what arrives. Py production science with 0.1: 312 of 332 item outputs end in chests, the
   factory is 896 x 809 instead of 932 x 835, and the final stitch took 515 s instead of 757. In a real game a full
   chest backs its belt up like any full output, so empty them now and then (a steel chest holds 48 stacks: hours
-  at these rates). Fluids still leave at the edge.
+  at these rates). A fluid does the same where the game data has a building that destroys it (Py's sinkhole for
+  liquids, exhaust pipe for gases): past its port pipe an overflow valve (the block's own users keep what they need:
+  it lets out only above 80% full), then that building, turned to take from it. Fluids the program renamed
+  (`steam#250` and other temperatures) still leave at the edge. The test copy holds such a port at most half full
+  with an infinity pipe instead, as for an overflow at the edge.
 - Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
   (lubricant, or oil leaving the block), one of that oil's pipes gets a red wire to the cracking plants, which work
   only while that pipe is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns it off;

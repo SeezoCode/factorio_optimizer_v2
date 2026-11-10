@@ -122,6 +122,11 @@ class FloorplanTest {
         assertEquals("W", byItem.getValue("stone").fromSide)
         assertEquals("N", byItem.getValue("wood").fromSide)
         assertEquals(setOf(Dir.E, Dir.S), split.touch[0])
+        // A fluid something destroys (Py's sinkhole): local too, and off the edge side it shared with the target.
+        val voided = withLocalSinks(Split(base.blocks, links, base.warnings, base.geometry, p, base.partition, base.ports), 0.1, setOf("plastic-bar")) { it == "petroleum-gas" }
+        val gas = voided.links.single { it.item == "petroleum-gas" }
+        assertTrue(gas.local && gas.routed, "$gas")
+        assertEquals("W", gas.fromSide)
         // Off: nothing changes.
         assertEquals(links, withLocalSinks(Split(base.blocks, links, base.warnings, base.geometry, p, base.partition, base.ports), null, emptySet()).links)
     }

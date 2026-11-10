@@ -8,10 +8,13 @@ Once a second, for the machines of a tagged blueprint:
 
 - **Pull**: a machine runs while a machine it feeds (along its output belts, or by hand) waits for one of its products,
   or while it makes a target. Machines whose outputs could not be traced always run. What a machine's fuel burns to
-  (ash) counts as one of its products.
+  (ash) counts as one of its products. A machine waits for what its input slots lack (a Py farm's animals in its
+  module slots are not counted: a reproductive complex running on xeno never asked for the xeno its recipe takes).
 - **Quotas**: a machine that has taken more of an item than its plan allows so far (planned intake × 1.5, plus two
   crafts) has the inserters bringing that item stopped while a machine still behind its own plan waits for it, anywhere
-  in the factory. For a fluid, the machine itself stops. A machine nobody behind plan waits behind takes what it likes.
+  in the factory. For a fluid, the machine itself stops (what sits in its fluid box counts up to two crafts' worth: a
+  barreler that filled its box while it had no barrels is not over its share). A machine nobody behind plan waits
+  behind takes what it likes.
   An inserter taking from a belt its own machine drops onto (a catalyst's own return loop) is never stopped: its
   returns could not come back.
 - **Gates**: on each overflow port's belt, the belt just past the last machine taking from it stops while a machine on
@@ -21,8 +24,8 @@ Once a second, for the machines of a tagged blueprint:
   side feeds more users. (A belt cannot be stopped by script, so the mod puts
   a hidden, empty constant combinator under each gate belt, wires it to the belt, and closes the gate by turning on
   the belt's enable condition `signal-A > 0`, which never holds there.)
-- **Push**: a machine standing with a full output gets the users of what is stuck in it going, even if nothing they
-  make is waited for (a ring stops for good otherwise).
+- **Push**: a machine standing with a full output (or a full burnt result slot: its ash) gets the users of what is
+  stuck in it going, even if nothing they make is waited for (a ring stops for good otherwise).
 
 A setting, *pull ahead* (default 1), lets makers run while a user works with less than that many crafts of an
 ingredient, not only once it stands short. Another, *quota window* (minutes, default 0), makes quotas count only
