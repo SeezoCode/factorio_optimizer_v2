@@ -1,0 +1,9 @@
+{
+  "name": "factory-flow",
+  "version": "0.1.0",
+  "title": "Factory flow",
+  "author": "Filip Hostinský",
+  "factorio_version": "2.1",
+  "dependencies": ["base >= 2.1.0"],
+  "description": "Keeps a factory laid out by factorio_optimizer near its plan: a machine runs while something it makes is waited for, a machine ahead of its planned intake leaves what others behind plan wait for, and overflow belts keep their items in front of the users until a maker would stop. Works on blueprints tagged with tools/factory-flow/tag.py; install it before building the blueprint."
+}

@@ -343,7 +343,8 @@ local function start(params)
     if g.valid and g.type == "entity-ghost" then
       entity_ghosts = entity_ghosts + 1
       local name = g.ghost_name
-      local _, ent = g.revive()
+      -- (params.raise_built: as a player's build, so a mod like factory-flow sees the entity and its tags.)
+      local _, ent = g.revive { raise_revive = params.raise_built == true }
       if ent then revived = revived + 1 else add(failed, name, 1) end
     end
   end
@@ -487,8 +488,8 @@ local function start(params)
   end
 
   -- --flow's belt gates: on each overflow sink's belt, the belt just past the last one an inserter takes from (walking
-  -- up from the sink). Closed while a machine on that network waits for an overflow item, items queue in front of the
-  -- users instead of passing them to the far end (Py science 2: 549 raw fiber stood at the overflow, 300 tiles past a
+  -- up from the sink). Closed while a machine on that network waits for an overflow item, or while no machine dropping
+  -- onto it stands full: items queue in front of the users instead of passing them to the far end (Py science 2: 549 raw fiber stood at the overflow, 300 tiles past a
   -- cellulose machine waiting for it).
   if run.params.flow and run.pick_belts then
     run.gates = {}
@@ -1029,7 +1030,7 @@ script.on_event(defines.events.on_tick, function()
   if (run.params.pull or run.params.flow) and game.tick % 60 == 0 and run.drops then
     local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
       [defines.entity_status.fluid_ingredient_shortage] = true, [defines.entity_status.no_fuel] = true }
-    local short_net, short_at, short_fluid = {}, {}, {}
+    local short_net, short_at, short_fluid, fluid_at = {}, {}, {}, {}
     local function wait_for(e, item)
       local sn = short_net[item] or {}
       for net in pairs((run.feeds or {})[e.unit_number] or {}) do sn[net] = true end
@@ -1049,12 +1050,47 @@ script.on_event(defines.events.on_tick, function()
               if e.get_item_count(ing.name) < ing.amount then wait_for(e, ing.name) end
             elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
               short_fluid[ing.name] = true
+              fluid_at[e.unit_number] = fluid_at[e.unit_number] or {}
+              fluid_at[e.unit_number][ing.name] = true
             end
           end
         end
       end
     end
-    run.short = { net = short_net, at = short_at, fluid = short_fluid }
+    -- What full makers push: a machine standing with a full output gets the users of what is stuck in it going (on
+    -- the belts it drops onto, the machines it hands to; a fluid anywhere). Py logistic science: the scrondrix renderer
+    -- stood full of cages, and the caging machine, the cages' only user, was off, since the renderer it makes for was
+    -- full, not waiting: the breeding ring stopped for good.
+    local push_net, push_at, push_fluid = {}, {}, {}
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      if e.valid and not e.disabled_by_script and e.status == defines.entity_status.full_output then
+        local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+        local out = r and e.get_output_inventory()
+        if r then
+          -- (A fluid only when no item is what stands in the way, and only one it holds: Py chemical science's tar
+          -- refinery stood full of middle oil, its other three fluids drained.)
+          local items_stuck = false
+          for _, p in pairs(r.products) do
+            if p.type == "item" and out and out.get_item_count(p.name) > 0 then items_stuck = true end
+          end
+          for _, p in pairs(r.products) do
+            if p.type == "fluid" then
+              if not items_stuck and (e.get_fluid_count(p.name) or 0) > 0 then push_fluid[p.name] = true end
+            elseif out and out.get_item_count(p.name) > 0 then
+              local pn = push_net[p.name] or {}
+              for net in pairs((run.drops or {})[e.unit_number] or {}) do pn[net] = true end
+              push_net[p.name] = pn
+              for u in pairs((run.hands or {})[e.unit_number] or {}) do
+                push_at[u] = push_at[u] or {}
+                push_at[u][p.name] = true
+              end
+            end
+          end
+        end
+      end
+    end
+    run.short = { net = short_net, at = short_at, fluid = short_fluid, fluid_at = fluid_at, push_net = push_net, push_at = push_at, push_fluid = push_fluid }
   end
   if run.params.pull and game.tick % 60 == 0 and run.short then
     local short_net, short_at, short_fluid = run.short.net, run.short.at, run.short.fluid
@@ -1067,7 +1103,15 @@ script.on_event(defines.events.on_tick, function()
       if r then
         local drops, hands = run.drops[e.unit_number] or {}, (run.hands or {})[e.unit_number] or {}
         local wanted, known = false, false
-        for _, p in pairs(r.products) do
+        -- (What its fuel burns to counts as made too: Py automation science's planter boxes wait for the ash of the
+        -- molten salt furnace's fuel, which no one uses the molten salt of.)
+        local products = {}
+        for _, p in pairs(r.products) do products[#products + 1] = p end
+        for _, f in pairs(fuel_items(run, r)) do
+          local b = prototypes.item[f].burnt_result
+          if b then products[#products + 1] = { name = b.name, type = "item" } end
+        end
+        for _, p in pairs(products) do
           if target[p.name] then wanted = true; known = true
           elseif p.type == "fluid" then
             known = true
@@ -1079,6 +1123,20 @@ script.on_event(defines.events.on_tick, function()
           end
           if wanted then break end
         end
+        if not wanted then
+          local feeds, pushed = (run.feeds or {})[e.unit_number] or {}, run.short.push_at[e.unit_number] or {}
+          for _, ing in pairs(r.ingredients) do
+            if ing.type == "fluid" then
+              if run.short.push_fluid[ing.name] then wanted = true end
+            elseif pushed[ing.name] then
+              wanted = true
+            else
+              local pn = run.short.push_net[ing.name]
+              if pn then for net in pairs(feeds) do if pn[net] then wanted = true; break end end end
+            end
+            if wanted then known = true; break end
+          end
+        end
         -- (A machine whose outputs could not be traced keeps running.)
         local off = known and not wanted
         if off then run.pulled_off = run.pulled_off + 1 end
@@ -1086,35 +1144,62 @@ script.on_event(defines.events.on_tick, function()
       end
     end
   end
-  -- params.flow: quotas. A machine that has taken more of an item than its plan allows so far (flow_rates: per second,
-  -- times 1.5, plus two crafts' worth) gets the inserters bringing that item stopped while another machine on the same
-  -- belt network stands short of it: no user early on a belt takes what those further on need (Py logistic science: the
-  -- petri-dish-bacteria machine took all 100 dishes, 12 times its plan, and the zogna incubator after it got none). A
-  -- user waiting itself is never stopped; one nobody else waits behind takes what it likes.
+  -- params.flow: quotas. A machine that has taken more of an item or fluid than its plan allows so far (flow_rates: per
+  -- second, times 1.5, plus two crafts' worth) is held while a machine behind its own quota stands short of it, anywhere
+  -- in the factory: its inserters bringing that item stop, or for a fluid the machine itself. No user takes what those
+  -- behind plan need (Py logistic science: the petri-dish-bacteria machine took all 100 dishes, 12 times its plan, and
+  -- the zogna incubator after it got none; meat-to-cyanic took meat at 100 times its plan from its own belt off the
+  -- renderer, short of meat itself, while the animal sample on another belt got none). One nobody behind plan waits
+  -- behind takes what it likes.
   if run.params.flow and game.tick % 60 == 0 and run.short and run.into then
     local secs = (game.tick - run.t0) / 60
-    run.quota_held = 0
+    run.quota_held, run.quota_stopped = 0, 0
+    -- Pass 1: what each machine took against its quota.
+    local over, behind_short = {}, {}
     for _, m in pairs(run.machines) do
       local e = m.e
       local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
-      local ins = e.valid and run.into[e.unit_number]
-      if r and ins then
+      if r then
         local rates = (run.params.flow_rates or {})[r.name] or {}
         m.fq = m.fq or { pf0 = e.products_finished, c0 = {}, item_of = {} }
-        local capped = {}
         local mine = run.short.at[e.unit_number] or {}
+        local o = {}
         for _, ing in pairs(r.ingredients) do
-          if ing.type == "item" and not mine[ing.name] then
-            local c0 = m.fq.c0[ing.name]
-            if c0 == nil then c0 = e.get_item_count(ing.name); m.fq.c0[ing.name] = c0 end
-            local taken = (e.products_finished - m.fq.pf0) * ing.amount + e.get_item_count(ing.name) - c0
-            if taken > (rates[ing.name] or 0) * secs * 1.5 + ing.amount * 2 then
-              local sn = run.short.net[ing.name]
-              if sn then for net in pairs((run.feeds or {})[e.unit_number] or {}) do if sn[net] then capped[ing.name] = true; break end end end
-            end
+          local c0 = m.fq.c0[ing.name]
+          local now = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
+          if c0 == nil then c0 = now; m.fq.c0[ing.name] = c0 end
+          local taken = (e.products_finished - m.fq.pf0) * ing.amount + now - c0
+          if taken > (rates[ing.name] or 0) * secs * 1.5 + ing.amount * 2 then
+            o[ing.name] = true
+          elseif mine[ing.name] or (ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name]) then
+            behind_short[ing.name] = (behind_short[ing.name] or 0) + 1
           end
         end
-        for _, i in pairs(ins) do
+        over[e.unit_number] = o
+        m.fq.r = r
+      end
+    end
+    -- Pass 2: hold those ahead while someone behind waits.
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local o = e.valid and over[e.unit_number]
+      if o then
+        local capped, stop = {}, false
+        -- (Not what a full maker pushes to it: taking that stops no one behind.)
+        local feeds, pushed = (run.feeds or {})[e.unit_number] or {}, run.short.push_at[e.unit_number] or {}
+        local function is_pushed(ing)
+          if ing.type == "fluid" then return run.short.push_fluid[ing.name] == true end
+          if pushed[ing.name] then return true end
+          local pn = run.short.push_net[ing.name]
+          if pn then for net in pairs(feeds) do if pn[net] then return true end end end
+          return false
+        end
+        for _, ing in pairs(m.fq.r.ingredients) do
+          if o[ing.name] and behind_short[ing.name] and not is_pushed(ing) then
+            if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+          end
+        end
+        for _, i in pairs(run.into[e.unit_number] or {}) do
           if i.valid then
             local h = i.held_stack
             if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
@@ -1124,6 +1209,7 @@ script.on_event(defines.events.on_tick, function()
             if off or i.disabled_by_script then i.disabled_by_script = off end
           end
         end
+        if stop then run.quota_stopped = run.quota_stopped + 1; e.disabled_by_script = true end
       end
     end
   end
@@ -1173,7 +1259,19 @@ script.on_event(defines.events.on_tick, function()
     run.gates_closed = 0
     for _, g in pairs(run.gates) do
       if g.e.valid then
-        local close = false
+        -- Closed too unless a machine dropping onto the belt stands with a full output: the overflow only takes what
+        -- would stop a maker. (Py science 2: barrels the animals give back went past the water-barrel filler while it
+        -- was full, on to the sink, which kept the last 54 there, 60 tiles past the filler waiting for them.)
+        if not g.makers then
+          g.makers = {}
+          for _, m in pairs(run.machines) do
+            if m.e.valid and (run.drops[m.e.unit_number] or {})[g.net] then g.makers[#g.makers + 1] = m.e end
+          end
+        end
+        local close = true
+        for _, e in pairs(g.makers) do
+          if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output) then close = false; break end
+        end
         for item, nets in pairs(run.short.net) do if overflow[item] and nets[g.net] then close = true; break end end
         if close then run.gates_closed = run.gates_closed + 1 end
         if close ~= (g.closed or false) then
@@ -1271,6 +1369,12 @@ commands.add_command("verify_status", "Where a verify run is.", function()
       if r then for _, p in pairs(r.products) do if target[p.name] then made = made + m.e.products_finished end end end
     end
   end
-  reply { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil,
-    working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, gates = run.gates_closed }
+  local st = { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil,
+    working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, stopped = run.quota_stopped, gates = run.gates_closed }
+  -- (Under the factory-flow mod: what it is doing.)
+  if remote.interfaces["factory-flow"] then
+    local s = remote.call("factory-flow", "status") or {}
+    st.off, st.held, st.stopped, st.gates = s.off, s.held, s.stopped, s.gates_closed
+  end
+  reply(st)
 end)

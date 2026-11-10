@@ -168,7 +168,10 @@ def mods_for(args, job):
     return enabled, have
 
 
-def prepare(work, enabled, have):
+FLOW_MOD = os.path.join(REPO, "tools", "factory-flow")
+
+
+def prepare(work, enabled, have, flow_mod=False):
     mods_dir = os.path.join(work, "mods")
     os.makedirs(mods_dir)
     for m in enabled:
@@ -184,6 +187,11 @@ def prepare(work, enabled, have):
     mod_list = [{"name": m, "enabled": m in enabled} for m in BUILT_IN] + \
                [{"name": m, "enabled": True} for m in enabled if m not in BUILT_IN] + \
                [{"name": info["name"], "enabled": True}]
+    if flow_mod:
+        fi = mod_info(FLOW_MOD)
+        shutil.copytree(FLOW_MOD, os.path.join(mods_dir, f"{fi['name']}_{fi['version']}"),
+                        ignore=shutil.ignore_patterns("*.py", "__pycache__", "*.md"))
+        mod_list.append({"name": fi["name"], "enabled": True})
     with open(os.path.join(mods_dir, "mod-list.json"), "w") as f:
         json.dump({"mods": mod_list}, f, indent=1)
     user = os.path.join(work, "user")
@@ -206,7 +214,7 @@ def log_tail(log, n=3000):
 
 def run_game(args, bp, params, enabled, have):
     work = tempfile.mkdtemp(prefix="factorio-verify-")
-    base, user, settings = prepare(work, enabled, have)
+    base, user, settings = prepare(work, enabled, have, flow_mod=getattr(args, "flow_mod", False))
     save = os.path.join(work, "verify.zip")
     log = os.path.join(work, "factorio.log")
     created = subprocess.run(base + ["--create", save], capture_output=True, text=True)
@@ -256,7 +264,7 @@ def run_game(args, bp, params, enabled, have):
                 extra = ""
                 if st.get("machines"):
                     extra = f"; {st.get('working', 0)} of {st['machines']} machines working, target crafts {st.get('target_crafts', 0)}"
-                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("gates", "gates closed")):
+                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed")):
                         if st.get(k) is not None:
                             extra += f", {st[k]} {label}"
                 print(f"  {st.get('phase')}: {st.get('game_s', 0):.0f} of {st.get('total_s', 0):.0f} game seconds ({rate:.1f}x real time){extra}", flush=True)
@@ -519,6 +527,10 @@ def main():
                     help="flow control: --pull, plus quotas (a machine ahead of 1.5 times its planned intake of an item has the "
                          "inserters bringing it stopped while another machine on the same belt waits for it), and overflows keep "
                          "an item while a machine on their belt waits for it")
+    ap.add_argument("--flow-mod", action="store_true",
+                    help="the same flow control by the factory-flow mod (tools/factory-flow), as a player would run it: the test "
+                         "copy is tagged by its tag.py, the mod is installed beside the check, and the factory is built raising "
+                         "build events so the mod picks its machines up")
     ap.add_argument("--pull", action="store_true",
                     help="production follows demand: a machine runs only while a user of one of its products (on a belt it drops "
                          "onto, a machine it hands to, or for a fluid anywhere) stands short of it, or it makes a target")
@@ -587,7 +599,7 @@ def main():
             rates = defaultdict(dict)
             for m in json.load(open(fp)).get("machines", []):
                 rn = m["recipe"].split("#")[0].split("@")[0]
-                for item, rate in m.get("demand", {}).items():
+                for item, rate in {**m.get("demand", {}), **m.get("fluidDemand", {})}.items():
                     g = item.split("#")[0]
                     rates[rn][g] = max(rates[rn].get(g, 0.0), rate)
             params["flow_rates"] = dict(rates)
@@ -698,6 +710,21 @@ def main():
             if carriers:
                 params["seed_carriers"] = carriers
             print(f"seeding production loops with {', '.join(raw)}")
+    if args.flow_mod:
+        if args.flow or args.pull:
+            sys.exit("--flow-mod runs the factory-flow mod instead of the check's own --flow/--pull: pass one or the other")
+        if not out or not os.path.exists(os.path.join(out, "plan.json")):
+            sys.exit("--flow-mod needs a run's out folder (plan.json, ports.json) to tag the blueprint from")
+        sys.path.insert(0, FLOW_MOD)
+        import tag as flow_tag
+        data_file = find_file((job or {}).get("data") or "data/recipes.json")
+        recipes = json.load(open(data_file))["recipes"] if data_file else {}
+        bp_obj = flow_tag.decode(bp)
+        tagged, ends = flow_tag.tag(bp_obj, json.load(open(os.path.join(out, "plan.json"))), ports or {},
+                                    {t["name"] for t in (job or {}).get("targets", [])}, recipes)
+        bp = flow_tag.encode(bp_obj)
+        params["raise_built"] = True
+        print(f"flow mod: {tagged} machines and {ends} overflow belts tagged; the factory-flow mod controls them")
     params = {k: v for k, v in params.items() if v is not None}
     report = run_game(args, bp, params, enabled, have)
     report["mods"] = enabled

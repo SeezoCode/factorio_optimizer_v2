@@ -1133,10 +1133,24 @@ blueprint: they are the check's own help or control, run by the verify mod.
   of it (on a belt network it drops onto, a machine it hands to directly; for a fluid, anywhere; a burner without fuel
   counts as short of its fuel), or it makes a target. A machine whose every product has a way out (overflows, drained
   by-products) otherwise never stops and eats inputs others need.
-- `--flow`: `--pull` plus quotas (a machine that has taken more of an item than 1.5 times its planned intake, plus two
-  crafts' worth, has the inserters bringing it stopped while another machine on the same belt waits for it), overflows
-  that keep an item while a machine on their belt waits for it, and belt gates (the belt just past an overflow's last
-  user stops while a user upstream waits, so items queue in front of their users instead of passing them).
+- `--flow`: `--pull` plus quotas, overflows that keep an item while a machine on their belt waits for it, belt gates,
+  and a carrier bootstrap. Quotas: a machine that has taken more of an item than 1.5 times its planned intake, plus two
+  crafts' worth, has the inserters bringing it stopped while a machine still behind its own plan waits for that item
+  anywhere in the factory; for a fluid the machine itself stops. Gates: the belt just past an overflow's last user
+  stops while a user on it waits, or while no machine putting onto it stands with a full output, so items queue in
+  front of their users and the overflow only takes what would stop a maker. A machine that has waited two minutes for a
+  loop's carrier (barrels, cages, bricks) while no maker of it stands full gets five minutes of its planned use.
+- `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
+  can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
+  No carrier bootstrap (in a real game you put a loop's carriers in by hand once).
+
+**The factory-flow mod** keeps your own factory near its plan the same way. Tag the blueprint, pack the mod, put the
+zip in Factorio's mods folder, and build the tagged blueprint with the mod enabled (`tools/factory-flow/README.md`):
+
+```bash
+python3 tools/factory-flow/tag.py solves/<run> --job jobs/<job>.json    # writes solves/<run>/flow_blueprint.txt
+python3 tools/factory-flow/pack.py                                       # writes build/factory-flow_0.1.0.zip
+```
 
 The progress lines show the machines working, the targets' crafts so far, and what flow control holds back. "Machines
 finished nothing" counts only machines the plan has crafting at least once while measured, and machines under half
@@ -1146,6 +1160,7 @@ With `--dump` (and a mod recording belt networks: the current one does), these h
 
 ```
 python3 tools/factorio-verify/why.py out logistic-science-pack --recipes data/pyanodon.json --depth 12   # what each machine waits for, down the chain
+python3 tools/factorio-verify/shortfall.py out --job jobs/py_sciences/logistic-science-pack.json         # the same from the targets, as a tree: crafts against plan, time in each status
 python3 tools/factorio-verify/nets.py out sand                                                           # each belt network of an item: makers, users, items on it, edge ports
 python3 tools/factorio-verify/stall.py out --recipes data/pyanodon.json                                  # items idle machines are short of
 python3 tools/factorio-verify/pipes.py out                                                               # fluid boxes joined to a pipe of another fluid
