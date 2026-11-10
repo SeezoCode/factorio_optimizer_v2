@@ -31,13 +31,19 @@ private data class SEntity(
     val fluid: String? = null, val net: Int? = null, val mirror: Boolean = false, val drain: Boolean = false, val w: Int, val h: Int,
     val modules: List<String>? = null,
     val blacklist: List<String>? = null,
+    val request: Int? = null,
+    val readBelt: Boolean = false,
 )
 
 @Serializable
 private data class SMachine(val id: Int, val x: Int, val y: Int, val rot: String, val mirror: Boolean = false)
 
 @Serializable
-private data class SPort(val x: Int, val y: Int, val item: String, val rate: Double, val fluid: Boolean, val lane: Int = -1, val port: Int)
+private data class SPort(
+    val x: Int, val y: Int, val item: String, val rate: Double, val fluid: Boolean, val lane: Int = -1, val port: Int,
+    /** Its end built with the block (route.withPortEnds): a local sink or void, a robot link's provider or requester. */
+    val local: Boolean = false, val bot: Boolean = false, val sinkX: Int? = null, val sinkY: Int? = null, val requester: Boolean = false,
+)
 
 /** One finished block layout: everything stitching needs. */
 @Serializable
@@ -83,10 +89,10 @@ fun saveSplit(out: File, config: RunConfiguration, split: Split) {
 fun saveBlock(out: File, b: Int, layouts: List<TrialResult>) {
     val ls = layouts.map { r ->
         SLayout(r.w, r.h, r.score, r.seed,
-            r.layout!!.entities.map { e -> SEntity(e.name, e.kind.name, e.x, e.y, e.dir.name, e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, e.modules, e.blacklist) },
+            r.layout!!.entities.map { e -> SEntity(e.name, e.kind.name, e.x, e.y, e.dir.name, e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, e.modules, e.blacklist, e.request, e.readBelt) },
             r.placement!!.machines.map { SMachine(it.id, it.x, it.y, it.rot.name, it.mirror) },
-            r.sources.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, it.lane, it.port) },
-            r.outputs.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, -1, it.port) })
+            r.sources.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, it.lane, it.port, requester = it.requester) },
+            r.outputs.map { SPort(it.tile.x, it.tile.y, it.item, it.rate, it.fluid, -1, it.port, local = it.local, bot = it.bot, sinkX = it.sink?.x, sinkY = it.sink?.y) })
     }
     File(dirOf(out), "block_${b + 1}.json").writeText(strictJson.encodeToString(kotlinx.serialization.builtins.ListSerializer(SLayout.serializer()), ls))
 }
@@ -156,6 +162,11 @@ fun unstitchable(bp: BlockPlan, r: TrialResult): String? {
         if (p.specs.isEmpty() || p.specs.any { it.edge == null || it.edge == "any" || it.x != null }) return@forEach
         if (p.specs.none { onSide(t, it.edge!!) }) return "its ${p.item} port is off the side its plan gives it (${p.specs.joinToString { it.edge!! }})"
     }
+    // Ports whose end belongs to the block (route.withPortEnds) and that have none: laid out before ends did.
+    r.outputs.firstOrNull { o -> bp.plan.ports.getOrNull(o.port)?.end.let { it != null && it != "edge" } && !o.local }?.let { o ->
+        return "its ${o.item} port has no end (${bp.plan.ports[o.port].end})"
+    }
+    r.sources.firstOrNull { s -> bp.plan.ports.getOrNull(s.port)?.end == "requester" && !s.requester }?.let { s -> return "its ${s.item} port has no requester" }
     val tiles = r.sources.map { it.tile } + r.outputs.map { it.tile }
     r.sources.filter { it.lane >= 0 }.forEach { s ->
         if (tiles.any { it != s.tile && it.manhattan(s.tile) == 1 }) return "a port beside its ${s.item} lane pair's port"
@@ -183,11 +194,13 @@ fun loadBlock(out: File, b: Int): List<TrialResult> {
     val ls = strictJson.decodeFromString(kotlinx.serialization.builtins.ListSerializer(SLayout.serializer()), f.readText())
     return ls.map { l ->
         val ents = l.entities.map { e ->
-            PlacedEntity(e.name, Kind.valueOf(e.kind), e.x, e.y, Dir.valueOf(e.dir), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, modules = e.modules, blacklist = e.blacklist)
+            PlacedEntity(e.name, Kind.valueOf(e.kind), e.x, e.y, Dir.valueOf(e.dir), e.recipe, e.item, e.fluid, e.net, e.mirror, e.drain, e.w, e.h, modules = e.modules, blacklist = e.blacklist,
+                request = e.request, readBelt = e.readBelt)
         }
         val placement = Placement(l.w, l.h, l.machines.map { PlacedMachine(it.id, it.x, it.y, Dir.valueOf(it.rot), it.mirror) })
         TrialResult(true, l.w, l.h, l.seed, Layout(l.w, l.h, ents), placement, emptyList(), null, l.score, "ok", 0.0, 0, listOf("resumed"),
-            sources = l.sources.map { SourceSpec(Tile(it.x, it.y), it.item, it.rate, it.fluid, it.lane, it.port) },
-            outputs = l.outputs.map { OutputSpec(Tile(it.x, it.y), it.item, it.rate, it.fluid, it.port) })
+            sources = l.sources.map { SourceSpec(Tile(it.x, it.y), it.item, it.rate, it.fluid, it.lane, it.port, requester = it.requester) },
+            outputs = l.outputs.map { OutputSpec(Tile(it.x, it.y), it.item, it.rate, it.fluid, it.port, local = it.local,
+                sink = if (it.sinkX != null && it.sinkY != null) Tile(it.sinkX, it.sinkY) else null, bot = it.bot) })
     }
 }

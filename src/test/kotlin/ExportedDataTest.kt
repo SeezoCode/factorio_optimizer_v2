@@ -181,7 +181,7 @@ class ExportedDataTest {
             for (d in Dir.entries) {
                 // The port's pipe at (10,10), fed; the pipe out of it at a; the sinkhole beyond, turned to take from a.
                 val t = geom.Tile(10, 10); val a = t + d
-                val v = blocks.fluidVoidAt("test-sinkhole", "petroleum-gas-void", a, d.opposite)!!
+                val v = route.fluidVoidAt("test-sinkhole", "petroleum-gas-void", a, d.opposite)!!
                 assertTrue(a !in v.rect.tiles() && v.rect.tiles().any { it.manhattan(a) == 1 }, "$d: $v")
                 val port = geom.PlacedEntity("infinity-pipe", geom.Kind.INFINITY_PIPE, t.x, t.y, fluid = "petroleum-gas")
                 val pipe = geom.PlacedEntity("pipe", geom.Kind.PIPE, a.x, a.y, fluid = "petroleum-gas")

@@ -1265,11 +1265,17 @@ object Templates {
                 all += PlacedEntity(s.splitter, Kind.SPLITTER, minOf(sp.trunk.x, sp.half.x), minOf(sp.trunk.y, sp.half.y), sp.dir, net = if (sp.pair) null else netOf[sp.item])
             }
             // A lane pair: its first item on the left lane, the other on the right (looking along the belt into the block).
-            val sources = got.filter { it.first.input && !it.first.branch }.flatMap { (c, r) ->
+            val sources0 = got.filter { it.first.input && !it.first.branch }.flatMap { (c, r) ->
                 if (c.with < 0) listOf(SourceSpec(r.port!!, c.item, portRate(c.port), port = c.port))
                 else listOf(SourceSpec(r.port!!, c.item, portRate(c.port), lane = 0, port = c.port), SourceSpec(r.port, s.itemOf.getValue(c.with), portRate(c.with), lane = 1, port = c.with))
             } + fluidSources
-            val outputs = got.filter { !it.first.input && it.first.merge == null }.map { (c, r) -> OutputSpec(r.port!!, c.item, portRate(c.port), port = c.port) }
+            val outputs0 = got.filter { !it.first.input && it.first.merge == null }.map { (c, r) -> OutputSpec(r.port!!, c.item, portRate(c.port), port = c.port) }
+            // Port ends that belong to the block (route.withPortEnds): chests, requesters and voids just outside the box.
+            val ends = route.withPortEnds(all, sources0, outputs0, plan, config, W, H)
+            if (ends.missing.isNotEmpty()) continue
+            val withEnds = ArrayList(ends.entities)   // (ends.entities may be [all] itself)
+            all.clear(); all += withEnds
+            val sources = ends.sources; val outputs = ends.outputs
             // Poles on the free slots (and free header tiles if those are not enough).
             val taken = all.flatMap { it.rect.tiles() }.toSet()
             // (With the room of a missing last machine.)
@@ -1279,12 +1285,15 @@ object Templates {
             val label = "template ${d.label} ${W}x$H"
             if (config.power.mode == "none") layout = Layout(W, H, all, label = label)
             else {
-                val ps = placePoles(all, poleSlots.filter { it !in taken } + headerFree, config.power.pole)
+                // (Ends outside the box: poles beside them too.)
+                val nearEnds = ends.outside.flatMap { t -> (-2..2).flatMap { dy -> (-2..2).map { dx -> Tile(t.x + dx, t.y + dy) } } }.filter { it !in taken }.distinct()
+                val ps = placePoles(all, poleSlots.filter { it !in taken } + headerFree + nearEnds, config.power.pole)
                 if (!ps.ok) continue
                 val off = all.size
                 layout = Layout(W, H, all + ps.poles, ps.wires.map { (a, b) -> a + off to b + off }, label)
             }
-            val outside = (sources.map { it.tile } + outputs.map { it.tile }).toSet()
+            val outside = (sources.map { it.tile } + outputs.map { it.tile }).toSet() + ends.outside +
+                layout.entities.filter { it.kind == Kind.POLE }.flatMap { it.rect.tiles() }.filter { it.x !in 0 until W || it.y !in 0 until H }
             val vspec = validationSpec(data, plan, config, placement, sources, requirePower = config.power.mode != "none",
                 outsideAllowed = outside, outputs = outputs)
             validated.incrementAndGet()

@@ -687,7 +687,13 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
         val out = l.from == b
         val side = l.side(b) ?: error("link ${l.id} has no side on block $b")
         val edge = when (side) { "N" -> "north"; "E" -> "east"; "S" -> "south"; else -> "west" }
-        val port = Port(ports.size, l.item, listOf(ConfigSource(l.item, edge = edge)), fluid = l.fluid, output = out, single = l.throughCorridor)
+        val end = when {
+            l.local && l.fluid -> "void"
+            l.local -> "chest"
+            l.bot -> if (out) "provider" else "requester"
+            else -> "edge"
+        }
+        val port = Port(ports.size, l.item, listOf(ConfigSource(l.item, edge = edge)), fluid = l.fluid, output = out, single = l.throughCorridor, end = end)
         ports += port
         val group = groupOf[l.id] ?: listOf(l)
         linkOfPort[port.id] = l.id

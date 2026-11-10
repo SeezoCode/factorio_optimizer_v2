@@ -253,4 +253,28 @@ class TrialTest {
         val ports = r.layout!!.entities.filter { (it.kind == Kind.PIPE || it.kind == Kind.PIPE_UG) && it.x == 0 && it.y in 0..2 }
         assertTrue(ports.count { it.kind == Kind.PIPE_UG } >= 1, "ports: $ports")
     }
+
+    @Test
+    fun `a block builds its port ends, an output into a chest and an input fed from a requester`() {
+        // T2 (copper cable into electronic circuits): its output ends in a chest, its iron input at a requester chest.
+        val config = TestData.job("t2")
+        val plan0 = buildPlan(TestData.data, config)
+        val plan = plan0.copy(ports = plan0.ports.map { p ->
+            when {
+                p.output -> p.copy(end = "chest")
+                p.item == "iron-plate" -> p.copy(end = "requester")
+                else -> p
+            }
+        })
+        val r = (1L..6L).asSequence().map { runTrial(TestData.data, plan, config, Tuning(), 16, 16, it) }.firstOrNull { it.success }
+        assertTrue(r != null, "no seed laid it out")
+        val ents = r.layout!!.entities
+        assertTrue(r.outputs.all { it.local }, "${r.outputs}")
+        assertTrue(r.sources.single { it.item == "iron-plate" }.requester)
+        val requester = ents.single { it.kind == geom.Kind.CHEST && it.request != null }
+        assertEquals("iron-plate", requester.item)
+        assertTrue(ents.any { it.kind == geom.Kind.CHEST && it.request == null }, "the output's chest")
+        // The ends lie outside the box, right beside it.
+        assertTrue(listOf(requester).all { it.x !in 0 until r.w || it.y !in 0 until r.h })
+    }
 }

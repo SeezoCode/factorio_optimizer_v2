@@ -317,8 +317,11 @@ fun runTrial(
     // Power and beacons get two reroutes; heating (Aquilo) and spoilage drains (Gleba) up to four.
     val attempts = if (config.heat.mode == "off" && config.spoilage.mode == "off") 2 else 4
     for (attempt in 0..attempts) {
-        val ringed = if (config.portsOnRing) ringPorts(result.entities, result.sources, result.outputs, w, h, GameConstants.beltTier(config.beltTier).belt)
+        val ringed0 = if (config.portsOnRing) ringPorts(result.entities, result.sources, result.outputs, w, h, GameConstants.beltTier(config.beltTier).belt)
             else RingedPorts(result.entities, result.sources, result.outputs)
+        // Port ends that belong to the block (route.withPortEnds): chests, requesters and voids just outside the box.
+        val ends = route.withPortEnds(ringed0.entities, ringed0.sources, ringed0.outputs, plan, config, w, h)
+        val ringed = RingedPorts(ends.entities, ends.sources, ends.outputs)
         // Crackers work only on what other machines leave of their oil (a tank and red wires, see addSurplusControl).
         val ctl0 = route.addSurplusControl(ringed.entities, plan, config, w, h, listOf(geom.Rect(0, 0, w, h)))
         // Modules in the machines' own slots (same order, so circuit wire indices stay valid).
@@ -332,7 +335,7 @@ fun runTrial(
         if (attempt == 0) notes += ctl.notes
         val harness = if (config.testMode) buildHarness(ringed.sources, ctl.entities, w, h, config, ringed.outputs) else null
         harness?.warnings?.let { notes += it }
-        val outside = harness?.tiles ?: emptySet()
+        val outside = (harness?.tiles ?: emptySet()) + ends.outside
         // Beacons before poles (they need power too): free lattice spots, more where machines are short, unused ones out.
         val reservedTiles = config.reservedRects(w, h).flatMap { it.tiles() }.toSet()
         val beacons = if (bspec == null) null else placeBeacons(ctl.entities + (harness?.entities ?: emptyList()), bspec,
@@ -432,7 +435,7 @@ fun runTrial(
         // ... and it is there at all: stitching joins every link between blocks at its ports.
         val missing = missingLinkPorts(plan, ringed.sources, ringed.outputs)
             .map { p -> ValidationError(validate.ErrorType.UNSUPPORTED, Tile(0, 0), "${p.item} ${if (p.output) "output" else "input"} port ${p.id} has no belt") }
-        val errors = validate(layout, spec) + split + missing
+        val errors = validate(layout, spec) + split + missing + ends.missing.map { ValidationError(validate.ErrorType.UNSUPPORTED, Tile(0, 0), it) }
         if (beacons != null && !beacons.ok) return fail("beacons", result, errors, layout)
         if (!ok) return fail("power", result, errors, layout)
         if (errors.isNotEmpty()) return fail("validate", result, errors, layout)

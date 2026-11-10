@@ -88,6 +88,8 @@ data class SourceSpec(
     val lane: Int = -1,
     /** Plan port it belongs to (-1: unknown). */
     val port: Int = -1,
+    /** Fed from a requester chest beside it (a robot link, blocks.bot_links): no feed from outside. */
+    val requester: Boolean = false,
 )
 
 /** Items (or a fluid) leaving the layout from a belt (pipe) on this tile at this rate (output ports). */

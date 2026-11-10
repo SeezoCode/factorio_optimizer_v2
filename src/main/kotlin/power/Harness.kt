@@ -125,9 +125,11 @@ internal fun beltFeedSides(port: PlacedEntity?, outward: List<Dir>): List<Dir> =
  * infinity pipe (a drain for outputs).
  */
 fun buildHarness(
-    sources: List<SourceSpec>, entities: List<PlacedEntity>, w: Int, h: Int, config: RunConfiguration,
+    sources0: List<SourceSpec>, entities: List<PlacedEntity>, w: Int, h: Int, config: RunConfiguration,
     outputs: List<OutputSpec> = emptyList(),
 ): Harness {
+    // (A port fed from a requester chest beside it, blocks.bot_links, needs no feed.)
+    val sources = sources0.filter { !it.requester }
     val tier = GameConstants.beltTier(config.beltTier)
     val occupied = HashSet<Tile>()
     entities.forEach { e -> e.rect.tiles().forEach { occupied += it } }
@@ -249,8 +251,12 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
             !(e.kind == Kind.PIPE && localFluid.any { it.sink == e.tile })
     }
     val newIndex = kept.withIndex().associate { (j, i) -> i to j }
+    // Requester chests (robot links): with no roboport in the layout (a block on its own) an infinity chest of their item.
+    val robots = layout0.entities.any { it.kind == Kind.ROBOPORT }
     val layout = layout0.copy(entities = kept.map { layout0.entities[it] }.map { e ->
-        if (e.kind == Kind.CHEST && e.tile in sinkChests) PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, e.x, e.y) else e
+        if (e.kind == Kind.CHEST && e.tile in sinkChests) PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, e.x, e.y)
+        else if (e.kind == Kind.CHEST && e.request != null && !robots) PlacedEntity(GameConstants.INFINITY_CHEST, Kind.INFINITY_CHEST, e.x, e.y, item = e.item)
+        else e
     }, wires = layout0.wires.mapNotNull { (a, b) -> newIndex[a]?.let { x -> newIndex[b]?.let { y -> x to y } } },
         circuitWires = layout0.circuitWires.mapNotNull { (a, b, c) -> newIndex[a]?.let { x -> newIndex[b]?.let { y -> Triple(x, y, c) } } })
     val w = layout.w; val h = layout.h
@@ -325,7 +331,7 @@ fun testCopy(layout0: geom.Layout, sources: List<SourceSpec>, outputs: List<Outp
         return PlacedEntity(loader, if (into) Kind.LOADER_OUT else Kind.LOADER_IN, x, y, travel, w = lw, h = lh)
     }
     val laned = ArrayList<SourceSpec>()
-    sources.filter { !it.fluid }.groupBy { it.tile }.forEach { (tile, group) ->
+    sources.filter { !it.fluid && !it.requester }.groupBy { it.tile }.forEach { (tile, group) ->
         if (group.map { it.item }.distinct().size > 1 || group.any { it.lane >= 0 }) { laned += group; return@forEach }
         val d = beltFeedSides(byTile[tile], outward(tile)).firstOrNull { loaderAt(tile, it, true) != null }
         if (d == null) { warnings += "no room to feed ${group[0].item} at $tile"; return@forEach }

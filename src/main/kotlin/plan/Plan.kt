@@ -72,6 +72,12 @@ data class Port(
      * build, so this is where to put some in once.
      */
     val priming: Boolean = false,
+    /**
+     * What a block port ends in (docs/STITCH_REWRITE.md): "edge" (a belt or pipe on to the corridors or the factory's
+     * edge), "chest" (a local sink), "provider" and "requester" (a robot link's two ends), "void" (a fluid by-product
+     * destroyed in place). All but "edge" are built just outside the block with it (route.withPortEnds).
+     */
+    val end: String = "edge",
 )
 
 @Serializable
