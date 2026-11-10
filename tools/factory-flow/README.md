@@ -23,7 +23,8 @@ Once a second, for the machines of a tagged blueprint:
   make is waited for (a ring stops for good otherwise).
 
 A setting, *pull ahead* (default 1), lets makers run while a user works with less than that many crafts of an
-ingredient, not only once it stands short. Machines the mod switches off show "Disabled by script". Each rule can be
+ingredient, not only once it stands short. Another, *quota window* (minutes, default 0), makes quotas count only
+what a machine took in that last stretch, so one that ran ahead early on is not held for hours. Machines the mod switches off show "Disabled by script". Each rule can be
 turned off in the map settings (Mod settings → Map), as can the whole mod; changing a setting starts everything the mod
 stopped again, and the rules still on take over from the next second.
 

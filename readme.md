@@ -1155,6 +1155,10 @@ blueprint: they are the check's own help or control, run by the verify mod.
 - `--pull-ahead N`: with `--pull` or `--flow`, a machine working with less than N crafts' worth of an item also counts
   as wanting it, so its makers run ahead of it (their crafts and the belt trip overlap its own) instead of starting
   only once it stands short.
+- `--quota-window S`: with `--flow`, a quota counts what a machine took in the last S game seconds rather than since
+  the start, so a machine that ran ahead early on is not held for hours (with 1800, chemical science made 17% of
+  its plan while measured, where it had made nothing).
+- `--no-pull`: with `--flow`, everything but pull (slower on Py's deep chains: pull is not what makes them slow).
 - `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
   can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
   No carrier bootstrap (in a real game you put a loop's carriers in by hand once).
