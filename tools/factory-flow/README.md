@@ -14,15 +14,18 @@ Once a second, for the machines of a tagged blueprint:
   in the factory. For a fluid, the machine itself stops. A machine nobody behind plan waits behind takes what it likes.
 - **Gates**: on each overflow port's belt, the belt just past the last machine taking from it stops while a machine on
   that belt waits, or while no machine putting onto it stands with a full output. Items queue in front of their users,
-  and the overflow only takes what would otherwise stop a maker. (A belt cannot be stopped by script, so the mod puts
+  and the overflow only takes what would otherwise stop a maker. When the belt past the last user is an underground or
+  a splitter, the gate goes on the first plain belt on toward the port, and never in front of a splitter whose other
+  side feeds more users. (A belt cannot be stopped by script, so the mod puts
   a hidden, empty constant combinator under each gate belt, wires it to the belt, and closes the gate by turning on
   the belt's enable condition `signal-A > 0`, which never holds there.)
 - **Push**: a machine standing with a full output gets the users of what is stuck in it going, even if nothing they
   make is waited for (a ring stops for good otherwise).
 
 A setting, *pull ahead* (default 1), lets makers run while a user works with less than that many crafts of an
-ingredient, not only once it stands short. Machines the mod switches off show "Disabled by script". Each rule can be turned off in the map settings (Mod settings →
-Map), as can the whole mod; turning a setting off starts everything the mod stopped again.
+ingredient, not only once it stands short. Machines the mod switches off show "Disabled by script". Each rule can be
+turned off in the map settings (Mod settings → Map), as can the whole mod; changing a setting starts everything the mod
+stopped again, and the rules still on take over from the next second.
 
 ## Use
 
@@ -52,4 +55,5 @@ in the console, with the machine's place. A machine replaced by an upgrade loses
 ## Tested
 
 `verify.py <run> --job <job> --flow-mod` builds the tagged test copy with this mod installed and runs it as the
-in-game check does.
+in-game check does (the check puts a starved loop's carriers in, as a player would). Py logistic science (325
+machines), Py science 1 and automation science make their planned 0.02/s under it.
