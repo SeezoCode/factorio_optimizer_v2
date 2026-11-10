@@ -44,7 +44,9 @@ Map), as can the whole mod; turning a setting off starts everything the mod stop
    `/factory-flow` in the console says what it is doing.
 
 Loops (barrels, cages, Py's bricks) still need their carriers put in once by hand, as the blueprint's item requests
-say. A machine replaced by an upgrade loses its tags.
+say, and a big ring needs many: Py logistic science's ring of animals and its water-barrel filler took about 600 water
+barrels. When a machine has waited two minutes for a loop's carrier while no maker of it stands full, the mod says so
+in the console, with the machine's place. A machine replaced by an upgrade loses its tags.
 
 ## Tested
 
