@@ -367,6 +367,17 @@ Unknown keys are an error. Everything except `targets` has a default.
 - Products and surplus by-products leave through output ports (`outputs` pins their edge; otherwise the
   generator picks one and reports it in `ports.json`). `"sinks": {"mode": "chest"}` puts products into chests
   instead, as in v1.
+- `blocks.local_sinks` (items/s, off by default): a by-product the whole factory makes less of than this (an item,
+  not a target) ends in a chest beside its block instead of running through the corridors to the factory's edge.
+  Its port belt ends just outside the block, where an inserter puts what arrives into `blocks.local_sink_chest`
+  (default `steel-chest`; an active provider chest lets bots carry it off). A by-product the factory also uses still
+  passes its users first: only what gets past the last of them goes in. A port on a side its block keeps to the
+  factory's edge moves to another side, and two items sharing a belt go local together or not at all. `ports.json`
+  marks these outputs `"local": true` (edge `inside`); the test copy makes the chests infinity chests and the
+  in-game check counts what arrives. Py production science with 0.1: 312 of 332 item outputs end in chests, the
+  factory is 896 x 809 instead of 932 x 835, and the final stitch took 515 s instead of 757. In a real game a full
+  chest backs its belt up like any full output, so empty them now and then (a steel chest holds 48 stacks: hours
+  at these rates). Fluids still leave at the edge.
 - Oil cracking takes only what is left over: wherever heavy (light) oil is cracked and something else also uses it
   (lubricant, or oil leaving the block), one of that oil's pipes gets a red wire to the cracking plants, which work
   only while that pipe is more than half full (`fluids.surplus_only`, recipe -> fluid, `{}` turns it off;
