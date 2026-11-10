@@ -500,7 +500,9 @@ local function start(params)
         while head <= #queue and head < 3000 do
           local cur, child = queue[head][1], queue[head][2]
           head = head + 1
-          if run.pick_belts[cur.unit_number] then gate = child; break end
+          -- (Or a splitter: its other side may lead to users, which a gate before it would cut off: chemical science's
+          -- borax, 1,237 of it queued in front of a splitter whose other side fed ten machines waiting for it.)
+          if run.pick_belts[cur.unit_number] or (cur.type == "splitter" and child) then gate = child; break end
           local ups = (cur.belt_neighbours or {}).inputs or {}
           if cur.type == "underground-belt" and cur.belt_to_ground_type == "output" and cur.underground_belt_neighbour then ups = { cur.underground_belt_neighbour } end
           for _, u in pairs(ups) do
