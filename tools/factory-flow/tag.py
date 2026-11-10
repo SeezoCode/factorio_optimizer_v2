@@ -41,6 +41,32 @@ def planned_intake(plan):
     return {r: {k: v / n[r] for k, v in tot[r].items()} for r in n}
 
 
+def carriers(plan):
+    """Items a production loop passes round one for one (plan.json seedCarriers, and every item of their rings): what a
+    new loop needs put in by hand once (barrels, cages, bricks)."""
+    ms = plan.get("machines", [])
+
+    def same(a, b):
+        return abs(a - b) <= 1e-6 * max(a, b) + 1e-12
+
+    def reach(item):
+        seen, todo = {item}, [item]
+        while todo:
+            x = todo.pop()
+            for m in ms:
+                rx = m.get("demand", {}).get(x, m.get("fluidDemand", {}).get(x))
+                if rx is None:
+                    continue
+                for y, ry in m.get("products", {}).items():
+                    if y not in seen and same(rx, ry):
+                        seen.add(y)
+                        todo.append(y)
+        return seen
+
+    names = {y for c in plan.get("seedCarriers", []) for y in reach(c) if c in reach(y)}
+    return {base(n) for n in names}
+
+
 def overflow_ports(plan, ports, targets):
     """Item outputs that only take what is left over: 0/s by-products, and items the factory itself also uses."""
     used = {base(t["item"]) for t in plan.get("terminals", []) if t.get("role") == "CONSUMER"}
@@ -52,6 +78,7 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
     """Adds the tags in place; returns (machines tagged, overflow belts tagged)."""
     bp = bp_obj["blueprint"]
     intake = planned_intake(plan)
+    loop = carriers(plan)
     makes = {}
     for r in recipes or {}:
         makes[r] = {p["name"] for p in recipes[r].get("products", [])}
@@ -66,6 +93,10 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
         flow = {"take": {k: round(v, 9) for k, v in intake[r].items()}}
         if makes.get(r, set()) & targets:
             flow["target"] = True
+        # (The loop carriers it takes: the mod says when a loop starves for them.)
+        held = sorted(k for k in intake[r] if k in loop)
+        if held:
+            flow["carriers"] = held
         e.setdefault("tags", {})["flow"] = flow
         machines += 1
     ends = 0

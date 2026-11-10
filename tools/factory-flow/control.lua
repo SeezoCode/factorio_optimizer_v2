@@ -58,7 +58,7 @@ local function on_built(ev)
   local tags = ev.tags
   local f = tags and tags.flow
   if f and CRAFTERS[e.type] then
-    storage.machines[e.unit_number] = { e = e, take = f.take or {}, target = f.target, recipe = tags.recipe }
+    storage.machines[e.unit_number] = { e = e, take = f.take or {}, target = f.target, recipe = tags.recipe, carriers = f.carriers }
   elseif f and f.overflow and BELTS[e.type] then
     storage.ends[e.unit_number] = { e = e, item = f.overflow }
   end
@@ -453,6 +453,34 @@ local function control()
         if a and a.anchor.valid and close ~= a.closed then
           a.closed = close
           pcall(function() g.e.get_or_create_control_behavior().circuit_enable_disable = close end)
+        end
+      end
+    end
+  end
+  -- A loop starving for its carriers (barrels, cages, bricks): a machine that has waited two minutes for one, while no
+  -- machine making it stands full, gets a message (once in ten minutes per item). The mod puts nothing in itself: a
+  -- new loop needs its carriers put in by hand once, as many as its machines and belts hold.
+  local full_of = {}
+  for unit, m in pairs(storage.machines) do
+    local e, r = m.e, recipes[unit]
+    if r and e.valid and FULL[e.status] then for _, p in pairs(r.products) do full_of[p.name] = true end end
+  end
+  storage.alerted = storage.alerted or {}
+  for unit, m in pairs(storage.machines) do
+    if m.carriers and m.e.valid then
+      m.cwait = m.cwait or {}
+      for _, item in pairs(m.carriers) do
+        if short_at[unit] and short_at[unit][item] then
+          m.cwait[item] = m.cwait[item] or tick
+          if tick - m.cwait[item] >= 7200 and not full_of[item] and tick - (storage.alerted[item] or -1e9) >= 36000 then
+            storage.alerted[item] = tick
+            local p = m.e.position
+            game.print({ "", "[factory-flow] A loop is short of its ", (prototypes.fluid[item] and "[fluid=" or "[item=") .. item .. "]",
+              string.format(": the machine at [gps=%d,%d,%s] has waited two minutes for it. Put some in once; the loop keeps them.",
+                math.floor(p.x), math.floor(p.y), m.e.surface.name) })
+          end
+        else
+          m.cwait[item] = nil
         end
       end
     end
