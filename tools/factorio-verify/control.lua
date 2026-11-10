@@ -1220,7 +1220,20 @@ script.on_event(defines.events.on_tick, function()
           local now = ing.type == "item" and e.get_item_count(ing.name) or (e.get_fluid_count(ing.name) or 0)
           if c0 == nil then c0 = now; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + now - c0
-          if taken > (rates[ing.name] or 0) * secs * 1.5 + ing.amount * 2 then
+          -- params.quota_window (seconds): what it took in that last stretch, not since the start, so that running
+          -- ahead early on does not lock a machine out for hours (chemical science's REE concentrate made 10 crafts
+          -- against a plan of 2 in 20 minutes at the start, then stood held while reduction waited for its sand).
+          local span = secs
+          if run.params.quota_window then
+            m.fq.hist = m.fq.hist or {}
+            local h = m.fq.hist[ing.name]
+            if not h then h = { { tick = game.tick, taken = taken } }; m.fq.hist[ing.name] = h end
+            if game.tick - h[#h].tick >= 3600 then h[#h + 1] = { tick = game.tick, taken = taken } end
+            while #h > 1 and game.tick - h[2].tick >= run.params.quota_window * 60 do table.remove(h, 1) end
+            span = (game.tick - h[1].tick) / 60
+            taken = taken - h[1].taken
+          end
+          if taken > (rates[ing.name] or 0) * span * 1.5 + ing.amount * 2 then
             o[ing.name] = true
           elseif mine[ing.name] or (ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name]) then
             behind_short[ing.name] = (behind_short[ing.name] or 0) + 1

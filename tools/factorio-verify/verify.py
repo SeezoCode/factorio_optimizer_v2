@@ -530,6 +530,8 @@ def main():
                     help="flow control: --pull, plus quotas (a machine ahead of 1.5 times its planned intake of an item has the "
                          "inserters bringing it stopped while another machine on the same belt waits for it), and overflows keep "
                          "an item while a machine on their belt waits for it")
+    ap.add_argument("--quota-window", type=float, default=None, metavar="S",
+                    help="with --flow: quotas count what a machine took in the last S game seconds, not since the start")
     ap.add_argument("--no-pull", action="store_true",
                     help="with --flow: everything but pull (quotas, push, gates, carriers); machines run whenever they can")
     ap.add_argument("--pull-ahead", type=float, default=None, metavar="N",
@@ -614,6 +616,8 @@ def main():
         print("flow: quotas on what each machine takes, production by demand, overflows keep what users wait for")
     if args.pull_ahead:
         params["pull_ahead"] = args.pull_ahead
+    if args.quota_window:
+        params["quota_window"] = args.quota_window
     if args.pull:
         params["pull"] = True
         params["pull_wanted"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
