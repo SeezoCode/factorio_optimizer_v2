@@ -146,7 +146,7 @@ fun loadSplit(out: File): Split? {
 /**
  * Why layout [r] of block [bp] cannot be stitched, or null: it leaves out a port between blocks, or a lane pair's port
  * has another port right beside it (where the pair's two belts may have to join). Layouts saved by older versions
- * can be like that; the search and templates no longer make them.
+ * can be like that; the search (search.crowdedLanePair) and templates no longer make them.
  */
 fun unstitchable(bp: BlockPlan, r: TrialResult): String? {
     search.missingLinkPorts(bp.plan, r.sources, r.outputs).takeIf { it.isNotEmpty() }?.let { ps ->
@@ -167,10 +167,8 @@ fun unstitchable(bp: BlockPlan, r: TrialResult): String? {
         return "its ${o.item} port has no end (${bp.plan.ports[o.port].end})"
     }
     r.sources.firstOrNull { s -> bp.plan.ports.getOrNull(s.port)?.end == "requester" && !s.requester }?.let { s -> return "its ${s.item} port has no requester" }
-    val tiles = r.sources.map { it.tile } + r.outputs.map { it.tile }
-    r.sources.filter { it.lane >= 0 }.forEach { s ->
-        if (tiles.any { it != s.tile && it.manhattan(s.tile) == 1 }) return "a port beside its ${s.item} lane pair's port"
-    }
+    search.crowdedLanePair(r.sources, r.outputs)?.let { s -> return "a port beside its ${s.item} lane pair's port" }
+    r.layout?.let { l -> route.walledPort(l.entities, r.sources, r.outputs, bp.plan, r.w, r.h)?.let { return it } }
     return null
 }
 

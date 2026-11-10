@@ -58,6 +58,13 @@ class RouteProblem(
     val softDeadlineMs: Long = Long.MAX_VALUE,
     /** Negotiation stops by then (epoch ms) even while converging, leaving the endgame time up to [deadlineMs]. */
     val negotiationDeadlineMs: Long = Long.MAX_VALUE,
+    /**
+     * Per net (plan net id): the coarse cells of [guideCell] tiles its global route runs through (blocks.stitch "global").
+     * Its belts cost [guidePenalty] more per tile more than a cell away from them: the search keeps to its corridor.
+     */
+    val netGuides: Map<Int, List<Tile>> = emptyMap(),
+    val guideCell: Int = 4,
+    val guidePenalty: Double = 4.0,
 )
 
 data class RouteStats(val belts: Int, val undergrounds: Int, val inserters: Int)
@@ -566,7 +573,25 @@ class PathFinder(internal val p: RouteProblem) {
     /** Cost of a belt-family entity on [q] that would take items from [deadTaken] chain ends pointing into it. */
     private fun beltCost(q: Int, deadTaken: Int = deadEndAt[q]): Float =
         (tun.beltBase.toFloat() + hist[q]) * (1f + pFac * (occTile[q] + deadTaken + occHeat[q])) +
-            (if (pinCount[q] > 0) tun.pinReservation.toFloat() else 0f) + bias[q] + beltBias[q]
+            (if (pinCount[q] > 0) tun.pinReservation.toFloat() else 0f) + bias[q] + beltBias[q] +
+            (if (guided && guideStamp[q] != guideGen) guidePen else 0f)
+
+    // ---- global routing's corridors (RouteProblem.netGuides) ----
+    private val guideStamp = IntArray(N)
+    private var guideGen = 0
+    private var guided = false
+    private val guidePen = p.guidePenalty.toFloat()
+    /** Marks the tiles of net [planId]'s coarse cells and the cells around them, for its search. */
+    private fun guideFor(planId: Int) {
+        val cells = p.netGuides[planId]
+        guided = cells != null
+        if (cells == null) return
+        guideGen++
+        val c = p.guideCell
+        for (cell in cells) for (y in (cell.y - 1) * c until (cell.y + 2) * c) for (x in (cell.x - 1) * c until (cell.x + 2) * c) {
+            if (dims.inFull(x, y)) guideStamp[dims.idx(x, y)] = guideGen
+        }
+    }
 
     /** Taken for heating: off the grid, a machine or obstacle, or used. */
     private fun walled(t: Int): Boolean = t !in 0 until N || allowNet[t] == -2 || occTile[t] > 0
@@ -1181,6 +1206,7 @@ class PathFinder(internal val p: RouteProblem) {
     private fun routeNetFrom(n: RNet, startTerm: Int, startOpts: List<Int>?): Boolean {
         stamp++
         cur = n.idx
+        guideFor(n.planId)
         // Weaving undergrounds of a slower tier only on chains whose flow fits one of its lanes (each item its own
         // lane on a lane pair): which lane the items ride on is up to the inserters and belts upstream, so a chain
         // that only fits the slower tier with its lanes evenly loaded overflows a lane as soon as they are not (in a
@@ -1198,9 +1224,14 @@ class PathFinder(internal val p: RouteProblem) {
 
         val starts = ArrayList<Start>()
         if (startTerm < 0) {
+            // A lane pair's port with another port right beside it leaves the stitch no room to join the pair's belts
+            // (search.crowdedLanePair fails such layouts): such tiles cost a lot.
+            val nearPorts = nets.filter { m -> m.idx != n.idx && (paired || m.item2 != null) }
+                .mapNotNull { m -> routed[m.idx]?.sourceTile?.takeIf { it >= 0 } }
             n.portTiles.forEachIndexed { i, t ->
                 if (!placeable(t)) return@forEachIndexed
-                val c = beltCost(t)
+                val crowded = nearPorts.any { q -> abs(dims.x(q) - dims.x(t)) + abs(dims.y(q) - dims.y(t)) == 1 }
+                val c = beltCost(t) + (if (crowded) 60f else 0f)
                 // A shared belt enters straight from the edge, so each item stays on the lane it was fed on.
                 // A shared belt, or one whose port moves onto the ring, enters straight from the edge (lanes stay put).
                 val straight = paired || (config.portsOnRing && n.portOut[i] >= 0 && dims.inBox(dims.x(t), dims.y(t)))

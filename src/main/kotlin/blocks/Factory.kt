@@ -734,7 +734,11 @@ private class Stitching(
         IntArray(k) { input.blocks[it].shapes[p.state.shape[it]].rot })
     /** Lane pairs whose junction next to the supplier did not route: theirs goes in front of the consumer. */
     val atConsumer = HashSet<Int>()
-    private fun route(p: FpPlan) = stitchRoute(config, tuning, plan, split, bps, input.shapes, layoutOf(p), atConsumer, debugDir)
+    private fun route(p: FpPlan) = layoutOf(p).let { arr -> stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir, guidesFor(arr)) }
+    /** blocks.stitch "global": each corridor link's coarse cells on [arr], for the fine router to keep to. */
+    private fun guidesFor(arr: Arrangement): Map<Int, List<Tile>> =
+        if (config.blocks?.stitch != "global") emptyMap()
+        else globalRoute(arr.w, arr.h, arr.boxes.indices.map { closedRect(arr, it) } + arr.reserved, coarseLinks(arr)).paths
 
     /** Corridor links as global routing sees them on [arr]: port to port, to a pipe tree's middle, or to an edge allowed. */
     private fun coarseLinks(arr: Arrangement): List<CoarseLink> {
@@ -814,7 +818,7 @@ private class Stitching(
         while (widenings < 8 && attempt < 8 + split.links.size) {
             attempt++
             val arr = layoutOf(fp)
-            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir)
+            val r = stitchRoute(config, tuning, plan, split, bps, input.shapes, arr, atConsumer, debugDir, guidesFor(arr))
             if (r.stitched != null) { ok += r.stitched to fp.state; say("$what: routed at ${fp.w} x ${fp.h}${if (attempt > 1) " (attempt $attempt)" else ""}"); break }
             if (!atConsumer.containsAll(r.badPairs)) {
                 atConsumer += r.badPairs
@@ -990,6 +994,8 @@ fun stitchRoute(
     atConsumer: Set<Int> = emptySet(),
     /** Where a failed stitch is drawn, the trouble marked (else STITCH_DEBUG_DIR, else nowhere). */
     debugDir: File? = null,
+    /** Per link, the coarse cells (4 x 4 tiles) its global route runs through (blocks.stitch "global"). */
+    guides: Map<Int, List<Tile>> = emptyMap(),
 ): StitchAttempt {
     val k = bps.size
     val results = (0 until k).map { shapes[it][arr.shape[it]].layout }
@@ -1383,6 +1389,9 @@ fun stitchRoute(
     val routed = route(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
         obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree + portTargets + resultTiles, noTunnel = noTunnel,
         beltBias = besideBelts.associateWith { 40.0 },
+        netGuides = if (guides.isEmpty()) emptyMap() else linksOfNet.mapNotNull { (n, ls) ->
+            ls.flatMap { guides[it.id].orEmpty() }.distinct().takeIf { it.isNotEmpty() }?.let { n to it }
+        }.toMap(),
         // 6 minutes, then on only while it converges, 30 at most: a big factory's corridors otherwise rip up and reroute
         // for hours (Py science 2), but a bigger one needs more than 6 minutes' worth of iterations.
         // (Negotiation 25 minutes at most, so the endgame has up to 8 for the last few conflicts.)

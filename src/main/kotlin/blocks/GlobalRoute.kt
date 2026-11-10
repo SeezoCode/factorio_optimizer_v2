@@ -12,7 +12,9 @@ import kotlin.math.max
 class CoarseLink(val id: Int, val from: Tile, val to: Tile?, val edges: Set<Dir> = emptySet())
 
 /** What global routing found: where demand exceeds capacity (tile at each overflowing boundary's middle, and by how much). */
-class GlobalRoute(val overflow: List<Pair<Tile, Int>>, val rounds: Int, val routed: Int, val unreachable: List<Int>) {
+class GlobalRoute(val overflow: List<Pair<Tile, Int>>, val rounds: Int, val routed: Int, val unreachable: List<Int>,
+                  /** Each routed link's coarse cells, start to end, and the cell size. */
+                  val paths: Map<Int, List<Tile>> = emptyMap(), val cell: Int = 4) {
     val worst get() = overflow.maxOfOrNull { it.second } ?: 0
 }
 
@@ -119,5 +121,6 @@ fun globalRoute(w: Int, h: Int, blocked: List<Rect>, links: List<CoarseLink>, ce
         if (useE[cy][cx] > capE[cy][cx]) overflow += Tile(cx * cell + cell - 1, cy * cell + cell / 2) to useE[cy][cx] - capE[cy][cx]
         if (useS[cy][cx] > capS[cy][cx]) overflow += Tile(cx * cell + cell / 2, cy * cell + cell - 1) to useS[cy][cx] - capS[cy][cx]
     }
-    return GlobalRoute(overflow, round, paths.size, unreachable.toList())
+    val cells = paths.mapValues { (id, p) -> (listOf(cellOf(links.first { it.id == id }.from)) + p.map { (a, d) -> Tile(a.x + d.dx, a.y + d.dy) }).distinct() }
+    return GlobalRoute(overflow, round, paths.size, unreachable.toList(), cells, cell)
 }

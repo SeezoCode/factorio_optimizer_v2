@@ -117,6 +117,15 @@ fun missingLinkPorts(plan: ProductionPlan, sources: List<SourceSpec>, outputs: L
     return plan.ports.filter { it.single && it.id !in have }
 }
 
+/**
+ * A lane pair's port (two items on one belt) with another port right beside it, or null: the stitch joins the pair's
+ * two belts next to the supplier or, failing that, right in front of the port, which needs the tiles beside it.
+ */
+fun crowdedLanePair(sources: List<SourceSpec>, outputs: List<OutputSpec>): SourceSpec? {
+    val tiles = sources.map { it.tile } + outputs.map { it.tile }
+    return sources.firstOrNull { s -> s.lane >= 0 && tiles.any { it != s.tile && it.manhattan(s.tile) == 1 } }
+}
+
 fun layoutOf(placement: Placement, entities: List<PlacedEntity>, wires: List<Pair<Int, Int>> = emptyList(), label: String = "factorio-optimizer") =
     Layout(placement.w, placement.h, entities, wires, label)
 
@@ -435,7 +444,9 @@ fun runTrial(
         // ... and it is there at all: stitching joins every link between blocks at its ports.
         val missing = missingLinkPorts(plan, ringed.sources, ringed.outputs)
             .map { p -> ValidationError(validate.ErrorType.UNSUPPORTED, Tile(0, 0), "${p.item} ${if (p.output) "output" else "input"} port ${p.id} has no belt") }
-        val errors = validate(layout, spec) + split + missing + ends.missing.map { ValidationError(validate.ErrorType.UNSUPPORTED, Tile(0, 0), it) }
+        val crowded = listOfNotNull(crowdedLanePair(ringed.sources, ringed.outputs)).map { s ->
+            ValidationError(validate.ErrorType.UNSUPPORTED, s.tile, "a port beside the ${s.item} lane pair's port") }
+        val errors = validate(layout, spec) + split + missing + crowded + ends.missing.map { ValidationError(validate.ErrorType.UNSUPPORTED, Tile(0, 0), it) }
         if (beacons != null && !beacons.ok) return fail("beacons", result, errors, layout)
         if (!ok) return fail("power", result, errors, layout)
         if (errors.isNotEmpty()) return fail("validate", result, errors, layout)

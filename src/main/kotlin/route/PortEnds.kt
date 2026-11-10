@@ -42,13 +42,12 @@ fun withPortEnds(entities: List<PlacedEntity>, sources: List<SourceSpec>, output
     val outside = HashSet<Tile>()
     val missing = ArrayList<String>()
     fun inBox(t: Tile) = t.x in 0 until w && t.y in 0 until h
-    fun free(t: Tile) = t !in occ
+    // The ports that go on to the corridors keep their way out: no end on it.
+    val room = exitRoom(sources, outputs, plan, w, h) { occ[it] }
+    fun free(t: Tile) = t !in occ && t !in room
     fun add(e: PlacedEntity) { ents += e; e.rect.tiles().forEach { occ[it] = e; if (!inBox(it)) outside += it } }
     /** Out of the box from [t]: the way the box's edge faces where [t] lies. */
-    fun outward(t: Tile): Dir = when {
-        t.x < 0 -> Dir.W; t.x >= w -> Dir.E; t.y < 0 -> Dir.N; t.y >= h -> Dir.S
-        t.x == 0 -> Dir.W; t.x == w - 1 -> Dir.E; t.y == 0 -> Dir.N; else -> Dir.S
-    }
+    fun outward(t: Tile): Dir = outwardOf(t, w, h)
     fun sides(t: Tile, d: Dir) = listOf(d) + listOf(d.cw, d.ccw).filter { !inBox(t + it) }
     val inserter = listOf("fast-inserter", "inserter", "bulk-inserter").firstOrNull { it in config.inserters.allowed } ?: "inserter"
     val blocks = config.blocks
@@ -106,6 +105,56 @@ fun withPortEnds(entities: List<PlacedEntity>, sources: List<SourceSpec>, output
         s.copy(requester = true)
     }
     return PortEnds(ents, srcs, outs, outside, missing)
+}
+
+/** Out of a [w] x [h] box from [t]: the way the box's edge faces where [t] lies. */
+fun outwardOf(t: Tile, w: Int, h: Int): Dir = when {
+    t.x < 0 -> Dir.W; t.x >= w -> Dir.E; t.y < 0 -> Dir.N; t.y >= h -> Dir.S
+    t.x == 0 -> Dir.W; t.x == w - 1 -> Dir.E; t.y == 0 -> Dir.N; else -> Dir.S
+}
+
+/**
+ * The way out of each port that goes on to the corridors (end `edge`), as tile -> the port's item: the first four
+ * tiles straight out of it and, for a pipe, the tiles beside them (another fluid's pipe or a machine there would join
+ * it, and the stitch's pipe-to-ground needs somewhere clean to come up). An end built on one walls the port in: Py
+ * production science's molten-glass port, between molten-silver's void pipes and molten-solder's sinkhole, could
+ * reach no corridor at all.
+ */
+fun exitRoom(sources: List<SourceSpec>, outputs: List<OutputSpec>, plan: ProductionPlan, w: Int, h: Int, at: (Tile) -> PlacedEntity?): Map<Tile, String> {
+    val room = HashMap<Tile, String>()
+    fun keep(port: Int, t: Tile, item: String, fluid: Boolean, output: Boolean) {
+        val p = plan.ports.getOrNull(port)
+        if ((p?.end ?: "edge") != "edge") return
+        val d = p?.specs?.mapNotNull { s -> s.edge?.let { runCatching { Dir.fromName(it) }.getOrNull() } }?.distinct()?.singleOrNull()
+            ?: at(t)?.takeIf { it.kind.beltFamily }?.dir?.let { if (output) it else it.opposite } ?: outwardOf(t, w, h)
+        for (i in 1..4) {
+            val u = t.step(d, i)
+            room.putIfAbsent(u, item)
+            if (fluid) { room.putIfAbsent(u + d.cw, item); room.putIfAbsent(u + d.ccw, item) }
+        }
+    }
+    outputs.forEach { o -> if (!o.local) keep(o.port, o.tile, o.item, o.fluid, true) }
+    sources.forEach { s -> if (!s.requester) keep(s.port, s.tile, s.item, s.fluid, false) }
+    return room
+}
+
+/**
+ * The first port of a finished block layout whose way out (exitRoom) one of its port ends stands on, or null: layouts
+ * from before ends kept off it. Ends are what a block has outside its box apart from its ports' own tiles and belts.
+ */
+fun walledPort(entities: List<PlacedEntity>, sources: List<SourceSpec>, outputs: List<OutputSpec>, plan: ProductionPlan, w: Int, h: Int): String? {
+    val occ = HashMap<Tile, PlacedEntity>()
+    entities.forEach { e -> e.rect.tiles().forEach { occ[it] = e } }
+    val room = exitRoom(sources, outputs, plan, w, h) { occ[it] }
+    val portTiles = (sources.map { it.tile } + outputs.map { it.tile }).toSet()
+    for (e in entities) {
+        if (e.kind.beltFamily || e.kind == Kind.PIPE_UG) continue
+        for (t in e.rect.tiles()) {
+            if (t.x in 0 until w && t.y in 0 until h || t in portTiles) continue
+            room[t]?.let { return "a ${e.name} on the way out of its $it port" }
+        }
+    }
+    return null
 }
 
 /**
