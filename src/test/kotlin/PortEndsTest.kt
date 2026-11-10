@@ -47,4 +47,16 @@ class PortEndsTest {
         val why = assertNotNull(walledPort(walled, emptyList(), outputs.map { if (it.port == 1) it.copy(local = true) else it }, plan, 6, 6))
         assertTrue("iron-gear-wheel" in why, why)
     }
+
+    @Test
+    fun `beside a pipe's way out only what a pipe joins walls it in`() {
+        // Water leaves east at (5,2) by pipe; beside its way out, row 1 east of the box.
+        val ports = listOf(Port(0, "water", listOf(config.ConfigSource("water", edge = "east")), fluid = true, output = true, single = true))
+        val plan = ProductionPlan(emptyList(), ports, emptyList(), emptyList(), emptyMap(), emptyMap(), emptyMap(), "transport-belt", emptyList())
+        val pipe = PlacedEntity("pipe", Kind.PIPE, 5, 2, fluid = "water")
+        val out = listOf(OutputSpec(Tile(5, 2), "water", 10.0, fluid = true, port = 0))
+        assertNull(walledPort(listOf(pipe, PlacedEntity("fast-inserter", Kind.INSERTER, 8, 1, Dir.N), PlacedEntity("steel-chest", Kind.CHEST, 8, 0)), emptyList(), out, plan, 6, 6))
+        assertNotNull(walledPort(listOf(pipe, PlacedEntity("py-overflow-valve", Kind.VALVE, 8, 1, Dir.W, fluid = "steam")), emptyList(), out, plan, 6, 6))
+        assertNotNull(walledPort(listOf(pipe, PlacedEntity("steel-chest", Kind.CHEST, 9, 2)), emptyList(), out, plan, 6, 6), "four tiles straight out are kept")
+    }
 }
