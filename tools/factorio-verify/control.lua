@@ -469,7 +469,10 @@ local function start(params)
         f[find(d.unit_number)] = true
         run.drops[pk.unit_number] = f
       end
-      if d and pk and CRAFTERS[d.type] and parent[pk.unit_number] then run.pick_belts = run.pick_belts or {}; run.pick_belts[pk.unit_number] = true end
+      if d and pk and CRAFTERS[d.type] and parent[pk.unit_number] then
+        run.pick_belts = run.pick_belts or {}; run.pick_belts[pk.unit_number] = true
+        run.ins_net = run.ins_net or {}; run.ins_net[i.e.unit_number] = find(pk.unit_number)
+      end
       -- The inserters bringing things into each machine (for --flow's quotas).
       if d and CRAFTERS[d.type] then
         run.into = run.into or {}
@@ -1263,12 +1266,24 @@ script.on_event(defines.events.on_tick, function()
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
           end
         end
+        -- A returned catalyst stuck in its output (it stands full): it takes that item only from its own loop until
+        -- the loop drains. Py production's ulric corral takes a bedding and gives 0 to 1 back onto a two-tile belt
+        -- into its own input; a supply belt kept that input full, the loop filled, and the corral stopped for good.
+        local returned = {}
+        if e.status == defines.entity_status.full_output then
+          local out = e.get_output_inventory()
+          for _, ing in pairs(m.fq.r.ingredients) do
+            if ing.type == "item" and out and out.get_item_count(ing.name) > 0 then returned[ing.name] = true end
+          end
+        end
+        local drops = (run.drops or {})[e.unit_number] or {}
         for _, i in pairs(run.into[e.unit_number] or {}) do
           if i.valid then
             local h = i.held_stack
             if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
             local it = m.fq.item_of[i.unit_number]
-            local off = it ~= nil and capped[it] == true
+            local net = (run.ins_net or {})[i.unit_number]
+            local off = it ~= nil and (capped[it] == true or (returned[it] == true and net ~= nil and not drops[net]))
             if off then run.quota_held = run.quota_held + 1 end
             if off or i.disabled_by_script then i.disabled_by_script = off end
           end

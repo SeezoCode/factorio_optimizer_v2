@@ -98,7 +98,7 @@ local function at(surface, p)
 end
 
 local function rebuild()
-  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {} }
+  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {} }
   -- A belt's network: everything joined to it through belt neighbours, undergrounds and splitters.
   local function net(b)
     local id = T.net_of[b.unit_number]
@@ -140,6 +140,7 @@ local function rebuild()
           if pk and BELTS[pk.type] then
             add(T.feeds, unit, net(pk))
             T.pick[pk.unit_number] = true
+            T.ins_net[i.unit_number] = net(pk)
           elseif pk and CRAFTERS[pk.type] then
             add(T.hands, pk.unit_number, unit)
           end
@@ -419,13 +420,25 @@ local function control()
         end
         m.stop = stop
         if stop then stats.stopped = stats.stopped + 1 end
+        -- A returned catalyst stuck in its output (it stands full): it takes that item only from its own loop until
+        -- the loop drains (a corral giving back bedding onto a short belt into its own input, kept full from a supply
+        -- belt, stopped for good).
+        local returned = {}
+        if e.status == defines.entity_status.full_output then
+          local out = e.get_output_inventory()
+          for _, ing in pairs(r.ingredients) do
+            if ing.type == "item" and out and out.get_item_count(ing.name) > 0 then returned[ing.name] = true end
+          end
+        end
+        local drops = T.drops[unit] or {}
         local held = {}
         for _, i in pairs(T.into[unit] or {}) do
           if i.valid then
             local h = i.held_stack
             if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
             local it = m.fq.item_of[i.unit_number]
-            if it ~= nil and capped[it] then
+            local net = T.ins_net[i.unit_number]
+            if it ~= nil and (capped[it] or (returned[it] and net ~= nil and not drops[net])) then
               held[i.unit_number] = i
               stats.held = stats.held + 1
               if not i.disabled_by_script then i.disabled_by_script = true end
