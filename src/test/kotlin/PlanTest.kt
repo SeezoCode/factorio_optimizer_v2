@@ -24,6 +24,12 @@ class PlanTest {
     private val data get() = TestData.data
 
     @Test
+    fun `a plan read back from its JSON is the same plan (a resumed run reuses it)`() {
+        val plan = buildPlan(data, RunConfiguration(targets = listOf(ConfigTarget("logistic-science-pack", 0.5))))
+        assertEquals(plan, config.strictJson.decodeFromString(ProductionPlan.serializer(), plan.toJson()))
+    }
+
+    @Test
     fun `machine count uses crafting speed`() {
         val circuit = data.recipes.getValue("electronic-circuit")
         // 2 circuits/s: 2 * 0.5 / (1 * 0.75) = 1.33 -> 2 with AM2; / 1.25 = 0.8 -> 1 with AM3.

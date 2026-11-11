@@ -48,6 +48,10 @@ class RouteProblem(
     val endgameSeed: Long = 0,
     /** Tiles no underground may pass under (blocks, when stitching a split factory). */
     val noTunnel: Set<Tile> = emptySet(),
+    /** Tiles no underground belt may pass under (pipes-to-ground may): other belts' underground ends there. */
+    val noBeltTunnel: Set<Tile> = emptySet(),
+    /** Tiles where no underground belt may start or end: between another belt's underground pair. */
+    val noBeltUgEnds: Set<Tile> = emptySet(),
     /** Stop routing then (epoch ms) with what is routed so far (a factory's corridors: hundreds of links over 600 x 600). */
     val deadlineMs: Long = Long.MAX_VALUE,
     /**
@@ -124,6 +128,8 @@ class PathFinder(internal val p: RouteProblem) {
     private val ugAllowed = config.trick("B2")
     /** Tiles undergrounds may not pass under ([RouteProblem.noTunnel]). */
     internal val noTunnel = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noTunnel.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
+    private val noBeltTunnel = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noBeltTunnel.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
+    private val noBeltUgEnd = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noBeltUgEnds.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
     /** Weaving tier (B5): its undergrounds have their own channels, so they pass under the main tier's. */
     private val weave = config.weave()
     private val maxJw = (weave?.maxUndergroundGap ?: -1) + 1
@@ -868,7 +874,7 @@ class PathFinder(internal val p: RouteProblem) {
             }
 
             // Underground (B2, B3): entrance on q facing d, exit j tiles further.
-            if (ugAllowed) {
+            if (ugAllowed && !noBeltUgEnd[q]) {
                 val axis = if (d == 1 || d == 3) 0 else 1
                 val bc = beltCost(q, deadEndsTaken(q, AK_UG_IN, d)) + resQ
                 val qx = dims.x(q); val qy = dims.y(q)
@@ -881,9 +887,9 @@ class PathFinder(internal val p: RouteProblem) {
                         val ex = qx + dX[d] * j; val ey = qy + dY[d] * j
                         if (!dims.inFull(ex, ey)) break
                         val e = q + dIdx[d] * j
-                        if (ownChanStamp[ch0 + e] == stamp || noTunnel[e]) break
+                        if (ownChanStamp[ch0 + e] == stamp || noTunnel[e] || noBeltTunnel[e]) break
                         chanAcc += chanCost(ch0 + e)
-                        if (!placeable(e) || outOfBound(e)) continue
+                        if (!placeable(e) || outOfBound(e) || noBeltUgEnd[e]) continue
                         val cost = gS + bc + beltCost(e, deadEndsTaken(e, AK_UG_OUT, d)) + (if (resStamp[e] == goalGen) res else 0f) +
                             (tun.ugPenalty + tun.ugPenaltyPerTile * j).toFloat() + chanAcc
                         relax(st(e, d, UG_EXIT), s, cost)
@@ -948,8 +954,8 @@ class PathFinder(internal val p: RouteProblem) {
             for (j in 1..(if (ti == 0) maxJ else maxJw)) {
                 if (!dims.inFull(x0 + dX[d] * j, y0 + dY[d] * j)) break
                 val e = t2 + dIdx[d] * j
-                if (ownChanStamp[ch0 + e] == stamp || noTunnel[e]) break
-                if (placeable(e)) return true
+                if (ownChanStamp[ch0 + e] == stamp || noTunnel[e] || noBeltTunnel[e]) break
+                if (placeable(e) && !noBeltUgEnd[e]) return true
             }
         }
         return false
@@ -964,7 +970,6 @@ class PathFinder(internal val p: RouteProblem) {
         heap.push(g + hWeight * minStep * h(ns ushr 3), ns)
     }
 
-    /** L1 distance from every tile to the nearest goal tile (two-pass chamfer). */
     /** Goal tiles when there are few of them ([fewGoals]): the heuristic is the distance to the nearest, no transform. */
     private val goalList = IntArray(16)
     private var goalCount = 0
@@ -978,6 +983,7 @@ class PathFinder(internal val p: RouteProblem) {
         return best
     }
 
+    /** L1 distance from every tile to the nearest goal tile (two-pass chamfer), unless there are few goals ([h]). */
     internal fun distanceTransform() {
         val big = 1 shl 20
         // A corridor net heads for one or two port tiles: their distance is cheaper than a pass over the whole factory.

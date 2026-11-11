@@ -1,5 +1,7 @@
 import config.RunConfiguration
+import config.SearchConfig
 import config.Tuning
+import config.strictJson
 import data.loadRootData
 import emit.toBlueprint
 import emit.toBlueprintString
@@ -92,7 +94,15 @@ fun main(args: Array<String>) {
 
     val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
     val out = resume ?: flags["out"] ?: "src/main/resources/solves/$stamp - sa"
-    val plan = buildPlan(data, config, tuning)
+    // A resumed run reuses the plan it saved when what planning reads is unchanged (the job but its search and blocks
+    // sections, the tuning, the data file): planning a Py science takes up to a quarter of an hour.
+    val planKey = planKey(config, tuning, config0.data ?: "recipes.json")
+    val savedPlan = resume?.let { java.io.File(it) }?.takeIf { d -> java.io.File(d, "plan.key").let { it.exists() && it.readText() == planKey } }
+        ?.let { d -> runCatching { strictJson.decodeFromString(plan.ProductionPlan.serializer(), java.io.File(d, "plan.json").readText()) }.getOrNull() }
+    if (savedPlan != null) println("resume: the saved plan (job, tuning and data unchanged)")
+    val plan = savedPlan ?: buildPlan(data, config, tuning)
+    java.io.File(out).mkdirs()
+    java.io.File(out, "plan.key").writeText(planKey)
     if (resume != null) {
         val cfgB = config.blocks
         if (cfgB == null || plan.machines.size <= cfgB.maxMachines)
@@ -119,6 +129,14 @@ fun main(args: Array<String>) {
         System.out.flush()
         kotlin.system.exitProcess(0)
     } else search.runSearch(data, config, tuning, plan, out)
+}
+
+/** What planning reads, as a hash: the job without its search and blocks sections, the tuning, the data file's size and age. */
+private fun planKey(config: RunConfiguration, tuning: Tuning, dataName: String): String {
+    val job = strictJson.encodeToJsonElement(RunConfiguration.serializer(), config.copy(search = SearchConfig(), blocks = null)).toString()
+    val f = java.io.File(dataName).takeIf { it.exists() } ?: java.io.File("data", dataName).takeIf { it.exists() }
+    val text = job + "\n" + tuning.toJson() + "\n" + dataName + (f?.let { " ${it.length()} ${it.lastModified()}" } ?: "")
+    return java.security.MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 }
 
 /** Stops with a message, without a stack trace. */

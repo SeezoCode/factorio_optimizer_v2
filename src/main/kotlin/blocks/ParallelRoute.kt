@@ -31,10 +31,14 @@ fun routeCorridors(problem: RouteProblem, threads: Int, say: (String) -> Unit = 
     val t0 = System.currentTimeMillis()
     val groups = splitByGuides(belts, problem.netGuides, threads)
     val groupOf = HashMap<Int, Int>().also { m -> groups.forEachIndexed { g, ids -> ids.forEach { m[it] = g } } }
-    // Each net's fixed port tiles: a group keeps off the other nets' (pipes' among them, routed only later).
+    // Each net's fixed port tiles and the tile straight out from each (its way in): a group keeps off the other nets'
+    // (pipes' among them, routed only later), or a kept belt may wall a port in.
     val portTiles = plan.nets.associate { n ->
         n.id to n.terminals.mapNotNull { t -> plan.terminals.getOrNull(t)?.port?.let { plan.ports.getOrNull(it) } }
-            .flatMap { p -> p.specs.mapNotNull { s -> if (s.x != null && s.y != null) Tile(s.x, s.y) else null } }
+            .flatMap { p -> p.specs.flatMap { s ->
+                if (s.x == null || s.y == null) emptyList()
+                else listOfNotNull(Tile(s.x, s.y), s.dir?.let { d -> runCatching { geom.Dir.fromName(d) }.getOrNull() }?.let { d -> Tile(s.x - d.dx, s.y - d.dy) })
+            } }
     }
     // The groups get a third of the time left: what they leave clashing is routed again afterwards anyway.
     val third = (minOf(problem.deadlineMs, t0 + 6 * 3_600_000L) - t0) / 3
@@ -54,33 +58,75 @@ fun routeCorridors(problem: RouteProblem, threads: Int, say: (String) -> Unit = 
         r.failedNets.forEach { failed += ids[it] }
     }
     val clash = clashes(ents.filterKeys { it !in failed }.flatMap { it.value }).first
-    val again = (plan.nets.map { it.id }.filter { it !in groupOf || it in failed || it in clash }).toSet()
-    val kept = belts.filter { it !in again }
-    val keptEnts = kept.flatMap { ents[it].orEmpty() }
-    // What the kept belts take, point into, and tunnel under: the rest routes around it.
-    val keptTiles = keptEnts.flatMap { it.rect.tiles() }.toSet()
-    val pointed = keptEnts.flatMap { e -> fedFrom(e) }.toSet()
-    val spans = undergroundSpans(keptEnts).flatMap { it.second }.toSet()
+    var again = (plan.nets.map { it.id }.filter { it !in groupOf || it in failed || it in clash }).toSet()
+    var kept = belts.filter { it !in again }
+    val keptAtFirst = kept.size
     // Where the groups found congestion, the second pass knows from the start (their histories added up).
-    val warm = parts.map { it.second.rawHistory }.filter { it.isNotEmpty() }.takeIf { hs -> hs.isNotEmpty() && hs.all { it.size == hs[0].size } }
-        ?.let { hs -> FloatArray(hs[0].size) { i -> hs.sumOf { it[i].toDouble() }.toFloat() } }
-    val last = if (again.isEmpty()) null else route(subProblem(problem, again.sorted(),
-        obstacles = problem.obstacles + keptTiles + pointed, noTunnel = problem.noTunnel + spans, warm = warm ?: problem.warmHistory))
-    val againIds = again.sorted()
-    val lastEnts = last?.entities?.map { e -> e.copy(net = e.net?.let { againIds.getOrNull(it) }) }.orEmpty()
-    // The kept belts and the second pass checked against each other once more: anything still clashing is a conflict.
+    var warm = parts.map { it.second.rawHistory }.filter { it.isNotEmpty() }.takeIf { hs -> hs.isNotEmpty() && hs.all { it.size == hs[0].size } }
+        ?.let { hs -> FloatArray(hs[0].size) { i -> hs.sumOf { it[i].toDouble() }.toFloat() } } ?: problem.warmHistory
+    // Each port's source or output as last routed.
+    val srcByPort = HashMap<Int, route.RouteResult>()
+    parts.forEach { (_, r) -> (r.sources.map { it.port } + r.outputs.map { it.port }).forEach { srcByPort[it] = r } }
+    val passes = ArrayList<RouteResult>()
+    var last: RouteResult? = null
+    var againIds = emptyList<Int>()
+    var lastEnts = emptyList<PlacedEntity>()
+    var keptEnts = emptyList<PlacedEntity>()
+    var still = emptySet<Int>(); var stillTiles = emptyList<Tile>()
     val why = ArrayList<String>()
-    val (still, stillTiles) = clashes(keptEnts + lastEnts, why)
-    val portsOf = { ids: Collection<Int> -> ids.flatMap { id -> byId.getValue(id).terminals.mapNotNull { t -> plan.terminals.getOrNull(t)?.port } }.toSet() }
-    val keptPorts = portsOf(kept)
-    val sources = parts.flatMap { it.second.sources }.filter { it.port in keptPorts } + (last?.sources ?: emptyList())
-    val outputs = parts.flatMap { it.second.outputs }.filter { it.port in keptPorts } + (last?.outputs ?: emptyList())
-    val failedAll = ((last?.failedNets?.map { againIds[it] } ?: emptyList()) + still).distinct()
+    val notes = ArrayList<String>()
+    // Up to three passes: the clashing links routed again around the kept belts; where some still fail, the kept belts
+    // near the trouble are freed and routed again with them.
+    for (round in 0 until 3) {
+        againIds = again.sorted()
+        keptEnts = kept.flatMap { ents[it].orEmpty() }
+        if (againIds.isEmpty()) { last = null; lastEnts = emptyList(); break }
+        // What the kept belts take and point into; no underground passes under their undergrounds' ends, and none
+        // comes up between a pair of theirs (it would pair with them; pipes-to-ground are another kind).
+        val keptTiles = keptEnts.flatMap { it.rect.tiles() }.toSet()
+        val pointed = keptEnts.flatMap { e -> fedFrom(e) }.toSet()
+        val spans = undergroundSpans(keptEnts).flatMap { it.second }.toSet()
+        val ugEnds = keptEnts.filter { it.kind == Kind.UG_IN || it.kind == Kind.UG_OUT }.map { it.tile }.toSet()
+        val now = System.currentTimeMillis()
+        val share = (minOf(problem.deadlineMs, t0 + 6 * 3_600_000L) - now) / (3 - round)
+        last = route(subProblem(problem, againIds, obstacles = problem.obstacles + keptTiles + pointed,
+            noBeltTunnel = problem.noBeltTunnel + ugEnds, noBeltUgEnds = problem.noBeltUgEnds + spans,
+            deadlines = Deadlines(now + share, now + share / 3, now + share * 2 / 3), warm = warm))
+        passes += last
+        (last.sources.map { it.port } + last.outputs.map { it.port }).forEach { srcByPort[it] = last }
+        lastEnts = last.entities.map { e -> e.copy(net = e.net?.let { againIds.getOrNull(it) }) }
+        why.clear()
+        clashes(keptEnts + lastEnts, why).let { (n, t) -> still = n; stillTiles = t }
+        val failedHere = (last.failedNets.mapNotNull { againIds.getOrNull(it) } + still).toSet()
+        notes += "pass ${round + 1}: ${againIds.size} links around ${kept.size} (${last.millis / 1000} s): " +
+            if (last.success && still.isEmpty()) "all routed" else "${last.failedNets.size} unrouted, ${last.conflicts.size} conflicts, ${still.size} clashing"
+        if (last.success && still.isEmpty()) break
+        if (System.currentTimeMillis() > problem.deadlineMs - 60_000) break
+        // Next pass: what failed or clashed, and the kept belts near it (within 8 tiles of its trouble or its ports).
+        val trouble = HashSet<Tile>()
+        (last.conflicts + stillTiles + failedHere.flatMap { portTiles[it].orEmpty() }).forEach { c ->
+            for (dy in -8..8) for (dx in -8..8) trouble += Tile(c.x + dx, c.y + dy)
+        }
+        val near = kept.filter { id -> ents[id].orEmpty().any { e -> e.rect.tiles().any { it in trouble } } }.toSet()
+        // The links this pass routed cleanly stay as routed; the trouble's are routed again.
+        lastEnts.groupBy { it.net }.forEach { (n, es) -> if (n != null) ents[n] = es }
+        val conflictNets = clashes(lastEnts).first
+        val clean = againIds.filter { it !in failedHere && it !in conflictNets && !byId.getValue(it).fluid }
+        val nextAgain = failedHere + conflictNets + near + againIds.filter { byId.getValue(it).fluid }
+        if (near.isEmpty() && nextAgain.toSet() == again) break
+        kept = (kept.filter { it !in near } + clean).distinct()
+        again = nextAgain
+        warm = last.rawHistory.takeIf { it.isNotEmpty() } ?: warm
+    }
+    val failedAll = ((last?.failedNets?.mapNotNull { againIds.getOrNull(it) } ?: emptyList()) + still).distinct()
     val conflicts = (last?.conflicts ?: emptyList()) + stillTiles
-    val all = parts.map { it.second } + listOfNotNull(last)
+    val all = parts.map { it.second } + passes
+    val ports = plan.nets.flatMap { n -> n.terminals.mapNotNull { t -> plan.terminals.getOrNull(t)?.port } }.toSet()
+    val sources = ports.flatMap { p -> srcByPort[p]?.sources?.filter { it.port == p }.orEmpty() }
+    val outputs = ports.flatMap { p -> srcByPort[p]?.outputs?.filter { it.port == p }.orEmpty() }
     say("corridors in ${groups.size} groups side by side (${groups.joinToString("/") { it.size.toString() }} belt links, " +
-        "${parts.maxOf { it.second.millis } / 1000} s), ${kept.size} kept, ${again.size} routed again around them" +
-        " (${last?.millis?.div(1000) ?: 0} s)${if (still.isNotEmpty()) ", ${still.size} still clashing (${why.take(3).joinToString("; ")})" else ""}; ${(System.currentTimeMillis() - t0) / 1000} s")
+        "${parts.maxOf { it.second.millis } / 1000} s), $keptAtFirst kept; ${notes.joinToString("; ")}" +
+        "${if (still.isNotEmpty()) "; still clashing: ${why.take(3).joinToString("; ")}" else ""}; ${(System.currentTimeMillis() - t0) / 1000} s")
     return RouteResult(
         success = (last?.success ?: true) && still.isEmpty(),
         entities = keptEnts + lastEnts,
@@ -123,15 +169,16 @@ fun splitByGuides(ids: List<Int>, guides: Map<Int, List<Tile>>, k: Int): List<Li
 /** When a routing stops: at [hard], negotiating at [negotiation], and once past [soft] when it no longer converges. */
 private class Deadlines(val hard: Long, val soft: Long, val negotiation: Long)
 
-/** [problem] for the nets [ids] alone (numbered 0 on in that order), with [obstacles] and [noTunnel] in place of its own. */
-private fun subProblem(problem: RouteProblem, ids: List<Int>, obstacles: Set<Tile> = problem.obstacles, noTunnel: Set<Tile> = problem.noTunnel,
+/** [problem] for the nets [ids] alone (numbered 0 on in that order), with [obstacles] and the belt underground limits given. */
+private fun subProblem(problem: RouteProblem, ids: List<Int>, obstacles: Set<Tile> = problem.obstacles,
+                       noBeltTunnel: Set<Tile> = problem.noBeltTunnel, noBeltUgEnds: Set<Tile> = problem.noBeltUgEnds,
                        deadlines: Deadlines? = null, warm: FloatArray? = problem.warmHistory): RouteProblem {
     val byId = problem.plan.nets.associateBy { it.id }
     val plan: ProductionPlan = problem.plan.copy(nets = ids.mapIndexed { i, id -> byId.getValue(id).copy(id = i) })
     val guides = ids.withIndex().mapNotNull { (i, id) -> problem.netGuides[id]?.let { i to it } }.toMap()
     return RouteProblem(plan, problem.config, problem.tuning, problem.placement, obstacles = obstacles, tileBias = problem.tileBias,
         beltBias = problem.beltBias, warmHistory = warm, debugDir = null, endgameSeed = problem.endgameSeed,
-        noTunnel = noTunnel, deadlineMs = deadlines?.hard ?: problem.deadlineMs, softDeadlineMs = deadlines?.soft ?: problem.softDeadlineMs,
+        noTunnel = problem.noTunnel, noBeltTunnel = noBeltTunnel, noBeltUgEnds = noBeltUgEnds, deadlineMs = deadlines?.hard ?: problem.deadlineMs, softDeadlineMs = deadlines?.soft ?: problem.softDeadlineMs,
         negotiationDeadlineMs = deadlines?.negotiation ?: problem.negotiationDeadlineMs, netGuides = guides, guideCell = problem.guideCell,
         guidePenalty = problem.guidePenalty, guideBound = problem.guideBound)
 }
