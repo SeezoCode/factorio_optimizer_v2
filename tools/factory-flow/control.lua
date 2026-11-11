@@ -391,6 +391,41 @@ local function control()
     end
   end
 
+  -- Stock (setting above 0): every machine, switched off or not, keeps that many crafts' worth of each ingredient, so
+  -- its makers run until it holds that much. Without it a machine switched off waits for nothing, and a long chain
+  -- stays off level by level because the machine above it is off; when demand finally comes each level starts from
+  -- empty, one belt trip at a time (Py production science: ten levels of uranium enrichment never ran).
+  local want_fluid = short_fluid
+  local stock = setting("stock")
+  if stock > 0 then
+    if want_net == short_net then
+      want_net, want_at = {}, {}
+      for item, nets in pairs(short_net) do local c = {}; for n in pairs(nets) do c[n] = true end; want_net[item] = c end
+      for u, items in pairs(short_at) do local c = {}; for i in pairs(items) do c[i] = true end; want_at[u] = c end
+    end
+    want_fluid = {}
+    for f in pairs(short_fluid) do want_fluid[f] = true end
+    for unit, m in pairs(storage.machines) do
+      local e, r = m.e, recipes[unit]
+      if r and e.valid then
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "item" then
+            if held(e, ing.name) < stock * ing.amount then
+              local wn = want_net[ing.name] or {}
+              for n in pairs(T.feeds[unit] or {}) do wn[n] = true end
+              want_net[ing.name] = wn
+              local a = want_at[unit] or {}
+              a[ing.name] = true
+              want_at[unit] = a
+            end
+          elseif (e.get_fluid_count(ing.name) or 0) < stock * ing.amount then
+            want_fluid[ing.name] = true
+          end
+        end
+      end
+    end
+  end
+
   -- Pull.
   if setting("pull") then
     for unit, m in pairs(storage.machines) do
@@ -409,7 +444,7 @@ local function control()
           for _, p in pairs(products) do
             if p.type == "fluid" then
               known = true
-              if short_fluid[p.name] then wanted = true end
+              if want_fluid[p.name] then wanted = true end
             else
               local sn = want_net[p.name]
               for n in pairs(drops) do known = true; if sn and sn[n] then wanted = true end end

@@ -542,6 +542,10 @@ def main():
     ap.add_argument("--pull-ahead", type=float, default=None, metavar="N",
                     help="with --pull or --flow: a machine working with less than N crafts' worth of an item also counts as "
                          "wanting it, so its makers run ahead of it (default 1: only once it stands short)")
+    ap.add_argument("--pull-stock", type=float, default=None, metavar="N",
+                    help="with --pull or --flow: every machine, switched off or not, keeps N crafts' worth of each ingredient, "
+                         "so its makers run until it holds that much (default 1; 0: a machine switched off waits for nothing, "
+                         "as before 2026-11-11)")
     ap.add_argument("--flow-mod", action="store_true",
                     help="the same flow control by the factory-flow mod (tools/factory-flow), as a player would run it: the test "
                          "copy is tagged by its tag.py, the mod is installed beside the check, and the factory is built raising "
@@ -624,6 +628,8 @@ def main():
         print("flow: quotas on what each machine takes, production by demand, overflows keep what users wait for")
     if args.pull_ahead:
         params["pull_ahead"] = args.pull_ahead
+    if args.flow or args.pull or args.flow_mod:
+        params["pull_stock"] = 1 if args.pull_stock is None else args.pull_stock
     if args.quota_window:
         params["quota_window"] = args.quota_window
     if args.pull:
@@ -753,6 +759,16 @@ def main():
                                     {t["name"] for t in (job or {}).get("targets", [])}, recipes)
         bp = flow_tag.encode(bp_obj)
         params["raise_built"] = True
+        # The mod's settings as the check's options give them.
+        ms = {}
+        if args.pull_ahead:
+            ms["factory-flow-pull-ahead"] = args.pull_ahead
+        if args.pull_stock is not None:
+            ms["factory-flow-stock"] = args.pull_stock
+        if args.quota_window:
+            ms["factory-flow-quota-window"] = int(args.quota_window // 60)
+        if ms:
+            params["mod_settings"] = ms
         # (Loop carriers as --flow puts them in: a player fills a new loop by hand.)
         params["bootstrap"] = True
         print(f"flow mod: {tagged} machines and {ends} overflow belts tagged; the factory-flow mod controls them, "

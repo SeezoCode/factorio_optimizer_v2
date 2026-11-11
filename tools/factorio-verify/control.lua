@@ -320,6 +320,10 @@ local function power(run, surface, force, x0, y0)
 end
 
 local function start(params)
+  -- params.mod_settings: runtime-global settings of other mods to set first (the factory-flow mod's, for --flow-mod).
+  for k, v in pairs(params.mod_settings or {}) do
+    pcall(function() settings.global[k] = { value = v } end)
+  end
   local text = table.concat(storage.buf or {})
   storage.buf = {}
   local inv = game.create_inventory(1)
@@ -1309,11 +1313,49 @@ script.on_event(defines.events.on_tick, function()
         end
       end
     end
+    -- params.pull_stock (N > 0): every machine, switched off or not, keeps N crafts' worth of each ingredient, so its
+    -- makers run until it holds that much. Without it a machine switched off waits for nothing: whole chains stayed off
+    -- because the machine above was off (Py production science: ten levels of uranium enrichment, all off for good, and
+    -- three quarters of the time off on every level 2 to 8 steps from the target), and when demand finally came each
+    -- level started from empty, one belt trip at a time. With it the chain stays primed: a small, bounded buffer at
+    -- every step, not everything on.
+    local stock = run.params.pull_stock or 0
+    local low_fluid = short_fluid
+    if stock > 0 then
+      low_fluid = {}
+      for f in pairs(short_fluid) do low_fluid[f] = true end
+      if low_net == short_net then
+        low_net, low_at = {}, {}
+        for item, nets in pairs(short_net) do local c = {}; for n in pairs(nets) do c[n] = true end; low_net[item] = c end
+        for u, items in pairs(short_at) do local c = {}; for i in pairs(items) do c[i] = true end; low_at[u] = c end
+      end
+      for _, m in pairs(run.machines) do
+        local e = m.e
+        if e.valid then
+          local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+          if r then
+            for _, ing in pairs(r.ingredients) do
+              if ing.type == "item" then
+                if held(e, ing.name) < stock * ing.amount then
+                  local ln = low_net[ing.name] or {}
+                  for net in pairs((run.feeds or {})[e.unit_number] or {}) do ln[net] = true end
+                  low_net[ing.name] = ln
+                  low_at[e.unit_number] = low_at[e.unit_number] or {}
+                  low_at[e.unit_number][ing.name] = true
+                end
+              elseif (e.get_fluid_count(ing.name) or 0) < stock * ing.amount then
+                low_fluid[ing.name] = true
+              end
+            end
+          end
+        end
+      end
+    end
     run.short = { net = short_net, at = short_at, fluid = short_fluid, fluid_at = fluid_at, push_net = push_net, push_at = push_at, push_fluid = push_fluid,
-      low_net = low_net, low_at = low_at }
+      low_net = low_net, low_at = low_at, low_fluid = low_fluid }
   end
   if run.params.pull and game.tick % 60 == 0 and run.short then
-    local short_net, short_at, short_fluid = run.short.low_net or run.short.net, run.short.low_at or run.short.at, run.short.fluid
+    local short_net, short_at, short_fluid = run.short.low_net or run.short.net, run.short.low_at or run.short.at, run.short.low_fluid or run.short.fluid
     local target = {}
     for _, n in pairs(run.params.pull_wanted or {}) do target[n] = true end
     run.pulled_off = 0

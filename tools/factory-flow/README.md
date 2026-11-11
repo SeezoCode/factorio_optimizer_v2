@@ -7,7 +7,11 @@ in-game check showed the same rules work as `verify.py --flow`. This mod is thos
 Once a second, for the machines of a tagged blueprint:
 
 - **Pull**: a machine runs while a machine it feeds (along its output belts, or by hand) waits for one of its products,
-  or while it makes a target. Machines whose outputs could not be traced always run. What a machine's fuel burns to
+  or while it makes a target. Every machine, switched off or not, keeps one craft's worth of each ingredient
+  (*stock*, a setting): its makers run until it does. Without that a machine switched off waited for nothing, so a long
+  chain stayed off level by level behind the machine above it, and when demand came every level started from empty
+  (Py production science in the in-game check: 528 crafts a minute and ten levels of uranium enrichment that never ran,
+  against 3,386 a minute with stock). Machines whose outputs could not be traced always run. What a machine's fuel burns to
   (ash) counts as one of its products. A machine waits for what its input slots lack (a Py farm's animals in its
   module slots are not counted: a reproductive complex running on xeno never asked for the xeno its recipe takes).
 - **Quotas**: a machine that has taken more of an item than its plan allows so far (planned intake × 1.5, plus two
