@@ -41,6 +41,19 @@ def planned_intake(plan):
     return {r: {k: v / n[r] for k, v in tot[r].items()} for r in n}
 
 
+def purposes(plan):
+    """Recipe -> (the products its machines were planned for, planned crafts per second of one machine): the main
+    product, or every product the plan uses when the main one leaves as a by-product (plan.json's '#byproduct')."""
+    purpose, crafts = defaultdict(set), defaultdict(float)
+    for m in plan.get("machines", []):
+        r = base(m["recipe"])
+        used = {base(k) for k in m.get("products", {}) if not k.endswith("#byproduct")}
+        main = base(m.get("product", ""))
+        purpose[r] |= {main} if main in used else used
+        crafts[r] = max(crafts[r], m.get("crafts", 0.0))
+    return purpose, crafts
+
+
 def carriers(plan):
     """Items a production loop passes round one for one (plan.json seedCarriers, and every item of their rings): what a
     new loop needs put in by hand once (barrels, cages, bricks)."""
@@ -78,6 +91,7 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
     """Adds the tags in place; returns (machines tagged, overflow belts tagged)."""
     bp = bp_obj["blueprint"]
     intake = planned_intake(plan)
+    purpose, crafts = purposes(plan)
     loop = carriers(plan)
     makes = {}
     for r in recipes or {}:
@@ -91,6 +105,10 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
         if not r or r not in intake:
             continue
         flow = {"take": {k: round(v, 9) for k, v in intake[r].items()}}
+        # (What it was planned for, and how fast: the side-product cap.)
+        if purpose.get(r):
+            flow["purpose"] = sorted(purpose[r])
+            flow["crafts"] = round(crafts[r], 9)
         if makes.get(r, set()) & targets:
             flow["target"] = True
         # (The loop carriers it takes: the mod says when a loop starves for them.)

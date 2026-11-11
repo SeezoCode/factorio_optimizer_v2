@@ -440,6 +440,11 @@ local function start(params)
       if f and (f.mode == "remove" or ((f.mode == "exactly" or f.mode == "at-most") and (f.percentage or 0) == 0)) then
         e.set_infinity_pipe_filter(nil)
         run.drains[#run.drains + 1] = { e = e, fluid = f.name, pos = bp_pos(run, e.position), amount = 0 }
+      elseif f and f.mode == "at-most" and run.params.overflow_keep then
+        -- params.overflow_keep: how full a fluid overflow (an infinity pipe keeping its pipe at most so full) keeps
+        -- its pipe, instead of the test copy's half. Users' boxes fill only as far as the pipe is full.
+        f.percentage = run.params.overflow_keep
+        e.set_infinity_pipe_filter(f)
       end
     end
   end
@@ -831,6 +836,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by,
     research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
                  bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
                  belt_stack_size_bonus = game.forces.player.belt_stack_size_bonus },
@@ -844,6 +850,7 @@ local function finish(run)
       report.machines[#report.machines + 1] = {
         name = m.name, recipe = str(recipe) or m.recipe or "", x = m.pos.x, y = m.pos.y, status = STATUS[e.status], usual_status = most(m.statuses),
         statuses = m.statuses, crafts = crafts, crafts_per_min = crafts / secs * 60, progress = e.crafting_progress,
+        voided = m.voided,
         products_finished = e.products_finished, speed = e.crafting_speed,
         -- The belt networks its inserters take from and drop onto (see run.net_of).
         feeds = (function() local o = {}; for n in pairs((run.feeds or {})[e.unit_number] or {}) do o[#o + 1] = n end; return o end)(),
@@ -1157,6 +1164,75 @@ local function feed_short(run)
   end
 end
 
+-- params.void_full, a helper ("virtual sinks"): a machine standing with a full output and not switched off by flow
+-- control has its surplus deleted every second: half of each product item in its output, half of each product fluid in
+-- its output boxes, half of its burnt result. Counted per item, per recipe and per machine. It does what a gated sink
+-- at the end of every belt would (open only while a maker would otherwise stop), without building one: does the factory
+-- run once every by-product has somewhere to go, and where would real sinks be needed, and how big?
+local FULL_OUT = { [defines.entity_status.full_output] = true, [defines.entity_status.waiting_for_space_in_destination] = true,
+  [defines.entity_status.full_burnt_result_output] = true }
+local function void_full(run)
+  if not run.params.void_full or game.tick % 60 ~= 0 then return end
+  run.voided = run.voided or {}
+  run.voided_measure = run.voided_measure or {}
+  run.voided_by = run.voided_by or {}
+  local function record(m, r, k, d)
+    run.voided[k] = (run.voided[k] or 0) + d
+    if run.phase == "measure" then
+      run.voided_measure[k] = (run.voided_measure[k] or 0) + d
+      local rk = r.name .. " " .. k
+      run.voided_by[rk] = (run.voided_by[rk] or 0) + d
+      m.voided = m.voided or {}
+      m.voided[k] = (m.voided[k] or 0) + d
+    end
+  end
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    if e.valid and not e.disabled_by_script and FULL_OUT[e.status] then
+      local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+      if r then pcall(function()
+        local out = e.get_output_inventory()
+        for _, p in pairs(r.products) do
+          if p.type == "item" then
+            local n = out and out.get_item_count(p.name) or 0
+            local d = math.floor(n / 2)
+            if d > 0 then
+              local removed = out.remove { name = p.name, count = d }
+              if removed > 0 then record(m, r, p.name, removed) end
+            end
+          else
+            for k = 1, (e.fluids_count or 0) do
+              local f = e.get_fluid(k)
+              if f and f.name == p.name and f.amount > 1 then
+                -- (Only an output box: a catalyst's input box holds the same fluid.)
+                local proto = e.get_fluid_box_prototype(k)
+                if proto and proto.index == nil and proto[1] then proto = proto[1] end
+                if proto and proto.production_type == "output" then
+                  local d = f.amount / 2
+                  e.set_fluid(k, { name = f.name, amount = f.amount - d, temperature = f.temperature })
+                  record(m, r, "[" .. p.name .. "]", d)
+                end
+              end
+            end
+          end
+        end
+        if e.status == defines.entity_status.full_burnt_result_output then
+          local burnt = e.get_burnt_result_inventory()
+          for k, c in pairs(burnt and burnt.get_contents() or {}) do
+            local name = type(c) == "table" and c.name or k
+            local n = type(c) == "table" and c.count or c
+            local d = math.floor(n / 2)
+            if d > 0 then
+              local removed = burnt.remove { name = name, count = d }
+              if removed > 0 then record(m, r, name, removed) end
+            end
+          end
+        end
+      end) end
+    end
+  end
+end
+
 script.on_event(defines.events.on_tick, function()
   local run = storage.run
   if not run or run.phase == "done" or run.phase == nil then return end
@@ -1174,6 +1250,7 @@ script.on_event(defines.events.on_tick, function()
   end
   seed_tick(run)
   feed_short(run)
+  void_full(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (2) times its plan,
   -- plus 10 crafts, waits while a machine fed from the same belt stands short of one of its item ingredients (one item
   -- runs on many separate belts; holding a barrel filler for one on another belt starved its own users): it takes no more than its
@@ -1396,6 +1473,7 @@ script.on_event(defines.events.on_tick, function()
     local target = {}
     for _, n in pairs(run.params.pull_wanted or {}) do target[n] = true end
     run.pulled_off = 0
+    run.side_capped = 0
     for _, m in pairs(run.machines) do
       local e = m.e
       local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
@@ -1410,17 +1488,42 @@ script.on_event(defines.events.on_tick, function()
           local b = prototypes.item[f].burnt_result
           if b then products[#products + 1] = { name = b.name, type = "item" } end
         end
+        -- params.side_cap (with params.purpose and params.plan_crafts): what the machine was planned for (its main
+        -- product, or every product the plan uses when the main one leaves as a by-product). Wanted only for another of
+        -- its products, it runs no faster than side_cap times its plan (over the last ten minutes, plus two crafts).
+        -- Py production science's coal gas plant ran at nine times its plan for a trace of iron oxide on its own belt
+        -- (and coke), and the coke filled the robot provider it feeds and stopped it.
+        local purpose = run.params.side_cap and (run.params.purpose or {})[r.name]
+        local main_wanted = false
         for _, p in pairs(products) do
-          if target[p.name] then wanted = true; known = true
+          local hit = false
+          if target[p.name] then hit = true; known = true
           elseif p.type == "fluid" then
             known = true
-            if fhit(short_fluid, e, p.name) then wanted = true end
+            if fhit(short_fluid, e, p.name) then hit = true end
           else
             local sn = short_net[p.name]
-            for net in pairs(drops) do known = true; if sn and sn[net] then wanted = true end end
-            for u in pairs(hands) do known = true; if short_at[u] and short_at[u][p.name] then wanted = true end end
+            for net in pairs(drops) do known = true; if sn and sn[net] then hit = true end end
+            for u in pairs(hands) do known = true; if short_at[u] and short_at[u][p.name] then hit = true end end
           end
-          if wanted then break end
+          if hit then
+            wanted = true
+            if not purpose or purpose[p.name] or target[p.name] then main_wanted = true; break end
+          end
+        end
+        if purpose then
+          m.sc = m.sc or {}
+          local h = m.sc
+          h[#h + 1] = { tick = game.tick, pf = e.products_finished }
+          while #h > 1 and game.tick - h[1].tick > 600 * 60 do table.remove(h, 1) end
+          local c = (run.params.plan_crafts or {})[r.name]
+          if wanted and not main_wanted and c then
+            local span = (game.tick - h[1].tick) / 60
+            if e.products_finished - h[1].pf > c * span * run.params.side_cap + 2 then
+              wanted = false
+              run.side_capped = run.side_capped + 1
+            end
+          end
         end
         if not wanted then
           local feeds, pushed = (run.feeds or {})[e.unit_number] or {}, run.short.push_at[e.unit_number] or {}
@@ -1719,11 +1822,12 @@ commands.add_command("verify_status", "Where a verify run is.", function()
     end
   end
   local st = { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil,
-    working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, stopped = run.quota_stopped, gates = run.gates_closed }
+    working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, stopped = run.quota_stopped, gates = run.gates_closed,
+    capped = run.side_capped }
   -- (Under the factory-flow mod: what it is doing.)
   if remote.interfaces["factory-flow"] then
     local s = remote.call("factory-flow", "status") or {}
-    st.off, st.held, st.stopped, st.gates = s.off, s.held, s.stopped, s.gates_closed
+    st.off, st.held, st.stopped, st.gates, st.capped = s.off, s.held, s.stopped, s.gates_closed, s.capped
   end
   reply(st)
 end)

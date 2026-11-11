@@ -69,7 +69,10 @@ local function on_built(ev)
   local tags = ev.tags
   local f = tags and tags.flow
   if f and CRAFTERS[e.type] then
-    storage.machines[e.unit_number] = { e = e, take = f.take or {}, target = f.target, recipe = tags.recipe, carriers = f.carriers }
+    local purpose
+    if f.purpose then purpose = {}; for _, p in pairs(f.purpose) do purpose[p] = true end end
+    storage.machines[e.unit_number] = { e = e, take = f.take or {}, target = f.target, recipe = tags.recipe, carriers = f.carriers,
+      purpose = purpose, crafts = f.crafts }
   elseif f and f.overflow and BELTS[e.type] then
     storage.ends[e.unit_number] = { e = e, item = f.overflow }
   elseif f and f.bot and e.type == "logistic-container" then
@@ -312,7 +315,7 @@ end
 local function control()
   local T = storage.topo
   local tick = game.tick
-  local stats = { machines = 0, off = 0, held = 0, stopped = 0, gates = 0, gates_closed = 0 }
+  local stats = { machines = 0, off = 0, held = 0, stopped = 0, gates = 0, gates_closed = 0, capped = 0 }
   -- What machines wait for: item -> belt networks along which one waits, machine -> items, fluids.
   local short_net, short_at, fluid_at, short_fluid = {}, {}, {}, {}
   local function wait(unit, item)
@@ -461,10 +464,17 @@ local function control()
 
   -- Pull.
   if setting("pull") then
+    -- Side-product cap (setting above 0): a machine wanted only for a product it was not planned for (tags: its main
+    -- product, or every product the plan uses when the main one leaves as a by-product) runs no faster than that many
+    -- times its plan over the last ten minutes, plus two crafts. Py production science's coal gas plant ran at nine
+    -- times its plan for a trace of iron oxide (and coke), and the coke filled the robot provider it feeds and stopped it.
+    local cap = setting("side-cap")
     for unit, m in pairs(storage.machines) do
       local r = recipes[unit]
       if m.e.valid and r then
         local wanted, known = m.target == true, m.target == true
+        local capping = cap > 0 and m.purpose ~= nil and m.crafts ~= nil
+        local main = wanted
         if not wanted then
           local drops, hands = T.drops[unit] or {}, T.hands[unit] or {}
           local products = {}
@@ -475,15 +485,29 @@ local function control()
             if b then products[#products + 1] = { name = b.name, type = "item" } end
           end
           for _, p in pairs(products) do
+            local hit = false
             if p.type == "fluid" then
               known = true
-              if fhit(want_fluid, m.e, p.name) then wanted = true end
+              if fhit(want_fluid, m.e, p.name) then hit = true end
             else
               local sn = want_net[p.name]
-              for n in pairs(drops) do known = true; if sn and sn[n] then wanted = true end end
-              for u in pairs(hands) do known = true; if want_at[u] and want_at[u][p.name] then wanted = true end end
+              for n in pairs(drops) do known = true; if sn and sn[n] then hit = true end end
+              for u in pairs(hands) do known = true; if want_at[u] and want_at[u][p.name] then hit = true end end
             end
-            if wanted then break end
+            if hit then
+              wanted = true
+              if not capping or m.purpose[p.name] then main = true; break end
+            end
+          end
+        end
+        if capping then
+          m.sc = m.sc or {}
+          local h = m.sc
+          h[#h + 1] = { tick = tick, pf = m.e.products_finished }
+          while #h > 1 and tick - h[1].tick > 600 * 60 do table.remove(h, 1) end
+          if wanted and not main and m.e.products_finished - h[1].pf > m.crafts * (tick - h[1].tick) / 60 * cap + 2 then
+            wanted = false
+            stats.capped = stats.capped + 1
           end
         end
         if not wanted then
@@ -653,8 +677,8 @@ end)
 -- /factory-flow: what the mod is doing.
 commands.add_command("factory-flow", "Factory flow: machines controlled, switched off, inserters held, gates closed.", function(c)
   local s = storage.stats or {}
-  local text = string.format("factory-flow: %d machines, %d switched off or stopped (%d on fluids), %d inserters held, %d of %d gates closed",
-    s.machines or 0, s.off or 0, s.stopped or 0, s.held or 0, s.gates_closed or 0, s.gates or 0)
+  local text = string.format("factory-flow: %d machines, %d switched off or stopped (%d on fluids), %d inserters held, %d of %d gates closed, %d capped for side products",
+    s.machines or 0, s.off or 0, s.stopped or 0, s.held or 0, s.gates_closed or 0, s.gates or 0, s.capped or 0)
   if c.player_index then game.get_player(c.player_index).print(text) else rcon.print(text) end
 end)
 

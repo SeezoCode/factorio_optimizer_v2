@@ -264,7 +264,7 @@ def run_game(args, bp, params, enabled, have):
                 extra = ""
                 if st.get("machines"):
                     extra = f"; {st.get('working', 0)} of {st['machines']} machines working, target crafts {st.get('target_crafts', 0)}"
-                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed")):
+                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed"), ("capped", "capped for side products")):
                         if st.get(k) is not None:
                             extra += f", {st[k]} {label}"
                 print(f"  {st.get('phase')}: {st.get('game_s', 0):.0f} of {st.get('total_s', 0):.0f} game seconds ({rate:.1f}x real time){extra}", flush=True)
@@ -397,6 +397,15 @@ def judge(report, ports, args):
               ", ".join(f"{k} {fmt(v)}" + (f" ({fmt(bm[k])} while measured)" if bm.get(k) else "")
                         for k, v in sorted(report["bootstrapped"].items(), key=lambda kv: -kv[1])) +
               ("" if bm else "; none while measured"))
+    if report.get("voided") is not None:
+        vb = report.get("voided_by") or {}
+        print(f"\nDeleted by the check while measured (--void-full: surplus of full machines), per second:")
+        rows = sorted(vb.items(), key=lambda kv: -kv[1])
+        for k, n in rows[:40]:
+            print(f"  {k:70} {fmt(n / secs):>10}")
+        if not rows:
+            print("  nothing")
+        notes.append(f"virtual sinks: {len(rows)} recipe/item pairs had surplus deleted (see above)")
     fed = report.get("fed_measure") or {}
     if report.get("fed") is not None:
         use = planned_use(args)
@@ -546,6 +555,17 @@ def main():
                     help="with --pull or --flow: every machine, switched off or not, keeps N crafts' worth of each ingredient, "
                          "so its makers run until it holds that much (default 1; 0: a machine switched off waits for nothing, "
                          "as before 2026-11-11)")
+    ap.add_argument("--side-cap", type=float, nargs="?", const=1.5, default=None, metavar="FACTOR",
+                    help="with --pull or --flow: a machine wanted only for a product it was not planned for (not its main "
+                         "product, or not one the plan uses when the main one leaves as a by-product) runs no faster than "
+                         "FACTOR (default 1.5) times its plan over the last ten minutes")
+    ap.add_argument("--overflow-keep", type=float, default=None, metavar="F",
+                    help="fluid overflows (infinity pipes at the 0/s fluid outputs) keep their pipes at most F full "
+                         "(0 to 1) instead of the test copy's 0.5")
+    ap.add_argument("--void-full", action="store_true",
+                    help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
+                         "control) has half its stuck products deleted every second, counted per recipe and item: does the "
+                         "factory run once every by-product has somewhere to go, and where would real sinks be needed")
     ap.add_argument("--flow-mod", action="store_true",
                     help="the same flow control by the factory-flow mod (tools/factory-flow), as a player would run it: the test "
                          "copy is tagged by its tag.py, the mod is installed beside the check, and the factory is built raising "
@@ -644,6 +664,25 @@ def main():
         params["robots_per_roboport"] = args.robots
     if args.debug_at:
         params["debug_at"] = args.debug_at
+    if args.side_cap:
+        fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        if fp and os.path.exists(fp):
+            purpose, crafts = defaultdict(set), defaultdict(float)
+            for m in json.load(open(fp)).get("machines", []):
+                rn = m["recipe"].split("#")[0].split("@")[0]
+                used = {k.split("#")[0] for k in m.get("products", {}) if not k.endswith("#byproduct")}
+                main = m.get("product", "").split("#")[0]
+                purpose[rn] |= {main} if main in used else used
+                crafts[rn] = max(crafts[rn], m.get("crafts", 0.0))
+            params["side_cap"] = args.side_cap
+            params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
+            params["plan_crafts"] = dict(crafts)
+            print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
+    if args.overflow_keep is not None:
+        params["overflow_keep"] = args.overflow_keep
+    if args.void_full:
+        params["void_full"] = True
+        print("void-full: full machines have their surplus deleted (virtual sinks), counted")
     if args.feed_short:
         params["feed_short"] = args.feed_short
         if args.feed_stop is not None:
@@ -767,6 +806,8 @@ def main():
             ms["factory-flow-stock"] = args.pull_stock
         if args.quota_window:
             ms["factory-flow-quota-window"] = int(args.quota_window // 60)
+        if args.side_cap:
+            ms["factory-flow-side-cap"] = args.side_cap
         if ms:
             params["mod_settings"] = ms
         # (Loop carriers as --flow puts them in: a player fills a new loop by hand.)

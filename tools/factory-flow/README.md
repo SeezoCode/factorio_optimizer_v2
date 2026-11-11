@@ -33,6 +33,12 @@ Once a second, for the machines of a tagged blueprint:
 - **Push**: a machine standing with a full output (or a full burnt result slot: its ash) gets the users of what is
   stuck in it going, even if nothing they make is waited for (a ring stops for good otherwise).
 
+A setting, *side-product cap* (default 0, off), holds a machine wanted only for a product it was not planned for to that
+many times its planned rate (over the last ten minutes, plus two crafts). Its purpose comes with the tags: its main
+product, or every product the plan uses when the main one leaves as a by-product. Without it a trace by-product drives a
+machine as fast as it can go, and everything else it makes piles up: Py production science's coal gas plant ran at nine
+times its plan for a little iron oxide, and its coke filled the robot provider it feeds.
+
 A setting, *pull ahead* (default 1), lets makers run while a user works with less than that many crafts of an
 ingredient, not only once it stands short. Another, *quota window* (minutes, default 0), makes quotas count only
 what a machine took in that last stretch, so one that ran ahead early on is not held for hours. Machines the mod switches off show "Disabled by script". Each rule can be
