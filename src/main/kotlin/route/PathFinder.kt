@@ -74,6 +74,11 @@ class RouteProblem(
      * where no path fits there, it searches the whole factory. 0: no bound.
      */
     val guideBound: Int = 3,
+    /**
+     * The A* heuristic's weight times this: above 1 the search heads for its goal sooner and expands fewer states, for
+     * slightly longer paths (a factory's corridor links, hundreds of tiles each, where an exact search sweeps wide bands).
+     */
+    val heuristicScale: Double = 1.0,
 )
 
 data class RouteStats(val belts: Int, val undergrounds: Int, val inserters: Int)
@@ -323,7 +328,7 @@ class PathFinder(internal val p: RouteProblem) {
         return cands.minByOrNull { t -> (if (occHeat[t] > 0) -10 else 0) + occTile[t] * 3 + (if (occBelt[t] > 0) 1 else 0) } ?: -1
     }
     internal val minStep: Float
-    internal val hWeight = tun.heuristicWeight.toFloat()
+    internal val hWeight = (tun.heuristicWeight * p.heuristicScale).toFloat()
     var expansions = 0L
         private set
 

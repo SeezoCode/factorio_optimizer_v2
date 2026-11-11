@@ -180,7 +180,7 @@ private fun subProblem(problem: RouteProblem, ids: List<Int>, obstacles: Set<Til
         beltBias = problem.beltBias, warmHistory = warm, debugDir = null, endgameSeed = problem.endgameSeed,
         noTunnel = problem.noTunnel, noBeltTunnel = noBeltTunnel, noBeltUgEnds = noBeltUgEnds, deadlineMs = deadlines?.hard ?: problem.deadlineMs, softDeadlineMs = deadlines?.soft ?: problem.softDeadlineMs,
         negotiationDeadlineMs = deadlines?.negotiation ?: problem.negotiationDeadlineMs, netGuides = guides, guideCell = problem.guideCell,
-        guidePenalty = problem.guidePenalty, guideBound = problem.guideBound)
+        guidePenalty = problem.guidePenalty, guideBound = problem.guideBound, heuristicScale = problem.heuristicScale)
 }
 
 /** The tiles [e] puts its items onto: in front of a belt, an underground's exit, or both halves of a splitter. */
