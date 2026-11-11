@@ -1393,7 +1393,11 @@ fun stitchRoute(
     // A machine at a block's edge may put what it makes onto a corridor tile (Py's wood processing units): none there.
     val resultTiles = entities.filter { it.kind == Kind.MACHINE }.mapNotNull { GameConstants.resultTile(it.name, it.w, it.h, it.x, it.y, it.dir.ordinal, it.mirror) }
     val routed = routeCorridors(RouteProblem(stitchPlan, stitchConfig, tuning.route, Placement(W, H, emptyList()),
-        obstacles = blockTiles + entityTiles + pointedAt + reached + besidePipes + junctionKeepFree + portTargets + resultTiles, noTunnel = noTunnel,
+        obstacles = blockTiles + entityTiles + pointedAt + reached + junctionKeepFree + portTargets + resultTiles, noTunnel = noTunnel,
+        // Beside a block's pipes and machines only pipes are kept out: as obstacles for belts too they walled in belt
+        // ports beside a void's sinkhole (Py production science: the same six links unrouted on every floorplan, with
+        // either router: an inserter on one side of the port's first tile, the sinkhole's neighbours on the others).
+        pipeObstacles = besidePipes.toSet(),
         beltBias = besideBelts.associateWith { 40.0 },
         netGuides = if (guides.isEmpty()) emptyMap() else linksOfNet.mapNotNull { (n, ls) ->
             ls.flatMap { guides[it.id].orEmpty() }.distinct().takeIf { it.isNotEmpty() }?.let { n to it }

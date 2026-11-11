@@ -48,6 +48,8 @@ class RouteProblem(
     val endgameSeed: Long = 0,
     /** Tiles no underground may pass under (blocks, when stitching a split factory). */
     val noTunnel: Set<Tile> = emptySet(),
+    /** Tiles no pipe may take (belts may): beside another fluid's pipe or a machine, which a pipe there would join. */
+    val pipeObstacles: Set<Tile> = emptySet(),
     /** Tiles no underground belt may pass under (pipes-to-ground may): other belts' underground ends there. */
     val noBeltTunnel: Set<Tile> = emptySet(),
     /** Tiles where no underground belt may start or end: between another belt's underground pair. */
@@ -133,6 +135,8 @@ class PathFinder(internal val p: RouteProblem) {
     private val ugAllowed = config.trick("B2")
     /** Tiles undergrounds may not pass under ([RouteProblem.noTunnel]). */
     internal val noTunnel = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noTunnel.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
+    /** [RouteProblem.pipeObstacles]. */
+    internal val pipeBlocked = BooleanArray(dims.fullW * dims.fullH).also { a -> p.pipeObstacles.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
     private val noBeltTunnel = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noBeltTunnel.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
     private val noBeltUgEnd = BooleanArray(dims.fullW * dims.fullH).also { a -> p.noBeltUgEnds.forEach { t -> if (dims.inFull(t.x, t.y)) a[dims.idx(t)] = true } }
     /** Weaving tier (B5): its undergrounds have their own channels, so they pass under the main tier's. */

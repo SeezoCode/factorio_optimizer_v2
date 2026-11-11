@@ -123,7 +123,7 @@ internal class PipeRouter(private val pf: PathFinder) {
         if (q < 0 || q >= N || ownStamp[q] == stamp) return false
         val c = connNet[q]
         if (c == n) return true
-        return c == -1 && pf.allowNet[q] == -1
+        return c == -1 && pf.allowNet[q] == -1 && !pf.pipeBlocked[q]
     }
 
     private fun pipeCost(q: Int, joins: Boolean): Float =

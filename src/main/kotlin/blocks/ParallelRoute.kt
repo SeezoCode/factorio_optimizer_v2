@@ -178,7 +178,7 @@ private fun subProblem(problem: RouteProblem, ids: List<Int>, obstacles: Set<Til
     val guides = ids.withIndex().mapNotNull { (i, id) -> problem.netGuides[id]?.let { i to it } }.toMap()
     return RouteProblem(plan, problem.config, problem.tuning, problem.placement, obstacles = obstacles, tileBias = problem.tileBias,
         beltBias = problem.beltBias, warmHistory = warm, debugDir = null, endgameSeed = problem.endgameSeed,
-        noTunnel = problem.noTunnel, noBeltTunnel = noBeltTunnel, noBeltUgEnds = noBeltUgEnds, deadlineMs = deadlines?.hard ?: problem.deadlineMs, softDeadlineMs = deadlines?.soft ?: problem.softDeadlineMs,
+        noTunnel = problem.noTunnel, pipeObstacles = problem.pipeObstacles, noBeltTunnel = noBeltTunnel, noBeltUgEnds = noBeltUgEnds, deadlineMs = deadlines?.hard ?: problem.deadlineMs, softDeadlineMs = deadlines?.soft ?: problem.softDeadlineMs,
         negotiationDeadlineMs = deadlines?.negotiation ?: problem.negotiationDeadlineMs, netGuides = guides, guideCell = problem.guideCell,
         guidePenalty = problem.guidePenalty, guideBound = problem.guideBound, heuristicScale = problem.heuristicScale)
 }
