@@ -1398,9 +1398,9 @@ fun stitchRoute(
         netGuides = if (guides.isEmpty()) emptyMap() else linksOfNet.mapNotNull { (n, ls) ->
             ls.flatMap { guides[it.id].orEmpty() }.distinct().takeIf { it.isNotEmpty() }?.let { n to it }
         }.toMap(),
-        // Guided corridor links search toward their goal about as fast as a belt costs (the plain weight undercounts it
-        // by half, counting undergrounds' cheaper tiles, and each search swept bands hundreds of tiles wide).
-        heuristicScale = if (guides.isEmpty()) 1.0 else 1.8,
+        // (A heavier heuristic, 1.8 times, made each search cheaper but negotiation stopped converging: searches no
+        // longer went round congestion, and Py production science's pass after the groups ended with 431 conflicts
+        // instead of 3. RouteProblem.heuristicScale stays 1.)
         // 6 minutes, then on only while it converges, 30 at most: a big factory's corridors otherwise rip up and reroute
         // for hours (Py science 2), but a bigger one needs more than 6 minutes' worth of iterations.
         // (Negotiation 25 minutes at most, so the endgame has up to 8 for the last few conflicts.)
