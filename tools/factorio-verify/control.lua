@@ -440,6 +440,11 @@ local function start(params)
       if f and (f.mode == "remove" or ((f.mode == "exactly" or f.mode == "at-most") and (f.percentage or 0) == 0)) then
         e.set_infinity_pipe_filter(nil)
         run.drains[#run.drains + 1] = { e = e, fluid = f.name, pos = bp_pos(run, e.position), amount = 0 }
+      elseif f and f.mode == "at-most" and run.params.fluid_gates then
+        -- params.fluid_gates: the overflow starts shut (see the gates in on_tick).
+        run.fgates = run.fgates or {}
+        run.fgates[#run.fgates + 1] = { e = e, filter = f, open = false }
+        e.set_infinity_pipe_filter(nil)
       elseif f and f.mode == "at-most" and run.params.overflow_keep then
         -- params.overflow_keep: how full a fluid overflow (an infinity pipe keeping its pipe at most so full) keeps
         -- its pipe, instead of the test copy's half. Users' boxes fill only as far as the pipe is full.
@@ -1733,6 +1738,25 @@ script.on_event(defines.events.on_tick, function()
       end
     end
   end
+  -- params.fluid_gates: a fluid overflow (the infinity pipe at a 0/s fluid output) stays shut, so its pipes fill and
+  -- every user's box with them, and opens (keeping the pipes at most half full) only while a maker of that fluid on
+  -- the same pipes stands full and no user there waits for it. Held at half full for good, users whose craft takes
+  -- half their box (Factorio 2.0 sizes a machine's box at twice its recipe's amount) never filled it: Py production
+  -- science's treated wood held 56 and 86 of the 100 creosote a craft takes, the shell printer 48 of 50 fetal serum.
+  if run.params.fluid_gates and run.fgates and run.short and game.tick % 60 == 0 then
+    run.fgates_open = 0
+    for _, g in pairs(run.fgates) do
+      if g.e.valid then
+        local name = g.filter.name
+        local open = run.fhit(run.short.push_fluid, g.e, name) and not run.fhit(run.short.fluid, g.e, name)
+        if open then run.fgates_open = run.fgates_open + 1 end
+        if open ~= g.open then
+          g.open = open
+          pcall(function() g.e.set_infinity_pipe_filter(open and g.filter or nil) end)
+        end
+      end
+    end
+  end
   if run.params.governor and game.tick % 60 == 0 then
     local secs = (game.tick - run.t0) / 60
     local factor = run.params.governor_factor or 2
@@ -1823,7 +1847,7 @@ commands.add_command("verify_status", "Where a verify run is.", function()
   end
   local st = { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil,
     working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, stopped = run.quota_stopped, gates = run.gates_closed,
-    capped = run.side_capped }
+    capped = run.side_capped, fgates = run.fgates and #run.fgates or nil, fgates_open = run.fgates_open }
   -- (Under the factory-flow mod: what it is doing.)
   if remote.interfaces["factory-flow"] then
     local s = remote.call("factory-flow", "status") or {}

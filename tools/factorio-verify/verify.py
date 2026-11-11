@@ -264,7 +264,7 @@ def run_game(args, bp, params, enabled, have):
                 extra = ""
                 if st.get("machines"):
                     extra = f"; {st.get('working', 0)} of {st['machines']} machines working, target crafts {st.get('target_crafts', 0)}"
-                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed"), ("capped", "capped for side products")):
+                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed"), ("capped", "capped for side products"), ("fgates_open", "fluid overflows open")):
                         if st.get(k) is not None:
                             extra += f", {st[k]} {label}"
                 print(f"  {st.get('phase')}: {st.get('game_s', 0):.0f} of {st.get('total_s', 0):.0f} game seconds ({rate:.1f}x real time){extra}", flush=True)
@@ -562,6 +562,9 @@ def main():
     ap.add_argument("--overflow-keep", type=float, default=None, metavar="F",
                     help="fluid overflows (infinity pipes at the 0/s fluid outputs) keep their pipes at most F full "
                          "(0 to 1) instead of the test copy's 0.5")
+    ap.add_argument("--fluid-gates", action="store_true",
+                    help="with --flow: fluid overflows stay shut, so their pipes fill, and open (keeping them at most half "
+                         "full) only while a maker of that fluid on the same pipes stands full and no user there waits")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -678,6 +681,8 @@ def main():
             params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
             print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
+    if args.fluid_gates:
+        params["fluid_gates"] = True
     if args.overflow_keep is not None:
         params["overflow_keep"] = args.overflow_keep
     if args.void_full:
