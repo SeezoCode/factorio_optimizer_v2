@@ -1189,6 +1189,41 @@ script.on_event(defines.events.on_tick, function()
   -- this lets them run ahead for as long as users wait, filling long belts.
   -- What machines stand short of, every second (for --pull and --flow): item -> belt networks along which one waits for
   -- it, machine -> items it waits for, fluids one waits for. (A machine switched off waits for nothing.)
+  -- Fluid demand by pipe network: fluid -> { [segment id] = true, any = true when a machine's box had none }. A fluid
+  -- maker counted as wanted while a machine anywhere stood short of its fluid, even on pipes it does not feed: Py
+  -- production science's coal gas plant ran at ten times its plan for a far consumer of its gas, until the coke it makes
+  -- as well filled its output and stopped it.
+  local function segments(e, name)
+    local out = {}
+    -- (Not every machine has fluid boxes to ask: some have no fluidbox key at all.)
+    pcall(function()
+      local fb = e.fluidbox
+      for i = 1, #fb do
+        local f = fb[i]
+        local filt = fb.get_filter(i)
+        if (f and f.name == name) or (filt and filt.name == name) then
+          local ok, id = pcall(function() return fb.get_fluid_segment_id(i) end)
+          if ok and id then out[#out + 1] = id end
+        end
+      end
+    end)
+    return out
+  end
+  local function fmark(tab, e, name)
+    local t = tab[name] or {}
+    tab[name] = t
+    local segs = segments(e, name)
+    if #segs == 0 then t.any = true end
+    for _, id in pairs(segs) do t[id] = true end
+  end
+  local function fhit(tab, e, name)
+    local t = tab and tab[name]
+    if not t then return false end
+    if t.any then return true end
+    for _, id in pairs(segments(e, name)) do if t[id] then return true end end
+    return false
+  end
+  run.fhit = fhit
   if (run.params.pull or run.params.flow or run.params.bootstrap) and game.tick % 60 == 0 and run.drops then
     local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
       [defines.entity_status.fluid_ingredient_shortage] = true, [defines.entity_status.no_fuel] = true }
@@ -1228,7 +1263,7 @@ script.on_event(defines.events.on_tick, function()
             if ing.type == "item" then
               if held(e, ing.name) < ing.amount then wait_for(e, ing.name) end
             elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
-              short_fluid[ing.name] = true
+              fmark(short_fluid, e, ing.name)
               fluid_at[e.unit_number] = fluid_at[e.unit_number] or {}
               fluid_at[e.unit_number][ing.name] = true
             end
@@ -1272,7 +1307,7 @@ script.on_event(defines.events.on_tick, function()
           end
           for _, p in pairs(r.products) do
             if p.type == "fluid" then
-              if not items_stuck and (e.get_fluid_count(p.name) or 0) > 0 then push_fluid[p.name] = true end
+              if not items_stuck and (e.get_fluid_count(p.name) or 0) > 0 then fmark(push_fluid, e, p.name) end
             elseif out and out.get_item_count(p.name) > 0 then
               local pn = push_net[p.name] or {}
               for net in pairs((run.drops or {})[e.unit_number] or {}) do pn[net] = true end
@@ -1323,7 +1358,7 @@ script.on_event(defines.events.on_tick, function()
     local low_fluid = short_fluid
     if stock > 0 then
       low_fluid = {}
-      for f in pairs(short_fluid) do low_fluid[f] = true end
+      for f, t in pairs(short_fluid) do local c = {}; for k, v in pairs(t) do c[k] = v end; low_fluid[f] = c end
       if low_net == short_net then
         low_net, low_at = {}, {}
         for item, nets in pairs(short_net) do local c = {}; for n in pairs(nets) do c[n] = true end; low_net[item] = c end
@@ -1344,7 +1379,7 @@ script.on_event(defines.events.on_tick, function()
                   low_at[e.unit_number][ing.name] = true
                 end
               elseif (e.get_fluid_count(ing.name) or 0) < stock * ing.amount then
-                low_fluid[ing.name] = true
+                fmark(low_fluid, e, ing.name)
               end
             end
           end
@@ -1377,7 +1412,7 @@ script.on_event(defines.events.on_tick, function()
           if target[p.name] then wanted = true; known = true
           elseif p.type == "fluid" then
             known = true
-            if short_fluid[p.name] then wanted = true end
+            if fhit(short_fluid, e, p.name) then wanted = true end
           else
             local sn = short_net[p.name]
             for net in pairs(drops) do known = true; if sn and sn[net] then wanted = true end end
@@ -1389,7 +1424,7 @@ script.on_event(defines.events.on_tick, function()
           local feeds, pushed = (run.feeds or {})[e.unit_number] or {}, run.short.push_at[e.unit_number] or {}
           for _, ing in pairs(r.ingredients) do
             if ing.type == "fluid" then
-              if run.short.push_fluid[ing.name] then wanted = true end
+              if fhit(run.short.push_fluid, e, ing.name) then wanted = true end
             elseif pushed[ing.name] then
               wanted = true
             else
@@ -1478,7 +1513,7 @@ script.on_event(defines.events.on_tick, function()
         -- (Not what a full maker pushes to it: taking that stops no one behind.)
         local feeds, pushed = (run.feeds or {})[e.unit_number] or {}, run.short.push_at[e.unit_number] or {}
         local function is_pushed(ing)
-          if ing.type == "fluid" then return run.short.push_fluid[ing.name] == true end
+          if ing.type == "fluid" then return run.fhit(run.short.push_fluid, e, ing.name) end
           if pushed[ing.name] then return true end
           local pn = run.short.push_net[ing.name]
           if pn then for net in pairs(feeds) do if pn[net] then return true end end end
