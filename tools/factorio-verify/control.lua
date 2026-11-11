@@ -1015,6 +1015,60 @@ local function finish(run)
     end
   end
   end
+  -- Robot links (blocks.bot_links): the logistic networks, their robots, and what the provider and requester chests hold.
+  local okb, errb = pcall(function()
+    local surface = run.surface
+    local nets, robots, idle, charging = {}, 0, 0, 0
+    for _, r in pairs(surface.find_entities_filtered { type = "roboport" }) do
+      local n = r.logistic_network
+      if n and not nets[n.network_id] then
+        nets[n.network_id] = true
+        robots = robots + n.all_logistic_robots; idle = idle + n.available_logistic_robots
+      end
+    end
+    local count = 0; for _ in pairs(nets) do count = count + 1 end
+    local req, reqEmpty, prov, provItems, unnetworked = 0, 0, 0, 0, 0
+    for _, c in pairs(surface.find_entities_filtered { type = "logistic-container" }) do
+      local inv = c.get_inventory(defines.inventory.chest)
+      local n = inv and inv.get_item_count() or 0
+      if c.prototype.logistic_mode == "requester" then
+        req = req + 1; if n == 0 then reqEmpty = reqEmpty + 1 end
+      else
+        prov = prov + 1; provItems = provItems + n
+      end
+      if not c.logistic_network then unnetworked = unnetworked + 1 end
+    end
+    -- A few empty requesters: what they ask for, and what the network has of it.
+    local samples = {}
+    for _, c in pairs(surface.find_entities_filtered { type = "logistic-container" }) do
+      if #samples >= 6 then break end
+      local inv = c.get_inventory(defines.inventory.chest)
+      if c.prototype.logistic_mode == "requester" and inv and inv.get_item_count() == 0 then
+        local asks = {}
+        local okp, pt = pcall(function() return c.get_requester_point() end)
+        if okp and pt then
+          for _, sec in pairs(pt.sections or {}) do
+            for _, f in pairs(sec.filters or {}) do
+              if f.value then
+                local name = type(f.value) == "table" and f.value.name or f.value
+                local n = c.logistic_network
+                asks[#asks + 1] = { item = name, min = f.min, in_network = n and n.get_item_count(name) or -1, active = sec.active }
+              end
+            end
+          end
+          samples[#samples + 1] = { x = bp_pos(run, c.position).x, y = bp_pos(run, c.position).y, enabled = pt.enabled, asks = asks,
+            targeted = pt.targeted_items_deliver and table_size(pt.targeted_items_deliver) or nil }
+        else
+          samples[#samples + 1] = { x = bp_pos(run, c.position).x, y = bp_pos(run, c.position).y, error = tostring(pt) }
+        end
+      end
+    end
+    if count > 0 or req > 0 then
+      report.bots = { networks = count, robots = robots, robots_idle = idle, requesters = req, requesters_empty = reqEmpty,
+        providers = prov, items_in_providers = provItems, chests_outside_networks = unnetworked, empty_requesters = samples }
+    end
+  end)
+  if not okb then report.bots_error = tostring(errb) end
   report.silos = {}
   for _, s in pairs(run.silos or {}) do
     if s.e.valid then report.silos[#report.silos + 1] = { x = bp_pos(run, s.e.position).x, y = bp_pos(run, s.e.position).y, launches = s.launches, failed_launches = s.failed, status = s.e.rocket_silo_status,

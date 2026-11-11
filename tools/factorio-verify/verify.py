@@ -386,6 +386,11 @@ def judge(report, ports, args):
     if no_recipe:
         fails.append(f"{len(no_recipe)} machines have no recipe")
 
+    if report.get("bots"):
+        b = report["bots"]
+        print(f"\nRobots: {b['robots']} in {b['networks']} network(s) ({b['robots_idle']} idle); {b['requesters_empty']} of "
+                     f"{b['requesters']} requester chests empty, {b['items_in_providers']} items waiting in {b['providers']} providers"
+                     + (f"; {b['chests_outside_networks']} chests outside any network" if b['chests_outside_networks'] else ""))
     if report.get("bootstrapped"):
         bm = report.get("bootstrapped_measure") or {}
         print("\nLoop carriers put in by the check (--flow, a loop starved for two minutes): " +
