@@ -1241,7 +1241,9 @@ script.on_event(defines.events.on_tick, function()
     local function dlog(m, what)
       if not dbg[m.pos.x .. "," .. m.pos.y] then return end
       run.debug = run.debug or {}
-      if #run.debug < 400 then run.debug[#run.debug + 1] = game.tick .. " " .. m.pos.x .. "," .. m.pos.y .. " " .. what end
+      -- (The last 400 lines: the steady state, not the first minutes.)
+      if #run.debug >= 400 then table.remove(run.debug, 1) end
+      run.debug[#run.debug + 1] = game.tick .. " " .. m.pos.x .. "," .. m.pos.y .. " " .. what
     end
     run.dlog = dlog
     for _, m in pairs(run.machines) do

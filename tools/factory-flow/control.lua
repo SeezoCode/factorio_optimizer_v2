@@ -276,6 +276,39 @@ end)
 
 -- Once a second --------------------------------------------------------------------------------------------------
 
+-- Fluid demand by pipe network: fluid -> { [segment id] = true, any = true when a machine's box had none }. A fluid
+-- maker counted as wanted while a machine anywhere stood short of its fluid, even on pipes it does not feed (Py
+-- production science: a coal gas plant at ten times its plan for a far consumer, until its coke filled its output).
+local function segments(e, name)
+  local out = {}
+  pcall(function()
+    local fb = e.fluidbox
+    for i = 1, #fb do
+      local f = fb[i]
+      local filt = fb.get_filter(i)
+      if (f and f.name == name) or (filt and filt.name == name) then
+        local ok, id = pcall(function() return fb.get_fluid_segment_id(i) end)
+        if ok and id then out[#out + 1] = id end
+      end
+    end
+  end)
+  return out
+end
+local function fmark(tab, e, name)
+  local t = tab[name] or {}
+  tab[name] = t
+  local segs = segments(e, name)
+  if #segs == 0 then t.any = true end
+  for _, id in pairs(segs) do t[id] = true end
+end
+local function fhit(tab, e, name)
+  local t = tab[name]
+  if not t then return false end
+  if t.any then return true end
+  for _, id in pairs(segments(e, name)) do if t[id] then return true end end
+  return false
+end
+
 local function control()
   local T = storage.topo
   local tick = game.tick
@@ -303,7 +336,7 @@ local function control()
           if ing.type == "item" then
             if held(e, ing.name) < ing.amount then wait(unit, ing.name) end
           elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
-            short_fluid[ing.name] = true
+            fmark(short_fluid, e, ing.name)
             local a = fluid_at[unit] or {}
             a[ing.name] = true
             fluid_at[unit] = a
@@ -344,7 +377,7 @@ local function control()
       end
       for _, p in pairs(r.products) do
         if p.type == "fluid" then
-          if not items_stuck and (e.get_fluid_count(p.name) or 0) > 0 then push_fluid[p.name] = true end
+          if not items_stuck and (e.get_fluid_count(p.name) or 0) > 0 then fmark(push_fluid, e, p.name) end
         elseif out and out.get_item_count(p.name) > 0 then
           local pn = push_net[p.name] or {}
           for n in pairs(T.drops[unit] or {}) do pn[n] = true end
@@ -359,7 +392,7 @@ local function control()
     end
   end
   local function pushed(unit, ing)
-    if ing.type == "fluid" then return push_fluid[ing.name] == true end
+    if ing.type == "fluid" then return storage.machines[unit] ~= nil and fhit(push_fluid, storage.machines[unit].e, ing.name) end
     if push_at[unit] and push_at[unit][ing.name] then return true end
     local pn = push_net[ing.name]
     if pn then for n in pairs(T.feeds[unit] or {}) do if pn[n] then return true end end end
@@ -404,7 +437,7 @@ local function control()
       for u, items in pairs(short_at) do local c = {}; for i in pairs(items) do c[i] = true end; want_at[u] = c end
     end
     want_fluid = {}
-    for f in pairs(short_fluid) do want_fluid[f] = true end
+    for f, t in pairs(short_fluid) do local c = {}; for k, v in pairs(t) do c[k] = v end; want_fluid[f] = c end
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
       if r and e.valid then
@@ -419,7 +452,7 @@ local function control()
               want_at[unit] = a
             end
           elseif (e.get_fluid_count(ing.name) or 0) < stock * ing.amount then
-            want_fluid[ing.name] = true
+            fmark(want_fluid, e, ing.name)
           end
         end
       end
@@ -444,7 +477,7 @@ local function control()
           for _, p in pairs(products) do
             if p.type == "fluid" then
               known = true
-              if want_fluid[p.name] then wanted = true end
+              if fhit(want_fluid, m.e, p.name) then wanted = true end
             else
               local sn = want_net[p.name]
               for n in pairs(drops) do known = true; if sn and sn[n] then wanted = true end end
