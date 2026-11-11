@@ -350,6 +350,14 @@ class BlockEngine(
                     active.entries.removeIf { (j, f) -> if (f.isDone) { running[j] = 0; runCatching { f.get() }.onFailure { e -> event("${label(j)}: turn failed with $e") }; true } else false }
                 }
                 if (stopNow) break
+                // A block whose search gave up without a layout (no size worked): no factory can be stitched, so the
+                // run ends once the turns under way finish. (It waited for that layout for good: Py utility science's
+                // blocks 20 and 36 gave up, the rest had layouts, nothing could start, every worker idle.)
+                val gaveUp = (0 until n).filter { b -> best(b) == null && jobOf(b, 0)?.let { searches[it]?.done == true } == true }
+                if (gaveUp.isNotEmpty() && !stopping) {
+                    event("${gaveUp.joinToString(", ") { "block ${it + 1}" }}: no layout at any size; no factory can be stitched, stopping")
+                    stopAll(false)
+                }
                 // Every block gets its first layout, even past the limit (the factory needs one of each).
                 val allFirst = (0 until n).all { best(it) != null }
                 if ((stopping || (timeUp() && allFirst)) && active.isEmpty()) break

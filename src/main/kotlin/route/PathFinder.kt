@@ -2032,6 +2032,17 @@ class PathFinder(internal val p: RouteProblem) {
                 .coerceAtMost(parts.size)
             return groupWithin(parts, g, center)
         }
+        // 0. One maker that both feeds consumers here and sends the rest out (no input port): one chain from it past its
+        // consumers on to the output port, when that fits one belt. Built as an output chain and a consumer chain, the
+        // maker fed both, which the game divides by inserter speed, and nothing else on either chain could make up the
+        // difference (Py utility science's block 20: its one sic furnace, 2.24/s out and 0.43/s to a diamond wire
+        // machine, failed validation at every size).
+        val soleOut = outputs.singleOrNull()?.takeIf { it.rate > 1e-9 }
+        if (soleOut != null && sources.isEmpty() && producers.size == 1 && consumers.isNotEmpty() && net.item !in plan.seedCarriers &&
+            producers[0].rate <= beltCap + 1e-9 && chainsOf(consumers + producers).size == 1) {
+            addChain(net, consumers + producers, null, 0.0, soleOut, soleOut.rate, rectOf)
+            return
+        }
         // 1. Output ports. An output chain fed from a single-belt input port (an item passing through a block of a
         // factory) waits for step 2: the consumers that port feeds join it, so the port stays one belt.
         class Pending(val parts: List<EffectiveTerminal>, val srcRate: Double, val out: EffectiveTerminal, val outRate: Double)
