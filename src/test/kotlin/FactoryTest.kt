@@ -5,6 +5,9 @@ import config.BlocksConfig
 import config.ConfigSource
 import config.SearchConfig
 import config.Tuning
+import config.strictJson
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import geom.Dir
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -222,6 +225,23 @@ class FactoryTest {
         out.deleteRecursively()
         val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
         assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+    }
+
+    @Test
+    fun `robot links stitch into a valid factory, their requesters counted as supply`() {
+        val config = TestData.job("t3").copy(blocks = BlocksConfig(maxMachines = 5, sizeBy = "machines", botLinks = 1.0, lanePairs = false),
+            search = SearchConfig(timeBudgetS = 20.0, seedsPerSize = 2, threads = 4, seed = 7))
+        val plan = buildPlan(TestData.data, config, handTuning)
+        val out = File("build/factory/t3_bots")
+        out.deleteRecursively()
+        val f = assertNotNull(runFactory(TestData.data, config, Tuning.defaults(), plan, out))
+        assertTrue(f.success, "${f.errors.take(5)} ${f.notes}")
+        assertTrue(f.sources.any { it.requester }, "no requester-fed port: ${f.sources}")
+        val ports = File(out, "ports.json").readText()
+        assertTrue("\"bots\"" in ports, ports)
+        // The factory's inputs are what comes from outside: robots bring the rest.
+        val inputs = strictJson.parseToJsonElement(ports).jsonObject.getValue("inputs").jsonArray
+        assertEquals(f.sources.count { !it.requester }, inputs.size)
     }
 
     @Test

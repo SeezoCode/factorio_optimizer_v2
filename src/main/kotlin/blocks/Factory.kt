@@ -1074,9 +1074,11 @@ fun stitchRoute(
         results[b].sources.forEach { s ->
             val l = split.links[bps[b].linkOfPort[s.port] ?: return@forEach]
             val t = Tile(s.tile.x + ox[b], s.tile.y + oy[b])
-            // A robot link's receiving end: its requester was built with the block.
+            // A robot link's receiving end: its requester was built with the block. It stays a source (requester), so
+            // validation counts what robots bring as its supply; the test harness and ports.json leave it out.
             if (l.bot) {
                 if (!s.requester) return StitchAttempt(null, listOf(t), "block ${b + 1}'s ${l.item} port has no requester (a layout from before ends belonged to blocks)")
+                sources += s.copy(tile = t, port = -1)
                 return@forEach
             }
             if (!l.throughCorridor) {
@@ -1588,7 +1590,8 @@ fun factoryManifest(f: Factory): JsonObject {
     return buildJsonObject {
         putJsonObject("box") { put("w", w); put("h", h) }
         putJsonArray("inputs") {
-            f.sources.forEach { s ->
+            // (Requester-fed ports, blocks.bot_links, are fed by robots, not from outside: they are listed under "bots".)
+            f.sources.filter { !it.requester }.forEach { s ->
                 addJsonObject {
                     put("item", s.item); put("rate", s.rate); put("fluid", s.fluid); put("x", s.tile.x); put("y", s.tile.y); put("edge", edge(s.tile.x, s.tile.y))
                     if (s.lane >= 0) put("lane", if (s.lane == 0) "left" else "right")
