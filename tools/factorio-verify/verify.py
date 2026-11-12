@@ -574,8 +574,8 @@ def main():
                     help="fluid overflows (infinity pipes at the 0/s fluid outputs) keep their pipes at most F full "
                          "(0 to 1) instead of the test copy's 0.5")
     ap.add_argument("--fluid-gates", action="store_true",
-                    help="with --flow: fluid overflows stay shut, so their pipes fill, and open (keeping them at most half "
-                         "full) only while a maker of that fluid on the same pipes stands full and no user there waits")
+                    help="with --flow: fluid overflows keep their pipes at most 90%% full, and 40%% while a maker of that "
+                         "fluid on the same pipes stands full and no user there waits")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "

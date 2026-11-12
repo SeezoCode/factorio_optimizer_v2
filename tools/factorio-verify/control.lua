@@ -441,10 +441,11 @@ local function start(params)
         e.set_infinity_pipe_filter(nil)
         run.drains[#run.drains + 1] = { e = e, fluid = f.name, pos = bp_pos(run, e.position), amount = 0 }
       elseif f and f.mode == "at-most" and run.params.fluid_gates then
-        -- params.fluid_gates: the overflow starts shut (see the gates in on_tick).
+        -- params.fluid_gates: the overflow keeps its pipes at most nine tenths full (see the gates in on_tick).
         run.fgates = run.fgates or {}
-        run.fgates[#run.fgates + 1] = { e = e, filter = f, open = false }
-        e.set_infinity_pipe_filter(nil)
+        local g = { e = e, filter = f, open = false }
+        run.fgates[#run.fgates + 1] = g
+        e.set_infinity_pipe_filter({ name = f.name, percentage = 0.9, mode = "at-most", temperature = f.temperature })
       elseif f and f.mode == "at-most" and run.params.overflow_keep then
         -- params.overflow_keep: how full a fluid overflow (an infinity pipe keeping its pipe at most so full) keeps
         -- its pipe, instead of the test copy's half. Users' boxes fill only as far as the pipe is full.
@@ -843,7 +844,8 @@ local function finish(run)
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
     voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, orphan_s = run.orphan_s,
     fluid_gates = run.fgates and (function() local o = {}
-      for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0 } end end
+      for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0,
+        seg = g.seg, push_s = g.push_s or 0, short_s = g.short_s or 0 } end end
       return o end)() or nil,
     research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
                  bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
@@ -1788,11 +1790,12 @@ script.on_event(defines.events.on_tick, function()
       end
     end
   end
-  -- params.fluid_gates: a fluid overflow (the infinity pipe at a 0/s fluid output) stays shut, so its pipes fill and
-  -- every user's box with them, and opens (keeping the pipes at most half full) only while a maker of that fluid on
-  -- the same pipes stands full and no user there waits for it. Held at half full for good, users whose craft takes
-  -- half their box (Factorio 2.0 sizes a machine's box at twice its recipe's amount) never filled it: Py production
-  -- science's treated wood held 56 and 86 of the 100 creosote a craft takes, the shell printer 48 of 50 fetal serum.
+  -- params.fluid_gates: a fluid overflow (the infinity pipe at a 0/s fluid output, or a block's local fluid sink) keeps
+  -- its pipes at most nine tenths full, so users' boxes fill, and at most four tenths while a maker of that fluid on
+  -- the same pipes stands full (no room for a batch) and no user there waits for it. Held at half full for good, users
+  -- whose craft takes half their box (the game sizes a machine's box at about twice its recipe's amount) never filled
+  -- it: Py production science's treated wood held 56 and 86 of the 100 creosote a craft takes, the shell printer 48
+  -- of 50 fetal serum. Shut until a maker stood full, they never opened: pull switches makers off before they fill.
   if run.params.fluid_gates and run.fgates and run.short and game.tick % 60 == 0 then
     run.fgates_open = 0
     -- (Its pipe network by the infinity pipe's own box; else, not knowing it, any maker of that fluid anywhere.)
@@ -1809,9 +1812,14 @@ script.on_event(defines.events.on_tick, function()
         local name = g.filter.name
         local open = hit(run.short.push_fluid, g, name) and not hit(run.short.fluid, g, name)
         if open then run.fgates_open = run.fgates_open + 1; g.opened = (g.opened or 0) + 1 end
+        -- (What it saw, for the report: its network, and seconds a maker stood full / a user waited there.)
+        local ok, id = pcall(function() return g.e.get_fluid_segment_id(1) end)
+        g.seg = ok and id or g.seg
+        if hit(run.short.push_fluid, g, name) then g.push_s = (g.push_s or 0) + 1 end
+        if hit(run.short.fluid, g, name) then g.short_s = (g.short_s or 0) + 1 end
         if open ~= g.open then
           g.open = open
-          pcall(function() g.e.set_infinity_pipe_filter(open and g.filter or nil) end)
+          pcall(function() g.e.set_infinity_pipe_filter({ name = name, percentage = open and 0.4 or 0.9, mode = "at-most", temperature = g.filter.temperature }) end)
         end
       end
     end
