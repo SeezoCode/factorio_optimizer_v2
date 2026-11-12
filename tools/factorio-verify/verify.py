@@ -594,6 +594,9 @@ def main():
     ap.add_argument("--requester-demand", action="store_true",
                     help="with --flow or --pull: a robot link's requester chest holding less than its request counts as a "
                          "machine waiting for the item, so its makers keep it stocked")
+    ap.add_argument("--rate-cap", type=float, default=None, metavar="FACTOR",
+                    help="with --pull or --flow: no machine runs faster than FACTOR times its plan over the last ten minutes "
+                         "(plus three crafts), whatever wants it")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -696,7 +699,7 @@ def main():
         params["robots_per_roboport"] = args.robots
     if args.debug_at:
         params["debug_at"] = args.debug_at
-    if args.side_cap:
+    if args.side_cap or args.rate_cap:
         fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
         if fp and os.path.exists(fp):
             purpose, crafts = defaultdict(set), defaultdict(float)
@@ -706,10 +709,14 @@ def main():
                 main = m.get("product", "").split("#")[0]
                 purpose[rn] |= {main} if main in used else used
                 crafts[rn] = max(crafts[rn], m.get("crafts", 0.0))
-            params["side_cap"] = args.side_cap
+            if args.side_cap:
+                params["side_cap"] = args.side_cap
+                print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
+            if args.rate_cap:
+                params["rate_cap"] = args.rate_cap
+                print(f"rate-cap: no machine runs faster than {args.rate_cap} times its plan")
             params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
-            print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
     if args.requester_demand:
         params["requester_demand"] = True
     if args.virtual_pumps:

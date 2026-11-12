@@ -1668,8 +1668,9 @@ script.on_event(defines.events.on_tick, function()
         -- its products, it runs no faster than side_cap times its plan (over the last ten minutes, plus two crafts).
         -- Py production science's coal gas plant ran at nine times its plan for a trace of iron oxide on its own belt
         -- (and coke), and the coke filled the robot provider it feeds and stopped it.
-        local purpose = run.params.side_cap and (run.params.purpose or {})[r.name]
+        local purpose = (run.params.side_cap or run.params.rate_cap) and (run.params.purpose or {})[r.name]
         local main_wanted = false
+        local capped = false
         for _, p in pairs(products) do
           local hit = false
           if target[p.name] then hit = true; known = true
@@ -1692,15 +1693,31 @@ script.on_event(defines.events.on_tick, function()
           h[#h + 1] = { tick = game.tick, pf = e.products_finished }
           while #h > 1 and game.tick - h[1].tick > 600 * 60 do table.remove(h, 1) end
           local c = (run.params.plan_crafts or {})[r.name]
-          if wanted and not main_wanted and c then
-            local span = (game.tick - h[1].tick) / 60
+          local span = (game.tick - h[1].tick) / 60
+          if wanted and not main_wanted and c and run.params.side_cap then
             if e.products_finished - h[1].pf > c * span * run.params.side_cap + 2 then
               wanted = false
+              capped = true
+              run.side_capped = run.side_capped + 1
+            end
+          end
+          -- params.rate_cap: no machine runs faster than that many times its plan over the last ten minutes (plus
+          -- three crafts), whatever wants it. Loops and machines with several products kept each other wanted and
+          -- spun far past their plan (Py production science, fed where short: 330 recipes above 1.5 times their plan,
+          -- the uranium enrichment cascade at 20 to 33 times), taking the intermediates other chains needed and
+          -- pouring the rest into by-product chests.
+          local makes_target = false
+          for _, p in pairs(r.products) do if target[p.name] then makes_target = true end end
+          if wanted and c and run.params.rate_cap and not makes_target then
+            if e.products_finished - h[1].pf > c * span * run.params.rate_cap + 3 then
+              wanted = false
+              capped = true
               run.side_capped = run.side_capped + 1
             end
           end
         end
-        if not wanted then
+        -- (A machine held to its cap stays off: a full maker pushing it would start it again.)
+        if not wanted and not capped then
           local feeds, pushed = (run.feeds or {})[e.unit_number] or {}, run.short.push_at[e.unit_number] or {}
           for _, ing in pairs(r.ingredients) do
             if ing.type == "fluid" then
