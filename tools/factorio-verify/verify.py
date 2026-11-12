@@ -553,6 +553,8 @@ def main():
                     help="every machine standing short of an ingredient gets it, counted per item: 'plan' (default) up to its "
                          "planned use, so what was fed is where the factory's own supply falls short; 'full' as much as it takes, "
                          "so what still stands is the layout's own fault")
+    ap.add_argument("--feed-items", default=None, metavar="A,B,...",
+                    help="with --feed-short plan: feed only these items and fluids")
     ap.add_argument("--feed-stop", type=float, default=None, metavar="S",
                     help="with --feed-short: stop feeding S game seconds in (a bootstrap); measured after, the factory shows "
                          "whether it keeps itself going")
@@ -725,6 +727,8 @@ def main():
         print("void-full: full machines have their surplus deleted (virtual sinks), counted")
     if args.feed_short:
         params["feed_short"] = args.feed_short
+        if args.feed_items:
+            params["feed_items"] = {n.strip(): True for n in args.feed_items.split(",") if n.strip()}
         if args.feed_stop is not None:
             params["feed_stop"] = args.feed_stop
         fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
