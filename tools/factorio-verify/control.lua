@@ -550,9 +550,14 @@ local function start(params)
         local c = chest_at(b)
         if c then for _, i in pairs(run.inserters) do if i.e.valid and inside(c, i.e.drop_position) then join(b.item, belt_at(i.e.pickup_position)) end end end
       end
+      run.req_list = {}
       for _, b in pairs(run.params.bots.requesters or {}) do
         local c = chest_at(b)
-        if c then for _, i in pairs(run.inserters) do if i.e.valid and inside(c, i.e.pickup_position) then join(b.item, belt_at(i.e.drop_position)) end end end
+        if c then for _, i in pairs(run.inserters) do if i.e.valid and inside(c, i.e.pickup_position) then
+          local belt = belt_at(i.e.drop_position)
+          join(b.item, belt)
+          if belt then run.req_list[#run.req_list + 1] = { chest = c, item = b.item, belt = belt } end
+        end end end
       end
     end
     run.feeds, run.drops, run.net_of = {}, {}, {}
@@ -1485,6 +1490,33 @@ script.on_event(defines.events.on_tick, function()
               fmark(short_fluid, e, ing.name)
               fluid_at[e.unit_number] = fluid_at[e.unit_number] or {}
               fluid_at[e.unit_number][ing.name] = true
+            end
+          end
+        end
+      end
+    end
+    -- params.requester_demand: a robot link's requester chest holding less than its request counts as a machine
+    -- waiting for the item on its network (the provider's belt and the requester's are one). Robots take minutes to
+    -- cross a large factory; a maker that ran only once the machines past the requester stood short left them waiting
+    -- a trip each time (Py production science: 349 of 444 requesters empty).
+    if run.params.requester_demand and run.req_list then
+      for _, rq in pairs(run.req_list) do
+        local c = rq.chest
+        if c.valid and rq.belt.valid then
+          if not rq.count then
+            rq.count = 10
+            pcall(function()
+              local pt = c.get_logistic_point(defines.logistic_member_index.logistic_container)
+              for _, f in pairs(pt and pt.filters or {}) do if f.name == rq.item then rq.count = f.count end end
+            end)
+          end
+          if c.get_item_count(rq.item) < rq.count then
+            local net = run.net_of and run.net_of[rq.belt.unit_number]
+            if net then
+              local sn = short_net[rq.item] or {}
+              sn[net] = true
+              short_net[rq.item] = sn
+              run.req_short = (run.req_short or 0) + 1
             end
           end
         end

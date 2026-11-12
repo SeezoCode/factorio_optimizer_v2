@@ -589,6 +589,9 @@ def main():
                     help="a helper: a machine short of a fluid ingredient gets up to two crafts' worth moved from the pipes it "
                          "connects to each second, as a pump in front of it would (its box otherwise fills only as far as "
                          "the pipes are full)")
+    ap.add_argument("--requester-demand", action="store_true",
+                    help="with --flow or --pull: a robot link's requester chest holding less than its request counts as a "
+                         "machine waiting for the item, so its makers keep it stocked")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -705,6 +708,8 @@ def main():
             params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
             print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
+    if args.requester_demand:
+        params["requester_demand"] = True
     if args.virtual_pumps:
         params["virtual_pumps"] = True
     if args.provider_slots:
