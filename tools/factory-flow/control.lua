@@ -39,6 +39,7 @@ local function init()
   storage.machines = storage.machines or {}   -- unit number -> { e, take, target, recipe, fq, off, stop, held }
   storage.ends = storage.ends or {}           -- unit number -> { e, item }: overflow ports' last belts
   storage.bots = storage.bots or {}           -- unit number -> { e, item }: robot links' provider and requester chests
+  storage.sinks = storage.sinks or {}         -- unit number -> { e, item }: inserters into blocks' by-product chests
   storage.stats = storage.stats or {}
   storage.dirty = true
 end
@@ -78,6 +79,9 @@ local function on_built(ev)
   elseif f and f.bot and e.type == "logistic-container" then
     storage.bots = storage.bots or {}
     storage.bots[e.unit_number] = { e = e, item = f.bot }
+  elseif f and f.sink and e.type == "inserter" then
+    storage.sinks = storage.sinks or {}
+    storage.sinks[e.unit_number] = { e = e, item = f.sink }
   end
   if CRAFTERS[e.type] or BELTS[e.type] or e.type == "inserter" then storage.dirty = true end
 end
@@ -93,6 +97,7 @@ local function on_removed(ev)
   storage.machines[e.unit_number] = nil
   storage.ends[e.unit_number] = nil
   if storage.bots then storage.bots[e.unit_number] = nil end
+  if storage.sinks then storage.sinks[e.unit_number] = nil end
   local a = (storage.anchors or {})[e.unit_number]
   if a then
     if a.anchor.valid then a.anchor.destroy() end
@@ -116,7 +121,7 @@ local function at(surface, p)
 end
 
 local function rebuild()
-  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {} }
+  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {}, sinks = {} }
   -- A belt's network: everything joined to it through belt neighbours, undergrounds and splitters.
   local function net(b)
     local id = T.net_of[b.unit_number]
@@ -222,6 +227,21 @@ local function rebuild()
         end
         -- (With no machine of ours putting onto it, nothing tells when to open: no gate.)
         if #g.makers > 0 then T.gates[#T.gates + 1] = g end
+      end
+    end
+  end
+  -- By-product chests beside blocks (blocks.local_sinks): the inserter into each, with the belt network it takes from
+  -- and the machines putting onto it.
+  for _, sk in pairs(storage.sinks or {}) do
+    local i = sk.e
+    if i.valid then
+      local pk = i.pickup_target or at(i.surface, i.pickup_position)
+      if pk and BELTS[pk.type] then
+        local g = { e = i, item = sk.item, net = net(pk), makers = {} }
+        for unit in pairs(storage.machines) do
+          if (T.drops[unit] or {})[g.net] then g.makers[#g.makers + 1] = unit end
+        end
+        T.sinks[#T.sinks + 1] = g
       end
     end
   end
@@ -630,15 +650,37 @@ local function control()
     end
   end
 
-  -- Gates.
+  -- Gates. An outlet opens for a maker standing full only when it makes something besides what the belt carries
+  -- (another product, or its fuel's ash): standing full it would stop that too. One making only that just has no more
+  -- users and should stop; with the outlets open for it, it ran on and took the inputs others waited for (Py
+  -- production science in the in-game check: 25/s of nickel plate, coke, sodium hydroxide and more into the blocks'
+  -- by-product chests while the factory's own users stood short).
+  local function full_other(unit)
+    local mm = storage.machines[unit]
+    if not (mm and mm.e.valid and not mm.e.disabled_by_script and FULL[mm.e.status]) then return false end
+    if mm.e.status == defines.entity_status.full_burnt_result_output then return true end
+    local r = recipes[unit]
+    local n = 0
+    for _ in pairs(r and r.products or {}) do n = n + 1 end
+    return r == nil or n > 1
+  end
   if setting("gates") then
+    -- By-product chests: their inserter works only while such a maker on its belt stands full and no machine there
+    -- waits for the item.
+    for _, g in pairs(T.sinks or {}) do
+      if g.e.valid then
+        local open = false
+        for _, unit in pairs(g.makers) do if full_other(unit) then open = true; break end end
+        if short_net[g.item] and short_net[g.item][g.net] then open = false end
+        if g.e.disabled_by_script ~= not open then g.e.disabled_by_script = not open end
+      end
+    end
     for _, g in pairs(T.gates) do
       if g.e.valid then
         stats.gates = stats.gates + 1
         local close = true
         for _, unit in pairs(g.makers) do
-          local mm = storage.machines[unit]
-          if mm and mm.e.valid and FULL[mm.e.status] then close = false; break end
+          if full_other(unit) then close = false; break end
         end
         if short_net[g.item] and short_net[g.item][g.net] then close = true end
         if close then stats.gates_closed = stats.gates_closed + 1 end

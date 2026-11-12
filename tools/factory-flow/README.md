@@ -28,6 +28,11 @@ Once a second, for the machines of a tagged blueprint:
   side feeds more users. (A belt cannot be stopped by script, so the mod puts
   a hidden, empty constant combinator under each gate belt, wires it to the belt, and closes the gate by turning on
   the belt's enable condition `signal-A > 0`, which never holds there.)
+- **By-product chests** (`blocks.local_sinks`): the inserter into each block's by-product chest works only while a
+  machine putting onto its belt stands full and no machine there waits for the item. Like the gates, only a maker
+  that makes something besides that item counts (another product, or its fuel's ash): one making nothing else just
+  has no more users and should stop, not pour into the chest (the in-game check lost 25/s of items the factory uses
+  that way).
 - **Robot links** (`blocks.bot_links`): the belt into a tagged provider chest and the belts out of requester chests of
   the same item count as one, as robots carry between them.
 - **Push**: a machine standing with a full output (or a full burnt result slot: its ash) gets the users of what is

@@ -123,6 +123,17 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
         if e and any(e["name"].endswith(b) for b in BELTS):
             e.setdefault("tags", {})["flow"] = {"overflow": base(o["item"])}
             ends += 1
+    # By-product chests beside blocks (blocks.local_sinks, a 0/s output inside the factory): the inserter beside the
+    # port tile that drops into the chest two tiles out carries the item, so the mod gates it.
+    for o in ports.get("outputs", []):
+        if not o.get("local") or o.get("fluid") or o.get("rate", 0) > 1e-12:
+            continue
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ins = by_tile.get((o["x"] + dx, o["y"] + dy))
+            chest = by_tile.get((o["x"] + 2 * dx, o["y"] + 2 * dy))
+            if ins and chest and "inserter" in ins["name"] and "chest" in chest["name"]:
+                ins.setdefault("tags", {})["flow"] = {"sink": base(o["item"])}
+                break
     # Robot links (blocks.bot_links): their provider and requester chests carry the item, so the mod treats the belts
     # into and out of them as one (pull reaches the makers behind a provider).
     for role in ("providers", "requesters"):
