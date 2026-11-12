@@ -701,8 +701,18 @@ local function flows(run, counting)
   -- Per belt network [net] when known: a maker that drops onto it stands full. Any maker anywhere let every overflow of
   -- the item drain (Py science 2: one coke oven blocked on one belt, and the overflow after the fluidized-coke block
   -- took 2/s of coke while the steel and graphite on other belts had none).
-  local function full(e)
-    return e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output)
+  -- Only a maker that makes something besides the item counts (another product, or the item is what its fuel burns
+  -- to): standing full, it would stop that too. One making nothing else just has no more users and should stop; its
+  -- overflow open, it ran on and took the inputs others waited for (Py production science: 25/s of nickel plate, coke,
+  -- sodium hydroxide, gravel and more went into the blocks' by-product chests while the factory's own users of them
+  -- stood short).
+  local function full(e, item)
+    if not (e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output)) then return false end
+    local r = e.get_recipe()
+    if not r then return true end
+    local n, makes = 0, false
+    for _, p in pairs(r.products) do n = n + 1; if p.name == item then makes = true end end
+    return n > 1 or not makes
   end
   local function surplus(item, net)
     local ms = run.makers[item]
@@ -710,11 +720,11 @@ local function flows(run, counting)
     local on = false
     if net then
       for _, e in pairs(ms) do
-        if e.valid and (run.drops[e.unit_number] or {})[net] then on = true; if full(e) then return true end end
+        if e.valid and (run.drops[e.unit_number] or {})[net] then on = true; if full(e, item) then return true end end
       end
     end
     if on then return false end
-    for _, e in pairs(ms) do if full(e) then return true end end
+    for _, e in pairs(ms) do if full(e, item) then return true end end
     return false
   end
   for _, s in pairs(run.sinks) do
@@ -1851,8 +1861,15 @@ script.on_event(defines.events.on_tick, function()
         end
         local close = true
         for _, e in pairs(g.makers) do
-          if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output
-              or e.status == defines.entity_status.waiting_for_space_in_destination) then close = false; break end
+          if e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.full_burnt_result_output
+              or e.status == defines.entity_status.waiting_for_space_in_destination) then
+            -- (Only one that makes something else too, or burns fuel to ash: one making only what the belt carries
+            -- just has no more users and should stop, not pour into the overflow.)
+            local r = e.get_recipe()
+            local n = 0
+            for _ in pairs(r and r.products or {}) do n = n + 1 end
+            if not r or n > 1 or e.status == defines.entity_status.full_burnt_result_output then close = false; break end
+          end
         end
         for item, nets in pairs(run.short.net) do if overflow[item] and nets[g.net] then close = true; break end end
         if close then run.gates_closed = run.gates_closed + 1 end
