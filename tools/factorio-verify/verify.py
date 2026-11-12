@@ -400,6 +400,10 @@ def judge(report, ports, args):
               ", ".join(f"{k} {fmt(v)}" + (f" ({fmt(bm[k])} while measured)" if bm.get(k) else "")
                         for k, v in sorted(report["bootstrapped"].items(), key=lambda kv: -kv[1])) +
               ("" if bm else "; none while measured"))
+    if report.get("pumped") is not None:
+        pm = report.get("pumped_measure") or {}
+        print("\nMoved by virtual pumps while measured, per second: " +
+              (", ".join(f"{k} {fmt(v / secs)}" for k, v in sorted(pm.items(), key=lambda kv: -kv[1])[:25]) or "nothing"))
     if report.get("orphan_s"):
         raw = {i["item"].split("#")[0] for i in (ports or {}).get("inputs", [])} if isinstance(ports, dict) else set()
         rows = [(k, v) for k, v in report["orphan_s"].items() if k.split(" <- ")[0] not in raw]
@@ -581,6 +585,10 @@ def main():
                          "fluid on the same pipes stands full and no user there waits")
     ap.add_argument("--provider-slots", type=int, default=None, metavar="N",
                     help="robot links: each provider chest holds at most N stacks (its inventory bar)")
+    ap.add_argument("--virtual-pumps", action="store_true",
+                    help="a helper: a machine short of a fluid ingredient gets up to two crafts' worth moved from the pipes it "
+                         "connects to each second, as a pump in front of it would (its box otherwise fills only as far as "
+                         "the pipes are full)")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -697,6 +705,8 @@ def main():
             params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
             print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
+    if args.virtual_pumps:
+        params["virtual_pumps"] = True
     if args.provider_slots:
         params["provider_slots"] = args.provider_slots
     if args.no_quotas:

@@ -856,6 +856,7 @@ local function finish(run)
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
     voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, orphan_s = run.orphan_s,
+    pumped = run.pumped, pumped_measure = run.pumped_measure,
     fluid_gates = run.fgates and (function() local o = {}
       for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0,
         seg = g.seg, push_s = g.push_s or 0, short_s = g.short_s or 0 } end end
@@ -1262,6 +1263,61 @@ local function void_full(run)
   end
 end
 
+-- params.virtual_pumps, a helper: once a second, a machine short of a fluid ingredient (less than a craft's worth in its
+-- box) gets up to two crafts' worth moved from the pipe network it connects to, as a pump in front of it would: a pump
+-- fills its box whatever the pipe's level. Without one a machine's box fills only as far as its pipes are full, and a
+-- fluid made slowly into a long pipe never got it there: Py production science's printers held 47 to 49 of the 50
+-- fetal serum a craft takes, the silver caster 72 of 100 molten silver. Moves only what the pipes hold (counted).
+local function virtual_pumps(run)
+  if not run.params.virtual_pumps or game.tick % 60 ~= 30 then return end
+  run.pumped = run.pumped or {}
+  run.pumped_measure = run.pumped_measure or {}
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    if e.valid and not e.disabled_by_script then
+      local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+      if r then pcall(function()
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "fluid" then
+            local have = e.get_fluid_count(ing.name) or 0
+            local want = 2 * ing.amount - have
+            if have < ing.amount then
+              for k = 1, (e.fluids_count or 0) do
+                local f = e.get_fluid(k)
+                local okf, filt = pcall(function() return e.get_fluid_filter(k) end)
+                if (f and f.name == ing.name) or (okf and filt and filt.name == ing.name) then
+                  local okc, conns = pcall(function() return e.get_fluid_box_pipe_connections(k) end)
+                  for _, c in pairs(okc and conns or {}) do
+                    local t = c.target
+                    if want > 0 and t and t.valid then
+                      local j = c.target_fluidbox_index or 1
+                      local oks, sf = pcall(function() return t.has_fluid_segment(j) and t.get_fluid_segment_fluid(j) or nil end)
+                      if oks and sf and sf.name == ing.name and sf.amount > 0 then
+                        local got = t.remove_fluid_segment_fluid(j, math.min(sf.amount, want))
+                        if got and got.amount > 0 then
+                          local put = e.insert_fluid { name = got.name, amount = got.amount, temperature = got.temperature } or 0
+                          if put < got.amount then
+                            pcall(function() t.add_fluid_segment_fluid(j, { name = got.name, amount = got.amount - put, temperature = got.temperature }) end)
+                          end
+                          if put > 0 then
+                            want = want - put
+                            run.pumped[ing.name] = (run.pumped[ing.name] or 0) + put
+                            if run.phase == "measure" then run.pumped_measure[ing.name] = (run.pumped_measure[ing.name] or 0) + put end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end) end
+    end
+  end
+end
+
 script.on_event(defines.events.on_tick, function()
   local run = storage.run
   if not run or run.phase == "done" or run.phase == nil then return end
@@ -1280,6 +1336,7 @@ script.on_event(defines.events.on_tick, function()
   seed_tick(run)
   feed_short(run)
   void_full(run)
+  virtual_pumps(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (2) times its plan,
   -- plus 10 crafts, waits while a machine fed from the same belt stands short of one of its item ingredients (one item
   -- runs on many separate belts; holding a barrel filler for one on another belt starved its own users): it takes no more than its
