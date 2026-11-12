@@ -391,6 +391,9 @@ def judge(report, ports, args):
         print(f"\nRobots: {b['robots']} in {b['networks']} network(s) ({b['robots_idle']} idle); {b['requesters_empty']} of "
                      f"{b['requesters']} requester chests empty, {b['items_in_providers']} items waiting in {b['providers']} providers"
                      + (f"; {b['chests_outside_networks']} chests outside any network" if b['chests_outside_networks'] else ""))
+        pi = sorted((b.get("provider_items") or {}).items(), key=lambda kv: -kv[1])
+        if pi:
+            print("  most held in providers: " + ", ".join(f"{k} {v}" for k, v in pi[:15]))
     if report.get("bootstrapped"):
         bm = report.get("bootstrapped_measure") or {}
         print("\nLoop carriers put in by the check (--flow, a loop starved for two minutes): " +
@@ -576,6 +579,8 @@ def main():
     ap.add_argument("--fluid-gates", action="store_true",
                     help="with --flow: fluid overflows keep their pipes at most 90%% full, and 40%% while a maker of that "
                          "fluid on the same pipes stands full and no user there waits")
+    ap.add_argument("--provider-slots", type=int, default=None, metavar="N",
+                    help="robot links: each provider chest holds at most N stacks (its inventory bar)")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -692,6 +697,8 @@ def main():
             params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
             print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
+    if args.provider_slots:
+        params["provider_slots"] = args.provider_slots
     if args.no_quotas:
         params["no_quotas"] = True
     if args.fluid_gates:

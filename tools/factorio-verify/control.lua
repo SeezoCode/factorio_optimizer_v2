@@ -533,6 +533,19 @@ local function start(params)
         if not (belt and parent[belt.unit_number]) then return end
         if first[item] then union(first[item], belt.unit_number) else first[item] = belt.unit_number end
       end
+      -- params.provider_slots: each provider chest holds at most that many stacks (its inventory bar). Robots carry
+      -- only what requesters ask for; the rest of what the makers send piled up in the providers (Py production
+      -- science: 186,043 items in 444 providers while 335 of 444 requesters stood empty and their makers' other users
+      -- went short).
+      if run.params.provider_slots then
+        for _, b in pairs(run.params.bots.providers or {}) do
+          local c = chest_at(b)
+          if c then pcall(function()
+            local inv = c.get_inventory(defines.inventory.chest)
+            if inv and inv.supports_bar() then inv.set_bar(run.params.provider_slots + 1) end
+          end) end
+        end
+      end
       for _, b in pairs(run.params.bots.providers or {}) do
         local c = chest_at(b)
         if c then for _, i in pairs(run.inserters) do if i.e.valid and inside(c, i.e.drop_position) then join(b.item, belt_at(i.e.pickup_position)) end end end
@@ -1052,6 +1065,7 @@ local function finish(run)
     end
     local count = 0; for _ in pairs(nets) do count = count + 1 end
     local req, reqEmpty, prov, provItems, unnetworked = 0, 0, 0, 0, 0
+    local byItem = {}
     for _, c in pairs(surface.find_entities_filtered { type = "logistic-container" }) do
       local inv = c.get_inventory(defines.inventory.chest)
       local n = inv and inv.get_item_count() or 0
@@ -1059,6 +1073,7 @@ local function finish(run)
         req = req + 1; if n == 0 then reqEmpty = reqEmpty + 1 end
       else
         prov = prov + 1; provItems = provItems + n
+        for _, it in pairs(inv and inv.get_contents() or {}) do byItem[it.name] = (byItem[it.name] or 0) + it.count end
       end
       if not c.logistic_network then unnetworked = unnetworked + 1 end
     end
@@ -1089,7 +1104,8 @@ local function finish(run)
     end
     if count > 0 or req > 0 then
       report.bots = { networks = count, robots = robots, robots_idle = idle, requesters = req, requesters_empty = reqEmpty,
-        providers = prov, items_in_providers = provItems, chests_outside_networks = unnetworked, empty_requesters = samples }
+        providers = prov, items_in_providers = provItems, chests_outside_networks = unnetworked, empty_requesters = samples,
+        provider_items = byItem }
     end
   end)
   if not okb then report.bots_error = tostring(errb) end
