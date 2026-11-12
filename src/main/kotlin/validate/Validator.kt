@@ -44,6 +44,9 @@ data class ValidationError(val type: ErrorType, val tile: Tile, val message: Str
  */
 const val TINY_RATE = 1e-5
 
+/** How far over a belt lane's capacity its planned flow may be before validation calls it over capacity. */
+const val LANE_SLACK = 1.03
+
 data class MachineSpec(
     val product: String,
     val ingredients: Set<String>,
@@ -774,7 +777,10 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val laneCap = beltCapacity(e) / 2 * (if (e.kind == Kind.SPLITTER) 2 else 1)
             // Slots a lane uses per second: a stack takes one, an unstacked item one.
             fun slots(all: Double, loose: Double) = (all - loose) / stack + loose
-            if (slots(l, ul) > laneCap + 1e-6 || slots(r, ur) > laneCap + 1e-6) {
+            // (Within LANE_SLACK over: the plan runs machines at 97% of their speed, and in the game a lane that full
+            // just backs up a little. Py utility science's first valid-but-for-this factory, 1391 x 1551 after three
+            // hours of stitching, was thrown away for a zinc plate lane at 23.09/s and an ash lane at 22.58/s of 22.5.)
+            if (slots(l, ul) > laneCap * LANE_SLACK + 1e-6 || slots(r, ur) > laneCap * LANE_SLACK + 1e-6) {
                 err(ErrorType.BELT_OVER_CAPACITY, e.tile, "lanes carry ${fmt(l)}/s and ${fmt(r)}/s (${belts.items[i]?.joinToString() ?: "?"}); a lane holds ${fmt(laneCap)}/s" +
                     if (stack > 1) " (${fmt(laneCap * stack)}/s in stacks of $stack; ${fmt(ul)}/s and ${fmt(ur)}/s unstacked)" else "")
             }
