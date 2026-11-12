@@ -842,6 +842,9 @@ local function finish(run)
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
     voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by,
+    fluid_gates = run.fgates and (function() local o = {}
+      for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0 } end end
+      return o end)() or nil,
     research = { inserter_stack_size_bonus = game.forces.player.inserter_stack_size_bonus,
                  bulk_inserter_capacity_bonus = game.forces.player.bulk_inserter_capacity_bonus,
                  belt_stack_size_bonus = game.forces.player.belt_stack_size_bonus },
@@ -883,8 +886,11 @@ local function finish(run)
                 end
               end)
               if not okc then conns = { { error = tostring(errc) } } end
+              -- (The pipe network the box belongs to, when the game says: flow control's fluid demand goes by it.)
+              local okg, seg = pcall(function() return e.fluidbox.get_fluid_segment_id(k) end)
               o[#o + 1] = { io = proto and proto.production_type or "?", name = (f and f.name) or (flt and flt.name) or nil,
-                amount = f and f.amount or 0, temperature = f and f.temperature or nil, conns = conns }
+                amount = f and f.amount or 0, temperature = f and f.temperature or nil, conns = conns,
+                seg = okg and seg or nil, seg_error = (not okg) and tostring(seg) or nil }
             end
           end)
           return o end)(),
@@ -1745,11 +1751,20 @@ script.on_event(defines.events.on_tick, function()
   -- science's treated wood held 56 and 86 of the 100 creosote a craft takes, the shell printer 48 of 50 fetal serum.
   if run.params.fluid_gates and run.fgates and run.short and game.tick % 60 == 0 then
     run.fgates_open = 0
+    -- (Its pipe network by the infinity pipe's own box; else, not knowing it, any maker of that fluid anywhere.)
+    local function hit(tab, g, name)
+      local t = tab and tab[name]
+      if not t then return false end
+      if t.any then return true end
+      local ok, id = pcall(function() return g.e.fluidbox.get_fluid_segment_id(1) end)
+      if ok and id then return t[id] == true end
+      return next(t) ~= nil
+    end
     for _, g in pairs(run.fgates) do
       if g.e.valid then
         local name = g.filter.name
-        local open = run.fhit(run.short.push_fluid, g.e, name) and not run.fhit(run.short.fluid, g.e, name)
-        if open then run.fgates_open = run.fgates_open + 1 end
+        local open = hit(run.short.push_fluid, g, name) and not hit(run.short.fluid, g, name)
+        if open then run.fgates_open = run.fgates_open + 1; g.opened = (g.opened or 0) + 1 end
         if open ~= g.open then
           g.open = open
           pcall(function() g.e.set_infinity_pipe_filter(open and g.filter or nil) end)
