@@ -121,7 +121,7 @@ local function at(surface, p)
 end
 
 local function rebuild()
-  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {}, sinks = {} }
+  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {}, sinks = {}, reqs = {} }
   -- A belt's network: everything joined to it through belt neighbours, undergrounds and splitters.
   local function net(b)
     local id = T.net_of[b.unit_number]
@@ -190,6 +190,10 @@ local function rebuild()
           local n = net(belt)
           rep[c.item] = rep[c.item] or n
           rep[n] = rep[c.item]
+          -- (A requester and the belt it feeds: its own shortfall is demand on the link, see control.)
+          if pk and pk.unit_number == e.unit_number and e.prototype.logistic_mode == "requester" then
+            T.reqs[#T.reqs + 1] = { e = e, item = c.item, belt_net = n }
+          end
         end
       end
     end
@@ -198,6 +202,7 @@ local function rebuild()
     local function remap(t) for k, s in pairs(t) do local o = {}; for n in pairs(s) do o[rep[n] or n] = true end; t[k] = o end end
     remap(T.feeds); remap(T.drops)
     for k, n in pairs(T.ins_net) do T.ins_net[k] = rep[n] or n end
+    for _, rq in pairs(T.reqs) do rq.net = rep[rq.belt_net] or rq.belt_net end
   end
   -- Gates: walking up from each overflow port's last belt, the belt just past the first one a machine takes from.
   for _, en in pairs(storage.ends) do
@@ -377,6 +382,29 @@ local function control()
             a[ing.name] = true
             fluid_at[unit] = a
           end
+        end
+      end
+    end
+  end
+
+  -- Requester demand (setting): a robot link's requester chest holding less than its request counts as a machine
+  -- waiting for the item on the link (robots take minutes to cross a large factory; a maker that ran only once the
+  -- machines past the requester stood short left them waiting a trip each time).
+  if setting("requester-demand") then
+    for _, rq in pairs(T.reqs or {}) do
+      local c = rq.e
+      if c.valid and rq.net then
+        if not rq.count then
+          rq.count = 10
+          pcall(function()
+            local pt = c.get_logistic_point(defines.logistic_member_index.logistic_container)
+            for _, f in pairs(pt and pt.filters or {}) do if f.name == rq.item then rq.count = f.count end end
+          end)
+        end
+        if c.get_item_count(rq.item) < rq.count then
+          local sn = short_net[rq.item] or {}
+          sn[rq.net] = true
+          short_net[rq.item] = sn
         end
       end
     end
