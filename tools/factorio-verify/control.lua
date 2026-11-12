@@ -887,7 +887,7 @@ local function finish(run)
               end)
               if not okc then conns = { { error = tostring(errc) } } end
               -- (The pipe network the box belongs to, when the game says: flow control's fluid demand goes by it.)
-              local okg, seg = pcall(function() return e.fluidbox.get_fluid_segment_id(k) end)
+              local okg, seg = pcall(function() return e.has_fluid_segment(k) and e.get_fluid_segment_id(k) or nil end)
               o[#o + 1] = { io = proto and proto.production_type or "?", name = (f and f.name) or (flt and flt.name) or nil,
                 amount = f and f.amount or 0, temperature = f and f.temperature or nil, conns = conns,
                 seg = okg and seg or nil, seg_error = (not okg) and tostring(seg) or nil }
@@ -1283,21 +1283,23 @@ script.on_event(defines.events.on_tick, function()
   -- as well filled its output and stopped it.
   local function segments(e, name)
     local out = {}
-    -- (Not every machine has fluid boxes to ask: some have no fluidbox key at all.)
+    -- (Factorio 2.1: an entity's fluid storages are reached through its own methods; there is no LuaFluidBox. A
+    -- machine's storage may belong to no pipe network: then the networks of the pipes it connects to.)
     pcall(function()
-      local fb = e.fluidbox
-      for i = 1, #fb do
-        local f = fb[i]
-        local filt = fb.get_filter(i)
-        if (f and f.name == name) or (filt and filt.name == name) then
-          local ok, id = pcall(function() return fb.get_fluid_segment_id(i) end)
-          if ok and id then out[#out + 1] = id
+      for i = 1, (e.fluids_count or 0) do
+        local f = e.get_fluid(i)
+        local okf, filt = pcall(function() return e.get_fluid_filter(i) end)
+        if (f and f.name == name) or (okf and filt and filt.name == name) then
+          local okh, has = pcall(function() return e.has_fluid_segment(i) end)
+          if okh and has then
+            local ok, id = pcall(function() return e.get_fluid_segment_id(i) end)
+            if ok and id then out[#out + 1] = id end
           else
-            -- (A machine's own box may belong to no pipe network: then the networks of the pipes it connects to.)
-            local okc, conns = pcall(function() return fb.get_pipe_connections(i) end)
+            local okc, conns = pcall(function() return e.get_fluid_box_pipe_connections(i) end)
             for _, c in pairs(okc and conns or {}) do
-              if c.target then
-                local okt, tid = pcall(function() return c.target.get_fluid_segment_id(c.target_fluidbox_index or 1) end)
+              if c.target and c.target.valid then
+                local j = c.target_fluidbox_index or 1
+                local okt, tid = pcall(function() return c.target.has_fluid_segment(j) and c.target.get_fluid_segment_id(j) or nil end)
                 if okt and tid then out[#out + 1] = tid end
               end
             end
@@ -1798,7 +1800,7 @@ script.on_event(defines.events.on_tick, function()
       local t = tab and tab[name]
       if not t then return false end
       if t.any then return true end
-      local ok, id = pcall(function() return g.e.fluidbox.get_fluid_segment_id(1) end)
+      local ok, id = pcall(function() return g.e.get_fluid_segment_id(1) end)
       if ok and id then return t[id] == true end
       return next(t) ~= nil
     end

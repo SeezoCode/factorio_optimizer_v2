@@ -284,20 +284,23 @@ end)
 -- production science: a coal gas plant at ten times its plan for a far consumer, until its coke filled its output).
 local function segments(e, name)
   local out = {}
+  -- (Factorio 2.1: an entity's fluid storages are reached through its own methods; there is no LuaFluidBox. A
+  -- machine's storage may belong to no pipe network: then the networks of the pipes it connects to.)
   pcall(function()
-    local fb = e.fluidbox
-    for i = 1, #fb do
-      local f = fb[i]
-      local filt = fb.get_filter(i)
-      if (f and f.name == name) or (filt and filt.name == name) then
-        local ok, id = pcall(function() return fb.get_fluid_segment_id(i) end)
-        if ok and id then out[#out + 1] = id
+    for i = 1, (e.fluids_count or 0) do
+      local f = e.get_fluid(i)
+      local okf, filt = pcall(function() return e.get_fluid_filter(i) end)
+      if (f and f.name == name) or (okf and filt and filt.name == name) then
+        local okh, has = pcall(function() return e.has_fluid_segment(i) end)
+        if okh and has then
+          local ok, id = pcall(function() return e.get_fluid_segment_id(i) end)
+          if ok and id then out[#out + 1] = id end
         else
-          -- (A machine's own box may belong to no pipe network: then the networks of the pipes it connects to.)
-          local okc, conns = pcall(function() return fb.get_pipe_connections(i) end)
+          local okc, conns = pcall(function() return e.get_fluid_box_pipe_connections(i) end)
           for _, c in pairs(okc and conns or {}) do
-            if c.target then
-              local okt, tid = pcall(function() return c.target.get_fluid_segment_id(c.target_fluidbox_index or 1) end)
+            if c.target and c.target.valid then
+              local j = c.target_fluidbox_index or 1
+              local okt, tid = pcall(function() return c.target.has_fluid_segment(j) and c.target.get_fluid_segment_id(j) or nil end)
               if okt and tid then out[#out + 1] = tid end
             end
           end
