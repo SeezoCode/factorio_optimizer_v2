@@ -33,6 +33,10 @@ Once a second, for the machines of a tagged blueprint:
   that makes something besides that item counts (another product, or its fuel's ash): one making nothing else just
   has no more users and should stop, not pour into the chest (the in-game check lost 25/s of items the factory uses
   that way).
+- **Requester demand** (a setting, on by default): a robot link's requester chest holding less than its request
+  counts as a machine waiting for the item, so its makers keep it stocked. Robots take minutes to cross a large
+  factory; a maker that ran only once the machines past the requester stood short left them waiting a trip each time
+  (production science in the check: 36,945 crafts in ten minutes with it, 30,102 without).
 - **Robot links** (`blocks.bot_links`): the belt into a tagged provider chest and the belts out of requester chests of
   the same item count as one, as robots carry between them.
 - **Push**: a machine standing with a full output (or a full burnt result slot: its ash) gets the users of what is
