@@ -562,6 +562,8 @@ def main():
                     help="flow control: --pull, plus quotas (a machine ahead of 1.5 times its planned intake of an item has the "
                          "inserters bringing it stopped while another machine on the same belt waits for it), and overflows keep "
                          "an item while a machine on their belt waits for it")
+    ap.add_argument("--quota-factor", type=float, default=None, metavar="F",
+                    help="with --flow: quotas let a machine take F times its planned intake (default 1.5)")
     ap.add_argument("--quota-window", type=float, default=None, metavar="S",
                     help="with --flow: quotas count what a machine took in the last S game seconds, not since the start")
     ap.add_argument("--no-quotas", action="store_true",
@@ -689,6 +691,8 @@ def main():
         params["pull_stock"] = 1 if args.pull_stock is None else args.pull_stock
     if args.quota_window:
         params["quota_window"] = args.quota_window
+    if args.quota_factor:
+        params["quota_factor"] = args.quota_factor
     if args.pull:
         params["pull"] = True
         params["pull_wanted"] = sorted({t["name"] for t in (job or {}).get("targets", [])})
@@ -861,6 +865,8 @@ def main():
             ms["factory-flow-stock"] = args.pull_stock
         if args.quota_window:
             ms["factory-flow-quota-window"] = int(args.quota_window // 60)
+        if args.quota_factor:
+            ms["factory-flow-quota-factor"] = args.quota_factor
         if args.side_cap:
             ms["factory-flow-side-cap"] = args.side_cap
         if args.rate_cap:

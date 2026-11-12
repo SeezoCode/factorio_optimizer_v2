@@ -1805,7 +1805,9 @@ script.on_event(defines.events.on_tick, function()
             span = (game.tick - h[1].tick) / 60
             taken = taken - h[1].taken
           end
-          if taken > (rates[ing.name] or 0) * span * 1.5 + ing.amount * 2 then
+          -- (params.quota_factor: how far ahead of its plan, default 1.5. Supply at plan, a user at 1.4 times its plan
+          -- took everything: Py production science's molten steel all 6/s of molten iron, four casting machines none.)
+          if taken > (rates[ing.name] or 0) * span * (run.params.quota_factor or 1.5) + ing.amount * 2 then
             o[ing.name] = true
           elseif mine[ing.name] or (ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name]) then
             behind_short[ing.name] = (behind_short[ing.name] or 0) + 1
