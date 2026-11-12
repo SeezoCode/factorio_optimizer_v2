@@ -65,7 +65,7 @@ data class PlacedEntity(
             Kind.POLE -> GameConstants.footprint(name)
             Kind.TANK -> 3 to 3
             Kind.BEACON -> 3 to 3
-            Kind.ROBOPORT -> GameConstants.ROBOPORT_SIZE to GameConstants.ROBOPORT_SIZE
+            Kind.ROBOPORT -> GameConstants.roboportSize(name).let { it to it }
             Kind.LOADER_IN, Kind.LOADER_OUT -> if (dir.axis == 1) 1 to 2 else 2 to 1
             else -> 1 to 1
         }
@@ -89,7 +89,7 @@ data class PlacedEntity(
                 name in GameConstants.LOADERS.values -> if (ugType == "input") Kind.LOADER_IN else Kind.LOADER_OUT
                 name == GameConstants.HEAT_PIPE -> Kind.HEAT_PIPE
                 name == GameConstants.OVERFLOW_VALVE -> Kind.VALVE
-                name == GameConstants.ROBOPORT -> Kind.ROBOPORT
+                GameConstants.isRoboport(name) -> Kind.ROBOPORT
                 else -> error("Unknown entity '$name'")
             }
         }

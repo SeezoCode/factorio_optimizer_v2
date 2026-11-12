@@ -375,9 +375,23 @@ local function start(params)
   local modules = fulfil_proxies(surface)
   local networks, unwired = power(run, surface, force, maxx + run.dx + 6, miny + run.dy)
   -- Robot links (blocks.bot_links): logistic robots into every roboport, as a player would put them in.
-  if params.robots_per_roboport and params.robots_per_roboport > 0 and prototypes.item["logistic-robot"] then
+  -- (params.robot: which; else the slowest logistic robot a player can build: Pyanodon hides the base game's, and its
+  -- own mk01 comes with green science. The check used to put in the hidden base one, 3 tiles/s and one item a trip.)
+  local robot = params.robot
+  if not robot then
+    local best
+    for name, it in pairs(prototypes.item) do
+      local pr = it.place_result
+      if pr and pr.type == "logistic-robot" and not it.hidden and (not best or (pr.speed or 0) < best.speed) then
+        best = { name = name, speed = pr.speed or 0 }
+      end
+    end
+    robot = best and best.name or "logistic-robot"
+  end
+  run.robot = robot
+  if params.robots_per_roboport and params.robots_per_roboport > 0 and prototypes.item[robot] then
     for _, r in pairs(surface.find_entities_filtered { type = "roboport", force = force }) do
-      pcall(function() r.insert { name = "logistic-robot", count = params.robots_per_roboport } end)
+      pcall(function() r.insert { name = robot, count = params.robots_per_roboport } end)
     end
   end
 
@@ -1119,7 +1133,7 @@ local function finish(run)
       end
     end
     if count > 0 or req > 0 then
-      report.bots = { networks = count, robots = robots, robots_idle = idle, requesters = req, requesters_empty = reqEmpty,
+      report.bots = { networks = count, robots = robots, robots_idle = idle, requesters = req, requesters_empty = reqEmpty, robot = run.robot,
         providers = prov, items_in_providers = provItems, chests_outside_networks = unnetworked, empty_requesters = samples,
         provider_items = byItem }
     end

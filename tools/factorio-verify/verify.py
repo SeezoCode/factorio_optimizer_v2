@@ -388,7 +388,7 @@ def judge(report, ports, args):
 
     if report.get("bots"):
         b = report["bots"]
-        print(f"\nRobots: {b['robots']} in {b['networks']} network(s) ({b['robots_idle']} idle); {b['requesters_empty']} of "
+        print(f"\nRobots: {b['robots']} {b.get('robot') or ''} in {b['networks']} network(s) ({b['robots_idle']} idle); {b['requesters_empty']} of "
                      f"{b['requesters']} requester chests empty, {b['items_in_providers']} items waiting in {b['providers']} providers"
                      + (f"; {b['chests_outside_networks']} chests outside any network" if b['chests_outside_networks'] else ""))
         pi = sorted((b.get("provider_items") or {}).items(), key=lambda kv: -kv[1])
@@ -597,6 +597,8 @@ def main():
     ap.add_argument("--rate-cap", type=float, default=None, metavar="FACTOR",
                     help="with --pull or --flow: no machine runs faster than FACTOR times its plan over the last ten minutes "
                          "(plus three crafts), whatever wants it")
+    ap.add_argument("--robot", default=None, metavar="NAME",
+                    help="the logistic robot put into roboports (default: the slowest one a player can build)")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -717,6 +719,8 @@ def main():
                 print(f"rate-cap: no machine runs faster than {args.rate_cap} times its plan")
             params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
+    if args.robot:
+        params["robot"] = args.robot
     if args.requester_demand:
         params["requester_demand"] = True
     if args.virtual_pumps:
@@ -859,6 +863,8 @@ def main():
             ms["factory-flow-quota-window"] = int(args.quota_window // 60)
         if args.side_cap:
             ms["factory-flow-side-cap"] = args.side_cap
+        if args.rate_cap:
+            ms["factory-flow-rate-cap"] = args.rate_cap
         if ms:
             params["mod_settings"] = ms
         # (Loop carriers as --flow puts them in: a player fills a new loop by hand.)

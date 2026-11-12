@@ -169,10 +169,21 @@ object GameConstants {
     const val INFINITY_PIPE = "infinity-pipe"
     /** Pyanodon's overflow valve: passes fluid on only while its input side is over 80% full (overflow outputs). */
     const val OVERFLOW_VALVE = "py-overflow-valve"
-    /** A roboport (4 x 4) and how far its logistic area reaches from its centre, as in the base game. */
-    const val ROBOPORT = "roboport"
-    const val ROBOPORT_SIZE = 4
-    const val ROBOPORT_LOGISTIC_RADIUS = 25
+    /** A roboport: its footprint (square) and how far its logistic area reaches from its centre. */
+    data class RoboportSpec(val name: String, val size: Int, val logisticRadius: Int)
+    /** Roboports known by name: the base game's, and Pyanodon's, which hides the base one (no recipe). */
+    val ROBOPORTS = listOf(
+        RoboportSpec("roboport", 4, 25),
+        RoboportSpec("py-roboport-mk01", 3, 30), RoboportSpec("py-roboport-mk02", 5, 50), RoboportSpec("py-roboport-mk03", 7, 70),
+    )
+    /** The roboport robot links get: the base game's, or Pyanodon's first (set by [register] from the data's items). */
+    @Volatile var roboport: RoboportSpec = ROBOPORTS[0]
+        private set
+    val ROBOPORT get() = roboport.name
+    val ROBOPORT_SIZE get() = roboport.size
+    val ROBOPORT_LOGISTIC_RADIUS get() = roboport.logisticRadius
+    fun isRoboport(name: String) = ROBOPORTS.any { it.name == name }
+    fun roboportSize(name: String) = ROBOPORTS.firstOrNull { it.name == name }?.size ?: roboport.size
 
     /**
      * 1x2 loaders by belt tier (editor-only in 2.0; the test copy uses them to feed and empty ports at full belt
@@ -451,6 +462,8 @@ object GameConstants {
      */
     @Synchronized
     fun register(data: RootData) {
+        // (Pyanodon hides the base roboport, so a player cannot build it: its own mk01, from green science.)
+        roboport = if ("py-roboport-mk01" in data.items) ROBOPORTS[1] else ROBOPORTS[0]
         val machines = data.entities.values.filterIsInstance<CraftingEntity>().filter { it.hidden != true }
         val extra = machines.filter { it.name !in BASE_MACHINE_SIZES }
         MACHINE_SIZES = BASE_MACHINE_SIZES + machines.associate { it.name to (it.width to it.height) }
