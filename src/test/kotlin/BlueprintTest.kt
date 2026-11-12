@@ -138,12 +138,14 @@ class VerifyKitTest {
     fun `a requester chest keeps its request and a roboport round trips`() {
         val l = Layout(10, 10, listOf(
             PlacedEntity("requester-chest", geom.Kind.CHEST, 1, 1, item = "iron-plate", request = 30),
-            PlacedEntity("passive-provider-chest", geom.Kind.CHEST, 2, 1),
+            PlacedEntity("passive-provider-chest", geom.Kind.CHEST, 2, 1, bar = 2),
             PlacedEntity("roboport", geom.Kind.ROBOPORT, 4, 4),
         ))
         val back = emit.decodeBlueprint(l.toBlueprintString()).toLayout(10, 10)
         assertEquals(l.entities.map { it.stripped() }, back.entities.map { it.stripped() })
         val json = l.toBlueprint().toJson()
         kotlin.test.assertTrue("request_filters" in json && "\"count\":30" in json, json)
+        // A provider limited to two slots (blocks.bot_provider_slots).
+        kotlin.test.assertTrue("\"bar\":2" in json, json)
     }
 }

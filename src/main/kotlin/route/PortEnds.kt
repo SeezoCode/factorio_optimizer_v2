@@ -63,7 +63,7 @@ fun withPortEnds(entities: List<PlacedEntity>, sources: List<SourceSpec>, output
                 else {
                     add(PlacedEntity(inserter, Kind.INSERTER, (o.tile + s).x, (o.tile + s).y, s.opposite, net = e?.net))
                     val chest = if (end == "provider") blocks?.botProviderChest ?: "passive-provider-chest" else blocks?.localSinkChest ?: "steel-chest"
-                    o.tile.step(s, 2).let { add(PlacedEntity(chest, Kind.CHEST, it.x, it.y)) }
+                    o.tile.step(s, 2).let { add(PlacedEntity(chest, Kind.CHEST, it.x, it.y, bar = if (end == "provider") blocks?.botProviderSlots else null)) }
                     o.copy(local = true, bot = end == "provider")
                 }
             }

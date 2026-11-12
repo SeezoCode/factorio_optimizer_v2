@@ -49,6 +49,8 @@ data class PlacedEntity(
     val readBelt: Boolean = false,
     /** Requester chests: how many of [item] they ask the logistic network for (blocks.bot_links). */
     val request: Int? = null,
+    /** Chests: how many of their slots can be used (the inventory bar; null: all). */
+    val bar: Int? = null,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)

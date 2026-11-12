@@ -161,6 +161,7 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                 e.kind == Kind.INSERTER && e.blacklist != null -> e.blacklist.mapIndexed { i, it -> filter(i + 1, it) }
                 else -> null
             },
+            bar = e.bar.takeIf { e.kind == Kind.CHEST },
             requestFilters = if (e.kind == Kind.CHEST && e.request != null && e.item != null) buildJsonObject {
                 put("sections", buildJsonArray {
                     add(buildJsonObject {
@@ -274,6 +275,7 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
             },
             readBelt = kind.beltFamily && b.controlBehavior?.get("circuit_read_hand_contents")?.jsonPrimitive?.content == "true",
             request = if (kind == Kind.CHEST) requestOf(b)?.second else null,
+            bar = if (kind == Kind.CHEST) b.bar else null,
             modules = b.items?.let { reqs ->
                 val slots = sortedMapOf<Int, String>()
                 reqs.forEach { r ->
