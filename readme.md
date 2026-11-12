@@ -393,7 +393,11 @@ Unknown keys are an error. Everything except `targets` has a default.
   a roboport's logistic area, the roboports joined along free corridor spots); the robots go in by hand (the in-game
   check puts 20 in each roboport, `--robots N`). `ports.json` lists the chests under `bots`, and flow control (check
   and mod, through `tag.py`) counts each item's provider and requester belts as one, so pull still reaches the
-  makers behind a provider.
+  makers behind a provider, and a requester holding less than its request counts as demand. Each provider chest may
+  fill `blocks.bot_provider_slots` slots (default 2, its inventory bar; null: all): robots carry only what requesters
+  ask for, and an unlimited provider took everything its makers sent. On a large factory raise `bot_links` until
+  the belt links fit the corridors (Py utility science: at 0.1/s, 819 belt links between 59 blocks never routed; at
+  1/s, 374).
 - `blocks.stitch` (`"router"`, the default, or `"global"`): how the corridors between blocks are routed. `"global"`
   first routes every corridor link on a coarse grid of 4 x 4 tile cells and widens the corridors wherever more links
   must pass than there are rows, before any fine routing; the fine router then keeps each link near its coarse
