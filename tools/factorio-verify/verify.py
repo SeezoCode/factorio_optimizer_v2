@@ -397,6 +397,15 @@ def judge(report, ports, args):
               ", ".join(f"{k} {fmt(v)}" + (f" ({fmt(bm[k])} while measured)" if bm.get(k) else "")
                         for k, v in sorted(report["bootstrapped"].items(), key=lambda kv: -kv[1])) +
               ("" if bm else "; none while measured"))
+    if report.get("orphan_s"):
+        raw = {i["item"].split("#")[0] for i in (ports or {}).get("inputs", [])} if isinstance(ports, dict) else set()
+        rows = [(k, v) for k, v in report["orphan_s"].items() if k.split(" <- ")[0] not in raw]
+        rows.sort(key=lambda kv: -kv[1])
+        print(f"\nDemand no maker hears (a machine short of an item on belts no maker of it drops onto), seconds over the run:")
+        for k, v in rows[:25]:
+            print(f"  {k:70} {v:>8}")
+        if not rows:
+            print("  none")
     if report.get("voided") is not None:
         vb = report.get("voided_by") or {}
         print(f"\nDeleted by the check while measured (--void-full: surplus of full machines), per second:")
@@ -546,6 +555,8 @@ def main():
                          "an item while a machine on their belt waits for it")
     ap.add_argument("--quota-window", type=float, default=None, metavar="S",
                     help="with --flow: quotas count what a machine took in the last S game seconds, not since the start")
+    ap.add_argument("--no-quotas", action="store_true",
+                    help="with --flow: everything but quotas (pull, stock, push, gates, carriers)")
     ap.add_argument("--no-pull", action="store_true",
                     help="with --flow: everything but pull (quotas, push, gates, carriers); machines run whenever they can")
     ap.add_argument("--pull-ahead", type=float, default=None, metavar="N",
@@ -681,6 +692,8 @@ def main():
             params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
             print(f"side-cap: a machine wanted only for a side product runs at most {args.side_cap} times its plan")
+    if args.no_quotas:
+        params["no_quotas"] = True
     if args.fluid_gates:
         params["fluid_gates"] = True
     if args.overflow_keep is not None:

@@ -841,7 +841,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by,
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, orphan_s = run.orphan_s,
     fluid_gates = run.fgates and (function() local o = {}
       for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0 } end end
       return o end)() or nil,
@@ -1291,7 +1291,17 @@ script.on_event(defines.events.on_tick, function()
         local filt = fb.get_filter(i)
         if (f and f.name == name) or (filt and filt.name == name) then
           local ok, id = pcall(function() return fb.get_fluid_segment_id(i) end)
-          if ok and id then out[#out + 1] = id end
+          if ok and id then out[#out + 1] = id
+          else
+            -- (A machine's own box may belong to no pipe network: then the networks of the pipes it connects to.)
+            local okc, conns = pcall(function() return fb.get_pipe_connections(i) end)
+            for _, c in pairs(okc and conns or {}) do
+              if c.target then
+                local okt, tid = pcall(function() return c.target.get_fluid_segment_id(c.target_fluidbox_index or 1) end)
+                if okt and tid then out[#out + 1] = tid end
+              end
+            end
+          end
         end
       end
     end)
@@ -1316,7 +1326,39 @@ script.on_event(defines.events.on_tick, function()
     local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
       [defines.entity_status.fluid_ingredient_shortage] = true, [defines.entity_status.no_fuel] = true }
     local short_net, short_at, short_fluid, fluid_at = {}, {}, {}, {}
+    -- Demand no maker hears: a machine short of an item on none of whose belt networks a machine making it drops, and
+    -- that no maker hands it directly. Counted per item and user recipe, in seconds (the factory's inputs aside, in
+    -- verify.py): pull switches makers on only for users on their own belts.
+    if not run.makes_on then
+      run.makes_on, run.handed = {}, {}
+      for _, m in pairs(run.machines) do
+        local r = m.e.valid and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+        if r then
+          for _, p in pairs(r.products) do
+            local t = run.makes_on[p.name] or {}
+            for n in pairs(run.drops[m.e.unit_number] or {}) do t[n] = true end
+            run.makes_on[p.name] = t
+            for u in pairs((run.hands or {})[m.e.unit_number] or {}) do
+              run.handed[u] = run.handed[u] or {}
+              run.handed[u][p.name] = true
+            end
+          end
+        end
+      end
+    end
+    run.orphan_s = run.orphan_s or {}
+    local function heard(e, item)
+      if (run.handed[e.unit_number] or {})[item] then return true end
+      local mk = run.makes_on[item] or {}
+      for net in pairs((run.feeds or {})[e.unit_number] or {}) do if mk[net] then return true end end
+      return false
+    end
     local function wait_for(e, item)
+      if not heard(e, item) then
+        local r = e.get_recipe()
+        local k = item .. " <- " .. (r and r.name or "?")
+        run.orphan_s[k] = (run.orphan_s[k] or 0) + 1
+      end
       local sn = short_net[item] or {}
       for net in pairs((run.feeds or {})[e.unit_number] or {}) do sn[net] = true end
       short_net[item] = sn
@@ -1576,7 +1618,7 @@ script.on_event(defines.events.on_tick, function()
   -- the zogna incubator after it got none; meat-to-cyanic took meat at 100 times its plan from its own belt off the
   -- renderer, short of meat itself, while the animal sample on another belt got none). One nobody behind plan waits
   -- behind takes what it likes.
-  if run.params.flow and game.tick % 60 == 0 and run.short and run.into then
+  if run.params.flow and not run.params.no_quotas and game.tick % 60 == 0 and run.short and run.into then
     local secs = (game.tick - run.t0) / 60
     run.quota_held, run.quota_stopped = 0, 0
     -- Pass 1: what each machine took against its quota.
