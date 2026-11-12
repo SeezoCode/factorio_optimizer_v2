@@ -4,6 +4,7 @@ data:extend({
   { type = "double-setting", name = "factory-flow-pull-ahead", setting_type = "runtime-global", default_value = 1, minimum_value = 1, maximum_value = 10, order = "b2" },
   { type = "double-setting", name = "factory-flow-stock", setting_type = "runtime-global", default_value = 3, minimum_value = 0, maximum_value = 10, order = "b3" },
   { type = "double-setting", name = "factory-flow-side-cap", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 100, order = "b4" },
+  { type = "double-setting", name = "factory-flow-rate-cap", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 100, order = "b45" },
   { type = "bool-setting", name = "factory-flow-requester-demand", setting_type = "runtime-global", default_value = true, order = "b5" },
   { type = "bool-setting", name = "factory-flow-quotas", setting_type = "runtime-global", default_value = true, order = "c" },
   { type = "double-setting", name = "factory-flow-quota-factor", setting_type = "runtime-global", default_value = 1.5, minimum_value = 1, maximum_value = 100, order = "d" },

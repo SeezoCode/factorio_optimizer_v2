@@ -530,11 +530,17 @@ local function control()
     -- times its plan over the last ten minutes, plus two crafts. Py production science's coal gas plant ran at nine
     -- times its plan for a trace of iron oxide (and coke), and the coke filled the robot provider it feeds and stopped it.
     local cap = setting("side-cap")
+    -- Rate cap (setting above 0): no machine runs faster than that many times its plan over the last ten minutes
+    -- (plus three crafts), whatever wants it, the target's makers aside. Loops and machines with several products kept
+    -- each other wanted and spun far past their plan (Py production science in the check: 330 recipes above 1.5 times
+    -- their plan, the uranium enrichment cascade at 20 to 33 times), taking what other chains needed.
+    local rate_cap = setting("rate-cap")
     for unit, m in pairs(storage.machines) do
       local r = recipes[unit]
       if m.e.valid and r then
         local wanted, known = m.target == true, m.target == true
         local capping = cap > 0 and m.purpose ~= nil and m.crafts ~= nil
+        local held = false
         local main = wanted
         if not wanted then
           local drops, hands = T.drops[unit] or {}, T.hands[unit] or {}
@@ -561,17 +567,25 @@ local function control()
             end
           end
         end
-        if capping then
+        if (capping or rate_cap > 0) and m.crafts then
           m.sc = m.sc or {}
           local h = m.sc
           h[#h + 1] = { tick = tick, pf = m.e.products_finished }
           while #h > 1 and tick - h[1].tick > 600 * 60 do table.remove(h, 1) end
-          if wanted and not main and m.e.products_finished - h[1].pf > m.crafts * (tick - h[1].tick) / 60 * cap + 2 then
+          local made, span = m.e.products_finished - h[1].pf, (tick - h[1].tick) / 60
+          if capping and wanted and not main and made > m.crafts * span * cap + 2 then
             wanted = false
+            held = true
+            stats.capped = stats.capped + 1
+          end
+          if rate_cap > 0 and wanted and not m.target and made > m.crafts * span * rate_cap + 3 then
+            wanted = false
+            held = true
             stats.capped = stats.capped + 1
           end
         end
-        if not wanted then
+        -- (A machine held to its cap stays off: a full maker pushing it would start it again.)
+        if not wanted and not held then
           for _, ing in pairs(r.ingredients) do
             if pushed(unit, ing) then wanted = true; known = true; break end
           end
