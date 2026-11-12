@@ -1210,9 +1210,20 @@ blueprint: they are the check's own help or control, run by the verify mod.
   the start, so a machine that ran ahead early on is not held for hours (with 1800, chemical science made 17% of
   its plan while measured, where it had made nothing).
 - `--no-pull`: with `--flow`, everything but pull (slower on Py's deep chains: pull is not what makes them slow).
+- `--meter F`: every machine is held to F times its planned rate (the rebalanced plan's), as a meter on each would: a
+  token bucket of one craft that fills at that rate. Needs neither `--pull` nor `--flow`. Unlike `--rate-cap` (ten
+  minutes' plan plus three crafts) it holds the slow machines too. See `docs/WHY_NO_SCIENCE.md`: a Py plan run with
+  ideal transport makes its target only when no machine runs past its plan.
 - `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
   can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
   No carrier bootstrap (in a real game you put a loop's carriers in by hand once).
+
+**Does a plan settle at all?** `tools/plan-sim/sim.py <run>/plan_rebalanced.json <target>` runs a plan as a factory
+with ideal transport (one pool per item, machines at their real speed, no layout) under rules named on the command
+line (`cap=1`: every machine held to its plan; `rule=stock`: pull; `noise=0.05`: meters 5% off; `outage=0.05:3:4`),
+in about ten seconds. What fails there fails in any layout. `structure.py` counts what makes a plan fragile (how far
+machines can outrun their plan, items balanced exactly, the biggest loop); `waits.py` and `balance.py` read an in-game
+report: what every machine waits for, down to the roots, and what came in and left against the plan.
 
 **The factory-flow mod** keeps your own factory near its plan the same way. Tag the blueprint, pack the mod, put the
 zip in Factorio's mods folder, and build the tagged blueprint with the mod enabled (`tools/factory-flow/README.md`):

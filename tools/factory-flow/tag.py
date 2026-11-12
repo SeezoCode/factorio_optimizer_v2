@@ -157,7 +157,9 @@ def main():
     targets = {t["name"] for t in job.get("targets", [])}
     data = a.recipes or job.get("data") or "data/recipes.json"
     recipes = json.load(open(data))["recipes"] if os.path.exists(data) else {}
-    plan = json.load(open(os.path.join(a.out, "plan.json")))
+    # (The blocks' rebalanced plan when there is one: the rates the factory was built for, per machine.)
+    rebalanced = os.path.join(a.out, "plan_rebalanced.json")
+    plan = json.load(open(rebalanced if os.path.exists(rebalanced) else os.path.join(a.out, "plan.json")))
     ports = json.load(open(os.path.join(a.out, "ports.json")))
     bp = decode(open(os.path.join(a.out, a.blueprint)).read())
     machines, ends = tag(bp, plan, ports, targets, recipes)

@@ -115,6 +115,19 @@ def find_file(path):
     return None
 
 
+def built_plan_path(target):
+    """The plan the factory was built from: the blocks' rebalanced plan when the run wrote one (a block that got more
+    machines of a recipe runs each of them slower: copper plate 0.30 crafts/s a machine where plan.json has 0.37, so
+    quotas and caps counted from plan.json were that much too loose), else plan.json. None for a bare blueprint."""
+    if not os.path.isdir(target):
+        return None
+    for name in ("plan_rebalanced.json", "plan.json"):
+        path = os.path.join(target, name)
+        if os.path.exists(path):
+            return path
+    return os.path.join(target, "plan.json")
+
+
 def load_inputs(args):
     """(blueprint string, job dict or None, ports dict or None, out folder or None)"""
     if os.path.isdir(args.target):
@@ -264,7 +277,7 @@ def run_game(args, bp, params, enabled, have):
                 extra = ""
                 if st.get("machines"):
                     extra = f"; {st.get('working', 0)} of {st['machines']} machines working, target crafts {st.get('target_crafts', 0)}"
-                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed"), ("capped", "capped for side products"), ("fgates_open", "fluid overflows open")):
+                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed"), ("capped", "capped for side products"), ("metered", "held by the meter"), ("fgates_open", "fluid overflows open")):
                         if st.get(k) is not None:
                             extra += f", {st[k]} {label}"
                 print(f"  {st.get('phase')}: {st.get('game_s', 0):.0f} of {st.get('total_s', 0):.0f} game seconds ({rate:.1f}x real time){extra}", flush=True)
@@ -306,7 +319,7 @@ def fmt(v):
 
 def planned_crafts(args):
     """Recipe -> planned crafts per second of one of its machines (the mean over the plan's machines), from plan.json."""
-    path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    path = built_plan_path(args.target)
     if not path or not os.path.exists(path):
         return {}
     tot, n = defaultdict(float), defaultdict(int)
@@ -318,7 +331,7 @@ def planned_crafts(args):
 
 def planned_use(args):
     """Item or fluid -> planned use per second (plan.json demands), by the game's name."""
-    path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    path = built_plan_path(args.target)
     if not path or not os.path.exists(path):
         return {}
     use = defaultdict(float)
@@ -599,6 +612,9 @@ def main():
     ap.add_argument("--rate-cap", type=float, default=None, metavar="FACTOR",
                     help="with --pull or --flow: no machine runs faster than FACTOR times its plan over the last ten minutes "
                          "(plus three crafts), whatever wants it")
+    ap.add_argument("--meter", type=float, default=None, metavar="FACTOR",
+                    help="every machine is held to FACTOR times its planned rate, as a meter would (a token bucket of one "
+                         "craft; unlike --rate-cap it holds the slow machines too, and needs neither --pull nor --flow)")
     ap.add_argument("--robot", default=None, metavar="NAME",
                     help="the logistic robot put into roboports (default: the slowest one a player can build)")
     ap.add_argument("--void-full", action="store_true",
@@ -637,7 +653,7 @@ def main():
         # Items the factory also uses (plan.json consumers), and the 0/s overflows, leave only what their users leave:
         # the mod opens their sinks only while the belt into them is backed up, and does not hold them to a rate.
         used = set()
-        plan_file = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        plan_file = built_plan_path(args.target)
         if plan_file and os.path.exists(plan_file):
             used = {t["item"] for t in json.load(open(plan_file)).get("terminals", []) if t.get("role") == "CONSUMER"}
         targets = {t["name"] for t in (job or {}).get("targets", [])}
@@ -663,7 +679,7 @@ def main():
         params["prime_all"] = True
     # Each recipe's planned intake per machine (items), fuel included: what a burner without fuel waits for, and what a
     # warm start puts in its fuel slot.
-    dp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    dp = built_plan_path(args.target)
     if dp and os.path.exists(dp):
         demand_of = defaultdict(dict)
         for m in json.load(open(dp)).get("machines", []):
@@ -675,7 +691,7 @@ def main():
     if args.flow:
         args.pull = not args.no_pull
         params["flow"] = True
-        fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        fp = built_plan_path(args.target)
         if fp and os.path.exists(fp):
             rates = defaultdict(dict)
             for m in json.load(open(fp)).get("machines", []):
@@ -705,8 +721,8 @@ def main():
         params["robots_per_roboport"] = args.robots
     if args.debug_at:
         params["debug_at"] = args.debug_at
-    if args.side_cap or args.rate_cap:
-        fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    if args.side_cap or args.rate_cap or args.meter:
+        fp = built_plan_path(args.target)
         if fp and os.path.exists(fp):
             purpose, crafts = defaultdict(set), defaultdict(float)
             for m in json.load(open(fp)).get("machines", []):
@@ -721,7 +737,11 @@ def main():
             if args.rate_cap:
                 params["rate_cap"] = args.rate_cap
                 print(f"rate-cap: no machine runs faster than {args.rate_cap} times its plan")
-            params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
+            if args.meter:
+                params["meter"] = args.meter
+                print(f"meter: every machine held to {args.meter} times its planned rate")
+            if args.side_cap or args.rate_cap:
+                params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
             params["plan_crafts"] = dict(crafts)
     if args.robot:
         params["robot"] = args.robot
@@ -746,7 +766,7 @@ def main():
             params["feed_items"] = {n.strip(): True for n in args.feed_items.split(",") if n.strip()}
         if args.feed_stop is not None:
             params["feed_stop"] = args.feed_stop
-        fp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        fp = built_plan_path(args.target)
         if fp and os.path.exists(fp):
             rates = defaultdict(dict)
             for m in json.load(open(fp)).get("machines", []):
@@ -761,7 +781,7 @@ def main():
                 crafts[rn] = max(crafts[rn], m.get("crafts", 0.0))
             params["feed_crafts"] = dict(crafts)
     if args.governor is not None:
-        gp = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+        gp = built_plan_path(args.target)
         if gp and os.path.exists(gp):
             per = defaultdict(float)
             for m in json.load(open(gp)).get("machines", []):
@@ -771,7 +791,7 @@ def main():
             params["governor_factor"] = args.governor
             print(f"governor: a machine ahead of {args.governor:g}x its planned crafts waits while another is short of its ingredients")
     # Production loops the planner found (plan.json "seeds"): their machines get a few crafts' worth to start with.
-    plan_path = os.path.join(args.target, "plan.json") if os.path.isdir(args.target) else None
+    plan_path = built_plan_path(args.target)
     if plan_path and os.path.exists(plan_path):
         raw = json.load(open(plan_path)).get("seeds", [])
         seeds = sorted({s.split("#")[0] for s in raw})
@@ -853,7 +873,7 @@ def main():
         data_file = find_file((job or {}).get("data") or "data/recipes.json")
         recipes = json.load(open(data_file))["recipes"] if data_file else {}
         bp_obj = flow_tag.decode(bp)
-        tagged, ends = flow_tag.tag(bp_obj, json.load(open(os.path.join(out, "plan.json"))), ports or {},
+        tagged, ends = flow_tag.tag(bp_obj, json.load(open(built_plan_path(out))), ports or {},
                                     {t["name"] for t in (job or {}).get("targets", [])}, recipes)
         bp = flow_tag.encode(bp_obj)
         params["raise_built"] = True
@@ -885,7 +905,7 @@ def main():
             json.dump(report, f, indent=1)
     args.launched = {}
     if out and os.path.exists(os.path.join(out, "plan.json")):
-        with open(os.path.join(out, "plan.json")) as f:
+        with open(built_plan_path(out)) as f:
             args.launched = json.load(f).get("launched") or {}
     args.targets = {t["name"] for t in (job or {}).get("targets", [])}
     fails = judge(report, ports, args)

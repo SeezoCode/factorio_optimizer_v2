@@ -1764,6 +1764,39 @@ script.on_event(defines.events.on_tick, function()
       end
     end
   end
+  -- params.meter: every machine held to that many times its planned rate (params.plan_crafts), as a meter would: a
+  -- token bucket of one craft that fills at the planned rate, a machine with none left stands until it has one again.
+  -- Unlike rate_cap (ten minutes' plan plus three crafts, which for a machine planned at a craft every five minutes is
+  -- two and a half times its plan) this holds the slow machines too. The plan run with ideal transport (one pool per
+  -- item) makes its target only when no machine runs past its plan: one that does takes what an exactly balanced
+  -- neighbour needed. Runs after pull, and only ever switches off what pull left on.
+  if run.params.meter and game.tick % 60 == 0 then
+    local crafts, held = run.params.plan_crafts or {}, 0
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      if e.valid then
+        local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+        local c = r and crafts[r.name]
+        if c and c > 0 then
+          local pf = e.products_finished
+          local t = m.mt
+          if not t then t = { tok = 1, pf = pf, tick = game.tick }; m.mt = t end
+          local rate = c * run.params.meter
+          t.tok = math.min(t.tok + rate * (game.tick - t.tick) / 60, 1 + rate * 60) - (pf - t.pf)
+          t.pf, t.tick = pf, game.tick
+          if t.tok <= 0 then
+            held = held + 1
+            m.meter_held = true
+            e.disabled_by_script = true
+          elseif m.meter_held then
+            m.meter_held = false
+            if not run.params.pull then e.disabled_by_script = false end
+          end
+        end
+      end
+    end
+    run.metered = held
+  end
   -- params.flow: quotas. A machine that has taken more of an item or fluid than its plan allows so far (flow_rates: per
   -- second, times 1.5, plus two crafts' worth) is held while a machine behind its own quota stands short of it, anywhere
   -- in the factory: its inserters bringing that item stop, or for a fluid the machine itself. No user takes what those
@@ -2072,7 +2105,7 @@ commands.add_command("verify_status", "Where a verify run is.", function()
   end
   local st = { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil,
     working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, stopped = run.quota_stopped, gates = run.gates_closed,
-    capped = run.side_capped, fgates = run.fgates and #run.fgates or nil, fgates_open = run.fgates_open }
+    capped = run.side_capped, metered = run.metered, fgates = run.fgates and #run.fgates or nil, fgates_open = run.fgates_open }
   -- (Under the factory-flow mod: what it is doing.)
   if remote.interfaces["factory-flow"] then
     local s = remote.call("factory-flow", "status") or {}
