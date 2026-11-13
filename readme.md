@@ -1214,6 +1214,14 @@ blueprint: they are the check's own help or control, run by the verify mod.
   token bucket of one craft that fills at that rate. Needs neither `--pull` nor `--flow`. Unlike `--rate-cap` (ten
   minutes' plan plus three crafts) it holds the slow machines too. See `docs/WHY_NO_SCIENCE.md`: a Py plan run with
   ideal transport makes its target only when no machine runs past its plan.
+- `--meter-file FILE` (with `--void-full`): meters at the rates of a plan with margins (`tools/plan-sim/margin.py`
+  writes the file); its carriers are kept out of the virtual sinks. `--meter-start`: each meter starts with enough
+  crafts in hand to give every user of its machine's products one craft's worth, so a new factory does not wait hours
+  for slow machines' second crafts. See `docs/GO_NO_GO.md`.
+- `--belt-pull`: with `--flow`, an inserter putting a machine's products onto a belt works only while a user on that
+  belt holds less than its stock of one of them, so a metered machine's output goes to the belts that need it.
+  `--virtual-bots` (a helper): items travel as through one robot network, moved from makers' outputs to machines in
+  need and never made up; the machines' output inserters stand, belts carry the raw inputs, pipes the fluids.
 - `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
   can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
   No carrier bootstrap (in a real game you put a loop's carriers in by hand once).
@@ -1221,7 +1229,10 @@ blueprint: they are the check's own help or control, run by the verify mod.
 **Does a plan settle at all?** `tools/plan-sim/sim.py <run>/plan_rebalanced.json <target>` runs a plan as a factory
 with ideal transport (one pool per item, machines at their real speed, no layout) under rules named on the command
 line (`cap=1`: every machine held to its plan; `rule=stock`: pull; `noise=0.05`: meters 5% off; `outage=0.05:3:4`),
-in about ten seconds. What fails there fails in any layout. `structure.py` counts what makes a plan fragile (how far
+in about ten seconds. What fails there fails in any layout. `margin.sh <plan> <target> <prefix> <tolerance>` computes
+rates with a margin (every item still in surplus with every rate that far off; needs the planner's solver through
+`LpFileTest`), and `sim2.py` runs them: whole crafts, late deliveries, rate errors, outages, sharing rules
+(`docs/GO_NO_GO.md`). `structure.py` counts what makes a plan fragile (how far
 machines can outrun their plan, items balanced exactly, the biggest loop); `waits.py` and `balance.py` read an in-game
 report: what every machine waits for, down to the roots, and what came in and left against the plan.
 

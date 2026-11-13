@@ -3,6 +3,10 @@
 2026-11-12. Written after two weeks in which every fix to a Py factory in game ended with "no science yet". The
 question: why do we keep hitting bottlenecks, and what should change in how the program plans, not in one layout.
 
+**What came next:** the overnight test of whether a design exists that holds, and what it costs, is in
+[GO_NO_GO.md](GO_NO_GO.md). It settles several points below: meters are needed on every machine, a margin of 1 to 2%
+is enough and costed, cheaper surplus does not untangle the plans, and belts are where the game still fails.
+
 ## Short answer
 
 **No layout could make these plans work as they are built, and the layouts have the same gap one level down.** Each

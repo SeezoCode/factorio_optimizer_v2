@@ -5,7 +5,25 @@ a set of rules under which a Py factory keeps making its science when every rate
 outage? If none exists, no layout work can help and big Py should stop. If one exists, what does it cost and what has
 to be built?
 
-VERDICT_PLACEHOLDER
+## Verdict
+
+**The plan half is solved; the belt half is not.**
+
+- **Yes, a design exists under which every Py science plan holds itself in the model**: rates with a margin of 1 to
+  2%, a meter on every machine, an overflow on everything but carriers, a stock of each loop's starter items and a
+  start-up allowance. All eight plans (56 to 2,524 machines) make their first science within 1 to 9 hours from empty
+  and hold 100% after priming ends, with whole crafts, late deliveries and every rate up to 2% off (with continuous
+  flows also 5% off and an hour's outage, smallest user first).
+  It costs 14 to 41% more raw input at 1% (32 to 129% at 2%) and almost no machines (utility: 13% more).
+- **No, that design did not make science in game on the layouts we have**, in up to 14 game-hours, with the check
+  standing in for the unbuilt parts. What stops it is no longer over-running or waste: it is that belts do not share
+  out a metered supply. The two rules I added for that in the check more than halved what was left and did not
+  finish it.
+- **So it can be fixed, but it is a second phase of the project, not a patch**, and its last step is unproven. The
+  rate program, the meters, the overflows and the starter stocks are known work. How items reach every user of a
+  metered supply is the open part, and the evidence points one way: low-rate items should travel through a shared
+  stock (robots and chests, as pipes already are for fluids), with belts kept for the bulk. 676 of production
+  science's 744 recipes run under 30% of one machine; that tail is where belts fail and where robots are enough.
 
 ## The design that holds in the model
 
@@ -19,6 +37,8 @@ VERDICT_PLACEHOLDER
 4. **A stock of each loop's starter items**: an hour or two of use, and primed until the loops run.
 5. **Smallest user first** where an item runs short, if the meters can be more than about 2% off. With meters within
    the tolerance, the order on the belt does not matter.
+6. **No recipe below its planned rate** and **a start-up allowance** on each meter (both found with whole crafts,
+   below).
 
 Optional: production by demand on top (a machine stands while the pools it fills are full). It changes nothing in
 what is made and saves raw input (production science: 1.35 instead of 1.62 times the plain plan's).
@@ -37,49 +57,51 @@ each run); "outage": 5% of machines stand for an hour. A run passes at 95% of th
 | Py science 3 | 681 | 10 | 0 | 10 | 0 (43%) |
 | production | 869 | 10 | 0 | 10 | 2 (0%) |
 | Py science 4 | 1,102 | 8 | 0 | 10 | 1 (0%) |
-| utility | 2,524 | 10 | 0 | UTIL2 | UTIL10 |
+| utility | 2,524 | 10 | 0 | 10 | 0 (0%) |
 
 The plain plan under the same test (meters at its own rates, smallest first, the same stock): none of 6 runs for
 production science.
 
 ### What the margin costs
 
-Machines needed, and all crafts against the plain plan's, for three tolerances:
+The margin compounds round the loops. For production science a tolerance of 1% costs about a quarter more raw
+input, 2% 62% more, 3% more than double, and 5% four times, with control units left without any margin. (The table
+in the next section has every plan.) So the tolerance has to be small, and the meters as exact as the plan assumes.
+A clock on a circuit wire and an enable condition on each machine is exact to the tick.
 
-| Science | Plain plan | 0.5% | 1% | 2% |
-|---|---:|---:|---:|---:|
-| Py science 1 | 56 | 51 (1.05) | 51 (1.12) | 51 (1.28) |
-| logistic | 325 | 308 (0.91) | 308 (1.24) | 309 (2.13) |
-| Py science 2 | 406 | 386 (0.71) | 387 (0.78) | 387 (0.98) |
-| chemical | 512 | 501 (0.86) | 501 (0.94) | 501 (1.14) |
-| Py science 3 | 681 | 662 (1.06) | 668 (1.15) | 670 (1.36) |
-| production | 869 | 857 (1.09) | 864 (1.24) | 882 (1.62) |
-| Py science 4 | 1,102 | 1,067 (0.88) | 1,069 (0.98) | 1,078 (1.25) |
-| utility | 2,524 | 2,602 (1.10) | 2,771 (1.28) | 3,252 (1.72) |
+### With whole crafts, late deliveries and a cold start
 
-(Under 1.00: the second program also drops what the planner's whole-machine rounding had left in.) The margin
-compounds round the loops: 2% costs production science 62% more crafts and raw input, 3% more than double, and 5%
-four times, with control units left without any margin. So the tolerance has to be small, and the meters as exact as the plan
-assumes. A clock on a circuit wire and an enable condition on each machine is exact to the tick, and Py's machines
-take wires (606 of 626 machine types and all 18 furnaces have a circuit connector).
+The model above lets a machine make a hundredth of a craft. The harder version: whole crafts only, a bucket of
+crafts as the meter, buffers of ten crafts, everything made arriving two minutes late, two hours' stock of each
+loop's starter items, started from empty and primed for 48 hours, then left alone for 16. Two more rules turned out
+to be needed:
 
-### With whole crafts
+- **No recipe below its planned rate.** Left free, the second rate program cuts some recipes to a trickle (a craft
+  in days), and one of them then holds the whole start (logistic science never started).
+- **A start-up allowance.** Each meter starts with enough crafts in hand to give every user of its machine's products
+  one craft's worth. Without it a machine planned at a craft every three hours keeps its users waiting for its
+  second craft: chemical science took 29 hours to start, Py science 2 83, Py science 4 75. A flat allowance (5 or 20
+  crafts for all) brings the over-running back; this one does not.
 
-The model above lets a machine make a hundredth of a craft. With whole crafts only, a bucket of crafts as the meter
-and buffers of ten crafts:
+| Science | Machines, plain plan | Margin 1%: machines, raw input | Margin 2%: machines, raw input | First science, hour | Hours 49 to 64, left alone |
+|---|---:|---|---|---:|---|
+| Py science 1 | 56 | 56, 1.14 times | 56, 1.32 | 1 to 2 | 101 to 102%, no hour under 100% |
+| logistic | 325 | 325, 1.41 | 326, 2.29 | 3 | 101 to 102% |
+| Py science 2 | 406 | 406, 1.17 | 406, 1.43 | 6 to 8 | 100 to 102% |
+| chemical | 512 | 512, 1.18 | 512, 1.42 | 2 | 100 to 102% |
+| Py science 3 | 681 | 689, 1.22 | 715, 1.89 | 2 | 101 to 104% |
+| production | 869 | 878, 1.26 | 895, 1.63 | 1 to 2 | 101 to 102% |
+| Py science 4 | 1,102 | 1,114, 1.24 | 1,134, 1.56 | 7 | 101 to 102% |
+| utility | 2,524 | 2,848, 1.35 | 3,517, 1.90 | 6 to 9 | 100 to 102%, worst hour 97% |
 
-- **The steady state holds.** Production science and Py science 3 run at 100 to 102% for a day and more, also after
-  priming stops; chemical for the 35 hours it was followed. With exact meters a margin of 0.5% is enough (production:
-  100% in 3 of 3, at 1.1 times the raw input). The plain plan with exact meters gives 68 to 82% and falls; with meters
-  1% off, about a tenth.
-- **Deliveries that arrive late need the starter stock.** With everything made arriving two minutes later,
-  production science runs at 100% while primed and dies within two hours of priming ending when its pools hold a
-  minute's flow; with two hours' stock of each loop's starter items it carries on (followed for 8 hours).
-- **Errors past the tolerance are not forgiven**: a 1% margin with rates 2% off passes 1 run in 3.
-- **Starting is slow, and that is Py, not the meters.** At 0.02 science a second many machines craft once in
-  hours (ground samples in Py science 4: once in 28 hours). From empty, primed: production science and Py science 3
-  make science within 2 to 4 hours, chemical after 29, Py science 2 after 83, Py science 4 and utility not within 4
-  days. Our 90-minute checks from empty could never have shown these working.
+Each plan was run three ways: 1% margin with exact meters, 2% with exact meters, 2% with every meter up to 2% off.
+All three hold for every plan. What does not hold:
+
+- **The plain plan**: with exact meters 68 to 82% and falling (production science); with meters 1% off, about a tenth.
+- **Errors past the tolerance**: a 1% margin with rates 2% off passes 1 run in 3. Smallest-first sharing does not
+  rescue that here as it does with continuous flows.
+- **Small pools with late deliveries**: with a minute's stock instead of two hours', production science runs at 100%
+  while primed and dies within two hours of priming ending.
 
 ### What did not work
 
@@ -93,4 +115,83 @@ and buffers of ten crafts:
 - **Reserve by rule** (outside users only above a level) in the plain plan: starves them, since its pools sit at
   nothing. With a margin the pools sit full and a plain bigger buffer does the job.
 
-IN_GAME_PLACEHOLDER
+## In game
+
+The design can be tried on the layouts we have, with the check standing in for what is not built: meters at the
+margin rates (`--meter-file`), each starting with its users' first batch in hand (`--meter-start`), an overflow
+everywhere (`--void-full`, which now leaves carriers alone), loops primed through the warm-up. Two limits: the
+layouts were built for the plain plan (in production science 60 machines would have to run past their top speed, so
+it runs at half rates and could make half its science at best), and nothing orders who draws first.
+
+**No run made science**, where the model, given the same rates, whole crafts and first-come sharing, has chemical
+science starting between hours 4 and 9 and production within 5. How far each got, by the machines that never
+crafted once:
+
+| Chemical science (512 machines), from empty | Game hours | Never crafted |
+|---|---:|---:|
+| margin meters | 1.7 | 209 |
+| + start-up allowance for one user | 6 | 127 |
+| the same | 14 | 73 |
+| + output inserters work only for a belt in need | 10 | 84 |
+| start-up allowance for every user | 4.5 | 114 |
+| start-up allowance for every user + output inserters work only for a belt in need | 4.5 | **51** |
+| the same | 14 | FINAL_CHEM |
+
+| Production science (869 machines) at half rates, from empty | Game hours | Never crafted |
+|---|---:|---:|
+| margin meters at full rates (cannot be reached) | 1.7 | 156 |
+| + start-up allowance for one user | 5 | 144 |
+| the same | 10 | 130 |
+| + output inserters work only for a belt in need | 7 | 126 |
+| start-up allowance for every user + output inserters work only for a belt in need | 10 | FINAL_PROD |
+
+What the reports show:
+
+- **Every root is a maker at its metered rate whose users go unserved** (13 of 13 in production science, 13 of 14
+  in chemical, and the same after 10 and 14 hours). Titanium plate in chemical science: made at its metered
+  0.041/s, 0.027/s used, three of its seven users without a single plate.
+- **Belts do not share out a metered supply.** A machine that drops onto several belts hands each a share by turns,
+  not by need (158 of chemical's 512 machines and 286 of production's 869 drop onto two belt networks or more).
+  Unmetered it makes more until every belt is full and the split stops mattering. Metered it makes only what the
+  plan needs, and the belt whose users are stocked silts up (100 tiles hold 800 plates, hours of a slow maker's
+  output) before it backs up to the machine. Along one belt the first users stock up before the last sees anything.
+  The check's new `--belt-pull` (an output inserter works only while a user on its belt holds less than its stock)
+  and an allowance counted for every user more than halve what is left, but did not finish it in the time I had.
+- **Carriers lock a machine that makes other things too**: a renderer standing full of 3 cages nobody is ready to
+  take, its brain and skin not made.
+- These runs are slow by nature: half of chemical's machines are planned to craft less than once in ten minutes, and
+  a first craft that waits on a fuel rod waits on a chain 13 machines deep.
+
+The pool model has none of this: in it every user of an item draws from one stock. That is what a pipe network is,
+and what a robot network is, and it is not what a belt is. With robot-like transport in the model (everything five
+minutes late, first come first served, whole crafts) the design still holds at 100% for production, chemical and
+Py science 4.
+
+## What would have to be built
+
+In the order that keeps every step testable in the model first:
+
+1. **Margins in the planner.** The second rate program as a planner stage: a tolerance of 1%, no recipe below a
+   floor, carriers found and balanced exactly, each machine's meter rate and start-up allowance written to the
+   plan. The split into blocks and the block rebalancing must keep the surplus (today they balance exactly).
+2. **The model as the planner's test** (a port of `sim2.py`): whole crafts, late deliveries, rate errors, an outage.
+   A plan that fails it is not laid out.
+3. **Meters**: in the mod a bucket of crafts per machine with the start-up allowance (the check has both now); in a
+   plain blueprint a clock on a circuit wire and an enable condition on each machine. Py's machines take wires (606
+   of 626 machine types and all 18 furnaces have a circuit connector).
+4. **An overflow that really empties** for every item that is not a carrier. Today a block has one chest per
+   by-product, which fills. Py has void recipes (skipped today); robots hauling to one void is the other way.
+5. **Low-rate items through a shared stock instead of belts**: inside a block, a requester and a provider chest at
+   each machine for items under a set rate (robot links between blocks already work this way), belts for the bulk,
+   pipes as now. The stock is also where the starter items and the buffers of ten crafts live. This replaces most of
+   the belt routing that the big blocks struggle with.
+6. **Checks that can see it**: from empty these factories need hours, so the in-game check needs long warm-ups and
+   the allowance, never 90 minutes.
+
+Not needed: smallest-first ordering (only matters when meters are further off than the tolerance), production by
+demand (saves raw input, changes nothing else), more flow rules in the check.
+
+Before any of it, the cheapest proof: one mid-size factory (logistic science, 325 machines) laid out with step 5's
+transport, run under meters at margin rates. If that makes science at plan from empty, the rest is scale. If it
+does not, big Py should stop there.
+

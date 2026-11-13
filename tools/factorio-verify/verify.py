@@ -277,7 +277,7 @@ def run_game(args, bp, params, enabled, have):
                 extra = ""
                 if st.get("machines"):
                     extra = f"; {st.get('working', 0)} of {st['machines']} machines working, target crafts {st.get('target_crafts', 0)}"
-                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed"), ("capped", "capped for side products"), ("metered", "held by the meter"), ("fgates_open", "fluid overflows open")):
+                    for k, label in (("off", "switched off"), ("held", "inserters held"), ("stopped", "held on fluids"), ("gates", "gates closed"), ("capped", "capped for side products"), ("metered", "held by the meter"), ("belt_held", "output inserters held"), ("fgates_open", "fluid overflows open")):
                         if st.get(k) is not None:
                             extra += f", {st[k]} {label}"
                 print(f"  {st.get('phase')}: {st.get('game_s', 0):.0f} of {st.get('total_s', 0):.0f} game seconds ({rate:.1f}x real time){extra}", flush=True)
@@ -618,6 +618,14 @@ def main():
     ap.add_argument("--meter-file", default=None, metavar="FILE",
                     help="meters at the rates of a plan with margins (tools/plan-sim/margin.py's caps file: each machine's "
                          "rate against its plan, and the carriers that only go round, which --void-full then leaves alone)")
+    ap.add_argument("--virtual-bots", action="store_true",
+                    help="a helper, with --flow: items travel as through one robot network (a machine below a craft's "
+                         "worth of an item gets it out of other machines' outputs, nothing made up) and, with --belt-pull, "
+                         "the machines' output inserters stand; belts carry raw inputs only, pipes the fluids")
+    ap.add_argument("--belt-pull", action="store_true",
+                    help="with --flow: an inserter putting a machine's products onto a belt works only while a user on that "
+                         "belt holds less than its stock of one of them, so a metered machine's output goes to the belts "
+                         "that need it instead of a third to each")
     ap.add_argument("--meter-start", action="store_true",
                     help="with --meter-file: each meter starts with enough crafts in hand to give every user of its "
                          "machine's products one craft's worth (a start-up allowance)")
@@ -759,11 +767,13 @@ def main():
                         d = per_out if t["role"] == "PRODUCER" else per_in if t["role"] == "CONSUMER" else None
                         if d is not None:
                             d[t["machine"]][t["item"]] = d[t["machine"]].get(t["item"], 0.0) + t["rate"] / pm[t["machine"]]["crafts"]
+                # (One craft's worth for each user machine, added up: on a belt the first users stock up before the
+                # last sees anything.)
                 biggest = defaultdict(float)
                 for mi, ins in per_in.items():
                     if caps["ratio"][mi] > 0:
                         for item, a in ins.items():
-                            biggest[item] = max(biggest[item], a)
+                            biggest[item] += a
                 start = defaultdict(float)
                 for mi, outs in per_out.items():
                     rn = pm[mi]["recipe"].split("#")[0].split("@")[0]
@@ -795,6 +805,13 @@ def main():
         params["overflow_keep"] = args.overflow_keep
     if args.void_full:
         params["void_full"] = True
+    if args.virtual_bots:
+        params["virtual_bots"] = True
+        args.belt_pull = True
+        print("virtual-bots: items are moved from makers' outputs to machines in need; output inserters stand")
+    if args.belt_pull:
+        params["belt_pull"] = True
+        print("belt-pull: output inserters work only while a user on their belt is below its stock")
         print("void-full: full machines have their surplus deleted (virtual sinks), counted")
     if args.feed_short:
         params["feed_short"] = args.feed_short

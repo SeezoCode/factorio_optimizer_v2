@@ -596,6 +596,11 @@ local function start(params)
         f[find(d.unit_number)] = true
         run.drops[pk.unit_number] = f
       end
+      -- Each machine's inserters onto belts, with the network they drop onto (params.belt_pull).
+      if d and pk and parent[d.unit_number] and CRAFTERS[pk.type] then
+        run.outs = run.outs or {}
+        run.outs[#run.outs + 1] = { e = i.e, m = pk, net = find(d.unit_number) }
+      end
       if d and pk and CRAFTERS[d.type] and parent[pk.unit_number] then
         run.pick_belts = run.pick_belts or {}; run.pick_belts[pk.unit_number] = true
         run.ins_net = run.ins_net or {}; run.ins_net[i.e.unit_number] = find(pk.unit_number)
@@ -884,7 +889,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, orphan_s = run.orphan_s,
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
     fluid_gates = run.fgates and (function() local o = {}
       for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0,
@@ -1226,6 +1231,114 @@ local function feed_short(run)
   end
 end
 
+-- params.virtual_bots, a helper: items travel as through one robot network with a chest at every machine. Once a
+-- second a machine holding less than a craft's worth of an item ingredient gets up to two crafts' worth out of other
+-- machines' output inventories (their products and burnt fuel), first come first served; a burner without fuel
+-- likewise. Nothing is made up: what is given is taken from where it lies. With params.belt_pull the machines'
+-- output inserters then stand (only targets leave by belt), so belts carry the raw inputs alone and pipes the fluids.
+-- The plan-level model has one stock per item that every maker fills and every user draws from, and under it the
+-- metered plans with margins hold; belts are not that (a metered maker's output is not shared out along them). This
+-- puts the question to the real machines: do they hold once items reach whoever needs them?
+local function virtual_bots(run)
+  if not run.params.virtual_bots or game.tick % 60 ~= 0 then return end
+  local stock = {}
+  local function add(name, inv, n)
+    if n > 0 then local l = stock[name] or {}; l[#l + 1] = { inv = inv, n = n }; stock[name] = l end
+  end
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+    if r then pcall(function()
+      local out = e.get_output_inventory()
+      if out then
+        for _, p in pairs(r.products) do
+          if p.type == "item" then add(p.name, out, out.get_item_count(p.name)) end
+        end
+      end
+      local burnt = e.get_burnt_result_inventory()
+      if burnt then
+        for k, c in pairs(burnt.get_contents()) do
+          local name = type(c) == "table" and c.name or k
+          add(name, burnt, type(c) == "table" and c.count or c)
+        end
+      end
+    end) end
+  end
+  -- Carriers (params.void_except: cages, barrels, bricks) a machine stands full of go to a storage chest of the
+  -- network, as an active provider chest would send them; users draw from it first.
+  run.store = run.store or {}
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    if e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.waiting_for_space_in_destination) then
+      local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+      local out = r and e.get_output_inventory()
+      if out then
+        for _, p in pairs(r.products) do
+          if p.type == "item" and (run.params.void_except or {})[p.name] then
+            local n = out.get_item_count(p.name)
+            if n > 0 then
+              local d = out.remove { name = p.name, count = n }
+              run.store[p.name] = (run.store[p.name] or 0) + d
+              for _, s2 in ipairs(stock[p.name] or {}) do if s2.inv == out then s2.n = math.max(0, s2.n - d) end end
+            end
+          end
+        end
+      end
+    end
+  end
+  local function available(name)
+    local n = run.store[name] or 0
+    for _, s in ipairs(stock[name] or {}) do n = n + s.n end
+    return n
+  end
+  local function take(name, want)
+    local got = math.min(run.store[name] or 0, want)
+    if got > 0 then run.store[name] = run.store[name] - got end
+    for _, s in ipairs(stock[name] or {}) do
+      if got >= want then break end
+      if s.n > 0 then
+        local d = s.inv.remove { name = name, count = math.min(s.n, want - got) }
+        s.n = s.n - d; got = got + d
+      end
+    end
+    return got
+  end
+  run.moved = run.moved or {}
+  run.moved_measure = run.moved_measure or {}
+  local function record(name, d)
+    run.moved[name] = (run.moved[name] or 0) + d
+    if run.phase == "measure" then run.moved_measure[name] = (run.moved_measure[name] or 0) + d end
+  end
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+    if r then pcall(function()
+      for _, ing in pairs(r.ingredients) do
+        if ing.type == "item" then
+          local have = held(e, ing.name)
+          if have < ing.amount then
+            local give = math.min(math.ceil(ing.amount * 2) - have, available(ing.name))
+            if give > 0 then
+              local done = e.insert { name = ing.name, count = give }
+              if done and done > 0 then take(ing.name, done); record(ing.name, done) end
+            end
+          end
+        end
+      end
+      if e.status == defines.entity_status.no_fuel then
+        local fuel = e.get_fuel_inventory()
+        for _, f in pairs(fuel_items(run, r)) do
+          local give = math.min(2, available(f))
+          if fuel and give > 0 then
+            local done = fuel.insert { name = f, count = give }
+            if done and done > 0 then take(f, done); record(f, done) end
+          end
+        end
+      end
+    end) end
+  end
+end
+
 -- params.void_full, a helper ("virtual sinks"): a machine standing with a full output and not switched off by flow
 -- control has its surplus deleted every second: half of each product item in its output, half of each product fluid in
 -- its output boxes, half of its burnt result. Counted per item, per recipe and per machine. It does what a gated sink
@@ -1259,7 +1372,8 @@ local function void_full(run)
           if (run.params.void_except or {})[p.name] then
           elseif p.type == "item" then
             local n = out and out.get_item_count(p.name) or 0
-            local d = math.floor(n / 2)
+            -- (Half, rounded up: a machine standing full of one brain was never relieved.)
+            local d = math.ceil(n / 2)
             if d > 0 then
               local removed = out.remove { name = p.name, count = d }
               if removed > 0 then record(m, r, p.name, removed) end
@@ -1369,6 +1483,7 @@ script.on_event(defines.events.on_tick, function()
   end
   seed_tick(run)
   feed_short(run)
+  virtual_bots(run)
   void_full(run)
   virtual_pumps(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (2) times its plan,
@@ -1658,6 +1773,38 @@ script.on_event(defines.events.on_tick, function()
     end
     run.short = { net = short_net, at = short_at, fluid = short_fluid, fluid_at = fluid_at, push_net = push_net, push_at = push_at, push_fluid = push_fluid,
       low_net = low_net, low_at = low_at, low_fluid = low_fluid }
+    -- params.belt_pull: an inserter putting a machine's products onto a belt works only while a user on that belt
+    -- network holds less than its stock of one of them (or the product is a target). A metered machine makes just its
+    -- planned amount; dropping onto three belts it hands a third to each by turns, whatever each needs, and the belt
+    -- whose users are stocked silts up for hours (800 plates on 100 tiles) before it backs up to the machine, while the
+    -- users on the others get none (Py chemical science under meters: titanium plate made at its rate, three of its
+    -- seven users without any). What no belt wants stays in the machine, where the virtual sinks take it.
+    if run.params.belt_pull and run.outs then
+      if not run.mrec then run.mrec = {}; for _, m in pairs(run.machines) do if m.e.valid then run.mrec[m.e.unit_number] = m end end end
+      local sn = low_net or short_net
+      local target = {}
+      for _, n in pairs(run.params.pull_wanted or run.params.targets or {}) do target[n] = true end
+      local held = 0
+      for _, o in pairs(run.outs) do
+        if o.e.valid and o.m.valid then
+          local rec = run.mrec[o.m.unit_number]
+          local r = o.m.get_recipe() or (rec and rec.plan_recipe and prototypes.recipe[rec.plan_recipe])
+          local want = r == nil
+          if r then
+            for _, p in pairs(r.products) do
+              if p.type == "item" then
+                local on = sn[p.name]
+                -- (params.virtual_bots: only targets leave by belt; the rest waits in the machine to be fetched.)
+                if target[p.name] or (not run.params.virtual_bots and on and on[o.net]) then want = true; break end
+              end
+            end
+          end
+          if not want then held = held + 1 end
+          if o.e.disabled_by_script ~= (not want) then o.e.disabled_by_script = not want end
+        end
+      end
+      run.belt_held = held
+    end
   end
   if run.params.pull and game.tick % 60 == 0 and run.short then
     local short_net, short_at, short_fluid = run.short.low_net or run.short.net, run.short.low_at or run.short.at, run.short.low_fluid or run.short.fluid
@@ -2110,7 +2257,7 @@ commands.add_command("verify_status", "Where a verify run is.", function()
   end
   local st = { phase = run.phase, tick = game.tick, game_s = at / 60, total_s = (run.warmup + run.measure) / 60, speed = game.speed, report = run.phase == "done" and REPORT or nil,
     working = working, machines = #(run.machines or {}), target_crafts = made, off = run.pulled_off, held = run.quota_held, stopped = run.quota_stopped, gates = run.gates_closed,
-    capped = run.side_capped, metered = run.metered, fgates = run.fgates and #run.fgates or nil, fgates_open = run.fgates_open }
+    capped = run.side_capped, metered = run.metered, belt_held = run.belt_held, fgates = run.fgates and #run.fgates or nil, fgates_open = run.fgates_open }
   -- (Under the factory-flow mod: what it is doing.)
   if remote.interfaces["factory-flow"] then
     local s = remote.call("factory-flow", "status") or {}
