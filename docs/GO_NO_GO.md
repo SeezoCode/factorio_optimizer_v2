@@ -16,10 +16,10 @@ to be built?
   flows also 5% off and an hour's outage, smallest user first).
   It costs 14 to 41% more raw input at 1% (32 to 129% at 2%) and almost no machines (utility: 13% more).
 - **In game, on the layouts we have, no run made a science pack** in up to 14 game-hours, with the check standing
-  in for the unbuilt parts. On belts the factories stay half dead: belts do not share out a metered supply. With
-  the same factories' items carried as a robot network would carry them, nearly everything runs at its rate within 12
-  hours (chemical science: 374 of 481 recipes, against 215 on belts) and the science machine waits for its last one
-  or two ingredients.
+  in for the unbuilt parts. On belts about half the recipes never reach their rate: belts do not share out a
+  metered supply. With the same factories' items carried as a robot network would carry them, most recipes run at
+  their rate within 12 hours (chemical science: 374 of 481, against 215 to 262 on belts; under a tenth of their rate:
+  14, against 62 to 135) and the science machine waits for its last one or two ingredients.
 - **So it can be fixed, and the night says how: the plan as tested, and low-rate items through a shared stock
   instead of belts.** That is a second phase of the project, not a patch. The rate program, the meters, the
   overflows and the starter stocks are known work. Robots and chests for the low-rate items (pipes already are a
@@ -136,14 +136,15 @@ counts recipes due at least two crafts in that time.
 | belts, allowance for every user, output inserters work only for a belt in need | 14 | 2 | 262 | 62 |
 | **robot-like transport** | 12 | 3 | **374** | **14** |
 | robot-like transport, one craft's worth a delivery, double allowance | 4.5 | 11 | 280 | 17 |
-| the same | 10 | FINAL_CHEM |
+| the same | 10 | 5 | 323 | 13 |
 
 | Production science (869 machines, 742 recipes) at half rates, from empty | Game hours | Machines that never crafted | Recipes under a tenth |
 |---|---:|---:|---:|
 | belts, start-up allowance for one user | 10 | 130 | 142 |
 | belts, output inserters work only for a belt in need | 7 | 126 | 149 |
+| belts, allowance for every user, output inserters work only for a belt in need | 10 | 114 | 176 |
 | **robot-like transport** | 9 | **14** | **33** |
-| robot-like transport, one craft's worth a delivery, double allowance | 7 | FINAL_PROD |
+| robot-like transport, one craft's worth a delivery, double allowance | 7 | 145 | 241 |
 
 "Robot-like transport" is `--virtual-bots`: once a second a machine holding less than a craft's worth of an item is
 given it out of other machines' outputs, first come first served, and the machines' output inserters stand. Nothing
@@ -161,11 +162,15 @@ What the reports show:
   plan needs, and the belt whose users are stocked silts up (100 tiles hold 800 plates, hours of a slow maker's
   output) before it backs up to the machine. Along one belt the first users stock up before the last sees anything.
   Two rules in the check for exactly that (`--belt-pull`, and an allowance counted for every user) halve what is
-  left.
+  left in chemical science and change little in production.
 - **With robot-like transport both factories come alive almost everywhere.** After 12 hours chemical science's
   machine holds 8 of its 10 ingredients in full and waits for the two with the deepest chains (mechanical parts and
   advanced circuits); production's holds 6 of 9 after 9 hours. What is left waits at metered pace: a dozen levels
   of machines at a craft every 10 to 40 minutes each.
+- **The start-up allowance is the touchy part.** Doubling it brought chemical science to within 13 recipes of its
+  first pack in 10 hours (its science machine short of mechanical parts and advanced circuits only), and set
+  production science back (145 machines never crafted after 7 hours, against 14 after 9): with more in hand, machines
+  run ahead of each other again, as the model warned for flat allowances.
 - **Starting is slow whatever carries the items.** Half of chemical's machines are planned to craft less than once
   in ten minutes. None of the 90-minute checks of the last weeks could have shown these factories working.
 
@@ -197,7 +202,8 @@ In the order that keeps every step testable in the model first:
 Not needed: smallest-first ordering (only matters when meters are further off than the tolerance), production by
 demand (saves raw input, changes nothing else), more flow rules in the check.
 
-Before any of it, the cheapest proof: one mid-size factory (logistic science, 325 machines) laid out with step 5's
-transport, run under meters at margin rates. If that makes science at plan from empty, the rest is scale. If it
-does not, big Py should stop there.
+Two proofs come before the rest. The cheap one: let the robot-like run of chemical science go on for a day or two
+of game time until packs come out at a steady rate (a few hours of machine time, nothing to build). The built one:
+one mid-size factory (logistic science, 325 machines) laid out with steps 1, 3 and 5 and run under meters. If that
+makes science at plan from empty, the rest is scale. If it does not, big Py should stop there.
 
