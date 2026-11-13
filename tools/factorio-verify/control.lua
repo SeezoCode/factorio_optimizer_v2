@@ -1317,7 +1317,7 @@ local function virtual_bots(run)
         if ing.type == "item" then
           local have = held(e, ing.name)
           if have < ing.amount then
-            local give = math.min(math.ceil(ing.amount * 2) - have, available(ing.name))
+            local give = math.min(math.ceil(ing.amount * (run.params.vb_stock or 2)) - have, available(ing.name))
             if give > 0 then
               local done = e.insert { name = ing.name, count = give }
               if done and done > 0 then take(ing.name, done); record(ing.name, done) end

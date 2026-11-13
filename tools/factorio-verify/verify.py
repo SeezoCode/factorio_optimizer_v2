@@ -626,6 +626,10 @@ def main():
                     help="with --flow: an inserter putting a machine's products onto a belt works only while a user on that "
                          "belt holds less than its stock of one of them, so a metered machine's output goes to the belts "
                          "that need it instead of a third to each")
+    ap.add_argument("--meter-start-factor", type=float, default=1.0, metavar="F",
+                    help="with --meter-start: F crafts' worth for each user instead of one")
+    ap.add_argument("--vb-stock", type=float, default=None, metavar="N",
+                    help="with --virtual-bots: a machine in need is given up to N crafts' worth (default 2)")
     ap.add_argument("--meter-start", action="store_true",
                     help="with --meter-file: each meter starts with enough crafts in hand to give every user of its "
                          "machine's products one craft's worth (a start-up allowance)")
@@ -778,7 +782,7 @@ def main():
                 for mi, outs in per_out.items():
                     rn = pm[mi]["recipe"].split("#")[0].split("@")[0]
                     need = max([1.0] + [biggest[item] / p for item, p in outs.items() if p > 0 and biggest[item] > 0])
-                    start[rn] = max(start[rn], float(int(need + 0.999)))
+                    start[rn] = max(start[rn], float(int(need * args.meter_start_factor + 0.999)))
                 if args.meter_start:
                     params["meter_start"] = dict(start)
                     print(f"meter-start: each meter starts with its users' first batch in hand (up to {max(start.values()):.0f} crafts)")
@@ -807,6 +811,7 @@ def main():
         params["void_full"] = True
     if args.virtual_bots:
         params["virtual_bots"] = True
+        if args.vb_stock: params["vb_stock"] = args.vb_stock
         args.belt_pull = True
         print("virtual-bots: items are moved from makers' outputs to machines in need; output inserters stand")
     if args.belt_pull:

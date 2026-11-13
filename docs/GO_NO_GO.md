@@ -7,7 +7,7 @@ to be built?
 
 ## Verdict
 
-**The plan half is solved; the belt half is not.**
+**The plan half is solved. Belts are the half that fails; a shared stock for low-rate items is the way through.**
 
 - **Yes, a design exists under which every Py science plan holds itself in the model**: rates with a margin of 1 to
   2%, a meter on every machine, an overflow on everything but carriers, a stock of each loop's starter items and a
@@ -15,15 +15,17 @@ to be built?
   and hold 100% after priming ends, with whole crafts, late deliveries and every rate up to 2% off (with continuous
   flows also 5% off and an hour's outage, smallest user first).
   It costs 14 to 41% more raw input at 1% (32 to 129% at 2%) and almost no machines (utility: 13% more).
-- **No, that design did not make science in game on the layouts we have**, in up to 14 game-hours, with the check
-  standing in for the unbuilt parts. What stops it is no longer over-running or waste: it is that belts do not share
-  out a metered supply. The two rules I added for that in the check more than halved what was left and did not
-  finish it.
-- **So it can be fixed, but it is a second phase of the project, not a patch**, and its last step is unproven. The
-  rate program, the meters, the overflows and the starter stocks are known work. How items reach every user of a
-  metered supply is the open part, and the evidence points one way: low-rate items should travel through a shared
-  stock (robots and chests, as pipes already are for fluids), with belts kept for the bulk. 676 of production
-  science's 744 recipes run under 30% of one machine; that tail is where belts fail and where robots are enough.
+- **In game, on the layouts we have, no run made a science pack** in up to 14 game-hours, with the check standing
+  in for the unbuilt parts. On belts the factories stay half dead: belts do not share out a metered supply. With
+  the same factories' items carried as a robot network would carry them, nearly everything runs at its rate within 12
+  hours (chemical science: 374 of 481 recipes, against 215 on belts) and the science machine waits for its last one
+  or two ingredients.
+- **So it can be fixed, and the night says how: the plan as tested, and low-rate items through a shared stock
+  instead of belts.** That is a second phase of the project, not a patch. The rate program, the meters, the
+  overflows and the starter stocks are known work. Robots and chests for the low-rate items (pipes already are a
+  shared stock for fluids), belts for the bulk: 676 of production science's 744 recipes run under 30% of one
+  machine, and that tail is where belts fail and where robots are enough. Not yet shown: a science pack in game, and
+  a layout built this way.
 
 ## The design that holds in the model
 
@@ -123,49 +125,53 @@ everywhere (`--void-full`, which now leaves carriers alone), loops primed throug
 layouts were built for the plain plan (in production science 60 machines would have to run past their top speed, so
 it runs at half rates and could make half its science at best), and nothing orders who draws first.
 
-**No run made science**, where the model, given the same rates, whole crafts and first-come sharing, has chemical
-science starting between hours 4 and 9 and production within 5. How far each got, by the machines that never
-crafted once:
+**No run made a science pack.** But how far each got differs by a factor of ten, and it differs by transport.
+Recipes "at their rate" ran at 90% of their metered rate or more over the last hours of the run; "under a tenth"
+counts recipes due at least two crafts in that time.
 
-| Chemical science (512 machines), from empty | Game hours | Never crafted |
-|---|---:|---:|
-| margin meters | 1.7 | 209 |
-| + start-up allowance for one user | 6 | 127 |
-| the same | 14 | 73 |
-| + output inserters work only for a belt in need | 10 | 84 |
-| start-up allowance for every user | 4.5 | 114 |
-| start-up allowance for every user + output inserters work only for a belt in need | 4.5 | **51** |
-| the same | 14 | FINAL_CHEM |
+| Chemical science (512 machines, 481 recipes), from empty | Game hours | Machines that never crafted | Recipes at their rate | Recipes under a tenth |
+|---|---:|---:|---:|---:|
+| belts, margin meters | 1.7 | 209 | | |
+| belts, start-up allowance for one user | 14 | 73 | 215 | 135 |
+| belts, allowance for every user, output inserters work only for a belt in need | 14 | 2 | 262 | 62 |
+| **robot-like transport** | 12 | 3 | **374** | **14** |
+| robot-like transport, one craft's worth a delivery, double allowance | 4.5 | 11 | 280 | 17 |
+| the same | 10 | FINAL_CHEM |
 
-| Production science (869 machines) at half rates, from empty | Game hours | Never crafted |
-|---|---:|---:|
-| margin meters at full rates (cannot be reached) | 1.7 | 156 |
-| + start-up allowance for one user | 5 | 144 |
-| the same | 10 | 130 |
-| + output inserters work only for a belt in need | 7 | 126 |
-| start-up allowance for every user + output inserters work only for a belt in need | 10 | FINAL_PROD |
+| Production science (869 machines, 742 recipes) at half rates, from empty | Game hours | Machines that never crafted | Recipes under a tenth |
+|---|---:|---:|---:|
+| belts, start-up allowance for one user | 10 | 130 | 142 |
+| belts, output inserters work only for a belt in need | 7 | 126 | 149 |
+| **robot-like transport** | 9 | **14** | **33** |
+| robot-like transport, one craft's worth a delivery, double allowance | 7 | FINAL_PROD |
+
+"Robot-like transport" is `--virtual-bots`: once a second a machine holding less than a craft's worth of an item is
+given it out of other machines' outputs, first come first served, and the machines' output inserters stand. Nothing
+is made up, only moved; belts still bring the raw inputs and pipes carry the fluids as built. It is what a robot
+network with a chest at every machine would do, without the flight time.
 
 What the reports show:
 
-- **Every root is a maker at its metered rate whose users go unserved** (13 of 13 in production science, 13 of 14
-  in chemical, and the same after 10 and 14 hours). Titanium plate in chemical science: made at its metered
-  0.041/s, 0.027/s used, three of its seven users without a single plate.
+- **On belts every root is a maker at its metered rate whose users go unserved** (13 of 13 in production science,
+  13 of 14 in chemical). Titanium plate in chemical science: made at its metered 0.041/s, 0.027/s used, three of
+  its seven users without a single plate.
 - **Belts do not share out a metered supply.** A machine that drops onto several belts hands each a share by turns,
   not by need (158 of chemical's 512 machines and 286 of production's 869 drop onto two belt networks or more).
   Unmetered it makes more until every belt is full and the split stops mattering. Metered it makes only what the
   plan needs, and the belt whose users are stocked silts up (100 tiles hold 800 plates, hours of a slow maker's
   output) before it backs up to the machine. Along one belt the first users stock up before the last sees anything.
-  The check's new `--belt-pull` (an output inserter works only while a user on its belt holds less than its stock)
-  and an allowance counted for every user more than halve what is left, but did not finish it in the time I had.
-- **Carriers lock a machine that makes other things too**: a renderer standing full of 3 cages nobody is ready to
-  take, its brain and skin not made.
-- These runs are slow by nature: half of chemical's machines are planned to craft less than once in ten minutes, and
-  a first craft that waits on a fuel rod waits on a chain 13 machines deep.
+  Two rules in the check for exactly that (`--belt-pull`, and an allowance counted for every user) halve what is
+  left.
+- **With robot-like transport both factories come alive almost everywhere.** After 12 hours chemical science's
+  machine holds 8 of its 10 ingredients in full and waits for the two with the deepest chains (mechanical parts and
+  advanced circuits); production's holds 6 of 9 after 9 hours. What is left waits at metered pace: a dozen levels
+  of machines at a craft every 10 to 40 minutes each.
+- **Starting is slow whatever carries the items.** Half of chemical's machines are planned to craft less than once
+  in ten minutes. None of the 90-minute checks of the last weeks could have shown these factories working.
 
-The pool model has none of this: in it every user of an item draws from one stock. That is what a pipe network is,
-and what a robot network is, and it is not what a belt is. With robot-like transport in the model (everything five
-minutes late, first come first served, whole crafts) the design still holds at 100% for production, chemical and
-Py science 4.
+The pool model has one stock per item that every user draws from. That is what a pipe network is, and what a robot
+network is, and it is not what a belt is. The game agrees with the model where the transport is a shared stock and
+disagrees where it is a belt.
 
 ## What would have to be built
 
