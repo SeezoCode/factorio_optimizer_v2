@@ -628,6 +628,10 @@ def main():
                          "that need it instead of a third to each")
     ap.add_argument("--meter-start-factor", type=float, default=1.0, metavar="F",
                     help="with --meter-start: F crafts' worth for each user instead of one")
+    ap.add_argument("--vb-buffer", type=float, default=None, metavar="S",
+                    help="with --virtual-bots and --meter-file: what a machine stands full of goes to a storage holding up to "
+                         "S seconds of each item's use, from which machines in need are served first; only what is past "
+                         "that is deleted")
     ap.add_argument("--vb-stock", type=float, default=None, metavar="N",
                     help="with --virtual-bots: a machine in need is given up to N crafts' worth (default 2)")
     ap.add_argument("--meter-start", action="store_true",
@@ -783,6 +787,17 @@ def main():
                     rn = pm[mi]["recipe"].split("#")[0].split("@")[0]
                     need = max([1.0] + [biggest[item] / p for item, p in outs.items() if p > 0 and biggest[item] > 0])
                     start[rn] = max(start[rn], float(int(need * args.meter_start_factor + 0.999)))
+                if args.vb_buffer:
+                    # A stock of every item in the network's storage: that many seconds of its use at the metered rates
+                    # (never less than four crafts of its biggest user).
+                    use, single = defaultdict(float), defaultdict(float)
+                    for mi, ins in per_in.items():
+                        for item, amt in ins.items():
+                            g = item.split("#")[0]
+                            use[g] += amt * pm[mi]["crafts"] * caps["ratio"][mi]
+                            single[g] = max(single[g], amt)
+                    params["vb_caps"] = {g: max(use[g] * args.vb_buffer, 4 * single[g]) for g in use}
+                    print(f"vb-buffer: the storage holds up to {args.vb_buffer:.0f} s of each item's use ({len(params['vb_caps'])} items)")
                 if args.meter_start:
                     params["meter_start"] = dict(start)
                     print(f"meter-start: each meter starts with its users' first batch in hand (up to {max(start.values()):.0f} crafts)")

@@ -146,6 +146,10 @@ data class ProductionPlan(
      * more (more would fill the loop until nothing moves). The others are used up, and a loop is fed them until it runs.
      */
     val seedCarriers: List<String> = emptyList(),
+    /** planner.margin the rates were solved with (0: balanced exactly). The machines' rates are then meter settings. */
+    val margin: Double = 0.0,
+    /** With a margin: carriers that only go round, balanced exactly; they must never overflow. */
+    val rings: List<String> = emptyList(),
 ) {
     /** Nets carried on belts (fluid nets are piped). */
     val beltNets: List<Net> get() = nets.filter { !it.fluid }
@@ -489,6 +493,8 @@ fun buildPlan(data: RootData, config: RunConfiguration, tuning: Tuning = Tuning(
         headroom = if (tuning.planner.headroomCheck) tuning.planner.maxUtilization else 1.0,
         seeds = seeds,
         seedCarriers = seeds.filter { it in loopCarriers(machines, lp.supply.keys) },
+        margin = if (lp.rings.isNotEmpty() || tuning.planner.margin > 0) tuning.planner.margin else 0.0,
+        rings = lp.rings.sorted(),
     )
 }
 

@@ -61,6 +61,8 @@ data class LpResult(
     val output: Map<String, Double>,
     val targets: Map<String, Double>,
     val fluids: Set<String>,
+    /** With planner.margin: items that only go round (carriers), balanced exactly and never to overflow. */
+    val rings: Set<String> = emptySet(),
 )
 
 /** The machines a job may use, in preference order (first machine able to craft a category wins). */
@@ -445,8 +447,73 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     val supply = best.second.filterValues { it > eps }
     // What leaves the block: each target plus any surplus.
     val output = best.third.mapValues { it.value + (targets[it.key] ?: 0.0) }.filterValues { it > eps }
+    if (tun.margin > 0) marginRates(crafts, net, targets, supplyAllowed, fluids, tun, ::area, warn)?.let { return it }
     output.filter { (k, v) -> k !in targets && v > 1e-6 }.forEach { (k, v) -> warn("by-product $k leaves the block at ${"%.3f".format(v)}/s") }
     return LpResult(crafts, supply, output, targets, fluids)
+}
+
+/**
+ * planner.margin: the rates of the recipes in [crafts] raised (never lowered) until every item they make and use is
+ * in surplus with makers slow and users fast by the margin, at the least machines and raw input. An item that cannot
+ * be (it only goes round: a barrel, a cage, a heat brick) is found by solving for the least shortfall until nothing
+ * else falls short, and is balanced exactly instead. Null (with a warning) when the program fails.
+ */
+private fun marginRates(
+    crafts: Map<RecipeChoice, Double>, net: Map<RecipeChoice, Map<String, Double>>, targets: Map<String, Double>, supplyAllowed: Set<String>,
+    fluids: Set<String>, tun: PlannerTuning, area: (RecipeChoice) -> Double, warn: (String) -> Unit,
+): LpResult? {
+    val d = tun.margin
+    val used = crafts.keys.toList()
+    val made = used.flatMap { c -> net.getValue(c).filterValues { it > 0 }.keys }.toSet()
+    val taken = used.flatMap { c -> net.getValue(c).filterValues { it < 0 }.keys }.toSet()
+    // What may come in from outside is as good as raw: no surplus asked of it.
+    val rows = (((made intersect taken) + targets.keys.filter { it in made }) - supplyAllowed).sorted()
+    val flow = rows.associateWith { i -> used.sumOf { c -> (-(net.getValue(c)[i] ?: 0.0)).coerceAtLeast(0.0) * crafts.getValue(c) } + (targets[i] ?: 0.0) }
+    val rings = HashSet<String>()
+    val inf = MPSolver.infinity()
+    // Variables are rates against the exact plan's and rows are divided by the item's flow: Py's rates span six
+    // orders of magnitude and the plain program came back "abnormal".
+    fun solve(stage: Int): Pair<Map<RecipeChoice, Double>, Map<String, Double>>? {
+        val solver = MPSolver.createSolver("GLOP") ?: return null
+        val u = used.associateWith { solver.makeNumVar(1.0, inf, "u_${it.recipe.name}") }
+        val obj = solver.objective()
+        val slack = HashMap<String, com.google.ortools.linearsolver.MPVariable>()
+        rows.forEach { i ->
+            val f = flow.getValue(i).coerceAtLeast(1e-12)
+            val ring = i in rings
+            val t = (targets[i] ?: 0.0) / f
+            val row = solver.makeConstraint(t, if (ring) t else inf, "m_$i")
+            used.forEach { c ->
+                val n = net.getValue(c)[i] ?: return@forEach
+                row.setCoefficient(u.getValue(c), n * crafts.getValue(c) / f * (if (ring) 1.0 else if (n > 0) 1 - d else 1 + d))
+            }
+            if (stage == 1 && !ring) slack[i] = solver.makeNumVar(0.0, inf, "short_$i").also { row.setCoefficient(it, 1.0); obj.setCoefficient(it, 1.0) }
+        }
+        if (stage == 2) used.forEach { c ->
+            val rawUse = net.getValue(c).entries.sumOf { (i, n) -> if (n < 0 && i in supplyAllowed) -n * (if (i in fluids) tun.supplyCostFluid else tun.supplyCostItem) else 0.0 }
+            obj.setCoefficient(u.getValue(c), crafts.getValue(c) * (area(c) + rawUse))
+        }
+        obj.setMinimization()
+        solver.setTimeLimit(60_000)
+        if (solver.solve() != MPSolver.ResultStatus.OPTIMAL) return null
+        return u.mapValues { it.value.solutionValue() * crafts.getValue(it.key) } to slack.mapValues { it.value.solutionValue() }
+    }
+    for (round in 0 until 12) {
+        val short = (solve(1) ?: run { warn("planner: rates with a margin: the program failed; the plan stays balanced exactly"); return null })
+            .second.filterValues { it > 1e-6 }.keys
+        if (short.isEmpty()) break
+        rings += short
+    }
+    val x = solve(2)?.first ?: run { warn("planner: rates with a margin: the program failed; the plan stays balanced exactly"); return null }
+    val balance = HashMap<String, Double>()
+    used.forEach { c -> net.getValue(c).forEach { (i, n) -> balance.merge(i, n * x.getValue(c), Double::plus) } }
+    val supply = balance.filter { (i, v) -> i in supplyAllowed && v < -1e-9 }.mapValues { -it.value }
+    val output = (balance.filter { (i, v) -> v > 1e-9 && (i !in rings || i in targets) }).toSortedMap()
+    val before = crafts.entries.sumOf { (c, v) -> v * area(c) }
+    val after = x.entries.sumOf { (c, v) -> v * area(c) }
+    warn("planner: rates with a margin of ${"%.1f".format(d * 100)}%: machine time ${"%.2f".format(after / before)} times the exact plan's; " +
+        "${rings.size} carriers balanced exactly" + (if (rings.isEmpty()) "" else ": ${rings.sorted().take(8).joinToString()}"))
+    return LpResult(x, supply, output, targets, fluids, rings)
 }
 
 

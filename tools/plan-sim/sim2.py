@@ -46,6 +46,8 @@ ratio = [1.0] * NM; exempt = set()
 if opt['caps']:
     cf = json.load(open(opt['caps'])); ratio = [r * float(opt['scale']) for r in cf['ratio']]; exempt = {ix[i] for i in cf['exempt'] if i in ix}
 capf = float(opt['cap'])
+# (a plan the planner solved with a margin names its own carriers)
+exempt |= {ix[i] for i in plan.get('rings', []) if i in ix}
 om = opt['outlets']
 outrate = [0.0] * NI
 if om == 'check':

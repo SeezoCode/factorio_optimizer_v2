@@ -79,6 +79,17 @@ data class PlannerTuning(
      * belt gap costs: in game the 2/s six-science factory's rail and iron-stick machines, planned at 100%, left
      * production science 10% short; green science 1/s from plates made 0.92/s at 1 and 1/s at 0.97. 1: no headroom.
      */
+    /**
+     * Rates with a margin (0: off). The chosen recipes are solved once more so that every item the block makes and
+     * uses is still in surplus when every maker runs slow and every user fast by this share (0.01: 1%), no recipe
+     * below the rate the exact balance gave it. The surplus leaves as a by-product. A plan balanced to the last
+     * unit holds only while every machine runs at exactly its rate (docs/WHY_NO_SCIENCE.md, docs/GO_NO_GO.md): with
+     * a margin a meter a little off, or a late delivery, takes from surplus and not from a neighbour. Carriers that
+     * only go round (barrels, cages, heat bricks) cannot be in surplus: they stay balanced exactly (plan.json
+     * "rings"). The cost compounds round production loops: about a quarter more raw input at 0.01 for Py's
+     * production science, 60% at 0.02.
+     */
+    @SerialName("margin") val margin: Double = 0.0,
     @SerialName("max_utilization") val maxUtilization: Double = 0.97,
     /**
      * Further utilization factor per level up the production chain (a recipe's level: its longest way down to a

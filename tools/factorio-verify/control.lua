@@ -889,7 +889,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, orphan_s = run.orphan_s,
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, timeline = run.timeline, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
     fluid_gates = run.fgates and (function() local o = {}
       for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0,
@@ -1264,9 +1264,13 @@ local function virtual_bots(run)
       end
     end) end
   end
-  -- Carriers (params.void_except: cages, barrels, bricks) a machine stands full of go to a storage chest of the
-  -- network, as an active provider chest would send them; users draw from it first.
+  -- What a machine stands full of goes to the network's storage, as an active provider chest would send it, and
+  -- users draw from the storage first: carriers (params.void_except: cages, barrels, bricks) without limit, anything
+  -- else up to params.vb_caps (two hours of its planned use, say). Past that the virtual sinks delete it. Without a
+  -- stock the only buffer is a machine's own output, a few crafts, and a loop lives hand to mouth: Py chemical
+  -- science ran its fertilizer and seaweed loop for 28 primed hours and lost it within four once priming ended.
   run.store = run.store or {}
+  local caps = run.params.vb_caps
   for _, m in pairs(run.machines) do
     local e = m.e
     if e.valid and not e.disabled_by_script and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.waiting_for_space_in_destination) then
@@ -1274,10 +1278,15 @@ local function virtual_bots(run)
       local out = r and e.get_output_inventory()
       if out then
         for _, p in pairs(r.products) do
-          if p.type == "item" and (run.params.void_except or {})[p.name] then
+          if p.type == "item" then
             local n = out.get_item_count(p.name)
-            if n > 0 then
-              local d = out.remove { name = p.name, count = n }
+            local room = n
+            if not (run.params.void_except or {})[p.name] then
+              room = caps and math.max(0, math.floor((caps[p.name] or 0) - (run.store[p.name] or 0))) or 0
+            end
+            local d = math.min(n, room)
+            if d > 0 then
+              d = out.remove { name = p.name, count = d }
               run.store[p.name] = (run.store[p.name] or 0) + d
               for _, s2 in ipairs(stock[p.name] or {}) do if s2.inv == out then s2.n = math.max(0, s2.n - d) end end
             end
@@ -1337,6 +1346,22 @@ local function virtual_bots(run)
       end
     end) end
   end
+end
+
+-- Every game hour: crafts finished so far by recipe, and the storage (report "timeline"), so one long run shows when
+-- each chain came up and when it stopped.
+local function timeline(run)
+  if game.tick % (3600 * 60) ~= 0 or not run.machines or not run.t0 then return end
+  local pf = {}
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+    if r then pf[r.name] = (pf[r.name] or 0) + e.products_finished end
+  end
+  run.timeline = run.timeline or {}
+  local st = {}
+  for k, v in pairs(run.store or {}) do st[k] = v end
+  run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st }
 end
 
 -- params.void_full, a helper ("virtual sinks"): a machine standing with a full output and not switched off by flow
@@ -1485,6 +1510,7 @@ script.on_event(defines.events.on_tick, function()
   feed_short(run)
   virtual_bots(run)
   void_full(run)
+  timeline(run)
   virtual_pumps(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (2) times its plan,
   -- plus 10 crafts, waits while a machine fed from the same belt stands short of one of its item ingredients (one item
