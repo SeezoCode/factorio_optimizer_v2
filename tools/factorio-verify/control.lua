@@ -1255,7 +1255,9 @@ local function void_full(run)
       if r then pcall(function()
         local out = e.get_output_inventory()
         for _, p in pairs(r.products) do
-          if p.type == "item" then
+          -- (params.void_except: carriers that only go round, barrels and cages and bricks, are never deleted.)
+          if (run.params.void_except or {})[p.name] then
+          elseif p.type == "item" then
             local n = out and out.get_item_count(p.name) or 0
             local d = math.floor(n / 2)
             if d > 0 then
@@ -1780,9 +1782,12 @@ script.on_event(defines.events.on_tick, function()
         if c and c > 0 then
           local pf = e.products_finished
           local t = m.mt
-          if not t then t = { tok = 1, pf = pf, tick = game.tick }; m.mt = t end
+          -- (params.meter_start: crafts each recipe's meter starts with in hand, enough to give every user of its
+          -- products one craft's worth: without it a machine planned at a craft in three hours keeps a new factory
+          -- waiting for its second craft, and chains of them take a day to start.)
+          if not t then t = { tok = (run.params.meter_start or {})[r.name] or 1, pf = pf, tick = game.tick }; m.mt = t end
           local rate = c * run.params.meter
-          t.tok = math.min(t.tok + rate * (game.tick - t.tick) / 60, 1 + rate * 60) - (pf - t.pf)
+          t.tok = math.min(t.tok + rate * (game.tick - t.tick) / 60, math.max(t.tok, 1 + rate * 60)) - (pf - t.pf)
           t.pf, t.tick = pf, game.tick
           if t.tok <= 0 then
             held = held + 1

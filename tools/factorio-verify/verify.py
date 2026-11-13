@@ -615,6 +615,12 @@ def main():
     ap.add_argument("--meter", type=float, default=None, metavar="FACTOR",
                     help="every machine is held to FACTOR times its planned rate, as a meter would (a token bucket of one "
                          "craft; unlike --rate-cap it holds the slow machines too, and needs neither --pull nor --flow)")
+    ap.add_argument("--meter-file", default=None, metavar="FILE",
+                    help="meters at the rates of a plan with margins (tools/plan-sim/margin.py's caps file: each machine's "
+                         "rate against its plan, and the carriers that only go round, which --void-full then leaves alone)")
+    ap.add_argument("--meter-start", action="store_true",
+                    help="with --meter-file: each meter starts with enough crafts in hand to give every user of its "
+                         "machine's products one craft's worth (a start-up allowance)")
     ap.add_argument("--robot", default=None, metavar="NAME",
                     help="the logistic robot put into roboports (default: the slowest one a player can build)")
     ap.add_argument("--void-full", action="store_true",
@@ -721,7 +727,7 @@ def main():
         params["robots_per_roboport"] = args.robots
     if args.debug_at:
         params["debug_at"] = args.debug_at
-    if args.side_cap or args.rate_cap or args.meter:
+    if args.side_cap or args.rate_cap or args.meter or args.meter_file:
         fp = built_plan_path(args.target)
         if fp and os.path.exists(fp):
             purpose, crafts = defaultdict(set), defaultdict(float)
@@ -737,6 +743,36 @@ def main():
             if args.rate_cap:
                 params["rate_cap"] = args.rate_cap
                 print(f"rate-cap: no machine runs faster than {args.rate_cap} times its plan")
+            if args.meter_file:
+                caps = json.load(open(args.meter_file))
+                crafts = defaultdict(float)
+                for m, ratio in zip(json.load(open(fp)).get("machines", []), caps["ratio"]):
+                    rn = m["recipe"].split("#")[0].split("@")[0]
+                    crafts[rn] = max(crafts[rn], m.get("crafts", 0.0) * ratio, 1e-9)
+                args.meter = args.meter or 1.0
+                params["void_except"] = {i.split("#")[0]: True for i in caps.get("exempt", [])}
+                # A start-up allowance per recipe: the crafts that give every user of its products one craft's worth.
+                pj = json.load(open(fp)); pm = pj.get("machines", [])
+                per_out, per_in = defaultdict(dict), defaultdict(dict)
+                for t in pj.get("terminals", []):
+                    if "machine" in t and pm[t["machine"]].get("crafts", 0) > 0:
+                        d = per_out if t["role"] == "PRODUCER" else per_in if t["role"] == "CONSUMER" else None
+                        if d is not None:
+                            d[t["machine"]][t["item"]] = d[t["machine"]].get(t["item"], 0.0) + t["rate"] / pm[t["machine"]]["crafts"]
+                biggest = defaultdict(float)
+                for mi, ins in per_in.items():
+                    if caps["ratio"][mi] > 0:
+                        for item, a in ins.items():
+                            biggest[item] = max(biggest[item], a)
+                start = defaultdict(float)
+                for mi, outs in per_out.items():
+                    rn = pm[mi]["recipe"].split("#")[0].split("@")[0]
+                    need = max([1.0] + [biggest[item] / p for item, p in outs.items() if p > 0 and biggest[item] > 0])
+                    start[rn] = max(start[rn], float(int(need + 0.999)))
+                if args.meter_start:
+                    params["meter_start"] = dict(start)
+                    print(f"meter-start: each meter starts with its users' first batch in hand (up to {max(start.values()):.0f} crafts)")
+                print(f"meter-file: rates with a margin from {args.meter_file}; {len(params['void_except'])} carriers kept out of the virtual sinks")
             if args.meter:
                 params["meter"] = args.meter
                 print(f"meter: every machine held to {args.meter} times its planned rate")
