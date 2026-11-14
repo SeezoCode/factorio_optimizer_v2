@@ -22,10 +22,11 @@ to be built?
   14, against 62 to 135) and the science machine waits for its last one or two ingredients.
 - **So it can be fixed, and the night says how: the plan as tested, and low-rate items through a shared stock
   instead of belts.** That is a second phase of the project, not a patch. The rate program, the meters, the
-  overflows and the starter stocks are known work. Robots and chests for the low-rate items (pipes already are a
-  shared stock for fluids), belts for the bulk: 676 of production science's 744 recipes run under 30% of one
-  machine, and that tail is where belts fail and where robots are enough. Not yet shown: a science pack in game, and
-  a layout built this way.
+  overflows and the starter stocks are known work. Robots and chests for the low-rate items, belts for the bulk:
+  676 of production science's 744 recipes run under 30% of one machine, and that tail is where belts fail and where
+  robots are enough. (Fluids need a stock as well: pipes hold too little against Py's batches. See the second
+  night.) Not shown that night: a science pack in game, and a layout built this way.
+- **The second night (2026-11-14) brought both**: VERDICT2
 
 ## The design that holds in the model
 
@@ -177,6 +178,10 @@ What the reports show:
 The pool model has one stock per item that every user draws from. That is what a pipe network is, and what a robot
 network is, and it is not what a belt is. The game agrees with the model where the transport is a shared stock and
 disagrees where it is a belt.
+
+## The second night: first packs, a factory built for robots, and what the model had left out
+
+SECOND_NIGHT
 
 ## What would have to be built
 

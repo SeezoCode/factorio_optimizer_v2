@@ -1140,6 +1140,7 @@ local function finish(run)
     if count > 0 or req > 0 then
       report.bots = { networks = count, robots = robots, robots_idle = idle, requesters = req, requesters_empty = reqEmpty, robot = run.robot,
         providers = prov, items_in_providers = provItems, chests_outside_networks = unnetworked, empty_requesters = samples,
+        requests_mapped = run.req_mapped, requests_set = run.req_set, request_error = run.req_err,
         provider_items = byItem }
     end
   end)
@@ -1368,6 +1369,67 @@ local function virtual_bots(run)
       if give <= 0 then break end
       local ok, done = pcall(function() return w.e.insert { name = name, count = give } end)
       if ok and done and done > 0 then take(name, done); record(name, done) end
+    end
+  end
+end
+
+-- params.request_need: a robot link's requester chest asks only while a machine it feeds holds less than a craft's
+-- worth of its item, and then for one craft's worth for each such machine (in a blueprint: the chest's requests set
+-- from its machine's ingredients over a wire). As built a chest asks for ten minutes' worth, at least 10, and the
+-- machine behind it keeps two crafts' worth: every user stocks up before the next sees anything. In the plan-level
+-- model that hoarding puts the first pack at hour 12 to 49 from empty, where machines short of a first craft served
+-- before any second one get it at hour 2 to 22 (sim2.py needfirst).
+local function request_need(run)
+  if not (run.params.request_need and run.req_list) or game.tick % 60 ~= 45 then return end
+  for _, rq in pairs(run.req_list) do
+    local c = rq.chest
+    if c.valid and rq.belt.valid then
+      if not rq.users then
+        -- The machines fed from the belt the chest's inserter drops onto (the block's own belts, not the robot link).
+        rq.users = {}
+        local seen, queue, qi = { [rq.belt.unit_number] = true }, { rq.belt }, 1
+        while qi <= #queue and qi < 800 do
+          local b = queue[qi]
+          qi = qi + 1
+          for _, o in pairs((b.belt_neighbours or {}).outputs or {}) do
+            if not seen[o.unit_number] then seen[o.unit_number] = true; queue[#queue + 1] = o end
+          end
+          local n = b.type == "underground-belt" and b.underground_belt_neighbour
+          if n and not seen[n.unit_number] then seen[n.unit_number] = true; queue[#queue + 1] = n end
+        end
+        if not run.by_unit then
+          run.by_unit = {}
+          for _, m in pairs(run.machines) do if m.e.valid then run.by_unit[m.e.unit_number] = m end end
+        end
+        for _, i in pairs(run.inserters) do
+          local pk, d = i.e.valid and i.e.pickup_target, i.e.valid and i.e.drop_target
+          if pk and d and seen[pk.unit_number] and CRAFTERS[d.type] then
+            local m = run.by_unit[d.unit_number]
+            local r = d.get_recipe() or (m and m.plan_recipe and prototypes.recipe[m.plan_recipe])
+            for _, ing in pairs(r and r.ingredients or {}) do
+              if ing.type == "item" and ing.name == rq.item and not rq.users[d.unit_number] then
+                rq.users[d.unit_number] = { e = d, amount = ing.amount }
+              end
+            end
+          end
+        end
+        run.req_mapped = (run.req_mapped or 0) + (next(rq.users) and 1 or 0)
+      end
+      if next(rq.users) then
+        local want = 0
+        for _, u in pairs(rq.users) do
+          if u.e.valid and held(u.e, rq.item) < u.amount then want = want + u.amount end
+        end
+        want = math.max(0, want - c.get_item_count(rq.item))
+        if want ~= rq.asked then
+          local ok, err = pcall(function()
+            local sec = c.get_requester_point().sections[1]
+            if want > 0 then sec.set_slot(1, { value = { type = "item", name = rq.item, quality = "normal" }, min = want })
+            else sec.clear_slot(1) end
+          end)
+          if ok then rq.asked = want; run.req_set = (run.req_set or 0) + 1 else run.req_err = tostring(err) end
+        end
+      end
     end
   end
 end
@@ -1634,6 +1696,7 @@ script.on_event(defines.events.on_tick, function()
   feed_short(run)
   virtual_bots(run)
   virtual_tanks(run)
+  request_need(run)
   void_full(run)
   timeline(run)
   virtual_pumps(run)

@@ -634,6 +634,9 @@ def main():
                          "that is deleted")
     ap.add_argument("--vb-stock", type=float, default=None, metavar="N",
                     help="with --virtual-bots: a machine in need is given up to N crafts' worth (default 2)")
+    ap.add_argument("--request-need", action="store_true",
+                    help="robot links: a requester chest asks only while a machine it feeds holds less than a craft's worth "
+                         "of its item, for one craft's worth (need first; as built it asks for ten minutes' worth, at least 10)")
     ap.add_argument("--vb-share", choices=["small"], default=None,
                     help="with --virtual-bots: of the machines waiting for an item the one planned to use least of it is "
                          "served first (else first come first served, in the machines' fixed order)")
@@ -853,6 +856,9 @@ def main():
         params["requester_demand"] = True
     if args.virtual_pumps:
         params["virtual_pumps"] = True
+    if args.request_need:
+        params["request_need"] = True
+        print("request-need: requester chests ask only while their machine is short of a craft's worth")
     if args.vb_share:
         params["vb_share"] = args.vb_share
         print("vb-share: the smallest planned user of an item is served first")
