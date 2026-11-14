@@ -1506,17 +1506,36 @@ local function virtual_tanks(run)
     end
     table.sort(order, function(a, b) return size(a) < size(b) end)
   end
+  -- (With vb_share "small" a machine still short of a craft's worth then takes from what bigger users of the fluid
+  -- hold in their input boxes, biggest first: a maker's output box empties into its pipe at once, and the machine
+  -- next to it has the fluid before the stock ever sees it. Py chemical science's pressured water never reached the
+  -- stock: the fusion reactor held 15,482 of it and the heat exchanger 58 of the 100 it takes.)
+  local small = run.params.vb_share == "small"
+  local pcrafts = run.params.plan_crafts or {}
+  local needy, donors = {}, {}
   for _, m in ipairs(order) do
     local e = m.e
     local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
     if r then pcall(function()
       for _, ing in pairs(r.ingredients) do
-        local st = ing.type == "fluid" and run.fstore[ing.name]
+        local st = ing.type == "fluid" and (run.fstore[ing.name] or (small and {}))
         if st then
           local have = 0
           for k = 1, (e.fluids_count or 0) do
             local f = e.get_fluid(k)
-            if f and f.name == ing.name and not is_output(e, k) then have = have + f.amount end
+            if f and f.name == ing.name and not is_output(e, k) then
+              have = have + f.amount
+              if small then
+                local l = donors[ing.name] or {}
+                l[#l + 1] = { e = e, k = k, amount = f.amount, temp = f.temperature, size = ing.amount * (pcrafts[r.name] or 0), keep = 0 }
+                donors[ing.name] = l
+              end
+            end
+          end
+          if small and have < ing.amount then
+            local l = needy[ing.name] or {}
+            l[#l + 1] = { e = e, ing = ing, have = have, size = ing.amount * (pcrafts[r.name] or 0) }
+            needy[ing.name] = l
           end
           if have < ing.amount then
             local want = ing.amount * (run.params.vb_stock or 2) - have
@@ -1541,6 +1560,41 @@ local function virtual_tanks(run)
         end
       end
     end) end
+  end
+  for name, l in pairs(needy) do
+    local ds = donors[name]
+    if ds then
+      table.sort(l, function(a, b) return a.size < b.size end)
+      table.sort(ds, function(a, b) return a.size > b.size end)
+      for _, n in ipairs(l) do
+        pcall(function()
+          local have = 0
+          for k2 = 1, (n.e.fluids_count or 0) do
+            local f = n.e.get_fluid(k2)
+            if f and f.name == name and not is_output(n.e, k2) then have = have + f.amount end
+          end
+          local want = n.ing.amount - have
+          for _, d in ipairs(ds) do
+            if want <= 0.01 then break end
+            -- (read again: the stock may have filled the box since it was listed)
+            local f = d.size > n.size and d.e.valid and d.e ~= n.e and d.e.get_fluid(d.k)
+            if f and f.name == name and f.amount > 0.01
+                and (not n.ing.minimum_temperature or f.temperature >= n.ing.minimum_temperature - 0.5)
+                and (not n.ing.maximum_temperature or f.temperature <= n.ing.maximum_temperature + 0.5) then
+              local take = math.min(want, f.amount - 0.001)
+              local put = take > 0 and n.e.insert_fluid { name = name, amount = take, temperature = f.temperature } or 0
+              if put > 0 then
+                d.e.set_fluid(d.k, { name = name, amount = f.amount - put, temperature = f.temperature })
+                want = want - put
+                local key = "[" .. name .. "]"
+                run.moved[key] = (run.moved[key] or 0) + put
+                if run.phase == "measure" then run.moved_measure[key] = (run.moved_measure[key] or 0) + put end
+              end
+            end
+          end
+        end)
+      end
+    end
   end
 end
 
