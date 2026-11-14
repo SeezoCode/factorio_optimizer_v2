@@ -889,7 +889,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, timeline = run.timeline, orphan_s = run.orphan_s,
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
     fluid_gates = run.fgates and (function() local o = {}
       for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0,
@@ -1372,14 +1372,15 @@ local function virtual_bots(run)
   end
 end
 
--- params.vb_fluids (with virtual_bots or alone, over real robots): fluids move as virtual_bots moves items, with a stock, as storage tanks on every fluid link (or
--- barrels by robot) would. Once a second what a machine's output boxes hold goes to the storage (up to params.vb_caps
--- of the fluid; carriers without limit), and a machine with less than a craft's worth of a fluid ingredient gets up to
--- vb_stock crafts' worth from it, at a temperature its recipe takes. Pipes alone hold next to nothing against Py's
--- batches: chemical science's fusion reactor takes 10,000 pressured water a craft and holds 20,000, five hours of all
--- that is made; next to the maker it took 66,000 of the first 69,000 and the heat exchanger at the far end of the
--- pipe ran at a fifth of its rate, the steam chain behind it pacing the science packs. The plan-level model with
--- fluid pools of under four batches loses the target altogether (sim2.py fluidk).
+-- params.vb_fluids (with virtual_bots or alone, over real robots): fluids move as virtual_bots moves items, with a
+-- stock, as storage on every fluid link (or barrels by robot) would. Once a second what a machine's output boxes hold
+-- goes to the storage (up to params.vb_caps of the fluid; carriers without limit), and a machine with less than a
+-- craft's worth of a fluid ingredient gets up to vb_stock crafts' worth from it, at a temperature its recipe takes.
+-- Pipes alone hold next to nothing against Py's batches: chemical science's fusion reactor takes 10,000 pressured
+-- water a craft and holds 20,000, four hours of all that is made; next to the maker it took 66,000 of the first
+-- 69,000 and the heat exchanger at the far end of the pipe ran at a fifth of its rate, the steam chain behind it
+-- pacing the science packs. In the plan-level model chemical science with fluids kept in nothing but their makers'
+-- output boxes makes 0 to 62% of its target, with one batch of its biggest user in store 96 to 101% (sim2.py fluidk).
 local function virtual_tanks(run)
   if not run.params.vb_fluids or game.tick % 60 ~= 15 then return end
   run.fstore = run.fstore or {}
@@ -1442,18 +1443,21 @@ local function virtual_tanks(run)
           end
           if have < ing.amount then
             local want = ing.amount * (run.params.vb_stock or 2) - have
-            for t, a in pairs(st) do
-              if want <= 0 then break end
-              if a > 0 and (not ing.minimum_temperature or t >= ing.minimum_temperature - 0.5)
-                  and (not ing.maximum_temperature or t <= ing.maximum_temperature + 0.5) then
-                local put = e.insert_fluid { name = ing.name, amount = math.min(a, want), temperature = t } or 0
-                if put > 0 then
-                  st[t] = a - put
-                  want = want - put
-                  local key = "[" .. ing.name .. "]"
-                  run.moved[key] = (run.moved[key] or 0) + put
-                  if run.phase == "measure" then run.moved_measure[key] = (run.moved_measure[key] or 0) + put end
-                end
+            -- (Only the coolest temperature its recipe takes, of those ever stored: a user of steam at 150 degrees
+            -- must not empty the 500-degree steam another machine waits for.)
+            local t
+            for t2 in pairs(st) do
+              if (not ing.minimum_temperature or t2 >= ing.minimum_temperature - 0.5)
+                  and (not ing.maximum_temperature or t2 <= ing.maximum_temperature + 0.5) and (not t or t2 < t) then t = t2 end
+            end
+            local a = t and st[t] or 0
+            if a > 0 and want > 0 then
+              local put = e.insert_fluid { name = ing.name, amount = math.min(a, want), temperature = t } or 0
+              if put > 0 then
+                st[t] = a - put
+                local key = "[" .. ing.name .. "]"
+                run.moved[key] = (run.moved[key] or 0) + put
+                if run.phase == "measure" then run.moved_measure[key] = (run.moved_measure[key] or 0) + put end
               end
             end
           end
