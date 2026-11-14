@@ -181,7 +181,57 @@ disagrees where it is a belt.
 
 ## The second night: first packs, a factory built for robots, and what the model had left out
 
-SECOND_NIGHT
+Details in [NIGHT_LOG_2026-11-14.md](NIGHT_LOG_2026-11-14.md).
+
+### First packs in game, and why they stopped
+
+Chemical science on the old layout, items carried robot-like with a storage stock (`--vb-buffer`): **the first
+science packs made in game without feeding**, 12 crafts by hour 10, half the planned rate over the last two hours.
+They did not last: the same set-up run on stood at 12 crafts from hour 14 to hour 17. Traced down eleven levels from
+the science machine: a heat exchanger at a fifth of its rate for want of pressured water, of which the fusion
+reactor next to the maker had taken 66,000 of 69,000 made (57,000 by plan). The reactor takes 10,000 a craft and its
+input box holds 20,000, four hours of all that is made; the pipe gives to whoever is first.
+
+CHEM_GAME
+
+### What the model had left out
+
+The model served every user from one pool and took only what a craft needs. The game's machines each keep two
+crafts' worth of every input (fluid boxes up to four), a belt, a pipe or a robot gives to whoever comes first, and a
+pipe holds almost nothing. With that in the model (`sim2.py tank=2 fluidk ringroom`), margins of 1%, cold start,
+48 hours primed and 16 left alone, the target over those 16 hours in two random cases:
+
+| Science | Machines | Everything in store, room for carriers | Fluids in pipes only | Fluids: one batch in store | Carriers without room |
+|---|---:|---:|---:|---:|---:|
+| Py science 1 | 56 | 101% | 101% | 101% | 101% |
+| logistic | 325 | 101% | 101% | 101% | 101% |
+| Py science 2 | 406 | 102% | 52% and 84% | 102% | 102% |
+| chemical | 512 | 96% and 101% | 0% and 62% | 96% and 101% | 0% both |
+| Py science 3 | 681 | 101% | 96% and 101% | 101% | 101% |
+| production | 869 | 101% | 101% | 101% | 101% |
+| Py science 4 | 1,102 | 101% | 101% | 101% | 101% |
+| utility | 2,524 | 101% | 101% | 101% | 101% |
+
+- **The design survives hoarding and first come first served**, given a stock of everything and room for the
+  carriers. Three rules join the six above:
+- **7. A stock for fluids too**: one batch of the fluid's biggest user is enough. Without it chemical science and Py
+  science 2 lose most of their target (serving the smallest user first would also do; a deeper meter bucket does
+  not).
+- **8. Room for every carrier of a ring**, or a fixed count of them. Chemical science otherwise stops dead on cages.
+- **9. Need first.** Hoarding does not cost the steady state, it costs the start: the first pack comes at hour 12 to
+  49 from empty instead of hour 2 to 9. Meters run three times faster for the first hours help three plans and set
+  three back. Filling machines that hold less than one craft's worth before anybody stocks a second brings every
+  plan back to hour 2 to 22 and all hold 101 to 102% afterwards. In a blueprint that is a wire from each machine
+  to its requester chest.
+
+### A factory built for robots
+
+The planner now solves rates with a margin itself (`planner.margin`), and a factory comes out built for robots from
+configuration alone: blocks of at most two machines, every item link between blocks by robots, one shared chest per
+item at each end of a block. Logistic science: 337 machines in 169 blocks, 412 robot links, every block laid out
+within seconds, stitched at the first try at 531 x 544 (the belt factory was 319 x 342).
+
+LOGI_GAME
 
 ## What would have to be built
 
