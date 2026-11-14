@@ -23,13 +23,15 @@ item, and rates that may come from a plan with margins.   sim2.py plan.json targ
             batches, no more: pipes without storage tanks; default: fluids as items)
   ringroom=F (the carriers' pools hold F times as much, starting as full as before: storage that takes any number of
               cages and barrels, so that a ring never stands full; default 1)
+  reqmin=N (with tank: every item ingredient also waits in a requester chest that asks for ten minutes' worth, at
+            least N: the robot-built factory's chests ask for at least 10)
   tank=K (each machine keeps its own stock of every input, K crafts' worth, and fills it before anything else, first
           come first served in the share order, working or not: the game's machines hold two crafts' worth)
   outage=F:T0:T1  hours=H  seed=N (noise and order)  runs=N (repeat with seeds seed..seed+N-1, print the spread)  trace=1"""
 import json, sys, random, collections
 plan = json.load(open(sys.argv[1])); target = sys.argv[2]
 DEF = dict(caps='', cap='0', noise='0', lo='0', share='order', rule='free', outlets='all', sink='0', raw='0', buf='60', seedbuf='0', seedkeep='0',
-           outage='', hours='8', seed='1', runs='1', trace='0', dt='5', quiet='0', big='1', units='0', lag='0', ringseed='0.2', bucket='2', bsecs='0', bigk='4', prog0='1', scale='1', boost='0', meter='all', fill='1:0', built='0', tank='0', fluidk='', ringroom='1', prog0f='1')
+           outage='', hours='8', seed='1', runs='1', trace='0', dt='5', quiet='0', big='1', units='0', lag='0', ringseed='0.2', bucket='2', bsecs='0', bigk='4', prog0='1', scale='1', boost='0', meter='all', fill='1:0', built='0', tank='0', fluidk='', ringroom='1', prog0f='1', reqmin='0')
 opt = dict(DEF); opt.update(a.split('=') for a in sys.argv[3:])
 M = plan['machines']; T = plan['terminals']
 items = sorted({t['item'] for t in T}); ix = {n: i for i, n in enumerate(items)}; NI = len(items); NM = len(M)
@@ -82,6 +84,11 @@ for m in range(NM):
 seeds |= exempt
 sb = float(opt['seedbuf'])
 capv = [max((sb if sb > 0 and i in seeds else buf) * max(cflow[i], flow[i], rawflow[i]), float(opt['bigk']) * big[i], 1.0) for i in range(NI)]
+isfluid = [False] * NI
+for t in T:
+    if t.get('fluid'): isfluid[ix[t['item']]] = True
+reqmin = float(opt['reqmin'])
+reqst = [{i: (max(reqmin, 600.0 * a * c0[m]) if reqmin > 0 and not isfluid[i] else 0.0) for i, a in ing[m].items()} for m in range(NM)]
 bigmake = [0.0] * NI
 for m in range(NM):
     for i, a in pro[m].items(): bigmake[i] = max(bigmake[i], a)
@@ -210,7 +217,7 @@ def run(seed, verbose):
                 if not u or left <= 0: continue
                 for m in u:
                     # (its stock also covers what it crafts in one step: a fast machine is fed all the time)
-                    w = (tankk + lim[m] * dt) * ing[m][i] - have[m][i]
+                    w = (tankk + lim[m] * dt) * ing[m][i] + reqst[m][i] - have[m][i]
                     if w <= 0: continue
                     if w > left: w = left
                     have[m][i] += w; left -= w
