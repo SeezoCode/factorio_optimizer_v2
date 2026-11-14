@@ -31,9 +31,16 @@ to be built?
   plan over the last four, once fluids had a stock too. And logistic science laid out for robots by the planner
   itself (531 x 544, stitched at the first try). That built factory has not made a pack in up to 21 game-hours: it
   fills at the pace of its plan, and the model, taught to hoard as the game's machines do, puts its first pack at
-  hour 36. Two runs of 60 game-hours were still going when this was written. Three rules join the design: a stock
-  for fluids, room for every carrier of a ring, and need first. Still not shown: packs at the planned rate, hour
-  after hour.
+  hour 36. Three rules join the design: a stock for fluids, room for every carrier of a ring, and need first.
+- **The long runs of that day (48 and 60 game-hours) split the two proofs.** The cheap one holds as far as it went:
+  chemical science, items and fluids through a stock, made packs **at the planned rate for the last two of 48
+  hours**, after 40 hours of spurts while one fluid hoard filled. The built one is open, neither way: the robot-built
+  logistic factory made **no pack in 60 game-hours**, as built or with requests by need. Nothing in those runs
+  points at the layout or the robots (1,740 of 1,800 idle). The pack waits for one loop of about 25 recipes, through
+  tin, fish and circuits, to go round once from empty at a craft in hours; and the check itself stopped the starter
+  feed at hour 48 and deleted tin plate the circuit was waiting for. **A factory like this cannot be judged, or
+  started, from empty.** Still not shown: a built factory making packs, and packs at the planned rate for more than
+  two hours.
 
 ## The design that holds in the model
 
@@ -197,7 +204,8 @@ science packs made in game without feeding**, 12 crafts by hour 10, half the pla
 They did not last: the same set-up run on stood at 12 crafts from hour 14 to hour 17. Traced down eleven levels from
 the science machine: a heat exchanger at a fifth of its rate for want of pressured water, of which the fusion
 reactor next to the maker had taken 66,000 of 69,000 made (57,000 by plan). The reactor takes 10,000 a craft and its
-input box holds 20,000, four hours of all that is made; the pipe gives to whoever is first.
+input box holds four crafts (37,715 seen in the 48-hour run, not the 20,000 first written here), eight hours of
+all that is made; the pipe gives to whoever is first.
 
 With a stock for fluids as well (`--vb-fluids`), ten hours from empty and four measured:
 
@@ -276,9 +284,44 @@ last three hours, at half to all of their rate. The factory is filling at the pa
 the first pack of the fast-start runs at hour 13 and, with requests by need, at hour 9: the game did not keep to
 that, so the model's start times are too early by a factor these runs do not give, and they are too short to tell
 the start-up rules apart. (The fluid emulation in these runs was the first one, which catches only fluids that
-linger in output boxes.) Two runs of 60 game-hours were started at 07:30 and are still going
-(`solves/n2_logi_long_a`: as built; `solves/n2_logi_long_b`: requests by need and the first fluid emulation); they
-end around 17:00 and 18:00 and say whether packs then come at the planned rate.
+linger in output boxes.)
+
+### The long runs: 48 and 60 game-hours
+
+Read the same afternoon; hour by hour in `docs/NIGHT_LOG_2026-11-14.md`.
+
+**Chemical science, emulated robots and a stock for items and fluids, 48 hours** (`solves/n2_chem_long`): 71 packs,
+the last six hours 2, 3, 5, 4, 6 and 6 where 6.1 are due. Over the measured 12 hours 445 of 481 recipes ran at 90%
+of their rate or more and none had never crafted. The 40 hours of spurts before that were one thing: the fusion
+reactor filling its box of pressured water (four crafts, 37,715) ahead of a heat exchanger that about thirty recipes
+hang on. At hour 41 the box was full and the chains ran at 90 to 100% from hour 43. Two hours at plan are not a
+steady state shown, but it is what the model said: hoarding costs the start, not the rate.
+
+**The built logistic factory, real robots, 60 hours**, as built (`solves/n2_logi_long_a`) and with requests by need
+and a fluid stock (`solves/n2_logi_long_b`):
+
+| | As built | Requests by need |
+|---|---:|---:|
+| science packs | 0 | 0 |
+| recipes at 90% of their rate or more, hours 37 to 48 (of 336) | 261 | 276 |
+| the same, hours 52 to 60 | 225 | 238 |
+| never crafted | 17 | 5 |
+| first reduced tin | hour 58 | hour 41 |
+| first tin plate | none | hour 47 |
+
+- Everything that never crafted waits for tin. Tin needs acetone, acetone comes from animals fed on fish, fish are
+  bred with small lamps, lamps take a circuit, the circuit takes tin plate: about 25 recipes round, half of them
+  planned under a craft an hour, each stocking two crafts of every input first. From empty the loop did not close in
+  60 hours. With requests by need it came within one solder of the first circuit.
+- The check stops handing out loop starters when measuring begins. 26 to 33 recipes that had run at their rate
+  stood within three hours of hour 48, for want of sulfuric acid, chromium, fish, bones and the like.
+- The check's sink for surplus (`--void-full`) deleted 85 of the 126 tin plates made in the second run while their
+  four users held none. And nine of fourteen reduced tin are not accounted for in its report.
+- The model had put the first pack at hour 36: too early by more than two times.
+
+What follows: start-up time goes with the hoards counted in crafts over the craft rate, so it grows as the target
+rate falls, and game hours are hours at the player's desk. A start from empty tells little about such a factory and
+is not how one would be started. The built factory's steady rate has not been seen.
 
 Also seen: the blocks of a robot-built factory are 197 separate power networks (no belt joins them); the stitch
 leaves that wiring to the player.
@@ -326,8 +369,17 @@ makes science at plan from empty, the rest is scale. If it does not, big Py shou
   ingredients over a wire (2.0 machines can send them) would be need first by construction, and one chest instead of
   one per item link.
 - **Power**: a robot-built factory's blocks are separate power networks (197 here); the stitch should join them.
-- **Checks**: a factory of this kind needs two days of game time from empty before its rate means anything. The
-  model, with `tank=2`, says how long; twelve hours say nothing.
-- The two proofs: the cheap one is half there (packs every hour at 41 to 49% of plan; a 48-hour run of that set-up
-  is going, `solves/n2_chem_long`). The built one is running: `solves/n2_logi_long_a` and `n2_logi_long_b`.
+- **Checks**: a factory of this kind needs two days of game time from empty before its rate means anything, and
+  the built logistic one more than 60 hours. The model, with `tank=2`, gives a lower bound; twelve hours say nothing.
+- The two proofs after the long runs: the cheap one reached the planned rate (the last two of 48 hours,
+  `solves/n2_chem_long`). The built one made no pack in 60 hours and is not decided
+  (`solves/n2_logi_long_a`, `n2_logi_long_b`).
+- **Rule 4, sized anew: a starter stock lasts until its loop has gone round once**, not an hour of use. For the
+  built factory that is more than 60 hours of the starters of a 25-recipe loop; or every machine is handed its first
+  two crafts when the factory is built.
+- **The check, before the next long run**: feed starters until each loop makes its own and report when; let
+  `--void-full` leave what a user still lacks; find the missing reduced tin.
+- **The next proof is a warm start of the built factory**: every machine with two crafts of its inputs
+  (`--prime-all`), starters fed through, 12 to 24 hours. It shows the steady rate without the start, which is the
+  half no run has shown. Not started.
 
