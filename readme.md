@@ -1217,11 +1217,16 @@ blueprint: they are the check's own help or control, run by the verify mod.
 - `--meter-file FILE` (with `--void-full`): meters at the rates of a plan with margins (`tools/plan-sim/margin.py`
   writes the file); its carriers are kept out of the virtual sinks. `--meter-start`: each meter starts with enough
   crafts in hand to give every user of its machine's products one craft's worth, so a new factory does not wait hours
-  for slow machines' second crafts. See `docs/GO_NO_GO.md`.
+  for slow machines' second crafts. See `docs/GO_NO_GO.md`. `--meter-start-factor F`: F crafts' worth for each user;
+  `--meter-start-depth D`: the users' own allowances count too, D levels down (grows fast round Py's loops);
+  `--meter-bucket S`: a machine that waits saves up to S seconds of its planned rate and catches up later (60 unless
+  given).
 - `--belt-pull`: with `--flow`, an inserter putting a machine's products onto a belt works only while a user on that
   belt holds less than its stock of one of them, so a metered machine's output goes to the belts that need it.
   `--virtual-bots` (a helper): items travel as through one robot network, moved from makers' outputs to machines in
   need and never made up; the machines' output inserters stand, belts carry the raw inputs, pipes the fluids.
+  `--vb-buffer S`: with a storage holding S seconds of each item's use. `--vb-fluids` (with it, or alone over real
+  robots): fluids move the same way and get the same stock, as storage on every fluid link would give them.
 - `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
   can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
   No carrier bootstrap (in a real game you put a loop's carriers in by hand once).
@@ -1231,7 +1236,8 @@ with ideal transport (one pool per item, machines at their real speed, no layout
 line (`cap=1`: every machine held to its plan; `rule=stock`: pull; `noise=0.05`: meters 5% off; `outage=0.05:3:4`),
 in about ten seconds. What fails there fails in any layout. `margin.sh <plan> <target> <prefix> <tolerance>` computes
 rates with a margin (every item still in surplus with every rate that far off; needs the planner's solver through
-`LpFileTest`), and `sim2.py` runs them: whole crafts, late deliveries, rate errors, outages, sharing rules
+`LpFileTest`), and `sim2.py` runs them: whole crafts, late deliveries, rate errors, outages, sharing rules, each
+machine's own two-craft input stock (`tank=2`), fluids without storage (`fluidk`), room for carriers (`ringroom`)
 (`docs/GO_NO_GO.md`). `structure.py` counts what makes a plan fragile (how far
 machines can outrun their plan, items balanced exactly, the biggest loop); `waits.py` and `balance.py` read an in-game
 report: what every machine waits for, down to the roots, and what came in and left against the plan.

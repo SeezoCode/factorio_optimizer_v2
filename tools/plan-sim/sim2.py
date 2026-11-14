@@ -17,11 +17,17 @@ item, and rates that may come from a plan with margins.   sim2.py plan.json targ
            crafts' worth in its pool: the start-up and catch-up rule)
   prog0=N|auto (every meter starts with N crafts in hand; auto: enough to give each user of its products one craft)
   bigk=N (a pool holds at least N crafts' worth of its biggest batch; default 4)
+  fluidk=N (a fluid's pool holds N crafts' worth of its biggest batch, a minute of its flow, or two of its makers'
+            batches, no more: pipes without storage tanks; default: fluids as items)
+  ringroom=F (the carriers' pools hold F times as much, starting as full as before: storage that takes any number of
+              cages and barrels, so that a ring never stands full; default 1)
+  tank=K (each machine keeps its own stock of every input, K crafts' worth, and fills it before anything else, first
+          come first served in the share order, working or not: the game's machines hold two crafts' worth)
   outage=F:T0:T1  hours=H  seed=N (noise and order)  runs=N (repeat with seeds seed..seed+N-1, print the spread)  trace=1"""
 import json, sys, random, collections
 plan = json.load(open(sys.argv[1])); target = sys.argv[2]
 DEF = dict(caps='', cap='0', noise='0', lo='0', share='order', rule='free', outlets='all', sink='0', raw='0', buf='60', seedbuf='0', seedkeep='0',
-           outage='', hours='8', seed='1', runs='1', trace='0', dt='5', quiet='0', big='1', units='0', lag='0', ringseed='0.2', bucket='2', bsecs='0', bigk='4', prog0='1', scale='1', boost='0', meter='all', fill='1:0', built='0')
+           outage='', hours='8', seed='1', runs='1', trace='0', dt='5', quiet='0', big='1', units='0', lag='0', ringseed='0.2', bucket='2', bsecs='0', bigk='4', prog0='1', scale='1', boost='0', meter='all', fill='1:0', built='0', tank='0', fluidk='', ringroom='1')
 opt = dict(DEF); opt.update(a.split('=') for a in sys.argv[3:])
 M = plan['machines']; T = plan['terminals']
 items = sorted({t['item'] for t in T}); ix = {n: i for i, n in enumerate(items)}; NI = len(items); NM = len(M)
@@ -74,6 +80,16 @@ for m in range(NM):
 seeds |= exempt
 sb = float(opt['seedbuf'])
 capv = [max((sb if sb > 0 and i in seeds else buf) * max(cflow[i], flow[i], rawflow[i]), float(opt['bigk']) * big[i], 1.0) for i in range(NI)]
+bigmake = [0.0] * NI
+for m in range(NM):
+    for i, a in pro[m].items(): bigmake[i] = max(bigmake[i], a)
+if opt['fluidk']:
+    fl = {ix[t['item']] for t in T if t.get('fluid')}
+    for i in fl:
+        # (never less than two of its makers' biggest batch: their own output boxes)
+        if i not in exempt: capv[i] = max(60.0 * max(cflow[i], flow[i], rawflow[i]), float(opt['fluidk']) * big[i], 2.0 * bigmake[i], 1.0)
+ringroom = float(opt['ringroom']); seedlvl = list(capv)
+for i in exempt: capv[i] *= ringroom
 mk = collections.defaultdict(list); us = collections.defaultdict(list)
 for m in range(NM):
     if c0[m] <= 0: continue
@@ -87,7 +103,7 @@ steps = int(float(opt['hours']) * 3600 / dt); warm = steps * 3 // 4
 ringseed = float(opt['ringseed']); fillk, fillh = (float(v) for v in opt['fill'].split(':')); fills = int(fillh * 3600 / dt)
 boostk = float(opt['boost']); lowlvl = [boostk * big[i] for i in range(NI)]
 bucket = float(opt['bucket']); bsecs = float(opt['bsecs']); prog0 = 1.0 if opt['prog0'] == 'auto' else float(opt['prog0'])
-nz = float(opt['noise']); lo = float(opt['lo']); units = opt['units'] == '1'
+nz = float(opt['noise']); lo = float(opt['lo']); units = opt['units'] == '1'; tankk = float(opt['tank'])
 def run(seed, verbose):
     rng = random.Random(seed)
     capm = [((capf if capf > 0 else 0) if not opt['caps'] else ratio[m]) * (1 + rng.uniform(-nz, nz)) * (1 - rng.uniform(0, lo)) for m in range(NM)]
@@ -109,7 +125,7 @@ def run(seed, verbose):
     prop = opt['share'] == 'prop'
     pool = [0.0] * NI
     # (carriers that only go round start low: a ring whose whole stock fits one pool cannot lock up)
-    for i in seeds: pool[i] = capv[i] * (ringseed if i in exempt else 0.5)
+    for i in seeds: pool[i] = capv[i] * (ringseed / ringroom if i in exempt else 0.5)
     down = set(); o0 = o1 = -1
     if opt['outage']:
         f, a, b = opt['outage'].split(':'); o0 = int(float(a) * 3600 / dt); o1 = int(float(b) * 3600 / dt)
@@ -130,6 +146,7 @@ def run(seed, verbose):
     x = [0.0] * NM; want = [0.0] * NM; tr2 = verbose and opt['trace'] == '2'; win = [0.0] * NM; was = [False] * NM; fell = {}
     active = [m for m in range(NM) if c0[m] > 0]
     mach_order = list(active); rng.shuffle(mach_order)
+    have = [dict.fromkeys(d, 0.0) for d in ing]
     for s in range(steps):
         for i in range(NI):
             if is_raw[i]:
@@ -140,7 +157,7 @@ def run(seed, verbose):
             if outrate[i] > 0: pool[i] -= min(pool[i], outrate[i] * dt)
         if seedkeep and not (seedwarm and s >= warm):
             for i in seeds:
-                if pool[i] < 0.1 * capv[i]: pool[i] = 0.1 * capv[i]
+                if pool[i] < 0.1 * seedlvl[i]: pool[i] = 0.1 * seedlvl[i]
         take = min(pool[ti], sinkf * flow[ti] * dt) if sinkf > 0 else pool[ti]
         pool[ti] -= take
         if s >= warm: sci += take
@@ -178,8 +195,33 @@ def run(seed, verbose):
                 v = float(int(prog[m] + 1e-9)) if v > 0 else 0.0
             x[m] = v if v > 0 else 0.0
             want[m] = x[m]; boosted[m] = fast
+        if tankk > 0:
+            # every machine fills its own stock of each input first, whoever comes first in the item's order taking
+            # all there is; then crafts from what it holds
+            for i in range(NI):
+                u = order[i]
+                left = pool[i]
+                if not u or left <= 0: continue
+                for m in u:
+                    w = tankk * ing[m][i] - have[m][i]
+                    if w <= 0: continue
+                    if w > left: w = left
+                    have[m][i] += w; left -= w
+                    if left <= 0: break
+                pool[i] = left
+            for m in active:
+                v = x[m]
+                if v <= 0: continue
+                h = have[m]
+                for i, a in ingl[m]:
+                    r = h[i] / a
+                    if r < v: v = r
+                if units: v = float(int(v + 1e-9))
+                x[m] = v
+                if v > 0:
+                    for i, a in ingl[m]: h[i] -= a * v
         # share out what is short, twice (the second time with what the first freed)
-        for _ in range(2):
+        for _ in range(0 if tankk > 0 else 2):
             for i in range(NI):
                 u = order[i]
                 if not u: continue
@@ -200,13 +242,13 @@ def run(seed, verbose):
         if units:
             for m in active: x[m] = float(int(x[m] + 1e-9))
         # take; then whoever was cut back picks up what the sharing left unused
-        for m in active:
+        for m in (() if tankk > 0 else active):
             v = x[m]
             if v <= 0: continue
             for i, a in ingl[m]:
                 pool[i] -= a * v
                 if pool[i] < 0: pool[i] = 0.0
-        for m in mach_order:
+        for m in (() if tankk > 0 else mach_order):
             more = want[m] - x[m]
             if more <= 1e-12: continue
             for i, a in ingl[m]:

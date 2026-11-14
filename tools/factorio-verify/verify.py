@@ -634,6 +634,9 @@ def main():
                          "that is deleted")
     ap.add_argument("--vb-stock", type=float, default=None, metavar="N",
                     help="with --virtual-bots: a machine in need is given up to N crafts' worth (default 2)")
+    ap.add_argument("--vb-fluids", action="store_true",
+                    help="fluids move from makers to machines in need (as --virtual-bots moves items), with the --vb-buffer stock "
+                         "(as storage tanks on every fluid link would)")
     ap.add_argument("--meter-bucket", type=float, default=None, metavar="S",
                     help="with --meter: a machine that waits saves up to S seconds of its planned rate and catches up later (60 unless given)")
     ap.add_argument("--meter-start-depth", type=int, default=1, metavar="D",
@@ -841,6 +844,9 @@ def main():
         params["requester_demand"] = True
     if args.virtual_pumps:
         params["virtual_pumps"] = True
+    if args.vb_fluids:
+        params["vb_fluids"] = True
+        print("vb-fluids: fluids move like the items, from makers' outputs to a stock and on to machines in need")
     if args.provider_slots:
         params["provider_slots"] = args.provider_slots
     if args.no_quotas:

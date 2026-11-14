@@ -1348,6 +1348,80 @@ local function virtual_bots(run)
   end
 end
 
+-- params.vb_fluids (with virtual_bots or alone, over real robots): fluids move as virtual_bots moves items, with a stock, as storage tanks on every fluid link (or
+-- barrels by robot) would. Once a second what a machine's output boxes hold goes to the storage (up to params.vb_caps
+-- of the fluid; carriers without limit), and a machine with less than a craft's worth of a fluid ingredient gets up to
+-- vb_stock crafts' worth from it, at a temperature its recipe takes. Pipes alone hold next to nothing against Py's
+-- batches: chemical science's fusion reactor takes 10,000 pressured water a craft and holds 20,000, five hours of all
+-- that is made; next to the maker it took 66,000 of the first 69,000 and the heat exchanger at the far end of the
+-- pipe ran at a fifth of its rate, the steam chain behind it pacing the science packs. The plan-level model with
+-- fluid pools of under four batches loses the target altogether (sim2.py fluidk).
+local function virtual_tanks(run)
+  if not run.params.vb_fluids or game.tick % 60 ~= 15 then return end
+  run.fstore = run.fstore or {}
+  run.moved = run.moved or {}
+  run.moved_measure = run.moved_measure or {}
+  local caps, keep = run.params.vb_caps or {}, run.params.void_except or {}
+  local function is_output(e, k)
+    local proto = e.get_fluid_box_prototype(k)
+    if proto and proto.index == nil and proto[1] then proto = proto[1] end
+    return proto and proto.production_type == "output"
+  end
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    if e.valid then pcall(function()
+      for k = 1, (e.fluids_count or 0) do
+        local f = e.get_fluid(k)
+        if f and f.amount > 0.01 and is_output(e, k) then
+          local st = run.fstore[f.name] or {}
+          run.fstore[f.name] = st
+          local total = 0
+          for _, a in pairs(st) do total = total + a end
+          local d = math.min(f.amount - 0.001, keep[f.name] and f.amount or math.max(0, (caps[f.name] or 0) - total))
+          if d > 0 then
+            local t = math.floor(f.temperature + 0.5)
+            st[t] = (st[t] or 0) + d
+            e.set_fluid(k, { name = f.name, amount = f.amount - d, temperature = f.temperature })
+          end
+        end
+      end
+    end) end
+  end
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+    if r then pcall(function()
+      for _, ing in pairs(r.ingredients) do
+        local st = ing.type == "fluid" and run.fstore[ing.name]
+        if st then
+          local have = 0
+          for k = 1, (e.fluids_count or 0) do
+            local f = e.get_fluid(k)
+            if f and f.name == ing.name and not is_output(e, k) then have = have + f.amount end
+          end
+          if have < ing.amount then
+            local want = ing.amount * (run.params.vb_stock or 2) - have
+            for t, a in pairs(st) do
+              if want <= 0 then break end
+              if a > 0 and (not ing.minimum_temperature or t >= ing.minimum_temperature - 0.5)
+                  and (not ing.maximum_temperature or t <= ing.maximum_temperature + 0.5) then
+                local put = e.insert_fluid { name = ing.name, amount = math.min(a, want), temperature = t } or 0
+                if put > 0 then
+                  st[t] = a - put
+                  want = want - put
+                  local key = "[" .. ing.name .. "]"
+                  run.moved[key] = (run.moved[key] or 0) + put
+                  if run.phase == "measure" then run.moved_measure[key] = (run.moved_measure[key] or 0) + put end
+                end
+              end
+            end
+          end
+        end
+      end
+    end) end
+  end
+end
+
 -- Every game hour: crafts finished so far by recipe, and the storage (report "timeline"), so one long run shows when
 -- each chain came up and when it stopped.
 local function timeline(run)
@@ -1361,6 +1435,11 @@ local function timeline(run)
   run.timeline = run.timeline or {}
   local st = {}
   for k, v in pairs(run.store or {}) do st[k] = v end
+  for k, byt in pairs(run.fstore or {}) do
+    local n = 0
+    for _, a in pairs(byt) do n = n + a end
+    st["[" .. k .. "]"] = math.floor(n)
+  end
   run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st }
 end
 
@@ -1509,6 +1588,7 @@ script.on_event(defines.events.on_tick, function()
   seed_tick(run)
   feed_short(run)
   virtual_bots(run)
+  virtual_tanks(run)
   void_full(run)
   timeline(run)
   virtual_pumps(run)
