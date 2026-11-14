@@ -209,7 +209,8 @@ def run(seed, verbose):
                 left = pool[i]
                 if not u or left <= 0: continue
                 for m in u:
-                    w = tankk * ing[m][i] - have[m][i]
+                    # (its stock also covers what it crafts in one step: a fast machine is fed all the time)
+                    w = (tankk + lim[m] * dt) * ing[m][i] - have[m][i]
                     if w <= 0: continue
                     if w > left: w = left
                     have[m][i] += w; left -= w

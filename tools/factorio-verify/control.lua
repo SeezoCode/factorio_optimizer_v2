@@ -1321,8 +1321,9 @@ local function virtual_bots(run)
   -- params.vb_share "small": of the machines waiting for an item the one planned to use least of it is served first
   -- (else in the machines' fixed order, first come first served). An item that runs a few percent short then costs
   -- its biggest user those few percent; first come first served takes the whole shortfall out of the last user, whose
-  -- chain stops, and round Py's loops the shortfall then stays (plan-level model, Py science 2: iron oxide made at
-  -- 93% of its plan, two of its three users at their rates, the third and the steel behind it at nothing).
+  -- chain stops. In the plan-level model it decides only where something is short already: fluids kept in nothing but
+  -- their makers' output boxes (Py chemical science: 0 to 55% of the target first come first served, 102% smallest
+  -- first).
   local wants, small = {}, run.params.vb_share == "small"
   local crafts = run.params.plan_crafts or {}
   for _, m in pairs(run.machines) do
