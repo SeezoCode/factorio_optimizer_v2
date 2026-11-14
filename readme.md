@@ -1227,7 +1227,9 @@ blueprint: they are the check's own help or control, run by the verify mod.
   need and never made up; the machines' output inserters stand, belts carry the raw inputs, pipes the fluids.
   `--vb-buffer S`: with a storage holding S seconds of each item's use. `--vb-fluids` (with it, or alone over real
   robots): fluids move the same way and get the same stock, as storage on every fluid link would give them.
-  `--vb-share small`: the smallest planned user of an item is served first (else first come first served).
+  `--vb-share small`: the smallest planned user of an item is served first (else first come first served); with
+  `--vb-fluids` a machine short of a craft also takes from bigger users' boxes, which in its one long run made things
+  worse (`docs/NIGHT_LOG_2026-11-14.md`).
 - `--request-need` (robot links): a requester chest asks only for what its machines lack to one craft's worth (two
   minutes' flow for fast machines), where as built it asks for ten minutes' worth and at least 10: need first, the
   start-up rule of `docs/GO_NO_GO.md`.

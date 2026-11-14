@@ -212,7 +212,11 @@ plan yet, and the reports say why: the stock never saw the pressured water. A ma
 pipe at once, the reactor beside it still had the water first, and the heat exchanger made 6 of its 29 crafts in
 both runs, exactly as before. The check now also lets a small user short of a craft draw from what bigger users of
 the fluid hold (`--vb-share small` with `--vb-fluids`); in a half-hour test the heat exchanger made 14 crafts where it
-had made 28 in 14 hours. CHEM_K
+had made 28 in 14 hours. But the 14-hour run with it made **no pack at all**: 345 of 481 recipes at their rate
+(419 before), 91 machines that never crafted (none before). Taking fluid back out of bigger users' boxes once a
+second is not the model's smallest-first sharing, and it wrecked the start; why is not traced. So rule 7 below
+stands in game at this: packs every hour at 41 to 49% of the plan with a stock that misses some fluids, and no
+working emulation of a complete one yet.
 
 ### What the model had left out
 
@@ -324,6 +328,6 @@ makes science at plan from empty, the rest is scale. If it does not, big Py shou
 - **Power**: a robot-built factory's blocks are separate power networks (197 here); the stitch should join them.
 - **Checks**: a factory of this kind needs two days of game time from empty before its rate means anything. The
   model, with `tank=2`, says how long; twelve hours say nothing.
-- The two proofs: the cheap one is half there (packs every hour at 41 to 49% of plan; the complete fluid emulation
-  was running at the time of writing). The built one is running: `solves/n2_logi_long_a` and `n2_logi_long_b`.
+- The two proofs: the cheap one is half there (packs every hour at 41 to 49% of plan; a 48-hour run of that set-up
+  is going, `solves/n2_chem_long`). The built one is running: `solves/n2_logi_long_a` and `n2_logi_long_b`.
 
