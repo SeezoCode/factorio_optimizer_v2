@@ -26,7 +26,14 @@ to be built?
   676 of production science's 744 recipes run under 30% of one machine, and that tail is where belts fail and where
   robots are enough. (Fluids need a stock as well: pipes hold too little against Py's batches. See the second
   night.) Not shown that night: a science pack in game, and a layout built this way.
-- **The second night (2026-11-14) brought both**: VERDICT2
+- **The second night (2026-11-14) brought both, in part.** The first science packs made in game without feeding:
+  chemical science with its items carried robot-like and a stock, 24 to 30 crafts in 14 hours and 41 to 49% of the
+  plan over the last four, once fluids had a stock too. And logistic science laid out for robots by the planner
+  itself (531 x 544, stitched at the first try). That built factory has not made a pack in up to 21 game-hours: it
+  fills at the pace of its plan, and the model, taught to hoard as the game's machines do, puts its first pack at
+  hour 36. Two runs of 60 game-hours were still going when this was written. Three rules join the design: a stock
+  for fluids, room for every carrier of a ring, and need first. Still not shown: packs at the planned rate, hour
+  after hour.
 
 ## The design that holds in the model
 
@@ -244,7 +251,30 @@ configuration alone: blocks of at most two machines, every item link between blo
 item at each end of a block. Logistic science: 337 machines in 169 blocks, 412 robot links, every block laid out
 within seconds, stitched at the first try at 531 x 544 (the belt factory was 319 x 342).
 
-LOGI_GAME
+The first check found the factory standing still, and not for a reason of plan or transport: turning a block during
+the stitch had dropped its requester chests' requests (260 of 380 asked for nothing). Fixed and restitched. On real
+robots, with meters at the plan's own rates:
+
+| Built logistic factory, from empty | Game hours | Science crafts | Recipes at their rate | Recipes under a tenth | Machines that never crafted |
+|---|---:|---:|---:|---:|---:|
+| requests missing in turned blocks | 8 | 0 | 64 of 336 | 113 | 227 of 337 |
+| fixed | 12 | 0 | 180 | 32 | 65 |
+| fixed, meters 3 times faster for the first 16 hours | 21 | 0 | 231 | 17 | 17 |
+| the same, fluids through the emulated stock | 21 | 0 | 242 | 17 | 17 |
+| fixed, requests by need, meters 3 times faster for the first 10 hours | 15 | 0 | 220 | 37 | 41 |
+| the same, fluids through the emulated stock | 15 | 0 | 218 | 31 | 41 |
+
+**No pack yet, and the model now says why a day is not enough**: with every machine hoarding two crafts' worth this
+plan makes its first pack at hour 36 from empty. In the 21-hour runs the science machine holds all but two of its
+ingredients, and both wait on one chain: tin concentrate to molten tin to an equipment chassis, eight machines
+planned at a craft every 20 minutes to three hours each, then lab instruments and plasmids. All eight worked in the
+last three hours, at half to all of their rate. The factory is filling at the pace of its plan. The runs are too
+short to tell the start-up rules apart. Two runs of 60 game-hours were started at 07:30 and are still going
+(`solves/n2_logi_long_a`: as built; `solves/n2_logi_long_b`: requests by need and the fluid emulation); they end
+around 17:00 and say whether packs then come at the planned rate.
+
+Also seen: the blocks of a robot-built factory are 197 separate power networks (no belt joins them); the stitch
+leaves that wiring to the player.
 
 ## What would have to be built
 
@@ -274,4 +304,23 @@ Two proofs come before the rest. The cheap one: let the robot-like run of chemic
 of game time until packs come out at a steady rate (a few hours of machine time, nothing to build). The built one:
 one mid-size factory (logistic science, 325 machines) laid out with steps 1, 3 and 5 and run under meters. If that
 makes science at plan from empty, the rest is scale. If it does not, big Py should stop there.
+
+### After the second night
+
+- Step 1 is in the planner (`planner.margin`; the block split keeps the surplus as by-products). Step 5 exists
+  between blocks: a factory of two-machine blocks with every item link by robots lays out and stitches.
+- **New, 7: fluid links need a stock**, and how to build one is open. A tank on a pipe is a stock only if machines
+  can still draw from a pipe that is nearly empty, and a big-batch user must not fill up first: either the small
+  users get the fluid first (the big user fed through a pump that runs only while the line's tank is above a level),
+  or fluids travel in barrels by robot like the items. The first task there is a small in-game test of what a tank
+  on a shared pipe does.
+- **New, 8: a ring's storage holds all its carriers**, or their count is fixed when the ring is primed.
+- **New, 9: need first.** One requester chest per machine with its requests set from the machine's missing
+  ingredients over a wire (2.0 machines can send them) would be need first by construction, and one chest instead of
+  one per item link.
+- **Power**: a robot-built factory's blocks are separate power networks (197 here); the stitch should join them.
+- **Checks**: a factory of this kind needs two days of game time from empty before its rate means anything. The
+  model, with `tank=2`, says how long; twelve hours say nothing.
+- The two proofs: the cheap one is half there (packs every hour at 41 to 49% of plan; the complete fluid emulation
+  was running at the time of writing). The built one is running: `solves/n2_logi_long_a` and `n2_logi_long_b`.
 
