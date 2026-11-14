@@ -1373,9 +1373,9 @@ local function virtual_bots(run)
   end
 end
 
--- params.request_need: a robot link's requester chest asks only while a machine it feeds holds less than a craft's
--- worth of its item, and then for one craft's worth for each such machine (in a blueprint: the chest's requests set
--- from its machine's ingredients over a wire). As built a chest asks for ten minutes' worth, at least 10, and the
+-- params.request_need: a robot link's requester chest asks only for what the machines it feeds lack to a craft's
+-- worth of its item (or to two minutes of the link's flow, for fast machines; in a blueprint: the chest's requests
+-- set from its machine's ingredients over a wire). As built a chest asks for ten minutes' worth, at least 10, and the
 -- machine behind it keeps two crafts' worth: every user stocks up before the next sees anything. In the plan-level
 -- model that hoarding puts the first pack at hour 12 to 49 from empty, where machines short of a first craft served
 -- before any second one get it at hour 2 to 22 (sim2.py needfirst).
@@ -1416,11 +1416,26 @@ local function request_need(run)
         run.req_mapped = (run.req_mapped or 0) + (next(rq.users) and 1 or 0)
       end
       if next(rq.users) then
-        local want = 0
-        for _, u in pairs(rq.users) do
-          if u.e.valid and held(u.e, rq.item) < u.amount then want = want + u.amount end
+        -- (What its machines lack to one craft's worth each, or to two minutes of the link's planned flow between
+        -- them and the chest, whichever is more: a machine that crafts every few seconds cannot wait a robot's trip
+        -- for each craft.)
+        if not rq.count0 then
+          rq.count0 = 10
+          pcall(function()
+            local f = c.get_requester_point().sections[1].filters[1]
+            if f and f.min then rq.count0 = f.min end
+          end)
         end
-        want = math.max(0, want - c.get_item_count(rq.item))
+        local lack, have = 0, c.get_item_count(rq.item)
+        for _, u in pairs(rq.users) do
+          if u.e.valid then
+            local h = held(u.e, rq.item)
+            have = have + h
+            if h < u.amount then lack = lack + u.amount - h end
+          end
+        end
+        local base = rq.count0 > 10 and rq.count0 / 5 or 0
+        local want = math.ceil(math.max(0, lack - c.get_item_count(rq.item), base - have))
         if want ~= rq.asked then
           local ok, err = pcall(function()
             local sec = c.get_requester_point().sections[1]
