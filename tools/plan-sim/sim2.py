@@ -15,7 +15,9 @@ item, and rates that may come from a plan with margins.   sim2.py plan.json targ
   fill=K:H (for the first H hours every meter runs K times faster, as far as its machine can: a fast start)
   boost=N (a machine runs at its own full speed, outside its meter, while a product somebody uses has less than N
            crafts' worth in its pool: the start-up and catch-up rule)
-  prog0=N|auto (every meter starts with N crafts in hand; auto: enough to give each user of its products one craft)
+  prog0=N|auto|users (every meter starts with N crafts in hand; auto: enough to give the biggest user of its products
+            one craft; users: enough for every user's craft at once, as the in-game check counts it)
+  prog0f=F (auto, users: F crafts' worth instead of one)
   bigk=N (a pool holds at least N crafts' worth of its biggest batch; default 4)
   fluidk=N (a fluid's pool holds N crafts' worth of its biggest batch, a minute of its flow, or two of its makers'
             batches, no more: pipes without storage tanks; default: fluids as items)
@@ -27,7 +29,7 @@ item, and rates that may come from a plan with margins.   sim2.py plan.json targ
 import json, sys, random, collections
 plan = json.load(open(sys.argv[1])); target = sys.argv[2]
 DEF = dict(caps='', cap='0', noise='0', lo='0', share='order', rule='free', outlets='all', sink='0', raw='0', buf='60', seedbuf='0', seedkeep='0',
-           outage='', hours='8', seed='1', runs='1', trace='0', dt='5', quiet='0', big='1', units='0', lag='0', ringseed='0.2', bucket='2', bsecs='0', bigk='4', prog0='1', scale='1', boost='0', meter='all', fill='1:0', built='0', tank='0', fluidk='', ringroom='1')
+           outage='', hours='8', seed='1', runs='1', trace='0', dt='5', quiet='0', big='1', units='0', lag='0', ringseed='0.2', bucket='2', bsecs='0', bigk='4', prog0='1', scale='1', boost='0', meter='all', fill='1:0', built='0', tank='0', fluidk='', ringroom='1', prog0f='1')
 opt = dict(DEF); opt.update(a.split('=') for a in sys.argv[3:])
 M = plan['machines']; T = plan['terminals']
 items = sorted({t['item'] for t in T}); ix = {n: i for i, n in enumerate(items)}; NI = len(items); NM = len(M)
@@ -102,7 +104,7 @@ seedkeep = opt['seedkeep'] in ('1', 'warm'); seedwarm = opt['seedkeep'] == 'warm
 steps = int(float(opt['hours']) * 3600 / dt); warm = steps * 3 // 4
 ringseed = float(opt['ringseed']); fillk, fillh = (float(v) for v in opt['fill'].split(':')); fills = int(fillh * 3600 / dt)
 boostk = float(opt['boost']); lowlvl = [boostk * big[i] for i in range(NI)]
-bucket = float(opt['bucket']); bsecs = float(opt['bsecs']); prog0 = 1.0 if opt['prog0'] == 'auto' else float(opt['prog0'])
+bucket = float(opt['bucket']); bsecs = float(opt['bsecs']); prog0 = 1.0 if opt['prog0'] in ('auto', 'users') else float(opt['prog0']); prog0f = float(opt['prog0f'])
 nz = float(opt['noise']); lo = float(opt['lo']); units = opt['units'] == '1'; tankk = float(opt['tank'])
 def run(seed, verbose):
     rng = random.Random(seed)
@@ -134,19 +136,23 @@ def run(seed, verbose):
     bprog = [0.0] * NM; boosted = [False] * NM
     full = [max(M[m]['maxCrafts'], lim[m]) for m in range(NM)]
     prog = [prog0] * NM
-    if opt['prog0'] == 'auto':
+    if opt['prog0'] in ('auto', 'users'):
         # each meter starts with enough crafts in hand to give every user of its products one craft's worth
+        every = opt['prog0'] == 'users'
         for m in [k for k in range(NM) if c0[k] > 0]:
-            need = 1.0
+            need = prog0f
             for j, p in prol[m]:
-                for u in us[j]:
-                    need = max(need, ing[u][j] / p)
+                if every: need = max(need, prog0f * sum(ing[u][j] for u in us[j]) / p)
+                else:
+                    for u in us[j]:
+                        need = max(need, prog0f * ing[u][j] / p)
             prog[m] = float(int(need + 0.999))
     lagn = int(float(opt['lag']) / dt); lagq = [[0.0] * NI for _ in range(lagn)]
     x = [0.0] * NM; want = [0.0] * NM; tr2 = verbose and opt['trace'] == '2'; win = [0.0] * NM; was = [False] * NM; fell = {}
     active = [m for m in range(NM) if c0[m] > 0]
     mach_order = list(active); rng.shuffle(mach_order)
     have = [dict.fromkeys(d, 0.0) for d in ing]
+    leaki = [0.0] * NI
     for s in range(steps):
         for i in range(NI):
             if is_raw[i]:
@@ -273,7 +279,7 @@ def run(seed, verbose):
                     r = win[m] / (120 * dt * c0[m]); win[m] = 0.0
                     if r >= 0.9: was[m] = True
                     elif r < 0.5 and was[m] and m not in fell:
-                        short = [items[i] for i, a in ingl[m] if pool[i] < a * lim[m] * dt]
+                        short = [items[i] for i, a in ingl[m] if (have[m][i] < a if tankk > 0 else pool[i] < a * lim[m] * dt)]
                         fell[m] = (s * dt / 3600, short)
             if v <= 0: continue
             if lagn:
@@ -284,7 +290,7 @@ def run(seed, verbose):
             if s >= warm: donem[m] += v
         for i in range(NI):
             if pool[i] > capv[i]:
-                if s >= warm: leak += pool[i] - capv[i]
+                if s >= warm: leak += pool[i] - capv[i]; leaki[i] += pool[i] - capv[i]
                 pool[i] = capv[i]
     span = (steps - warm) * dt
     rel = [donem[m] / span / c0[m] for m in active]
@@ -293,6 +299,25 @@ def run(seed, verbose):
     if tr2:
         print('   first machines to fall under half their rate after running at it (hour, what they were short of):')
         for m, (h, short) in sorted(fell.items(), key=lambda t: t[1][0])[:22]: print('     %.2f h  %-40s short of %s' % (h, M[m]['recipe'], ', '.join(short) or '-'))
+    if verbose and opt['trace'] == '3':
+        # where the items go that machines far behind wait for: made, used and lost while measured, against the plan
+        relm = {m: donem[m] / span / c0[m] for m in active}
+        short = collections.Counter()
+        for m in active:
+            if relm[m] < 0.5:
+                for i, a in ingl[m]:
+                    if (have[m][i] if tankk > 0 else pool[i]) < a: short[i] += 1
+        print('   %d machines under half their rate; the items they hold less than a craft of:' % sum(1 for m in active if relm[m] < 0.5))
+        rows = []
+        for i, n in short.items():
+            made = sum(donem[m] * pro[m][i] for m in mk[i]); used = sum(donem[m] * ing[m][i] for m in us[i])
+            pl = sum(c0[m] * pro[m][i] for m in mk[i]) * span; plu = sum(c0[m] * ing[m][i] for m in us[i]) * span
+            held = sum(have[m][i] for m in us[i]) if tankk > 0 else 0.0
+            mrel = [relm[m] for m in mk[i]]
+            rows.append((min(mrel) if mrel else -1, items[i], n, made / pl if pl else 0, used / plu if plu else 0, leaki[i] / pl if pl else 0, held, pool[i], len(mk[i]), len(us[i]), is_raw[i]))
+        for r in sorted(rows, key=lambda r: -r[0])[:24]:
+            print('     %-28s %2d wait; makers %d (slowest at %3.0f%%), made %3.0f%% of plan, used %3.0f%%, lost %3.0f%%; users %d hold %.0f, pool %.0f%s' % (
+                r[1][:28], r[2], r[8], 100 * r[0], 100 * r[3], 100 * r[4], 100 * r[5], r[9], r[6], r[7], ' RAW' if r[10] else ''))
     if verbose and opt['trace'] == '1':
         # from the target up: a machine lacking a craft's worth of something waits for its makers; where that ends
         roots = collections.Counter(); seen = set(); stack = list(mk[ti]); info = {}
@@ -300,7 +325,7 @@ def run(seed, verbose):
             m = stack.pop()
             if m in seen: continue
             seen.add(m)
-            lack = [i for i, a in ingl[m] if pool[i] < a * (1.0 if units else lim[m] * dt) - 1e-12]
+            lack = [i for i, a in ingl[m] if (have[m][i] if tankk > 0 else pool[i]) < a * (1.0 if units else lim[m] * dt) - 1e-12]
             if lack:
                 for i in lack:
                     if is_raw[i] or not mk[i]: roots[('no maker of ' + items[i], m)] += 1

@@ -634,6 +634,9 @@ def main():
                          "that is deleted")
     ap.add_argument("--vb-stock", type=float, default=None, metavar="N",
                     help="with --virtual-bots: a machine in need is given up to N crafts' worth (default 2)")
+    ap.add_argument("--vb-share", choices=["small"], default=None,
+                    help="with --virtual-bots: of the machines waiting for an item the one planned to use least of it is "
+                         "served first (else first come first served, in the machines' fixed order)")
     ap.add_argument("--vb-fluids", action="store_true",
                     help="fluids move from makers to machines in need (as --virtual-bots moves items), with the --vb-buffer stock "
                          "(as storage tanks on every fluid link would)")
@@ -844,6 +847,9 @@ def main():
         params["requester_demand"] = True
     if args.virtual_pumps:
         params["virtual_pumps"] = True
+    if args.vb_share:
+        params["vb_share"] = args.vb_share
+        print("vb-share: the smallest planned user of an item is served first")
     if args.vb_fluids:
         params["vb_fluids"] = True
         print("vb-fluids: fluids move like the items, from makers' outputs to a stock and on to machines in need")

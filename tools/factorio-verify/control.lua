@@ -1318,6 +1318,13 @@ local function virtual_bots(run)
     run.moved[name] = (run.moved[name] or 0) + d
     if run.phase == "measure" then run.moved_measure[name] = (run.moved_measure[name] or 0) + d end
   end
+  -- params.vb_share "small": of the machines waiting for an item the one planned to use least of it is served first
+  -- (else in the machines' fixed order, first come first served). An item that runs a few percent short then costs
+  -- its biggest user those few percent; first come first served takes the whole shortfall out of the last user, whose
+  -- chain stops, and round Py's loops the shortfall then stays (plan-level model, Py science 2: iron oxide made at
+  -- 93% of its plan, two of its three users at their rates, the third and the steel behind it at nothing).
+  local wants, small = {}, run.params.vb_share == "small"
+  local crafts = run.params.plan_crafts or {}
   for _, m in pairs(run.machines) do
     local e = m.e
     local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
@@ -1326,10 +1333,17 @@ local function virtual_bots(run)
         if ing.type == "item" then
           local have = held(e, ing.name)
           if have < ing.amount then
-            local give = math.min(math.ceil(ing.amount * (run.params.vb_stock or 2)) - have, available(ing.name))
-            if give > 0 then
-              local done = e.insert { name = ing.name, count = give }
-              if done and done > 0 then take(ing.name, done); record(ing.name, done) end
+            local w = { e = e, want = math.ceil(ing.amount * (run.params.vb_stock or 2)) - have, size = ing.amount * (crafts[r.name] or 0) }
+            if small then
+              local l = wants[ing.name] or {}
+              l[#l + 1] = w
+              wants[ing.name] = l
+            else
+              local give = math.min(w.want, available(ing.name))
+              if give > 0 then
+                local done = e.insert { name = ing.name, count = give }
+                if done and done > 0 then take(ing.name, done); record(ing.name, done) end
+              end
             end
           end
         end
@@ -1345,6 +1359,15 @@ local function virtual_bots(run)
         end
       end
     end) end
+  end
+  for name, l in pairs(wants) do
+    table.sort(l, function(a, b) return a.size < b.size end)
+    for _, w in ipairs(l) do
+      local give = math.min(w.want, available(name))
+      if give <= 0 then break end
+      local ok, done = pcall(function() return w.e.insert { name = name, count = give } end)
+      if ok and done and done > 0 then take(name, done); record(name, done) end
+    end
   end
 end
 
@@ -1387,7 +1410,24 @@ local function virtual_tanks(run)
       end
     end) end
   end
-  for _, m in pairs(run.machines) do
+  local order = {}
+  for _, m in pairs(run.machines) do order[#order + 1] = m end
+  if run.params.vb_share == "small" then
+    -- (smallest planned user first, by the machine's whole planned intake of fluids: one order for all fluids)
+    local crafts = run.params.plan_crafts or {}
+    local function size(m)
+      if m.vb_fsize then return m.vb_fsize end
+      local n = 0
+      pcall(function()
+        local r = m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+        for _, ing in pairs(r.ingredients) do if ing.type == "fluid" then n = n + ing.amount * (crafts[r.name] or 0) end end
+      end)
+      m.vb_fsize = n
+      return n
+    end
+    table.sort(order, function(a, b) return size(a) < size(b) end)
+  end
+  for _, m in ipairs(order) do
     local e = m.e
     local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
     if r then pcall(function()
