@@ -192,7 +192,20 @@ the science machine: a heat exchanger at a fifth of its rate for want of pressur
 reactor next to the maker had taken 66,000 of 69,000 made (57,000 by plan). The reactor takes 10,000 a craft and its
 input box holds 20,000, four hours of all that is made; the pipe gives to whoever is first.
 
-CHEM_GAME
+With a stock for fluids as well (`--vb-fluids`), ten hours from empty and four measured:
+
+| Chemical science, robot-like transport with a stock | Science crafts by hour 14 | Crafts by hour, hours 7 to 14 (6.1 due) | Recipes at their rate in the last hours | Machines that never crafted |
+|---|---:|---|---:|---:|
+| items only | 12 | 10 by hour 8.4, then 2 more | 423 of 481 (hours 9 and 10) | 1 |
+| fluids too, first come first served | 24 | 2 4 6 0 5 1 3 3 | 419 of 481 | 0 |
+| fluids too, smallest user first | 30 | 7 4 4 4 2 5 3 0 | 415 of 481 | 0 |
+
+**Packs now come hour after hour, at 41 to 49% of the plan over the last four hours**, where they had stopped. Not at
+plan yet, and the reports say why: the stock never saw the pressured water. A maker's output box empties into its
+pipe at once, the reactor beside it still had the water first, and the heat exchanger made 6 of its 29 crafts in
+both runs, exactly as before. The check now also lets a small user short of a craft draw from what bigger users of
+the fluid hold (`--vb-share small` with `--vb-fluids`); in a half-hour test the heat exchanger made 14 crafts where it
+had made 28 in 14 hours. CHEM_K
 
 ### What the model had left out
 
