@@ -268,10 +268,13 @@ robots, with meters at the plan's own rates:
 plan makes its first pack at hour 36 from empty. In the 21-hour runs the science machine holds all but two of its
 ingredients, and both wait on one chain: tin concentrate to molten tin to an equipment chassis, eight machines
 planned at a craft every 20 minutes to three hours each, then lab instruments and plasmids. All eight worked in the
-last three hours, at half to all of their rate. The factory is filling at the pace of its plan. The runs are too
-short to tell the start-up rules apart. Two runs of 60 game-hours were started at 07:30 and are still going
-(`solves/n2_logi_long_a`: as built; `solves/n2_logi_long_b`: requests by need and the fluid emulation); they end
-around 17:00 and say whether packs then come at the planned rate.
+last three hours, at half to all of their rate. The factory is filling at the pace of its plan. The model had put
+the first pack of the fast-start runs at hour 13 and, with requests by need, at hour 9: the game did not keep to
+that, so the model's start times are too early by a factor these runs do not give, and they are too short to tell
+the start-up rules apart. (The fluid emulation in these runs was the first one, which catches only fluids that
+linger in output boxes.) Two runs of 60 game-hours were started at 07:30 and are still going
+(`solves/n2_logi_long_a`: as built; `solves/n2_logi_long_b`: requests by need and the first fluid emulation); they
+end around 17:00 and 18:00 and say whether packs then come at the planned rate.
 
 Also seen: the blocks of a robot-built factory are 197 separate power networks (no belt joins them); the stitch
 leaves that wiring to the player.
