@@ -179,7 +179,7 @@ fun splitPlan(
             warnings += "${moved.second.size} of ${proposed.size} sliver links handed to the consumer's main supplier"
         }
     }
-    val (plan2, blocks2) = wholeMachines(linkPlan, blocks, links, warnings)
+    val (plan2, blocks2) = wholeMachines(linkPlan, blocks, links, warnings, cfg.botLinks)
     linkMismatches(plan2, blocks2, links).forEach { warnings += "SPLIT MISMATCH $it" }
     return Split(blocks2, links, warnings, geometry, plan2, part, tradePorts)
 }
@@ -241,7 +241,11 @@ private fun sliverPlan(
  * and the block's machines of that recipe share its work equally: the block makes the same, each machine a little
  * slower. Items made by more than one recipe in a block are left as they are.
  */
-fun wholeMachines(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Link>, warnings: MutableList<String>): Pair<ProductionPlan, List<List<Int>>> {
+fun wholeMachines(
+    plan: ProductionPlan, blocks: List<List<Int>>, links: List<Link>, warnings: MutableList<String>,
+    /** blocks.bot_links: an item's links below this leave a block through one provider chest, so count as one belt. */
+    botBelow: Double? = null,
+): Pair<ProductionPlan, List<List<Int>>> {
     val machines = plan.machines.toMutableList()
     val terminals = plan.terminals.toMutableList()
     val netTerms = plan.nets.map { it.terminals.toMutableList() }
@@ -254,7 +258,9 @@ fun wholeMachines(plan: ProductionPlan, blocks: List<List<Int>>, links: List<Lin
     blocks.forEachIndexed { b, ms ->
         val items = ms.flatMap { plan.machines[it].itemProducts.keys }.distinct()
         for (item in items) {
-            val out = links.filter { it.from == b && it.item == item && !it.fluid }
+            val leaving = links.filter { it.from == b && it.item == item && !it.fluid }
+            val byBot = if (botBelow == null || item in plan.mixed.values) emptyList() else leaving.filter { it.inner && !it.local && it.pair < 0 && it.rate < botBelow }
+            val out = (leaving - byBot.toSet()) + (if (byBot.isEmpty()) emptyList() else listOf(byBot[0].copy(rate = byBot.sumOf { it.rate })))
             if (out.size < 2) continue
             val producers = ms.filter { (plan.machines[it].itemProducts[item] ?: 0.0) > 1e-12 }
             val recipes = producers.map { plan.machines[it].recipe }.distinct()
@@ -681,7 +687,11 @@ fun blockPlan(full: ProductionPlan, ids: List<Int>, links: List<Link>, b: Int, t
     val linkOfPort = HashMap<Int, Int>()
     val linksOfPort = HashMap<Int, List<Int>>()
     val portOfLink = HashMap<Int, Int>()
-    val groupOf = (if (shared) sharedOutputs(full, links, b, tuning) else emptyList()).flatMap { g -> g.map { it.id to g } }.toMap()
+    // Robot links (blocks.bot_links) of one item share one chest at each end: a block's provider serves every block
+    // that asks for the item, its requester takes from whoever provides it. (A port per link gave a maker of one item
+    // for nine blocks nine belts to nine chests, its output dealt out between them by turns.)
+    val botGroups = links.filter { it.bot && (it.from == b || it.to == b) }.groupBy { it.item to (it.from == b) }.values.filter { it.size > 1 }
+    val groupOf = ((if (shared) sharedOutputs(full, links, b, tuning) else emptyList()) + botGroups).flatMap { g -> g.map { it.id to g } }.toMap()
     links.filter { it.from == b || it.to == b }.forEach { l ->
         if (l.id in portOfLink) return@forEach
         val out = l.from == b

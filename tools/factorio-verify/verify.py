@@ -759,8 +759,17 @@ def main():
             if args.rate_cap:
                 params["rate_cap"] = args.rate_cap
                 print(f"rate-cap: no machine runs faster than {args.rate_cap} times its plan")
-            if args.meter_file:
+            # (A plan the planner solved with a margin, plan.json "margin", carries its own meter rates and carriers:
+            # --meter 1 --meter-start then needs no rate file.)
+            own = json.load(open(fp))
+            if args.meter and not args.meter_file and (args.meter_start or args.vb_buffer or own.get("rings")):
+                caps = {"ratio": [args.meter] * len(own.get("machines", [])), "exempt": own.get("rings", [])}
+                args.meter = 1.0
+            elif args.meter_file:
                 caps = json.load(open(args.meter_file))
+            else:
+                caps = None
+            if caps is not None:
                 crafts = defaultdict(float)
                 for m, ratio in zip(json.load(open(fp)).get("machines", []), caps["ratio"]):
                     rn = m["recipe"].split("#")[0].split("@")[0]
@@ -801,7 +810,7 @@ def main():
                 if args.meter_start:
                     params["meter_start"] = dict(start)
                     print(f"meter-start: each meter starts with its users' first batch in hand (up to {max(start.values()):.0f} crafts)")
-                print(f"meter-file: rates with a margin from {args.meter_file}; {len(params['void_except'])} carriers kept out of the virtual sinks")
+                print(f"meters at {'the plan' + chr(39) + 's own rates' if not args.meter_file else 'rates with a margin from ' + args.meter_file}; {len(params['void_except'])} carriers kept out of the virtual sinks")
             if args.meter:
                 params["meter"] = args.meter
                 print(f"meter: every machine held to {args.meter} times its planned rate")
