@@ -2081,6 +2081,12 @@ script.on_event(defines.events.on_tick, function()
           -- waiting for its second craft, and chains of them take a day to start.)
           if not t then t = { tok = (run.params.meter_start or {})[r.name] or 1, pf = pf, tick = game.tick }; m.mt = t end
           local rate = c * run.params.meter
+          -- (params.meter_fill {k, hours}: for the first hours every meter runs k times faster, a fast start. The
+          -- plan-level model has the built logistic science plan make its first pack at hour 36 from empty once every
+          -- machine keeps two crafts' worth of each input for itself, and at hour 19 with meters five times faster
+          -- for the first twelve.)
+          local mf = run.params.meter_fill
+          if mf and run.t0 and game.tick - run.t0 < mf[2] * 216000 then rate = rate * mf[1] end
           -- (params.meter_bucket: the seconds of its planned rate a waiting machine may save up, 60 unless given. With a
           -- minute a machine that stood short for an hour has lost that hour for good. A user that takes a big batch
           -- seldom fills its tank of two batches first, and a small steady user on the same pipe gets its share in

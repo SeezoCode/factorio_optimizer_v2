@@ -640,6 +640,8 @@ def main():
     ap.add_argument("--vb-fluids", action="store_true",
                     help="fluids move from makers to machines in need (as --virtual-bots moves items), with the --vb-buffer stock "
                          "(as storage tanks on every fluid link would)")
+    ap.add_argument("--meter-fill", default=None, metavar="K:H",
+                    help="with --meter: for the first H game hours every meter runs K times faster (a fast start)")
     ap.add_argument("--meter-bucket", type=float, default=None, metavar="S",
                     help="with --meter: a machine that waits saves up to S seconds of its planned rate and catches up later (60 unless given)")
     ap.add_argument("--meter-start-depth", type=int, default=1, metavar="D",
@@ -834,6 +836,10 @@ def main():
                 print(f"meters at {'the plan' + chr(39) + 's own rates' if not args.meter_file else 'rates with a margin from ' + args.meter_file}; {len(params['void_except'])} carriers kept out of the virtual sinks")
             if args.meter:
                 params["meter"] = args.meter
+                if args.meter_fill:
+                    k, h = (float(v) for v in args.meter_fill.split(":"))
+                    params["meter_fill"] = [k, h]
+                    print(f"meter-fill: meters run {k:g} times faster for the first {h:g} game hours")
                 if args.meter_bucket:
                     params["meter_bucket"] = args.meter_bucket
                     print(f"meter-bucket: a waiting machine saves up to {args.meter_bucket:.0f} s of its planned rate")
