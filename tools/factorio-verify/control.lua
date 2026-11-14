@@ -1960,7 +1960,12 @@ script.on_event(defines.events.on_tick, function()
           -- waiting for its second craft, and chains of them take a day to start.)
           if not t then t = { tok = (run.params.meter_start or {})[r.name] or 1, pf = pf, tick = game.tick }; m.mt = t end
           local rate = c * run.params.meter
-          t.tok = math.min(t.tok + rate * (game.tick - t.tick) / 60, math.max(t.tok, 1 + rate * 60)) - (pf - t.pf)
+          -- (params.meter_bucket: the seconds of its planned rate a waiting machine may save up, 60 unless given. With a
+          -- minute a machine that stood short for an hour has lost that hour for good. A user that takes a big batch
+          -- seldom fills its tank of two batches first, and a small steady user on the same pipe gets its share in
+          -- bursts: Py chemical science's fusion reactor takes 10,000 pressured water a craft, a craft in two and a
+          -- half hours, and its heat exchanger, 100 a craft, ran at a fifth of its rate.)
+          t.tok = math.min(t.tok + rate * (game.tick - t.tick) / 60, math.max(t.tok, 1 + rate * (run.params.meter_bucket or 60))) - (pf - t.pf)
           t.pf, t.tick = pf, game.tick
           if t.tok <= 0 then
             held = held + 1

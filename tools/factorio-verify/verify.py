@@ -634,6 +634,12 @@ def main():
                          "that is deleted")
     ap.add_argument("--vb-stock", type=float, default=None, metavar="N",
                     help="with --virtual-bots: a machine in need is given up to N crafts' worth (default 2)")
+    ap.add_argument("--meter-bucket", type=float, default=None, metavar="S",
+                    help="with --meter: a machine that waits saves up to S seconds of its planned rate and catches up later (60 unless given)")
+    ap.add_argument("--meter-start-depth", type=int, default=1, metavar="D",
+                    help="with --meter-start: count the users' own allowances too, D levels down (1: only the users' first batch)")
+    ap.add_argument("--meter-start-max", type=float, default=1e9, metavar="N",
+                    help="with --meter-start: no meter starts with more than N crafts in hand")
     ap.add_argument("--meter-start", action="store_true",
                     help="with --meter-file: each meter starts with enough crafts in hand to give every user of its "
                          "machine's products one craft's worth (a start-up allowance)")
@@ -786,16 +792,25 @@ def main():
                             d[t["machine"]][t["item"]] = d[t["machine"]].get(t["item"], 0.0) + t["rate"] / pm[t["machine"]]["crafts"]
                 # (One craft's worth for each user machine, added up: on a belt the first users stock up before the
                 # last sees anything.)
-                biggest = defaultdict(float)
-                for mi, ins in per_in.items():
-                    if caps["ratio"][mi] > 0:
-                        for item, a in ins.items():
-                            biggest[item] += a
+                # (--meter-start-depth D: the users' own allowances count too, D levels down. A user that starts with
+                # crafts in hand takes that much more from its makers at the start, and a fluid user fills a tank of two
+                # crafts besides: Py chemical science's fusion reactor took 66,000 of the first 69,000 pressured water
+                # where its plan share was 57,000, the heat exchanger behind it stood at a fifth of its rate for ten
+                # hours, and the steam chain behind that paced the science packs.)
+                base_of = lambda mi: pm[mi]["recipe"].split("#")[0].split("@")[0]
                 start = defaultdict(float)
-                for mi, outs in per_out.items():
-                    rn = pm[mi]["recipe"].split("#")[0].split("@")[0]
-                    need = max([1.0] + [biggest[item] / p for item, p in outs.items() if p > 0 and biggest[item] > 0])
-                    start[rn] = max(start[rn], float(int(need * args.meter_start_factor + 0.999)))
+                for _ in range(max(1, args.meter_start_depth)):
+                    biggest = defaultdict(float)
+                    for mi, ins in per_in.items():
+                        if caps["ratio"][mi] > 0:
+                            for item, a in ins.items():
+                                biggest[item] += a * (args.meter_start_factor + (start.get(base_of(mi), 0.0) if args.meter_start_depth > 1 else 0.0))
+                    nxt = defaultdict(float)
+                    for mi, outs in per_out.items():
+                        rn = base_of(mi)
+                        need = max([args.meter_start_factor] + [biggest[item] / p for item, p in outs.items() if p > 0 and biggest[item] > 0])
+                        nxt[rn] = max(nxt[rn], float(int(min(need, args.meter_start_max) + 0.999)))
+                    start = nxt
                 if args.vb_buffer:
                     # A stock of every item in the network's storage: that many seconds of its use at the metered rates
                     # (never less than four crafts of its biggest user).
@@ -813,6 +828,9 @@ def main():
                 print(f"meters at {'the plan' + chr(39) + 's own rates' if not args.meter_file else 'rates with a margin from ' + args.meter_file}; {len(params['void_except'])} carriers kept out of the virtual sinks")
             if args.meter:
                 params["meter"] = args.meter
+                if args.meter_bucket:
+                    params["meter_bucket"] = args.meter_bucket
+                    print(f"meter-bucket: a waiting machine saves up to {args.meter_bucket:.0f} s of its planned rate")
                 print(f"meter: every machine held to {args.meter} times its planned rate")
             if args.side_cap or args.rate_cap:
                 params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}

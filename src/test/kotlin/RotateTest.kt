@@ -1,5 +1,7 @@
 import blocks.turnLayout
 import config.Tuning
+import geom.Kind
+import geom.PlacedEntity
 import plan.buildPlan
 import search.runTrial
 import search.validationSpec
@@ -25,5 +27,25 @@ class RotateTest {
         val back = turnLayout(turnLayout(turnLayout(turnLayout(r, 1), 1), 1), 1)
         assertEquals(r.layout!!.entities.toSet(), back.layout!!.entities.toSet())
         assertEquals(r.sources.map { it.tile }, back.sources.map { it.tile })
+    }
+
+    @Test
+    fun `a turned block keeps its requester's request, its chest's bar and its read belt`() {
+        // The built logistic science factory stood still in game: 260 of its 380 requester chests asked for nothing,
+        // as the turn rebuilt each entity without those fields.
+        val plan = buildPlan(TestData.data, plasticJob)
+        val r = (1L..8L).asSequence().map { runTrial(TestData.data, plan, plasticJob, Tuning(), 24, 24, it) }.first { it.success }
+        val extra = listOf(
+            PlacedEntity("requester-chest", Kind.CHEST, -1, 0, item = "iron-plate", request = 12, bar = 3),
+            PlacedEntity("transport-belt", Kind.BELT, -1, 1, readBelt = true),
+        )
+        val l = r.layout!!
+        val with = search.TrialResult(true, r.w, r.h, r.seed, geom.Layout(l.w, l.h, l.entities + extra, l.wires, l.label), r.placement,
+            r.errors, null, r.score, r.stage, r.annealT0, r.millis, r.notes, sources = r.sources, outputs = r.outputs)
+        val t = turnLayout(with, 1)
+        val chest = t.layout!!.entities.single { it.name == "requester-chest" }
+        assertEquals(12, chest.request)
+        assertEquals(3, chest.bar)
+        assertTrue(t.layout!!.entities.any { it.kind == Kind.BELT && it.readBelt })
     }
 }
