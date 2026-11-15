@@ -1841,13 +1841,36 @@ local function overflow_last(run)
         if n and not fed[n] then ov[n] = true end
       end
     end
-    local other = {}
-    for _, o in pairs(run.outs) do if o.m.valid and not ov[o.net] then other[o.m.unit_number] = true end end
-    for u in pairs(run.hands or {}) do other[u] = true end
+    -- (Another way out for the same item: a by-product whose only exit is its overflow chest must leave at once.
+    -- Py's quartz crusher has an exit for crushed quartz to a user, one to a provider chest, and one for its stone to
+    -- an overflow chest alone; shut, the stone stopped the crusher for a minute at every opening.)
+    local function filters(ins)
+      local f, n = {}, 0
+      for k = 1, (ins.filter_slot_count or 0) do
+        local fl = ins.get_filter(k)
+        if fl then f[fl.name] = true; n = n + 1 end
+      end
+      return n > 0 and f or nil
+    end
+    local other, hands = {}, {}
+    for _, o in pairs(run.outs) do
+      if o.e.valid and o.m.valid and not ov[o.net] then
+        local l = other[o.m.unit_number] or {}
+        l[#l + 1] = filters(o.e) or "all"
+        other[o.m.unit_number] = l
+      end
+    end
+    for u in pairs(run.hands or {}) do hands[u] = true end
     run.ov_outs = {}
     for _, o in pairs(run.outs) do
-      if o.e.valid and o.m.valid and ov[o.net] and other[o.m.unit_number] then
-        run.ov_outs[#run.ov_outs + 1] = { e = o.e, m = o.m, full_s = 0, open_s = 0 }
+      if o.e.valid and o.m.valid and ov[o.net] then
+        local mine = filters(o.e)
+        local ok = hands[o.m.unit_number] or false
+        for _, f in pairs(other[o.m.unit_number] or {}) do
+          if f == "all" then ok = true
+          elseif mine then for name in pairs(mine) do if f[name] then ok = true end end end
+        end
+        if ok then run.ov_outs[#run.ov_outs + 1] = { e = o.e, m = o.m, full_s = 0, open_s = 0 } end
       end
     end
   end

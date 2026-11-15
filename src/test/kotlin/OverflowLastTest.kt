@@ -46,6 +46,11 @@ class OverflowLastTest {
         assertEquals(0, addOverflowLast(base + user, outputs, setOf("iron-gear-wheel")) { 200 }.gated, "a user on the belt")
         assertEquals(0, addOverflowLast(base - toProvider, outputs, setOf("iron-gear-wheel")) { 200 }.gated, "the only way out")
         assertEquals(0, addOverflowLast(base, outputs, emptySet()) { 200 }.gated, "no provider holds it")
+        val stoneOnly = base.map { if (it.tile == toOverflow.tile) it.copy(item = "stone") else if (it.tile == toProvider.tile) it.copy(item = "iron-gear-wheel") else it }
+        val stone = listOf(OutputSpec(Tile(4, 1), "stone", 0.001, local = true), outputs[1])
+        assertEquals(0, addOverflowLast(stoneOnly, stone, setOf("stone", "iron-gear-wheel")) { 200 }.gated, "a by-product's only way out")
+        val gearsOnly = base.map { if (it.tile == toProvider.tile) it.copy(item = "iron-stick") else it }
+        assertEquals(0, addOverflowLast(gearsOnly, outputs, setOf("iron-gear-wheel")) { 200 }.gated, "the other exit carries something else")
     }
 
     @Test

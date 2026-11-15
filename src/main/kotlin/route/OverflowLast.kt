@@ -67,6 +67,9 @@ private class Exits(val ents: ArrayList<PlacedEntity>) {
         return chain
     }
 
+    /** Whether inserter [i] may carry [item]: its filter is that item, or it has none and does not refuse it. */
+    fun carries(i: Int, item: String) = ents[i].item?.let { it == item } ?: (ents[i].blacklist?.contains(item) != true)
+
     /** The inserters that put a machine's output onto [chain]. */
     fun makersOnto(chain: Set<Tile>): List<Int> = chain.flatMap { drops[it] ?: emptyList() }.filter { ents[it].pickupTile in machineAt }
 }
@@ -84,7 +87,9 @@ private class Exits(val ents: ArrayList<PlacedEntity>) {
  *
  * Only an exit that is nothing else: its belts, walked up from the port of a local item sink in [outputs], feed no
  * other inserter and pass no splitter; the inserters onto them come out of machines that have another output
- * inserter; and the item is one a provider chest holds somewhere ([stocked]), or the condition would never hold.
+ * inserter for the same item (a by-product whose only way out is its overflow chest must leave at once: Py's quartz
+ * crusher and its stone); and the item is one a provider chest holds somewhere ([stocked]), or the condition would
+ * never hold.
  */
 fun addOverflowLast(entities: List<PlacedEntity>, outputs: List<OutputSpec>, stocked: Set<String>, level: (String) -> Int): OverflowLast {
     val sinks = outputs.filter { it.local && !it.bot && !it.fluid && it.sink == null && it.item in stocked }
@@ -96,8 +101,9 @@ fun addOverflowLast(entities: List<PlacedEntity>, outputs: List<OutputSpec>, sto
         val chain = x.chainTo(o.tile) ?: continue
         for (i in x.makersOnto(chain)) {
             val m = x.machineAt.getValue(ents[i].pickupTile)
-            val others = x.outOf[m]?.any { j -> j != i && ents[j].dropTile !in chain } == true
-            if (!others || ents[i].circuit != null || ents[i].logistic != null) continue
+            // (Another way out for this item: a by-product that leaves through its overflow chest alone must not wait.)
+            val others = x.outOf[m]?.any { j -> j != i && ents[j].dropTile !in chain && x.carries(j, o.item) } == true
+            if (!others || !x.carries(i, o.item) || ents[i].circuit != null || ents[i].logistic != null) continue
             ents[i] = ents[i].copy(logistic = CircuitCondition(o.item, ">", level(o.item), fluid = false))
             gated++
         }
@@ -127,7 +133,6 @@ fun addProviderLevel(entities: List<PlacedEntity>, outputs: List<OutputSpec>, le
     val x = Exits(ArrayList(entities))
     val ents = x.ents
     val chests = outputs.filter { it.local && !it.fluid }.mapNotNull { x.chainTo(it.tile) }.flatten().toSet()
-    fun carries(i: Int, item: String) = ents[i].item?.let { it == item } ?: (ents[i].blacklist?.contains(item) != true)
     var gated = 0
     for (o in ports) {
         val chain = x.chainTo(o.tile) ?: continue
@@ -136,7 +141,7 @@ fun addProviderLevel(entities: List<PlacedEntity>, outputs: List<OutputSpec>, le
             val m = x.machineAt.getValue(ents[i].pickupTile)
             val only = ents[i].item ?: ents[m].recipe?.let { products(it) }?.singleOrNull()
             if (only != o.item) continue
-            val user = x.outOf[m]?.any { j -> j != i && ents[j].dropTile !in chests && carries(j, o.item) } == true
+            val user = x.outOf[m]?.any { j -> j != i && ents[j].dropTile !in chests && x.carries(j, o.item) } == true
             if (!user) continue
             ents[i] = ents[i].copy(logistic = CircuitCondition(o.item, "<", level(o.item) + 1, fluid = false))
             gated++
