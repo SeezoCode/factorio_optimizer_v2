@@ -1,3 +1,4 @@
+import data.GameConstants
 import emit.decodeBlueprint
 import emit.toBlueprintString
 import emit.toLayout
@@ -60,6 +61,33 @@ class OverflowLastTest {
         val moved = r.entities.map { it.copy(x = it.x + 2, y = it.y + 2) }
         val back = decodeBlueprint(Layout(8, 8, moved).toBlueprintString()).toLayout(8, 8).entities
         assertEquals(listOf(CircuitCondition("iron-gear-wheel", ">", 200, fluid = false)), back.mapNotNull { it.logistic })
+    }
+
+    @Test
+    fun `an overflow chest behind an underground longer than the base game's is still found`() {
+        // As Py does: express undergrounds reaching 34. The overflow chest's port lies 20 tiles under ground from the maker.
+        val root = TestData.data
+        val lg = root.logistics!!
+        val modded = root.copy(logistics = lg.copy(undergrounds = lg.undergrounds!!.map { if (it.name == "express-underground-belt") it.copy(maxDistance = 34) else it }))
+        val far = listOf(
+            machine, toOverflow, toProvider,
+            PlacedEntity("express-transport-belt", Kind.BELT, 4, 0, Dir.S), PlacedEntity("express-underground-belt", Kind.UG_IN, 4, 1, Dir.S),
+            PlacedEntity("express-underground-belt", Kind.UG_OUT, 4, 21, Dir.S), PlacedEntity("express-transport-belt", Kind.BELT, 4, 22, Dir.S),
+            PlacedEntity("inserter", Kind.INSERTER, 4, 23, Dir.N), PlacedEntity("steel-chest", Kind.CHEST, 4, 24),
+            PlacedEntity("transport-belt", Kind.BELT, -2, 0, Dir.N),
+            PlacedEntity("inserter", Kind.INSERTER, -2, -1, Dir.S), PlacedEntity("passive-provider-chest", Kind.CHEST, -2, -2),
+        )
+        val outs = listOf(OutputSpec(Tile(4, 22), "iron-gear-wheel", 0.001, local = true), outputs[1])
+        try {
+            GameConstants.register(modded)
+            val r = addOverflowLast(far, outs, setOf("iron-gear-wheel")) { 200 }
+            assertEquals(1, r.gated)
+            assertEquals(CircuitCondition("iron-gear-wheel", ">", 200, fluid = false), r.entities.single { it.tile == toOverflow.tile }.logistic)
+            // (And the far overflow chest is no user: the provider exit keeps no limit of its own.)
+            assertEquals(0, addProviderLevel(far, outs, { 200 }, gears).gated)
+        } finally {
+            GameConstants.register(root)
+        }
     }
 
     // South of the maker an inserter straight into a machine that uses the gears.

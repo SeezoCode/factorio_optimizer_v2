@@ -1,5 +1,6 @@
 package blocks
 
+import data.GameConstants
 import geom.Kind
 import geom.PlacedEntity
 import geom.Tile
@@ -194,7 +195,7 @@ private fun undergroundSpans(es: List<PlacedEntity>): List<Pair<PlacedEntity, Li
     val at = HashMap<Tile, PlacedEntity>()
     es.filter { it.kind == Kind.UG_OUT }.forEach { at[it.tile] = it }
     return es.filter { it.kind == Kind.UG_IN }.mapNotNull { e ->
-        (1..12).firstOrNull { i -> at[e.tile.step(e.dir, i)]?.let { it.net == e.net && it.dir == e.dir } == true }
+        (1..(GameConstants.tierOfEntity(e.name)?.maxUndergroundGap ?: 12) + 1).firstOrNull { i -> at[e.tile.step(e.dir, i)]?.let { it.net == e.net && it.dir == e.dir } == true }
             ?.let { j -> e to (1 until j).map { e.tile.step(e.dir, it) } }
     }
 }

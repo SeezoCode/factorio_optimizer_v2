@@ -1,5 +1,6 @@
 package route
 
+import data.GameConstants
 import geom.CircuitCondition
 import geom.Dir
 import geom.Kind
@@ -32,7 +33,8 @@ private class Exits(val ents: ArrayList<PlacedEntity>) {
         val b = ents[beltAt.getValue(t)]
         if (b.kind == Kind.SPLITTER) return null
         if (b.kind == Kind.UG_OUT) {
-            for (k in 1..12) {
+            // (As far back as this underground reaches: Py's express one spans 33 tiles.)
+            for (k in 1..(GameConstants.tierOfEntity(b.name)?.maxUndergroundGap ?: 12) + 1) {
                 val u = t.step(b.dir.opposite, k)
                 val ub = beltAt[u]?.let { ents[it] } ?: continue
                 if (ub.name == b.name && ub.dir == b.dir) return if (ub.kind == Kind.UG_IN) listOf(u) else emptyList()
