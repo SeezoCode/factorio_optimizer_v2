@@ -656,6 +656,14 @@ def main():
                          "machine's products one craft's worth (a start-up allowance)")
     ap.add_argument("--robot", default=None, metavar="NAME",
                     help="the logistic robot put into roboports (default: the slowest one a player can build)")
+    ap.add_argument("--overflow-last", action="store_true",
+                    help="a machine's output inserter toward an overflow chest works only once the machine has stood full "
+                         "for a minute (as an overflow inserter wired to the stock would): its users are served first")
+    ap.add_argument("--seed-through", action="store_true",
+                    help="loop starters (plan seeds) are topped up while measuring too, not only in the warm-up; what "
+                         "is handed out is in the report by item and by hour (a loop that closed stops drawing)")
+    ap.add_argument("--void-wait", type=int, default=None, metavar="S",
+                    help="with --void-full: a machine must stand full this many seconds before anything is deleted (30)")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -716,6 +724,14 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
+    if args.overflow_last:
+        params["overflow_last"] = True
+        print("overflow-last: a machine's exit to an overflow chest works only once it has stood full for a minute")
+    if args.seed_through:
+        params["seed_through"] = True
+        print("seed-through: loop starters are handed out while measuring too, counted by the hour")
+    if args.void_wait is not None:
+        params["void_wait"] = args.void_wait
     # Each recipe's planned intake per machine (items), fuel included: what a burner without fuel waits for, and what a
     # warm start puts in its fuel slot.
     dp = built_plan_path(args.target)

@@ -479,6 +479,13 @@ data class BlocksConfig(
      * providers in game while 335 requesters stood empty and the makers' other users went short.
      */
     @SerialName("bot_provider_slots") val botProviderSlots: Int? = 2,
+    /**
+     * With [botLinks] and [localSinks]: a machine's inserter toward its block's overflow chest works only once the
+     * robot network holds more than this many stacks of the item (a logistic condition; route.addOverflowLast). Without
+     * it the overflow's belt takes half of what a slow machine makes until it is full, hours of a craft-an-hour item.
+     * Null: off.
+     */
+    @SerialName("overflow_after_stacks") val overflowAfterStacks: Int? = 2,
     @SerialName("bot_requester_chest") val botRequesterChest: String = "requester-chest",
     /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,

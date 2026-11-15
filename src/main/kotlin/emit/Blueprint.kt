@@ -204,7 +204,15 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                     }
                 }
             },
-            controlBehavior = if (e.circuit == null && !e.readBelt) null else buildJsonObject {
+            controlBehavior = if (e.circuit == null && !e.readBelt && e.logistic == null) null else buildJsonObject {
+                e.logistic?.let { c ->
+                    put("connect_to_logistic_network", true)
+                    put("logistic_condition", buildJsonObject {
+                        put("first_signal", buildJsonObject { put("type", if (c.fluid) "fluid" else "item"); put("name", gameName(c.signal)) })
+                        put("constant", c.constant)
+                        put("comparator", c.comparator)
+                    })
+                }
                 e.circuit?.let { c ->
                     // 2.0's key (checked in game: a machine built from "circuit_enable_disable" ignores its condition).
                     put("circuit_enabled", true)
@@ -274,6 +282,11 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
                     c["constant"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0, sig["type"]?.jsonPrimitive?.content == "fluid")
             },
             readBelt = kind.beltFamily && b.controlBehavior?.get("circuit_read_hand_contents")?.jsonPrimitive?.content == "true",
+            logistic = b.controlBehavior?.get("logistic_condition")?.jsonObject?.let { c ->
+                val sig = c["first_signal"]?.jsonObject ?: return@let null
+                CircuitCondition(sig["name"]?.jsonPrimitive?.content ?: return@let null, c["comparator"]?.jsonPrimitive?.content ?: "<",
+                    c["constant"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0, sig["type"]?.jsonPrimitive?.content == "fluid")
+            },
             request = if (kind == Kind.CHEST) requestOf(b)?.second else null,
             bar = if (kind == Kind.CHEST) b.bar else null,
             modules = b.items?.let { reqs ->

@@ -172,6 +172,18 @@ local function warm_start(run, e, r)
   end
 end
 
+-- What the check hands out to loops (report "seeded", by hour in the timeline): a loop that makes its own starter
+-- stops drawing on it, and the hour it does is when the loop closed.
+local function seeded_count(run, name, n)
+  if not n or n <= 0 then return end
+  run.seeded = run.seeded or {}
+  run.seeded[name] = (run.seeded[name] or 0) + n
+  if run.phase == "measure" then
+    run.seeded_measure = run.seeded_measure or {}
+    run.seeded_measure[name] = (run.seeded_measure[name] or 0) + n
+  end
+end
+
 local function prime(run, e, r, crafted, rec)
   local back, made_at, seeded, own = {}, {}, {}, {}
   for _, p in pairs(r.products) do back[p.name] = true; made_at[p.name] = p.temperature; own[p.name] = true end
@@ -210,6 +222,7 @@ local function prime(run, e, r, crafted, rec)
           if add > 0 then
             local n = e.insert { name = ing.name, count = add }
             if rec then rec.given = rec.given or {}; rec.given[ing.name] = (rec.given[ing.name] or 0) + n end
+            seeded_count(run, ing.name, n)
           end
         end)
       else
@@ -235,6 +248,8 @@ local function prime(run, e, r, crafted, rec)
               if not pcall(function() e.set_fluid(k, { name = ing.name, amount = ing.amount * 2, temperature = t }) end) then
                 e.set_fluid(k, { name = ing.name, amount = ing.amount, temperature = t })
               end
+              local now = e.get_fluid(k)
+              seeded_count(run, "[" .. ing.name .. "]", (now and now.amount or 0) - (have and have.amount or 0))
             end
           end
         end)
@@ -255,7 +270,10 @@ end
 local SEED_TOPUPS = 10
 local function seed_tick(run)
   -- Through the whole warm-up (never while measuring: a loop that cannot keep itself going shows there).
-  if run.phase ~= "warmup" or game.tick % 120 ~= 0 then return end
+  -- params.seed_through: while measuring too. A loop the size of the factory had not gone round once in 60 game-hours
+  -- from empty (Py logistic science: tin, acetone, fish, lamps, circuits, tin plate), and 26 to 33 recipes that ran at
+  -- their rate stood within three hours of the hand-outs ending; what is handed out is counted by the hour instead.
+  if not (run.phase == "warmup" or (run.phase == "measure" and run.params.seed_through)) or game.tick % 120 ~= 0 then return end
   local short = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
     [defines.entity_status.fluid_ingredient_shortage] = true }
   for _, p in pairs(run.primes or {}) do
@@ -883,13 +901,62 @@ local function most(t)
   return best
 end
 
+-- Where every item is when the run ends (report "where"): on belts, in chests by kind, in inserters' hands, with robots,
+-- in machines. Fourteen reduced tin were made in a 60-hour run and five could be found in the report.
+local function where_is(run)
+  local out = {}
+  local function put(kind, name, n)
+    if n and n > 0 then out[name] = out[name] or {}; out[name][kind] = (out[name][kind] or 0) + n end
+  end
+  local function contents(kind, inv)
+    if not inv then return end
+    for k, c in pairs(inv.get_contents()) do
+      put(kind, type(c) == "table" and c.name or k, type(c) == "table" and c.count or c)
+    end
+  end
+  local ok, err = pcall(function()
+    local sf = run.surface
+    for _, e in pairs(sf.find_entities_filtered { type = { "transport-belt", "underground-belt", "splitter", "loader", "loader-1x1" } }) do
+      for i = 1, e.get_max_transport_line_index() do
+        for _, c in pairs(e.get_transport_line(i).get_contents()) do put("belt", c.name, c.count) end
+      end
+    end
+    local sink = {}
+    for _, s in pairs(run.sinks or {}) do if s.chest.valid then sink[s.chest.unit_number] = true end end
+    for _, e in pairs(sf.find_entities_filtered { type = { "container", "logistic-container" } }) do
+      local kind = sink[e.unit_number] and "sink" or (e.type == "logistic-container" and (e.prototype.logistic_mode or "chest")) or "chest"
+      contents(kind, e.get_inventory(defines.inventory.chest))
+    end
+    for _, e in pairs(sf.find_entities_filtered { type = "inserter" }) do
+      local h = e.held_stack
+      if h.valid_for_read then put("hand", h.name, h.count) end
+    end
+    for _, e in pairs(sf.find_entities_filtered { type = { "logistic-robot", "construction-robot" } }) do
+      contents("robot", e.get_inventory(defines.inventory.robot_cargo))
+    end
+    for _, m in pairs(run.machines or {}) do
+      local e = m.e
+      if e.valid then
+        pcall(function() contents("machine_in", e.get_inventory(defines.inventory.crafter_input or defines.inventory.assembling_machine_input)) end)
+        pcall(function() contents("machine_out", e.get_output_inventory()) end)
+      end
+    end
+  end)
+  if not ok then out["error"] = { [tostring(err)] = 1 } end
+  return out
+end
+
 local function finish(run)
   local secs = (game.tick - run.m0) / 60
   local report = {
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
+    seeded = run.seeded, seeded_measure = run.seeded_measure, where = where_is(run),
+    overflow_last = run.ov_outs and (function() local n, opened, secs_open = 0, 0, 0
+      for _, o in pairs(run.ov_outs) do n = n + 1; if o.open_s > 0 then opened = opened + 1; secs_open = secs_open + o.open_s end end
+      return { exits = n, opened = opened, open_s = secs_open } end)() or nil,
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, void_kept = run.void_kept, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
     fluid_gates = run.fgates and (function() local o = {}
       for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0,
@@ -1616,7 +1683,11 @@ local function timeline(run)
     for _, a in pairs(byt) do n = n + a end
     st["[" .. k .. "]"] = math.floor(n)
   end
-  run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st }
+  local sd = {}
+  for k, v in pairs(run.seeded or {}) do sd[k] = v end
+  local vd = {}
+  for k, v in pairs(run.voided or {}) do vd[k] = v end
+  run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st, seeded = sd, voided = vd }
 end
 
 -- params.void_full, a helper ("virtual sinks"): a machine standing with a full output and not switched off by flow
@@ -1641,15 +1712,52 @@ local function void_full(run)
       m.voided[k] = (m.voided[k] or 0) + d
     end
   end
+  -- Only a machine that has stood full for a while (params.void_wait seconds, 30): a craft of 63 tin plates reads
+  -- "full" until its inserters have carried them off, and halving that every second deleted 85 of 126 plates in a
+  -- 60-hour run while the four users of tin plate held none. And what a user still lacks a craft's worth of is left
+  -- for ten minutes more (params.void_wait_users, 600; counted in "void_kept"): it has somewhere to go.
+  local wait, wait_users = run.params.void_wait or 30, run.params.void_wait_users or 600
+  if not run.users_of then
+    run.users_of = {}
+    for _, m in pairs(run.machines) do
+      local r = m.e.valid and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+      if r then for _, ing in pairs(r.ingredients) do
+        run.users_of[ing.name] = run.users_of[ing.name] or {}
+        table.insert(run.users_of[ing.name], { e = m.e, amount = ing.amount, fluid = ing.type == "fluid" })
+      end end
+    end
+  end
+  local function lacked(name, self)
+    for _, u in pairs(run.users_of[name] or {}) do
+      if u.e.valid and u.e ~= self then
+        local have = 0
+        if u.fluid then
+          for k = 1, (u.e.fluids_count or 0) do
+            local f = u.e.get_fluid(k)
+            if f and f.name == name then have = have + f.amount end
+          end
+        else
+          have = held(u.e, name)
+        end
+        if have < u.amount then return true end
+      end
+    end
+    return false
+  end
   for _, m in pairs(run.machines) do
     local e = m.e
-    if e.valid and not e.disabled_by_script and FULL_OUT[e.status] then
+    if e.valid and not (not e.disabled_by_script and FULL_OUT[e.status]) then m.full_s = 0 end
+    if e.valid and not e.disabled_by_script and FULL_OUT[e.status] then m.full_s = (m.full_s or 0) + 1 end
+    if e.valid and not e.disabled_by_script and FULL_OUT[e.status] and m.full_s > wait then
       local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
       if r then pcall(function()
         local out = e.get_output_inventory()
         for _, p in pairs(r.products) do
           -- (params.void_except: carriers that only go round, barrels and cages and bricks, are never deleted.)
           if (run.params.void_except or {})[p.name] then
+          elseif m.full_s <= wait + wait_users and lacked(p.name, e) then
+            run.void_kept = run.void_kept or {}
+            run.void_kept[p.name] = (run.void_kept[p.name] or 0) + 1
           elseif p.type == "item" then
             local n = out and out.get_item_count(p.name) or 0
             -- (Half, rounded up: a machine standing full of one brain was never relieved.)
@@ -1687,6 +1795,46 @@ local function void_full(run)
           end
         end
       end) end
+    end
+  end
+end
+
+-- params.overflow_last: a machine's exit to an overflow chest works only once the machine has stood full for a minute
+-- (params.overflow_last_wait). A block built for robots gives each maker two output inserters, one toward the provider
+-- chest its users are served from and one toward the block's overflow chest, and they share whatever is made: of
+-- fourteen reduced tin made in 60 game-hours, nine lay on the three belts before the overflow chest (planned to take
+-- one in 60 hours) and the molten tin machine got five. A built factory would wire the overflow inserter to the stock
+-- ("more than N in the network"); the maker standing full says the same here, its provider chest and belt being full.
+-- Only exits whose belts feed no machine and no chest but the overflow's, on machines with another way out.
+local function overflow_last(run)
+  if not run.params.overflow_last or game.tick % 60 ~= 15 or not run.outs then return end
+  if not run.ov_outs then
+    local fed = {}
+    for _, f in pairs(run.feeds or {}) do for net in pairs(f) do fed[net] = true end end
+    local ov = {}
+    for _, sk in pairs(run.sinks) do
+      if sk["local"] and sk.belt and sk.belt.valid then
+        local n = run.net_of[sk.belt.unit_number]
+        if n and not fed[n] then ov[n] = true end
+      end
+    end
+    local other = {}
+    for _, o in pairs(run.outs) do if o.m.valid and not ov[o.net] then other[o.m.unit_number] = true end end
+    for u in pairs(run.hands or {}) do other[u] = true end
+    run.ov_outs = {}
+    for _, o in pairs(run.outs) do
+      if o.e.valid and o.m.valid and ov[o.net] and other[o.m.unit_number] then
+        run.ov_outs[#run.ov_outs + 1] = { e = o.e, m = o.m, full_s = 0, open_s = 0 }
+      end
+    end
+  end
+  local wait = run.params.overflow_last_wait or 60
+  for _, o in pairs(run.ov_outs) do
+    if o.e.valid and o.m.valid then
+      if FULL_OUT[o.m.status] then o.full_s = o.full_s + 1 else o.full_s = 0 end
+      local open = o.full_s >= wait
+      if o.e.disabled_by_script ~= (not open) then o.e.disabled_by_script = not open end
+      if open then o.open_s = o.open_s + 1 end
     end
   end
 end
@@ -1767,6 +1915,7 @@ script.on_event(defines.events.on_tick, function()
   virtual_tanks(run)
   request_need(run)
   void_full(run)
+  overflow_last(run)
   timeline(run)
   virtual_pumps(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (2) times its plan,

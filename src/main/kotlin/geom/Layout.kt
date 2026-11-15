@@ -51,6 +51,8 @@ data class PlacedEntity(
     val request: Int? = null,
     /** Chests: how many of their slots can be used (the inventory bar; null: all). */
     val bar: Int? = null,
+    /** Inserters: works only while this holds for what the logistic network it stands in holds (route.addOverflowLast). */
+    val logistic: CircuitCondition? = null,
 ) {
     val rect: Rect get() = Rect(x, y, w, h)
     val tile: Tile get() = Tile(x, y)

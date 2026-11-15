@@ -1487,6 +1487,13 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
             all = all + robo.roboports
             notes += robo.notes
             if (robo.roboports.isNotEmpty()) notes += "${robo.roboports.size} roboports over ${chests.size} robot chests: put logistic robots in (the blueprint cannot carry them)"
+            // Overflow exits wait for the stock (blocks.overflow_after_stacks).
+            cfg.overflowAfterStacks?.let { stacks ->
+                val stocked = outs.filter { it.bot }.map { it.item }.toSet()
+                val gatedExits = route.addOverflowLast(all, outs, stocked) { item -> stacks * (data.items[item.substringBefore('@')]?.stackSize ?: 50) }
+                all = gatedExits.entities
+                notes += gatedExits.notes
+            }
         }
         // Aquilo: one heat network over the whole factory, joining every block's own pipes and heating the corridors
         // (before the poles, unless heat.poles: then after them, so they are heated too).
