@@ -393,6 +393,33 @@ What the night does not show: a start from empty (nothing was started cold), the
 into a blueprint (every rate above is from the check's stand-in on the factory built before them; the one factory stitched with them stood within three hours, and the repaired one, `solves/n9_built`, has not run), and anything
 past 16 to 24 hours.
 
+### The day after: the planner's own blueprint
+
+The run that was missing, and what stood in its way (details in the night log, "The day after").
+
+| Stitched with rules 10 and 11 in the blueprint, warm start, no stand-in for them | Size | Packs in each four hours (24 due) | Measured half | Recipes at 90% of rate (of 336) |
+|---|---|---|---:|---:|
+| first stitch (`n9_built`): six overflow exits behind long undergrounds not found | 544 x 536 | 22 in eleven hours | a third | |
+| that repaired, and by my own doing a factory twice the area (`n10_built`) | 798 x 779 | 20, 27, 17, 9 | 54% | 309 |
+| **stitched at the first size again, with rule 10b (`n13_built`)** | 544 x 525 | 22, 23, 27, 20 | **97%** | 322 |
+| the same, every chest asking two robot trips' worth (`n13_trip`) | 544 x 525 | 16, 20, 15, 0 | 31% | 308 |
+| the big one, every chest asking two robot trips' worth (`n10_trip`) | 798 x 779 | 15, 19, 31, 25 | 115% | 303 |
+
+- **The planner's blueprint holds the plan**: 47 packs of 48.5 in the measured half, 92 of 97 over 16 hours, with the
+  check standing in for rule 9 and the fluid stock only. One run.
+- **Size is robot time.** A requester chest that asks a craft's worth gets one craft per robot trip. At 623 tiles
+  from its provider (260 in the smaller factory) the coke quencher made 24 crafts an hour of 31 from the first hour;
+  nine hours of stock hid it from the pack, then the pack halved. In a warm run the signal is a maker under plan in
+  hour 1, never the pack.
+- **10b. An overflow exit for an item no provider holds waits for a craft's worth in the machine its maker hands it
+  to** (a circuit condition and a red wire; in the planner). It covers 11 exits. Thirty more are open with nothing to
+  guard them, and those whose user is fed over a belt of the block cost: brains are made 2% over their need, a
+  fifth went out or was deleted, and animal samples made 83% in the measured half (the last four hours of the run:
+  20 packs of 24).
+- **Rule 9 needs the robot's trip in it**, as the link's planned flow times the trip. The check's try at it
+  (`--request-trip`) takes the flow from the built request, which is the same least amount on 326 of 380 chests: it
+  cured the coke link in the big factory and starved the smallest users of shared makers in the small one.
+
 ## What would have to be built
 
 In the order that keeps every step testable in the model first:
@@ -470,8 +497,9 @@ makes science at plan from empty, the rest is scale. If it does not, big Py shou
 - **The check has to be audited like the layout.** Four of its seven faults deleted or misdirected goods and read as
   deadlocks. Before the next verdict on a factory: where does every item made go (`where`, `sink_temperatures`,
   what the sink deleted, what starters handed out).
-- **Still to show, and next**: the factory stitched with rules 10 and 11, the slot limits and the roboport repair
-  (`solves/n9_built`), run warm for 16 hours with no stand-in for the two rules; then need first and a fluid stock
-  built instead of stood in for; then its start, with first fills handed over. A start from empty stays the wrong
-  test.
+- **Shown the day after**: the factory stitched with rules 10, 10b and 11, the slot limits and the roboport repair
+  (`solves/n13_built`), warm for 16 hours with no stand-in for those rules: 97% in the measured half.
+- **Next, none of it started**: the exits of rule 10b whose user is fed over a belt (brains); the trip in rule 9 from
+  planned flows; then need first and a fluid stock built instead of stood in for; then the start, with first fills
+  handed over. A start from empty stays the wrong test.
 

@@ -1242,6 +1242,9 @@ blueprint: they are the check's own help or control, run by the verify mod.
 - `--request-need` (robot links): a requester chest asks only for what its machines lack to one craft's worth (for
   fast machines: two minutes' flow in the chest and on the belt behind it), where as built it asks for ten minutes'
   worth and at least 10: need first, the start-up rule of `docs/GO_NO_GO.md`.
+  `--request-trip N` (with it): and at least N robot trips' worth of the link's flow, the trip from the nearest
+  provider chest of the item. An experiment: it takes the flow from the built request, which overstates slow links,
+  and starved small users in one of its two runs (`docs/NIGHT_LOG_2026-11-15.md`).
 - `--overflow-last` (robot-built factories): a machine's exit to an overflow chest works only once the machine has
   stood full for a minute, where the item has another way out. `--provider-level STACKS`: its exit to a provider chest
   works only while the network holds at most so many stacks, where it also feeds a user itself. The planner writes
