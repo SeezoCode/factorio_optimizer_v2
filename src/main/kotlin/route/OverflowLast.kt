@@ -150,3 +150,23 @@ fun addProviderLevel(entities: List<PlacedEntity>, outputs: List<OutputSpec>, le
     val notes = if (gated > 0) listOf("$gated inserter(s) toward provider chests stop once the robot network's stock of their item is filled: the user beside the maker comes first") else emptyList()
     return OverflowLast(ents, gated, notes)
 }
+
+/**
+ * [entities] with every robot provider chest of [outputs] limited to [slots] slots (blocks.bot_provider_slots), where
+ * it has no limit: block layouts saved before the limit was saved with them come back without it (Py logistic science,
+ * built that way: 4,800 coke in one provider chest, 2,400 limestone in another while the user beside its maker ran
+ * at 78%). The chest is the one the port's own inserter drops into.
+ */
+fun withProviderBars(entities: List<PlacedEntity>, outputs: List<OutputSpec>, slots: Int): List<PlacedEntity> {
+    val ports = outputs.filter { it.local && it.bot && !it.fluid }.map { it.tile }.toSet()
+    if (ports.isEmpty()) return entities
+    val chestAt = HashMap<Tile, Int>()
+    entities.forEachIndexed { i, e -> if (e.kind == Kind.CHEST) e.rect.tiles().forEach { chestAt[it] = i } }
+    val out = ArrayList(entities)
+    for (e in entities) {
+        if (e.kind != Kind.INSERTER || e.pickupTile !in ports) continue
+        val c = chestAt[e.dropTile] ?: continue
+        if (out[c].bar == null) out[c] = out[c].copy(bar = slots)
+    }
+    return out
+}

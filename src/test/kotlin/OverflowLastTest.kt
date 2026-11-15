@@ -86,4 +86,13 @@ class OverflowLastTest {
         val other = toUser.copy(item = "iron-stick")
         assertEquals(0, addProviderLevel(base + other + user, outputs, { 200 }, gears).gated, "the other exit carries something else")
     }
+
+    @Test
+    fun `a provider chest without its slot limit gets it back, other chests and a limit already there are left`() {
+        val r = route.withProviderBars(base, outputs, 2)
+        assertEquals(2, r.single { it.name == "passive-provider-chest" }.bar)
+        assertNull(r.single { it.name == "steel-chest" }.bar)
+        val had = base.map { if (it.name == "passive-provider-chest") it.copy(bar = 5) else it }
+        assertEquals(5, route.withProviderBars(had, outputs, 2).single { it.name == "passive-provider-chest" }.bar)
+    }
 }

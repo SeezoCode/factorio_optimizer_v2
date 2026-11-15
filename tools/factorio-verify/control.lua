@@ -1501,11 +1501,15 @@ local function request_need(run)
           end
         end
         run.req_mapped = (run.req_mapped or 0) + (next(rq.users) and 1 or 0)
+        rq.belts = queue
       end
       if next(rq.users) then
-        -- (What its machines lack to one craft's worth each, or to two minutes of the link's planned flow between
-        -- them and the chest, whichever is more: a machine that crafts every few seconds cannot wait a robot's trip
-        -- for each craft.)
+        -- (What its machines lack to one craft's worth each, or to two minutes of the link's planned flow in the
+        -- chest and on the belt behind it, whichever is more: a machine that crafts every few seconds cannot wait a
+        -- robot's trip for each craft. Not counting what the machines hold: Py's coke gasifier, a craft of five coke
+        -- every 29 s on a chest shared with a lard machine that kept 11, was asked 9 at a time and ran at 90% with
+        -- 4,800 coke in the provider chest. Its ammonia was a tenth short, the smallest user took all of the
+        -- shortfall, and five recipes on the science pack came out at 78% of plan.)
         if not rq.count0 then
           rq.count0 = 10
           pcall(function()
@@ -1513,16 +1517,23 @@ local function request_need(run)
             if f and f.min then rq.count0 = f.min end
           end)
         end
-        local lack, have = 0, c.get_item_count(rq.item)
+        local lack = 0
         for _, u in pairs(rq.users) do
           if u.e.valid then
             local h = held(u.e, rq.item)
-            have = have + h
             if h < u.amount then lack = lack + u.amount - h end
           end
         end
         local base = rq.count0 > 10 and rq.count0 / 5 or 0
-        local want = math.ceil(math.max(0, lack - c.get_item_count(rq.item), base - have))
+        local inchest, piped = c.get_item_count(rq.item), 0
+        if base > 0 then
+          for _, b in pairs(rq.belts or {}) do
+            if b.valid then
+              for li = 1, b.get_max_transport_line_index() do piped = piped + b.get_transport_line(li).get_item_count(rq.item) end
+            end
+          end
+        end
+        local want = math.ceil(math.max(0, lack - inchest, base - inchest - piped))
         if want ~= rq.asked then
           local ok, err = pcall(function()
             local sec = c.get_requester_point().sections[1]

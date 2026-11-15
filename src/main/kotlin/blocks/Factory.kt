@@ -159,7 +159,9 @@ fun runFactory(
         val b = best
         if (b != null && area(f) >= area(b)) { say("$what: ${f.layout.w} x ${f.layout.h} is not smaller than ${b.layout.w} x ${b.layout.h}"); return false }
         best = f; bestState = r.second
-        writeFactory(f, out, config, data, input.seeds, input.seedCarriers.toSet())
+        // (Said aloud: a preview's stitch runs where an exception is dropped, and the factory then went unwritten in silence.)
+        runCatching { writeFactory(f, out, config, data, input.seeds, input.seedCarriers.toSet()) }
+            .onFailure { e -> say("$what: writing the factory failed: $e"); e.printStackTrace() }.getOrThrow()
         saves++
         if (config.search.stopAfter > 0 && saves >= config.search.stopAfter) { deadline = System.currentTimeMillis(); engineRef?.stopForGood() }
         say("$what: ${f.layout.w} x ${f.layout.h} (${area(f)} tiles), saved")
@@ -1487,16 +1489,24 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
             all = all + robo.roboports
             notes += robo.notes
             if (robo.roboports.isNotEmpty()) notes += "${robo.roboports.size} roboports over ${chests.size} robot chests: put logistic robots in (the blueprint cannot carry them)"
+            // (Layouts saved before a provider chest's slot limit was saved with them.)
+            cfg.botProviderSlots?.let { slots -> all = route.withProviderBars(all, outs, slots) }
+            // A level of so many stacks, kept half a stack under what one provider chest may hold: a network with one
+            // provider of an item never holds more than that chest, and a level at its limit would never be passed.
+            fun levelOf(stacks: Int) = { item: String ->
+                val stack = data.items[item.substringBefore('@')]?.stackSize ?: 50
+                minOf(stacks * stack, cfg.botProviderSlots?.let { it * stack - (stack + 1) / 2 } ?: Int.MAX_VALUE)
+            }
             // Overflow exits wait for the stock (blocks.overflow_after_stacks).
             cfg.overflowAfterStacks?.let { stacks ->
                 val stocked = outs.filter { it.bot }.map { it.item }.toSet()
-                val gatedExits = route.addOverflowLast(all, outs, stocked) { item -> stacks * (data.items[item.substringBefore('@')]?.stackSize ?: 50) }
+                val gatedExits = route.addOverflowLast(all, outs, stocked, levelOf(stacks))
                 all = gatedExits.entities
                 notes += gatedExits.notes
             }
             // Provider exits stop at the stock, where the maker has a user of its own (blocks.provider_until_stacks).
             cfg.providerUntilStacks?.let { stacks ->
-                val level = { item: String -> stacks * (data.items[item.substringBefore('@')]?.stackSize ?: 50) }
+                val level = levelOf(stacks)
                 val products = { recipe: String ->
                     data.recipes[recipe.substringBefore('#').substringBefore('@')]?.products?.filter { it.type != "fluid" }?.map { it.name } ?: emptyList()
                 }
