@@ -1485,10 +1485,6 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         // Robot links (blocks.bot_links): roboports over their chests, one network (before the poles, which power them).
         config.blocks?.takeIf { it.botLinks != null }?.let { cfg ->
             val chests = all.filter { it.kind == Kind.CHEST && (it.name == cfg.botProviderChest || it.name == cfg.botRequesterChest) }.map { it.tile }
-            val robo = power.placeRoboports(all, chests, w, h, (rects.flatMap { it.tiles() } + reserved.flatMap { it.tiles() }).toSet())
-            all = all + robo.roboports
-            notes += robo.notes
-            if (robo.roboports.isNotEmpty()) notes += "${robo.roboports.size} roboports over ${chests.size} robot chests: put logistic robots in (the blueprint cannot carry them)"
             // (Layouts saved before a provider chest's slot limit was saved with them.)
             cfg.botProviderSlots?.let { slots -> all = route.withProviderBars(all, outs, slots) }
             // A level of so many stacks, kept half a stack under what one provider chest may hold: a network with one
@@ -1514,6 +1510,23 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
                 all = gatedExits.entities
                 notes += gatedExits.notes
             }
+            // Roboports over the chests and over every inserter with such a condition: outside the network's logistic
+            // area a logistic condition never holds and the inserter stands for good (Py logistic science, the first
+            // factory stitched with these rules: 17 of 224, one of them the limestone maker's only way to its provider
+            // chest, and ten recipes behind it at a twentieth of their plan).
+            val gatedTiles = all.filter { it.kind == Kind.INSERTER && it.logistic != null }.map { it.tile }
+            val robo = power.placeRoboports(all, chests + gatedTiles, w, h, (rects.flatMap { it.tiles() } + reserved.flatMap { it.tiles() }).toSet())
+            val reach = GameConstants.ROBOPORT_LOGISTIC_RADIUS.toDouble()
+            val half = GameConstants.ROBOPORT_SIZE / 2.0
+            fun covered(t: Tile) = robo.roboports.any { r -> kotlin.math.abs(t.x + 0.5 - (r.x + half)) <= reach && kotlin.math.abs(t.y + 0.5 - (r.y + half)) <= reach }
+            val stranded = gatedTiles.filter { !covered(it) }.toSet()
+            if (stranded.isNotEmpty()) {
+                all = all.map { if (it.kind == Kind.INSERTER && it.logistic != null && it.tile in stranded) it.copy(logistic = null) else it }
+                notes += "${stranded.size} inserter(s) out of every roboport's reach keep no logistic condition"
+            }
+            all = all + robo.roboports
+            notes += robo.notes
+            if (robo.roboports.isNotEmpty()) notes += "${robo.roboports.size} roboports over ${chests.size} robot chests: put logistic robots in (the blueprint cannot carry them)"
         }
         // Aquilo: one heat network over the whole factory, joining every block's own pipes and heating the corridors
         // (before the poles, unless heat.poles: then after them, so they are heated too).

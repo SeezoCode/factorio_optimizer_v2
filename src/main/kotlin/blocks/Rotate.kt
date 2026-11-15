@@ -47,5 +47,7 @@ fun turnLayout(t: TrialResult, r: Int): TrialResult {
     return TrialResult(true, nw, nh, t.seed, Layout(nw, nh, ents, t.layout.wires, t.layout.label), Placement(nw, nh, machines),
         t.errors, null, t.score, t.stage, t.annealT0, t.millis, t.notes,
         sources = t.sources.map { it.copy(tile = turnTile(it.tile, w, h, q)) },
-        outputs = t.outputs.map { it.copy(tile = turnTile(it.tile, w, h, q)) })
+        // (A local fluid sink's valve tile turns with its port: left where it was, the valve went unplaced, or, with
+        // another pipe on that tile by chance, the factory was stitched valid and could not be written.)
+        outputs = t.outputs.map { it.copy(tile = turnTile(it.tile, w, h, q), sink = it.sink?.let { s -> turnTile(s, w, h, q) }) })
 }

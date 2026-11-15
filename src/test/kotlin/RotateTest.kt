@@ -48,4 +48,18 @@ class RotateTest {
         assertEquals(3, chest.bar)
         assertTrue(t.layout!!.entities.any { it.kind == Kind.BELT && it.readBelt })
     }
+
+    @Test
+    fun `a turned block's local fluid sink stays beside its port`() {
+        val plan = buildPlan(TestData.data, plasticJob)
+        val r = (1L..8L).asSequence().map { runTrial(TestData.data, plan, plasticJob, Tuning(), 24, 24, it) }.first { it.success }
+        val port = geom.Tile(5, 0)
+        val outs = listOf(validate.OutputSpec(port, "water", 1.0, fluid = true, local = true, sink = geom.Tile(5, -1)))
+        val with = search.TrialResult(true, r.w, r.h, r.seed, r.layout, r.placement, r.errors, null, r.score, r.stage, r.annealT0, r.millis, r.notes,
+            sources = r.sources, outputs = outs)
+        for (q in 1..3) {
+            val o = turnLayout(with, q).outputs.single()
+            assertEquals(1, kotlin.math.abs(o.tile.x - o.sink!!.x) + kotlin.math.abs(o.tile.y - o.sink!!.y), "turned $q: ${o.tile} and ${o.sink}")
+        }
+    }
 }
