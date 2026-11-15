@@ -161,8 +161,16 @@ local function warm_start(run, e, r)
           local f = e.get_fluid_filter(k)
           local proto = e.get_fluid_box_prototype(k)
           if proto and proto.index == nil and proto[1] then proto = proto[1] end
-          if f and f.name == ing.name and proto and proto.production_type == "input" then
-            if not pcall(function() e.set_fluid(k, { name = ing.name, amount = ing.amount * 2, temperature = t }) end) then
+          -- (A furnace has no recipe and so no filter before it is fed: Py's barrelling machine. Its first empty
+          -- input box then.)
+          local furnace = not f and run.params.prime_full and e.type == "furnace" and e.get_fluid(k) == nil
+          if (furnace or (f and f.name == ing.name)) and proto and proto.production_type == "input" then
+            -- (params.prime_full: the whole box, as it stands in a factory that has run for a while. A box far
+            -- larger than its craft fills before anyone else on the pipe is served: Py logistic science's wax
+            -- barreller, planned for a craft in three hours, holds 1,000 wax and had 862 of the first 1,200 made
+            -- while the mold machine stood at 18 of its 20 for eight hours, and the casting chain behind it.)
+            local full = run.params.prime_full and e.get_fluid_capacity(k) or 0
+            if not pcall(function() e.set_fluid(k, { name = ing.name, amount = math.max(full, ing.amount * 2), temperature = t }) end) then
               pcall(function() e.set_fluid(k, { name = ing.name, amount = ing.amount, temperature = t }) end)
             end
           end
@@ -953,6 +961,18 @@ local function finish(run)
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
     seeded = run.seeded, seeded_measure = run.seeded_measure, where = where_is(run),
+    sink_temperatures = run.sink_temps,
+    provider_level = run.pv_outs and (function()
+      local n, closed, secs = 0, 0, 0
+      local items = {}
+      for _, o in pairs(run.pv_outs) do
+        n = n + 1
+        secs = secs + o.closed_s
+        if o.closed_s > 0 then closed = closed + 1 end
+        items[o.item] = (items[o.item] or 0) + o.closed_s
+      end
+      return { exits = n, closed = closed, closed_s = secs, by_item = items }
+    end)() or nil,
     overflow_last = run.ov_outs and (function() local n, opened, secs_open = 0, 0, 0
       for _, o in pairs(run.ov_outs) do n = n + 1; if o.open_s > 0 then opened = opened + 1; secs_open = secs_open + o.open_s end end
       return { exits = n, opened = opened, open_s = secs_open } end)() or nil,
@@ -1599,20 +1619,20 @@ local function virtual_tanks(run)
               end
             end
           end
+          -- (Only the coolest temperature its recipe takes, of those ever stored: a user of steam at 150 degrees
+          -- must not empty the 500-degree steam another machine waits for.)
+          local t
+          for t2 in pairs(st) do
+            if (not ing.minimum_temperature or t2 >= ing.minimum_temperature - 0.5)
+                and (not ing.maximum_temperature or t2 <= ing.maximum_temperature + 0.5) and (not t or t2 < t) then t = t2 end
+          end
           if small and have < ing.amount then
             local l = needy[ing.name] or {}
-            l[#l + 1] = { e = e, ing = ing, have = have, size = ing.amount * (pcrafts[r.name] or 0) }
+            l[#l + 1] = { e = e, ing = ing, have = have, size = ing.amount * (pcrafts[r.name] or 0), t = t }
             needy[ing.name] = l
           end
           if have < ing.amount then
             local want = ing.amount * (run.params.vb_stock or 2) - have
-            -- (Only the coolest temperature its recipe takes, of those ever stored: a user of steam at 150 degrees
-            -- must not empty the 500-degree steam another machine waits for.)
-            local t
-            for t2 in pairs(st) do
-              if (not ing.minimum_temperature or t2 >= ing.minimum_temperature - 0.5)
-                  and (not ing.maximum_temperature or t2 <= ing.maximum_temperature + 0.5) and (not t or t2 < t) then t = t2 end
-            end
             local a = t and st[t] or 0
             if a > 0 and want > 0 then
               local put = e.insert_fluid { name = ing.name, amount = math.min(a, want), temperature = t } or 0
@@ -1645,7 +1665,10 @@ local function virtual_tanks(run)
             if want <= 0.01 then break end
             -- (read again: the stock may have filled the box since it was listed)
             local f = d.size > n.size and d.e.valid and d.e ~= n.e and d.e.get_fluid(d.k)
-            if f and f.name == name and f.amount > 0.01
+            -- (And only at that same temperature: Py logistic science's steam users at 250 degrees took the 1,000
+            -- and 500-degree steam out of the two coolers' input boxes, 164,000 of 355,000 made in 20 hours, each
+            -- unit of it worth 3.4 and 1.85 of theirs, and the steam chain ran at 55 and 27% of its plan.)
+            if f and f.name == name and f.amount > 0.01 and (n.t == nil or math.abs(f.temperature - n.t) < 0.6)
                 and (not n.ing.minimum_temperature or f.temperature >= n.ing.minimum_temperature - 0.5)
                 and (not n.ing.maximum_temperature or f.temperature <= n.ing.maximum_temperature + 0.5) then
               local take = math.min(want, f.amount - 0.001)
@@ -1839,6 +1862,127 @@ local function overflow_last(run)
   end
 end
 
+-- A fluid overflow (an infinity pipe keeping its pipe "at most" so full) deletes whatever is in the pipe at another
+-- temperature than its filter's, at once and all of it. The test copy writes the fluid's default temperature; Py's
+-- boric acid has default 0 and is made at 10, so everything its maker made beyond what fitted into the one user's box
+-- that instant was gone: half of it in every run, and boron trioxide, the lenses, the lab instruments, the plasmids,
+-- the animal samples and the science packs behind it never passed 57% of their plan. Once, at the start: a filter at
+-- a temperature no machine here makes the fluid at takes the one they do (fluids made at several keep theirs: each
+-- temperature has its own pipes and its own overflow).
+local function sink_temperatures(run)
+  if run.sink_temps_done then return end
+  run.sink_temps_done = true
+  local made = {}
+  for _, m in pairs(run.machines) do
+    local r = m.e.valid and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+    for _, p in pairs(r and r.products or {}) do
+      if p.type == "fluid" then
+        made[p.name] = made[p.name] or {}
+        made[p.name][p.temperature or prototypes.fluid[p.name].default_temperature] = true
+      end
+    end
+  end
+  run.sink_temps = {}
+  for _, e in pairs(run.surface.find_entities_filtered { type = "infinity-pipe" }) do
+    local f = e.get_infinity_pipe_filter()
+    local temps = f and f.mode == "at-most" and made[f.name]
+    if temps then
+      local ft = f.temperature or prototypes.fluid[f.name].default_temperature
+      local n, only = 0, nil
+      for t in pairs(temps) do n = n + 1; only = t end
+      if not temps[ft] and n == 1 then
+        f.temperature = only
+        e.set_infinity_pipe_filter(f)
+        run.sink_temps[#run.sink_temps + 1] = f.name .. " " .. ft .. " -> " .. only
+      end
+    end
+  end
+end
+
+-- params.provider_level: a machine's exit to a robot provider chest works only while the network holds at most so
+-- many stacks of the item (default 2), where the machine also feeds a user of that item directly or by belt. As built
+-- the two exits take turns, half and half whatever each side needs: Py logistic science's limestone maker put 625 of
+-- 5,800 into its provider chest in eight hours, robots asking for none of it, while the sodium alginate machine on its
+-- own belt ran at 78% of its plan for want of limestone (lead plate and the lead-antimony alloy, fertilizer: the same).
+-- A built factory would wire the provider's inserter to the stock ("at most N in the network"): together with the
+-- overflow exit's "more than N" one of the two is always open, and the user beside the maker is served first.
+-- Only exits carrying one item (the inserter's filter, or the recipe's only item product).
+local function provider_level(run)
+  if not run.params.provider_level or game.tick % 60 ~= 20 then return end
+  if not run.pv_outs then
+    run.pv_outs = {}
+    local picks, byunit = {}, {}
+    for _, m in pairs(run.machines) do if m.e.valid then byunit[m.e.unit_number] = m end end
+    for _, i in pairs(run.inserters) do
+      local pk = i.e.valid and i.e.pickup_target
+      if pk and pk.unit_number then
+        local l = picks[pk.unit_number] or {}
+        l[#l + 1] = i.e
+        picks[pk.unit_number] = l
+      end
+    end
+    local BELT = { ["transport-belt"] = true, ["underground-belt"] = true, ["splitter"] = true }
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+      if r then pcall(function()
+        local exits = {}
+        for _, ins in pairs(picks[e.unit_number] or {}) do
+          local d = ins.drop_target
+          local x = { e = ins, user = false, chest = nil, other = false }
+          if d and CRAFTERS[d.type] then x.user = true
+          elseif d and BELT[d.type] then
+            local seen, queue, qi = { [d.unit_number] = true }, { d }, 1
+            while qi <= #queue and qi < 400 do
+              local b = queue[qi]
+              qi = qi + 1
+              for _, o in pairs((b.belt_neighbours or {}).outputs or {}) do
+                if not seen[o.unit_number] then seen[o.unit_number] = true; queue[#queue + 1] = o end
+              end
+              local n = b.type == "underground-belt" and b.underground_belt_neighbour
+              if n and not seen[n.unit_number] then seen[n.unit_number] = true; queue[#queue + 1] = n end
+              for _, j in pairs(picks[b.unit_number] or {}) do
+                local dd = j.drop_target
+                if dd and CRAFTERS[dd.type] then x.user = true
+                elseif dd and dd.type == "logistic-container" and dd.prototype.logistic_mode == "passive-provider" then x.chest = dd
+                else x.other = true end
+              end
+            end
+          else x.other = true end
+          exits[#exits + 1] = x
+        end
+        local user = false
+        for _, x in pairs(exits) do if x.user then user = true end end
+        if not user then return end
+        for _, x in pairs(exits) do
+          if x.chest and not x.user and not x.other then
+            local item, n = nil, 0
+            for k = 1, (x.e.filter_slot_count or 0) do
+              local f = x.e.get_filter(k)
+              if f then item = f.name; n = n + 1 end
+            end
+            if n == 0 then
+              for _, pr in pairs(r.products) do if pr.type == "item" then item = pr.name; n = n + 1 end end
+            end
+            if n == 1 and prototypes.item[item] then
+              run.pv_outs[#run.pv_outs + 1] = { e = x.e, chest = x.chest, item = item, closed_s = 0,
+                level = (run.params.provider_level or 2) * prototypes.item[item].stack_size }
+            end
+          end
+        end
+      end) end
+    end
+  end
+  for _, o in pairs(run.pv_outs) do
+    if o.e.valid and o.chest.valid then
+      local net = o.chest.logistic_network
+      local close = net ~= nil and net.get_item_count(o.item) > o.level
+      if o.e.disabled_by_script ~= close then o.e.disabled_by_script = close end
+      if close then o.closed_s = o.closed_s + 1 end
+    end
+  end
+end
+
 -- params.virtual_pumps, a helper: once a second, a machine short of a fluid ingredient (less than a craft's worth in its
 -- box) gets up to two crafts' worth moved from the pipe network it connects to, as a pump in front of it would: a pump
 -- fills its box whatever the pipe's level. Without one a machine's box fills only as far as its pipes are full, and a
@@ -1915,7 +2059,9 @@ script.on_event(defines.events.on_tick, function()
   virtual_tanks(run)
   request_need(run)
   void_full(run)
+  sink_temperatures(run)
   overflow_last(run)
+  provider_level(run)
   timeline(run)
   virtual_pumps(run)
   -- params.governor (recipe -> planned crafts/s per machine): a machine ahead of governor_factor (2) times its plan,

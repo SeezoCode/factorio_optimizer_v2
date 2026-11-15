@@ -147,7 +147,8 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                 Kind.INFINITY_PIPE -> e.fluid?.let { fluid ->
                     buildJsonObject {
                         put("name", gameName(fluid))
-                        temperatureOf(fluid)?.let { put("temperature", it) }
+                        // (Its own temperature, or the one temperature the fluid is ever made at: see MADE_TEMPERATURES.)
+                        (temperatureOf(fluid) ?: GameConstants.MADE_TEMPERATURES[fluid])?.let { put("temperature", it) }
                         if (e.keepAtMost != null) { put("percentage", e.keepAtMost); put("mode", "at-most") }
                         else if (e.drain) { put("percentage", 0.0); put("mode", "exactly") } else { put("percentage", 1.0); put("mode", "at-least") }
                     }

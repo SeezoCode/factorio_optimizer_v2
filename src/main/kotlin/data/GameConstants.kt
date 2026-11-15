@@ -460,8 +460,26 @@ object GameConstants {
      * recipes.json) leaves the base tables. Basic mod support: heat, odd fluid boxes and mod-specific rules are not
      * covered.
      */
+    /**
+     * Fluids every recipe makes at one temperature that is not the fluid's default (Py's boric acid: default 0, made
+     * at 10), with that temperature. A test copy's infinity pipe must name it: one that keeps its pipe "at most" so
+     * full deletes whatever is in the pipe at another temperature than its own, and written without one it stands at
+     * the default (half of all boric acid made was deleted in every in-game check of Py logistic science, and the
+     * science packs behind it never passed 57% of their plan).
+     */
+    @Volatile var MADE_TEMPERATURES: Map<String, Double> = emptyMap()
+        private set
+
     @Synchronized
     fun register(data: RootData) {
+        val madeAt = HashMap<String, MutableSet<Double>>()
+        data.recipes.values.forEach { r ->
+            r.products.filter { it.type == "fluid" }.forEach { p ->
+                val default = data.fluids[p.name]?.defaultTemperature
+                if (default != null) madeAt.getOrPut(p.name) { HashSet() } += (p.temperature ?: default)
+            }
+        }
+        MADE_TEMPERATURES = madeAt.filter { (f, ts) -> ts.size == 1 && ts.single() != data.fluids[f]?.defaultTemperature }.mapValues { it.value.single() }
         // (Pyanodon hides the base roboport, so a player cannot build it: its own mk01, from green science.)
         roboport = if ("py-roboport-mk01" in data.items) ROBOPORTS[1] else ROBOPORTS[0]
         val machines = data.entities.values.filterIsInstance<CraftingEntity>().filter { it.hidden != true }

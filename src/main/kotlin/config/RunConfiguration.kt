@@ -486,6 +486,13 @@ data class BlocksConfig(
      * Null: off.
      */
     @SerialName("overflow_after_stacks") val overflowAfterStacks: Int? = 2,
+    /**
+     * With [botLinks]: a machine's inserter toward its provider chest works only while the robot network holds at most
+     * this many stacks of the item, where the machine also feeds a user itself (a logistic condition;
+     * route.addProviderLevel). Without it the two exits share half and half, and the provider chest fills while the
+     * user beside the maker waits. Null: off.
+     */
+    @SerialName("provider_until_stacks") val providerUntilStacks: Int? = null,
     @SerialName("bot_requester_chest") val botRequesterChest: String = "requester-chest",
     /** Weight of [splitAt] items' links when deciding which machines share a block (1 = like any other item). */
     @SerialName("split_at_weight") val splitAtWeight: Double = 0.1,

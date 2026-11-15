@@ -8,6 +8,7 @@ import geom.Kind
 import geom.PlacedEntity
 import geom.Tile
 import route.addOverflowLast
+import route.addProviderLevel
 import validate.OutputSpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,5 +55,30 @@ class OverflowLastTest {
         val moved = r.entities.map { it.copy(x = it.x + 2, y = it.y + 2) }
         val back = decodeBlueprint(Layout(8, 8, moved).toBlueprintString()).toLayout(8, 8).entities
         assertEquals(listOf(CircuitCondition("iron-gear-wheel", ">", 200, fluid = false)), back.mapNotNull { it.logistic })
+    }
+
+    // South of the maker an inserter straight into a machine that uses the gears.
+    private val toUser = PlacedEntity("inserter", Kind.INSERTER, 0, 3, Dir.N)
+    private val user = PlacedEntity("assembling-machine-2", Kind.MACHINE, 0, 4, recipe = "transport-belt")
+    private val gears = { _: String -> listOf("iron-gear-wheel") }
+
+    @Test
+    fun `with a user of its own the maker's inserter toward the provider chest stops at the stock`() {
+        val r = addProviderLevel(base + toUser + user, outputs, { 200 }, gears)
+        assertEquals(1, r.gated)
+        assertEquals(CircuitCondition("iron-gear-wheel", "<", 201, fluid = false), r.entities.single { it.tile == toProvider.tile }.logistic)
+        assertNull(r.entities.single { it.tile == toOverflow.tile }.logistic)
+        assertNull(r.entities.single { it.tile == toUser.tile }.logistic)
+        // (And with the overflow rule after it both hold: at most 200 to the provider, more than 200 to the overflow.)
+        val both = addOverflowLast(r.entities, outputs, setOf("iron-gear-wheel")) { 200 }
+        assertEquals(2, both.entities.count { it.logistic != null })
+    }
+
+    @Test
+    fun `the provider exit is left alone without a user beside the maker, or where it carries more than the one item`() {
+        assertEquals(0, addProviderLevel(base, outputs, { 200 }, gears).gated, "only chests behind the other exits")
+        assertEquals(0, addProviderLevel(base + toUser + user, outputs, { 200 }) { listOf("iron-gear-wheel", "iron-stick") }.gated, "two products, no filter")
+        val other = toUser.copy(item = "iron-stick")
+        assertEquals(0, addProviderLevel(base + other + user, outputs, { 200 }, gears).gated, "the other exit carries something else")
     }
 }

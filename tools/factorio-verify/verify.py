@@ -562,6 +562,8 @@ def main():
                          "factory cannot look good by over-making one pack while starving another)")
     ap.add_argument("--dump", action="store_true", help="also write every belt's lanes, inserter and pipe to the report")
     ap.add_argument("--prime-all", action="store_true", help="warm start: every machine starts with two crafts' worth of its ingredients")
+    ap.add_argument("--prime-full", action="store_true",
+                    help="--prime-all with every fluid input box filled to the top, as in a factory that has run for a while")
     ap.add_argument("--feed-short", nargs="?", const="plan", choices=["plan", "full"], default=None,
                     help="every machine standing short of an ingredient gets it, counted per item: 'plan' (default) up to its "
                          "planned use, so what was fed is where the factory's own supply falls short; 'full' as much as it takes, "
@@ -656,6 +658,9 @@ def main():
                          "machine's products one craft's worth (a start-up allowance)")
     ap.add_argument("--robot", default=None, metavar="NAME",
                     help="the logistic robot put into roboports (default: the slowest one a player can build)")
+    ap.add_argument("--provider-level", type=float, default=None, metavar="STACKS",
+                    help="a machine's exit to a robot provider chest works only while the network holds at most so many stacks "
+                         "of the item, where the machine also feeds a user directly or by belt (as built the two exits share half and half)")
     ap.add_argument("--overflow-last", action="store_true",
                     help="a machine's output inserter toward an overflow chest works only once the machine has stood full "
                          "for a minute (as an overflow inserter wired to the stock would): its users are served first")
@@ -724,6 +729,12 @@ def main():
         params["dump"] = True
     if args.prime_all:
         params["prime_all"] = True
+    if args.prime_full:
+        params["prime_all"] = True
+        params["prime_full"] = True
+    if args.provider_level is not None:
+        params["provider_level"] = args.provider_level
+        print(f"provider-level: a maker's exit to its provider chest closes above {args.provider_level:g} stacks in the network, where it also feeds a user itself")
     if args.overflow_last:
         params["overflow_last"] = True
         print("overflow-last: a machine's exit to an overflow chest works only once it has stood full for a minute")

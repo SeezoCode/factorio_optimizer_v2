@@ -1494,6 +1494,16 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
                 all = gatedExits.entities
                 notes += gatedExits.notes
             }
+            // Provider exits stop at the stock, where the maker has a user of its own (blocks.provider_until_stacks).
+            cfg.providerUntilStacks?.let { stacks ->
+                val level = { item: String -> stacks * (data.items[item.substringBefore('@')]?.stackSize ?: 50) }
+                val products = { recipe: String ->
+                    data.recipes[recipe.substringBefore('#').substringBefore('@')]?.products?.filter { it.type != "fluid" }?.map { it.name } ?: emptyList()
+                }
+                val gatedExits = route.addProviderLevel(all, outs, level, products)
+                all = gatedExits.entities
+                notes += gatedExits.notes
+            }
         }
         // Aquilo: one heat network over the whole factory, joining every block's own pipes and heating the corridors
         // (before the poles, unless heat.poles: then after them, so they are heated too).

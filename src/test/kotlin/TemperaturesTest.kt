@@ -5,6 +5,8 @@ import data.temperatureOf
 import data.withFluidTemperatures
 import data.fluidBoxes
 import emit.splitQuality
+import emit.toBlueprint
+import emit.toJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -75,5 +77,27 @@ class TemperaturesTest {
         assertEquals(mapOf("formamide" to 1, "methanol" to 3), outs)
         // Another machine: no measurement, so in order.
         assertEquals(mapOf("carbon-dioxide" to 1, "methanol" to 2, "ammonia" to 2), d.fluidBoxes(r, "chemical-plant").first)
+    }
+
+    @Test
+    fun `a fluid only ever made at a temperature other than its default has an infinity pipe say so`() {
+        val json = """{"game_version": "2.1", "groups": {}, "quality": {}, "quality_names": ["normal"], "items": {}, "entities": {},
+            "fluids": {"acid": {"name": "acid", "order": "a", "group": "g", "subgroup": "s", "fuel_value": 0, "translated_name": "Acid", "default_temperature": 0},
+                       "water": {"name": "water", "order": "a", "group": "g", "subgroup": "s", "fuel_value": 0, "translated_name": "Water", "default_temperature": 15}},
+            "recipes": {${listOf(
+                recipe("make-acid", """{"type": "fluid", "name": "water", "amount": 10}""", """{"type": "fluid", "name": "acid", "amount": 10, "temperature": 10}"""),
+                recipe("make-water", """{"type": "fluid", "name": "acid", "amount": 10}""", """{"type": "fluid", "name": "water", "amount": 10}"""),
+            ).joinToString(",")}}}"""
+        val d = withFluidTemperatures(recipeGson.fromJson(json, RootData::class.java))
+        try {
+            data.GameConstants.register(d)
+            assertEquals(mapOf("acid" to 10.0), data.GameConstants.MADE_TEMPERATURES)
+            fun pipe(fluid: String) = geom.Layout(3, 3, listOf(geom.PlacedEntity("infinity-pipe", geom.Kind.INFINITY_PIPE, 1, 1, fluid = fluid, drain = true, keepAtMost = 0.5)))
+            assertTrue("\"temperature\":10" in pipe("acid").toBlueprint(emit.BuildQuality()).toJson(), pipe("acid").toBlueprint(emit.BuildQuality()).toJson())
+            assertTrue("temperature" !in pipe("water").toBlueprint(emit.BuildQuality()).toJson())
+        } finally {
+            data.GameConstants.register(TestData.data)
+        }
+        assertTrue(data.GameConstants.MADE_TEMPERATURES.isEmpty() || "acid" !in data.GameConstants.MADE_TEMPERATURES)
     }
 }
