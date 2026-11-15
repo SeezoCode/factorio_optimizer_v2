@@ -41,6 +41,16 @@ to be built?
   feed at hour 48 and deleted tin plate the circuit was waiting for. **A factory like this cannot be judged, or
   started, from empty.** Still not shown: a built factory making packs, and packs at the planned rate for more than
   two hours.
+- **The third night (2026-11-15): the built factory makes packs and holds a rate.** Started warm (every machine with
+  two crafts of its inputs and full fluid boxes), the robot-built logistic factory made packs every hour for 16 hours:
+  **68% of the plan over the measured eight hours with nothing handed to it, 85% with loop starters fed**, 312 to 320
+  of its 336 recipes at 90% of their rate or more, no decay, every loop closed. As built it had made 4 packs in ten
+  hours. What changed is two rules for a maker's exits (10 and 11 below), and seven faults of the check itself: half
+  of what had looked like deadlocks on the first two nights was the check deleting, misrouting or withholding
+  things. With the last of them repaired the next run stands at 89% over hours 4.8 to 9.6 (not finished). **No
+  deadlock was found in a warm factory; every shortfall traced ended in one named, repairable cause.** Not shown: the
+  planner's own blueprint with the two rules holding that rate (its first try failed within three hours on roboport
+  reach, repaired and not rerun), and a start.
 
 ## The design that holds in the model
 
@@ -326,6 +336,57 @@ is not how one would be started. The built factory's steady rate has not been se
 Also seen: the blocks of a robot-built factory are 197 separate power networks (no belt joins them); the stitch
 leaves that wiring to the player.
 
+## The third night: the built factory, warm
+
+Details in [NIGHT_LOG_2026-11-15.md](NIGHT_LOG_2026-11-15.md). The plan was: repair the check's three known faults,
+start the built logistic factory warm, and decide on its rate. About 90% of the plan: go on. Decay with starters fed
+and nothing deleted: one trace, then stop.
+
+| Built logistic factory, warm start, real robots | Game hours | Packs in each four hours (24 due) | Measured half | Recipes at 90% of rate (of 336) |
+|---|---:|---|---:|---:|
+| as built (stopped) | 10 | 4 in ten hours | | |
+| overflow exits last (rule 10), starters all through; check as it was | 24 | 11, 11, 4, 17, 7, 9 | 45% | 291 |
+| the same, starters for 12 hours | 24 | 11, 11, 4, 10, 1, 2 | 18% | 240 |
+| check repaired (faults 4 to 6), rule 10 | 16 | 20, 15, 19, 14 | 68% | 312 |
+| rules 10 and 11 | 16 | 18, 17, 19, 14 | 68% | 319 |
+| rules 10 and 11, starters all through | 16 | 18, 13, 23, 18 | 85% | 320 |
+| the same without starters, requests repaired (fault 7); still running | 9.6 | 26 by hour 4.8, 26 more by hour 9.6 | 89% over hours 4.8 to 9.6 | |
+| stitched afresh with rules 10 and 11 and chest limits in the blueprint (stopped) | 3.2 | 6, then none | | |
+
+Two rules for a maker's exits join the design. Both are logistic conditions on an inserter, both are in the planner:
+
+- **10. An overflow exit takes only once the stock is filled, and only where the item has another way out.** A maker
+  built for robots has one inserter toward its provider chest and one toward its block's overflow chest, and they
+  took turns from the first item: 196 such exits, 775 belt tiles before the chests, room for 6,200 items that the
+  slow makers filled first (`blocks.overflow_after_stacks`).
+- **11. A provider exit stops at the stock where the maker also feeds a user itself.** Otherwise the two share half
+  and half and the neighbour starves beside a filling chest (`blocks.provider_until_stacks`). The provider chest's
+  slot limit does the same once the chest is full; the built factory had lost it (below).
+
+What the check had been doing wrong, each found by tracing one starved recipe to its root:
+
+| | Fault | What it cost |
+|---|---|---|
+| 1 | starters handed out only in the warm-up | recipes stopping within hours of measuring |
+| 2 | the sink for full machines deleted output still on its way to a user | 85 of 126 tin plates |
+| 3 | no account of where items lie | nine of fourteen reduced tin unaccounted |
+| 4 | fluid sharing gave hot steam to users of cool steam | 164,000 steam burned one for one that should have been cooled into 1.8 times as much |
+| 5 | a warm start left big fluid boxes empty | a wax box of 1,000 on a craft in three hours held molds, casting and five chains behind it for eight hours |
+| 6 | a test copy's fluid overflow deletes any fluid at another temperature than its filter's | half of all boric acid, in every run of all three nights: the science pack's own chain capped at 55% |
+| 7 | requests by need counted what machines held against a fast link's two minutes | the coke gasifier at 90% with 4,800 coke in store; a tenth too little ammonia, a fifth too few packs |
+
+Faults 6 and 7 are the planner's too: a sink at the fluid's default temperature (repaired: `MADE_TEMPERATURES`), and
+rule 9 as it would have been built.
+
+And one of the stitch: **a block layout saved and loaded again lost its provider chests' slot limit**
+(`blocks.bot_provider_slots`), so the built factory's 239 provider chests took everything (4,800 coke in one). With
+the limit in place a level of two stacks for rule 10 could never have been passed. Both repaired: the limit is saved,
+put back where it is missing, and the levels of rules 10 and 11 stay half a stack under it.
+
+What the night does not show: a start from empty (nothing was started cold), the rules as the planner writes them
+into a blueprint (every rate above is from the check's stand-in on the factory built before them; the one factory stitched with them stood within three hours because 17 of its 224 conditioned inserters were out of every roboport's reach, which is repaired and not rerun), and anything
+past 16 to 24 hours.
+
 ## What would have to be built
 
 In the order that keeps every step testable in the model first:
@@ -382,4 +443,28 @@ makes science at plan from empty, the rest is scale. If it does not, big Py shou
 - **The next proof is a warm start of the built factory**: every machine with two crafts of its inputs
   (`--prime-all`), starters fed through, 12 to 24 hours. It shows the steady rate without the start, which is the
   half no run has shown. Not started.
+
+### After the third night
+
+- **Rules 10 and 11** are in the planner and tested; the first is on by default, the second off until a factory
+  built with it has run. Roboports now reach every inserter that carries such a condition.
+- **Rule 9, need first, with stock for the fast**: a requester chest asks for what its machines lack; one whose link
+  moves an item every few seconds keeps two minutes of it in the chest and on its belt. Still a stand-in of the
+  check: it needs a wire from the machines to the chest.
+- **Rule 2, meters, as a budget**: a machine that could not craft keeps its crafts and catches up (the check: a
+  day's worth). A bucket of a minute throws away every wait. And **no start-up allowance in a warm factory**: it let
+  small recipes take 8 to 88 times their plan from shared makers in the first hours.
+- **First fills are part of the start**: fluid boxes (up to 1,000 on a trickle recipe), the belt and input of a user
+  beside a maker, the first machine on a shared requester belt. A warm start of two crafts does not cover them; a
+  slow item pays for each once, in hours. Either they are handed over with the starters or trickle recipes with big
+  boxes are kept out of the plan.
+- **Nothing shares a shortage out.** A maker a tenth short leaves its smallest or last user with all of the
+  shortfall, and three levels down that was a fifth of the packs. The margin of rule 1 is what stands against it; a
+  check that reads 90% on a maker should be read as a fault somewhere, not as nearly there.
+- **The check has to be audited like the layout.** Four of its seven faults deleted or misdirected goods and read as
+  deadlocks. Before the next verdict on a factory: where does every item made go (`where`, `sink_temperatures`,
+  what the sink deleted, what starters handed out).
+- **Still to show, and next**: the factory stitched with rules 10 and 11, the slot limits and the roboport repair,
+  run warm for 16 hours with no stand-in for the two rules; then its start, with first fills handed over. A start
+  from empty stays the wrong test.
 

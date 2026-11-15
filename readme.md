@@ -398,6 +398,13 @@ Unknown keys are an error. Everything except `targets` has a default.
   ask for, and an unlimited provider took everything its makers sent. On a large factory raise `bot_links` until
   the belt links fit the corridors (Py utility science: at 0.1/s, 819 belt links between 59 blocks never routed; at
   1/s, 374).
+- `blocks.overflow_after_stacks` (2; with `bot_links` and `local_sinks`): a machine's inserter toward its block's
+  overflow chest works only once the robot network holds more than so many stacks of the item (a logistic condition),
+  where the item has another way out of the machine. Without it the overflow's belt takes half of what a slow machine
+  makes until it is full: hours of a craft-an-hour item. `blocks.provider_until_stacks` (off unless set; 2 in the Py
+  runs): its inserter toward a provider chest works only while the network holds at most so many stacks, where the
+  machine also feeds a user itself. Without it the two exits share half and half and the user beside the maker runs
+  short while the chest fills. See `docs/NIGHT_LOG_2026-11-15.md`.
 - `blocks.stitch` (`"router"`, the default, or `"global"`): how the corridors between blocks are routed. `"global"`
   first routes every corridor link on a coarse grid of 4 x 4 tile cells and widens the corridors wherever more links
   must pass than there are rows, before any fine routing; the fine router then keeps each link near its coarse
@@ -1182,7 +1189,9 @@ blueprint: they are the check's own help or control, run by the verify mod.
   many lock a ring of machines passing items hand to hand.
 - `--prime-all`: a warm start. Every machine gets two crafts' worth of what it takes (one of a carrier), burners five
   of their fuel. Furnace-type machines have no recipe until something arrives; their planned recipe comes along in the
-  blueprint as a tag.
+  blueprint as a tag. `--prime-full`: the same with every fluid input box filled to the top, as in a factory that has
+  run for a while (a box of 1,000 on a craft in three hours otherwise fills first, ahead of everyone on its pipe).
+  `--seed-through`: loop starters are topped up while measuring too, and the report counts them by the hour.
 - `--feed-short [plan|full]`: every machine that has stood short for a while (10 s, or two of its planned crafts' time)
   gets the ingredient it lacks, at most its planned use (`plan`, the default), or as much as it takes (`full`). The
   report then lists what was fed per second next to the plan's use: with supply never short, what still stands is the
@@ -1230,9 +1239,15 @@ blueprint: they are the check's own help or control, run by the verify mod.
   `--vb-share small`: the smallest planned user of an item is served first (else first come first served); with
   `--vb-fluids` a machine short of a craft also takes from bigger users' boxes, which in its one long run made things
   worse (`docs/NIGHT_LOG_2026-11-14.md`).
-- `--request-need` (robot links): a requester chest asks only for what its machines lack to one craft's worth (two
-  minutes' flow for fast machines), where as built it asks for ten minutes' worth and at least 10: need first, the
-  start-up rule of `docs/GO_NO_GO.md`.
+- `--request-need` (robot links): a requester chest asks only for what its machines lack to one craft's worth (for
+  fast machines: two minutes' flow in the chest and on the belt behind it), where as built it asks for ten minutes'
+  worth and at least 10: need first, the start-up rule of `docs/GO_NO_GO.md`.
+- `--overflow-last` (robot-built factories): a machine's exit to an overflow chest works only once the machine has
+  stood full for a minute, where the item has another way out. `--provider-level STACKS`: its exit to a provider chest
+  works only while the network holds at most so many stacks, where it also feeds a user itself. The planner writes
+  both into the blueprint as logistic conditions (`blocks.overflow_after_stacks`, `blocks.provider_until_stacks`);
+  the flags try them on a factory built without. `--void-wait S` (with `--void-full`): a machine must stand full so
+  long before anything is deleted (30), and what a user still lacks is left ten minutes more.
 - `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
   can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
   No carrier bootstrap (in a real game you put a loop's carriers in by hand once).
