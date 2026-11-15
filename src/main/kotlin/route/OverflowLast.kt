@@ -8,6 +8,7 @@ import geom.PlacedEntity
 import geom.Tile
 import geom.dropTile
 import geom.pickupTile
+import kotlin.math.hypot
 import validate.OutputSpec
 
 /** [entities] with their overflow exits made to wait for the stock; [gated] inserters changed. */
@@ -171,4 +172,105 @@ fun withProviderBars(entities: List<PlacedEntity>, outputs: List<OutputSpec>, sl
         if (out[c].bar == null) out[c] = out[c].copy(bar = slots)
     }
     return out
+}
+
+/** [entities] (same indices) with [gated] overflow exits wired to their maker's users, and the circuit wires (given ones first). */
+class OverflowWired(val entities: List<PlacedEntity>, val circuitWires: List<Triple<Int, Int, Int>>, val gated: Int, val notes: List<String>)
+
+/**
+ * A machine's way out to a block's overflow chest, for an item no provider chest holds ([stocked]): it works only once
+ * the machine it hands that item to holds a craft's worth of it. [addOverflowLast] makes such an exit wait for the
+ * robot network's stock; an item that goes from its maker straight into the machine beside it is in no network, and
+ * the two inserters share what is made. Py logistic science, the factory built with the stock rule, warm: yotoi leaves
+ * made to plan, 65 of 170 on the belt to their overflow chest, bedding at 65% of its plan and the caged cottonguts
+ * behind it at 63%; 36 such exits in that factory.
+ *
+ * The overflow inserter gets a condition, item >= the crafts' worth of its users ([amount] of a user's recipe; several
+ * users' added up), and a red wire to each of them; they put what they hold on it, without the craft in hand. Below a
+ * craft's worth everything goes to the user; above it the two share, and the user's inserter still fills it. Wires go
+ * hop by hop within reach through inserters and belts around the maker that have no condition and no wire yet.
+ *
+ * Only an exit that is nothing else (as [addOverflowLast]), with no condition and no wire yet, on a machine with
+ * another output inserter that can carry the item into a machine using it; a user with a condition or a wire of its
+ * own is left alone, and so is an exit out of wire reach (a note).
+ */
+fun addOverflowAfterUser(
+    entities: List<PlacedEntity>, circuitWires: List<Triple<Int, Int, Int>>, outputs: List<OutputSpec>, stocked: Set<String>,
+    amount: (recipe: String, item: String) -> Int?,
+): OverflowWired {
+    val sinks = outputs.filter { it.local && !it.bot && !it.fluid && it.sink == null && it.item !in stocked }
+    if (sinks.isEmpty()) return OverflowWired(entities, circuitWires, 0, emptyList())
+    val x = Exits(ArrayList(entities))
+    val ents = x.ents
+    val wires = circuitWires.toMutableList()
+    val wired = HashSet<Int>().also { s -> wires.forEach { (a, b, _) -> s += a; s += b } }
+    val notes = ArrayList<String>()
+    // (Between centres, as the validator measures a wire. The game measures between the entities' boxes and reaches a
+    // little farther from a big machine: a 6x6 one wires to an inserter 11.5 tiles from its centre, not 12.5.)
+    val reach = GameConstants.CIRCUIT_WIRE_REACH
+    fun gap(a: Int, b: Int): Double {
+        val p = ents[a]; val q = ents[b]
+        return hypot(p.x + p.w / 2.0 - q.x - q.w / 2.0, p.y + p.h / 2.0 - q.y - q.h / 2.0)
+    }
+    // Each exit with its users and the crafts' worth they take.
+    class Gate(val inserter: Int, val maker: Int, val item: String, val users: List<Int>, val need: Int)
+    val gates = ArrayList<Gate>()
+    for (o in sinks) {
+        val chain = x.chainTo(o.tile) ?: continue
+        for (i in x.makersOnto(chain)) {
+            if (!x.carries(i, o.item) || ents[i].circuit != null || ents[i].logistic != null || i in wired) continue
+            val m = x.machineAt.getValue(ents[i].pickupTile)
+            val users = (x.outOf[m] ?: emptyList()).filter { j -> j != i && x.carries(j, o.item) }
+                .mapNotNull { j -> x.machineAt[ents[j].dropTile] }.distinct()
+                .filter { u -> u != m && ents[u].recipe?.let { amount(it, o.item) } != null }
+            if (users.isEmpty() || users.any { ents[it].circuit != null || it in wired }) continue
+            gates += Gate(i, m, o.item, users, users.sumOf { amount(ents[it].recipe!!, o.item)!! })
+        }
+    }
+    // (Never a relay: an exit that gets a condition, or a user that reads onto the wire; their networks would join.)
+    val reserved = gates.flatMap { it.users + it.inserter }.toSet()
+    var gated = 0
+    for (g in gates) {
+        val machine = ents[g.maker]
+        val around = geom.Rect(machine.x - 12, machine.y - 12, machine.w + 24, machine.h + 24)
+        val relays = ents.indices.filter { k ->
+            val e = ents[k]
+            (e.kind == Kind.INSERTER || e.kind == Kind.BELT) && k !in reserved && e.circuit == null && !e.readBelt && k !in wired && e.tile in around
+        }
+        // The wire path of fewest hops from the exit to each user, each hop within reach (Dijkstra over the relays).
+        val nodes = listOf(g.inserter) + relays + g.users
+        val best = DoubleArray(nodes.size) { Double.MAX_VALUE }; val from = IntArray(nodes.size) { -1 }
+        best[0] = 0.0
+        val done = BooleanArray(nodes.size)
+        while (true) {
+            var u = -1
+            for (k in nodes.indices) if (!done[k] && best[k] < Double.MAX_VALUE && (u < 0 || best[k] < best[u])) u = k
+            if (u < 0) break
+            done[u] = true
+            if (u > relays.size) continue   // (a user: the wire ends there)
+            for (v in nodes.indices) if (!done[v]) {
+                val d = gap(nodes[u], nodes[v])
+                if (d <= reach + 1e-9 && best[u] + 1 + d * 1e-3 < best[v]) { best[v] = best[u] + 1 + d * 1e-3; from[v] = u }
+            }
+        }
+        val ends = (relays.size + 1 until nodes.size)
+        if (ends.any { best[it] == Double.MAX_VALUE }) {
+            notes += "${machine.recipe} at ${machine.tile}: the overflow inserter at ${ents[g.inserter].tile} is out of wire reach of the machine using its ${g.item}; left open"
+            continue
+        }
+        for (end in ends) {
+            var v = end
+            while (from[v] >= 0) {
+                val a = nodes[from[v]]; val b = nodes[v]
+                if (wires.none { (p, q, c) -> c == GameConstants.WIRE_RED && ((p == a && q == b) || (p == b && q == a)) }) wires += Triple(minOf(a, b), maxOf(a, b), GameConstants.WIRE_RED)
+                wired += a; wired += b
+                v = from[v]
+            }
+        }
+        ents[g.inserter] = ents[g.inserter].copy(circuit = CircuitCondition(g.item, ">", g.need - 1, fluid = false))
+        g.users.forEach { u -> ents[u] = ents[u].copy(readContents = true) }
+        gated++
+    }
+    if (gated > 0) notes += "$gated inserter(s) toward overflow chests work only once the machine beside their maker holds a craft's worth of their item"
+    return OverflowWired(ents, wires, gated, notes)
 }

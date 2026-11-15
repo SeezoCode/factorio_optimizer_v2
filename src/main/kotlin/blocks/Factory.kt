@@ -1481,6 +1481,7 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         notes += ctl.notes
         val harness = if (config.testMode) buildHarness(srcs, ctl.entities, w, h, config, outs) else null
         var all: List<PlacedEntity> = ArrayList(ctl.entities).also { it += harness?.entities ?: emptyList() }
+        var circuitWires = ctl.circuitWires
         harness?.warnings?.let { notes += it }
         // Robot links (blocks.bot_links): roboports over their chests, one network (before the poles, which power them).
         config.blocks?.takeIf { it.botLinks != null }?.let { cfg ->
@@ -1499,6 +1500,16 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
                 val gatedExits = route.addOverflowLast(all, outs, stocked, levelOf(stacks))
                 all = gatedExits.entities
                 notes += gatedExits.notes
+                // An item no provider chest holds goes from its maker straight into the machine beside it: its overflow
+                // exit waits for that machine instead (a wire to it).
+                val amount = { recipe: String, item: String ->
+                    data.recipes[recipe.substringBefore('#').substringBefore('@')]?.ingredients
+                        ?.firstOrNull { !it.isFluid && it.name == item.substringBefore('@') }?.let { kotlin.math.ceil(it.amount.toDouble()).toInt().coerceAtLeast(1) }
+                }
+                val wiredExits = route.addOverflowAfterUser(all, circuitWires, outs, stocked, amount)
+                all = wiredExits.entities
+                circuitWires = wiredExits.circuitWires
+                notes += wiredExits.notes
             }
             // Provider exits stop at the stock, where the maker has a user of its own (blocks.provider_until_stacks).
             cfg.providerUntilStacks?.let { stacks ->
@@ -1552,7 +1563,7 @@ fun finishFactory(data: RootData, config: RunConfiguration, plan: ProductionPlan
         val offset = all.size
         // Block borders as floor tiles, so each block shows in the game.
         val marks = if (config.markerTile == "none") emptyList() else (rects + reserved).flatMap { geom.borderTiles(it, config.markerTile) }
-        val layout = Layout(w, h, all + poles, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer factory ${w}x$h", marks, ctl.circuitWires)
+        val layout = Layout(w, h, all + poles, wires.map { (a, b) -> a + offset to b + offset }, "factorio-optimizer factory ${w}x$h", marks, circuitWires)
         val outside = (harness?.tiles ?: emptySet()) + poles.flatMap { it.rect.tiles() }.filter { it.x !in 0 until w || it.y !in 0 until h } +
             srcs.map { it.tile } +   // ring ports (in test mode the harness feeds them instead of listing them)
             (heat?.let { r -> r.ports + (r.entities + r.pipes).filter { it.kind == Kind.HEAT_PIPE }.map { it.tile }.filter { it.x !in 0 until w || it.y !in 0 until h } } ?: emptyList())

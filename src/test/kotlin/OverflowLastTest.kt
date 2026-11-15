@@ -115,6 +115,60 @@ class OverflowLastTest {
         assertEquals(0, addProviderLevel(base + other + user, outputs, { 200 }, gears).gated, "the other exit carries something else")
     }
 
+    // No provider chest for the gears: the maker hands them to the machine south of it, and to its overflow chest.
+    private val handed = base - toProvider + toUser + user
+    private val sinkOnly = listOf(outputs[0])
+    private val perCraft = { recipe: String, item: String -> if (recipe == "transport-belt" && item == "iron-gear-wheel") 1 else null }
+
+    @Test
+    fun `an item no provider holds - the overflow exit waits for a craft's worth in the machine it is handed to`() {
+        val r = route.addOverflowAfterUser(handed, emptyList(), sinkOnly, emptySet(), perCraft)
+        assertEquals(1, r.gated)
+        assertEquals(CircuitCondition("iron-gear-wheel", ">", 0, fluid = false), r.entities.single { it.tile == toOverflow.tile }.circuit)
+        assertEquals(listOf(user.tile), r.entities.filter { it.readContents }.map { it.tile })
+        val i = r.entities.indexOfFirst { it.tile == toOverflow.tile }; val u = r.entities.indexOfFirst { it.tile == user.tile }
+        assertEquals(listOf(Triple(minOf(i, u), maxOf(i, u), GameConstants.WIRE_RED)), r.circuitWires)
+        assertNull(r.entities.single { it.tile == toUser.tile }.circuit)
+        // (The machine's reading survives the blueprint.)
+        val moved = r.entities.map { it.copy(x = it.x + 4, y = it.y + 4) }
+        val back = decodeBlueprint(Layout(12, 12, moved, circuitWires = r.circuitWires).toBlueprintString()).toLayout(12, 12)
+        assertEquals(1, back.entities.count { it.readContents })
+    }
+
+    @Test
+    fun `the wired rule leaves alone what the stock rule guards, a neighbour that does not use the item, and what has a condition`() {
+        assertEquals(0, route.addOverflowAfterUser(handed, emptyList(), sinkOnly, setOf("iron-gear-wheel"), perCraft).gated, "a provider holds it")
+        assertEquals(0, route.addOverflowAfterUser(handed, emptyList(), sinkOnly, emptySet()) { _, _ -> null }.gated, "the neighbour takes something else")
+        assertEquals(0, route.addOverflowAfterUser(handed - toUser, emptyList(), sinkOnly, emptySet(), perCraft).gated, "no way to the neighbour")
+        val set = handed.map { if (it.tile == toOverflow.tile) it.copy(logistic = CircuitCondition("iron-gear-wheel", ">", 200, fluid = false)) else it }
+        assertEquals(0, route.addOverflowAfterUser(set, emptyList(), sinkOnly, emptySet(), perCraft).gated, "a condition already")
+        val busy = handed.map { if (it.tile == user.tile) it.copy(circuit = CircuitCondition("signal-A", ">", 0, fluid = false)) else it }
+        assertEquals(0, route.addOverflowAfterUser(busy, emptyList(), sinkOnly, emptySet(), perCraft).gated, "the neighbour works by a condition of its own")
+    }
+
+    @Test
+    fun `an exit out of wire reach of the neighbour is wired through an inserter between them, or left open with a note`() {
+        // A maker twelve tiles wide: the overflow inserter at its north-east corner, the neighbour under its south-west one.
+        val big = machine.copy(w = 12, h = 12)
+        val east = PlacedEntity("inserter", Kind.INSERTER, 12, 0, Dir.W)
+        val south = PlacedEntity("inserter", Kind.INSERTER, 0, 12, Dir.N)
+        val wide = listOf(
+            big, east, south, user.copy(y = 13),
+            PlacedEntity("transport-belt", Kind.BELT, 13, 0, Dir.S), PlacedEntity("transport-belt", Kind.BELT, 13, 1, Dir.S),
+            PlacedEntity("inserter", Kind.INSERTER, 13, 2, Dir.N), PlacedEntity("steel-chest", Kind.CHEST, 13, 3),
+        )
+        val sink = listOf(OutputSpec(Tile(13, 1), "iron-gear-wheel", 0.001, local = true))
+        val open = route.addOverflowAfterUser(wide, emptyList(), sink, emptySet(), perCraft)
+        assertEquals(0, open.gated)
+        assertEquals(1, open.notes.size)
+        // (Two inserters bringing something into the maker, on its east and its south side, carry the wire.)
+        val relays = listOf(PlacedEntity("inserter", Kind.INSERTER, 12, 7, Dir.E), PlacedEntity("inserter", Kind.INSERTER, 7, 12, Dir.S))
+        val r = route.addOverflowAfterUser(wide + relays, emptyList(), sink, emptySet(), perCraft)
+        assertEquals(1, r.gated)
+        assertEquals(3, r.circuitWires.size)
+        relays.forEach { relay -> assertNull(r.entities.single { it.tile == relay.tile }.circuit) }
+    }
+
     @Test
     fun `a provider chest without its slot limit gets it back, other chests and a limit already there are left`() {
         val r = route.withProviderBars(base, outputs, 2)

@@ -47,6 +47,8 @@ data class PlacedEntity(
     val keepAtMost: Double? = null,
     /** Belts: put what the whole belt holds on its circuit network (a catalyst's return loop, see route.addLoopGates). */
     val readBelt: Boolean = false,
+    /** Machines: put what they hold (not the craft in hand) on their circuit network (route.addOverflowAfterUser). */
+    val readContents: Boolean = false,
     /** Requester chests: how many of [item] they ask the logistic network for (blocks.bot_links). */
     val request: Int? = null,
     /** Chests: how many of their slots can be used (the inventory bar; null: all). */

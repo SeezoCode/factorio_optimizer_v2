@@ -205,7 +205,7 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                     }
                 }
             },
-            controlBehavior = if (e.circuit == null && !e.readBelt && e.logistic == null) null else buildJsonObject {
+            controlBehavior = if (e.circuit == null && !e.readBelt && !e.readContents && e.logistic == null) null else buildJsonObject {
                 e.logistic?.let { c ->
                     put("connect_to_logistic_network", true)
                     put("logistic_condition", buildJsonObject {
@@ -225,6 +225,8 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                 }
                 // Read contents, mode 2: what the whole belt holds (0 pulse, 1 this belt only).
                 if (e.readBelt) { put("circuit_read_hand_contents", true); put("circuit_contents_read_mode", 2) }
+                // A machine's contents without the craft in hand (checked in game 2.1: the default counts it in).
+                if (e.readContents) { put("read_contents", true); put("include_in_crafting", false) }
             },
         )
     }
@@ -283,6 +285,7 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
                     c["constant"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0, sig["type"]?.jsonPrimitive?.content == "fluid")
             },
             readBelt = kind.beltFamily && b.controlBehavior?.get("circuit_read_hand_contents")?.jsonPrimitive?.content == "true",
+            readContents = kind == Kind.MACHINE && b.controlBehavior?.get("read_contents")?.jsonPrimitive?.content == "true",
             logistic = b.controlBehavior?.get("logistic_condition")?.jsonObject?.let { c ->
                 val sig = c["first_signal"]?.jsonObject ?: return@let null
                 CircuitCondition(sig["name"]?.jsonPrimitive?.content ?: return@let null, c["comparator"]?.jsonPrimitive?.content ?: "<",
