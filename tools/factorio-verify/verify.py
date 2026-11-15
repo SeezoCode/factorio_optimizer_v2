@@ -639,6 +639,9 @@ def main():
     ap.add_argument("--request-need", action="store_true",
                     help="robot links: a requester chest asks only while a machine it feeds holds less than a craft's worth "
                          "of its item, for one craft's worth (need first; as built it asks for ten minutes' worth, at least 10)")
+    ap.add_argument("--request-trip", type=float, default=None, metavar="N",
+                    help="with --request-need: a requester chest asks at least N robot trips' worth of its link's flow "
+                         "(from the nearest provider chest of its item), so that a far maker is not a wait for every craft")
     ap.add_argument("--vb-share", choices=["small"], default=None,
                     help="with --virtual-bots: of the machines waiting for an item the one planned to use least of it is "
                          "served first (else first come first served, in the machines' fixed order)")
@@ -886,6 +889,9 @@ def main():
     if args.request_need:
         params["request_need"] = True
         print("request-need: requester chests ask only while their machine is short of a craft's worth")
+    if args.request_trip:
+        params["request_trip"] = args.request_trip
+        print(f"request-trip: and at least {args.request_trip:g} robot trips' worth of their link's flow")
     if args.vb_share:
         params["vb_share"] = args.vb_share
         print("vb-share: the smallest planned user of an item is served first")

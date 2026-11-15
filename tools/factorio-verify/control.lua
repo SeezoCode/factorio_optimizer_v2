@@ -1227,7 +1227,7 @@ local function finish(run)
     if count > 0 or req > 0 then
       report.bots = { networks = count, robots = robots, robots_idle = idle, requesters = req, requesters_empty = reqEmpty, robot = run.robot,
         providers = prov, items_in_providers = provItems, chests_outside_networks = unnetworked, empty_requesters = samples,
-        requests_mapped = run.req_mapped, requests_set = run.req_set, request_error = run.req_err,
+        requests_mapped = run.req_mapped, requests_set = run.req_set, request_error = run.req_err, request_trip_max_s = run.req_trip_max,
         provider_items = byItem }
     end
   end)
@@ -1525,6 +1525,28 @@ local function request_need(run)
           end
         end
         local base = rq.count0 > 10 and rq.count0 / 5 or 0
+        -- params.request_trip: and never less than that many robot trips' worth of the link's flow, from the nearest
+        -- provider chest of the item (the chest's ten minutes' worth tells the flow). A chest that asks a craft's worth
+        -- when its machine runs short waits a trip for every craft: Py logistic science stitched 798 x 779, the coke
+        -- quencher 623 tiles from its red-hot coke (130 s at the robot's 4.8 tiles a second, and a recharge on the
+        -- way), ran at 24 crafts an hour of 31.3 for sixteen hours with 200 red-hot coke in the provider chest; in
+        -- the same factory stitched 544 x 536 the two stood 260 tiles apart and the quencher kept its rate.
+        if run.params.request_trip then
+          if not rq.trip_s then
+            local near
+            for _, b in pairs(run.params.bots.providers or {}) do
+              if b.item == rq.item then
+                local d = math.sqrt((b.x + 0.5 + run.dx - c.position.x) ^ 2 + (b.y + 0.5 + run.dy - c.position.y) ^ 2)
+                if not near or d < near then near = d end
+              end
+            end
+            local speed = 0.05
+            pcall(function() speed = prototypes.entity[run.robot].speed or speed end)
+            rq.trip_s = (near or 0) / (speed * 60)
+            run.req_trip_max = math.max(run.req_trip_max or 0, rq.trip_s)
+          end
+          base = math.max(base, rq.count0 / 600 * rq.trip_s * run.params.request_trip)
+        end
         local inchest, piped = c.get_item_count(rq.item), 0
         if base > 0 then
           for _, b in pairs(rq.belts or {}) do
