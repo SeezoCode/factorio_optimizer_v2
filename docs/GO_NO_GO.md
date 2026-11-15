@@ -47,7 +47,8 @@ to be built?
   of its 336 recipes at 90% of their rate or more, no decay, every loop closed. As built it had made 4 packs in ten
   hours. What changed is two rules for a maker's exits (10 and 11 below), and seven faults of the check itself: half
   of what had looked like deadlocks on the first two nights was the check deleting, misrouting or withholding
-  things. With the last of them repaired the next run stands at 89% over hours 4.8 to 9.6 (not finished). **No
+  things. With the last of them repaired the next run stands at the plan's own count at hour 11.2, 68 packs of 68 due
+  (not finished). **No
   deadlock was found in a warm factory; every shortfall traced ended in one named, repairable cause.** Not shown: the
   planner's own blueprint with the two rules holding that rate (its first try failed within three hours on roboport
   reach, repaired and not rerun), and a start.
@@ -350,7 +351,7 @@ and nothing deleted: one trace, then stop.
 | check repaired (faults 4 to 6), rule 10 | 16 | 20, 15, 19, 14 | 68% | 312 |
 | rules 10 and 11 | 16 | 18, 17, 19, 14 | 68% | 319 |
 | rules 10 and 11, starters all through | 16 | 18, 13, 23, 18 | 85% | 320 |
-| the same without starters, requests repaired (fault 7); still running | 9.6 | 26 by hour 4.8, 26 more by hour 9.6 | 89% over hours 4.8 to 9.6 | |
+| the same without starters, requests repaired (fault 7); still running | 11.2 | 26 by hour 4.8, 68 by hour 11.2 (68 due) | not in yet | |
 | stitched afresh with rules 10 and 11 and chest limits in the blueprint (stopped) | 3.2 | 6, then none | | |
 
 Two rules for a maker's exits join the design. Both are logistic conditions on an inserter, both are in the planner:
