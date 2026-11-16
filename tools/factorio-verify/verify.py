@@ -692,6 +692,9 @@ def main():
     ap.add_argument("--relief-main", action="store_true",
                     help="with --relief or --relief-gate: only a product the machine was planned for (the plan's main "
                          "product of its recipe) counts as still wanted, never a by-product")
+    ap.add_argument("--bootstrap", action="store_true",
+                    help="a loop starved of its carrier for two minutes (barrels, cages) is given it, as --flow does and "
+                         "as a player fills a new loop by hand; nothing else of --flow")
     ap.add_argument("--dead-end", action="store_true",
                     help="the overflow ports of items the factory uses stay shut: their belts are stock, and surplus "
                          "leaves at the producer only (--relief or --void-full)")
@@ -1120,6 +1123,9 @@ def main():
         params["bootstrap"] = True
         print(f"flow mod: {tagged} machines and {ends} overflow belts tagged; the factory-flow mod controls them, "
               f"the check puts in loop carriers as a player would")
+    if args.bootstrap:
+        params["bootstrap"] = True
+        print("bootstrap: starved loops get their carriers from the check, as from a player")
     params = {k: v for k, v in params.items() if v is not None}
     report = run_game(args, bp, params, enabled, have)
     report["mods"] = enabled
