@@ -699,6 +699,14 @@ def main():
                     help="every machine is held to FACTOR times its planned rate by a duty cycle: it works a fixed share "
                          "of a clock's period (10 s, 10 min or 10 h, the shortest that gives it a second), as an enable "
                          "condition against a clock signal would; nothing is saved up")
+    ap.add_argument("--relief-exits", action="store_true",
+                    help="with --relief: the items are let out by real parts at the machine, a filter inserter into a "
+                         "chest of its own with its filters set by deciders on a wire from the machine; fluids and "
+                         "machines without room for them stay with the script")
+    ap.add_argument("--pull-built", action="store_true",
+                    help="pull from real parts: a decider at each machine per ingredient puts a demand signal on a wire "
+                         "over the poles while the machine holds less than a craft's worth, and each maker has an "
+                         "enable condition on a decider that reads the demand it can serve (use with --flow --no-pull)")
     ap.add_argument("--dead-end", action="store_true",
                     help="the overflow ports of items the factory uses stay shut: their belts are stock, and surplus "
                          "leaves at the producer only (--relief or --void-full)")
@@ -971,6 +979,12 @@ def main():
         print("relief: a product blocking a machine is taken out while another used product of it still leaves")
     if args.dead_end:
         params["dead_end"] = True
+    if args.pull_built:
+        params["pull_built"] = True
+        print("pull-built: demand deciders and enable conditions built in the game")
+    if args.relief_exits:
+        params["relief_exits"] = True
+        print("relief-exits: an inserter, a chest and deciders at each machine that needs them, built in the game")
     if args.relief_demand:
         params["relief_demand"] = True
     if args.dead_end or args.relief_gate or args.relief_built:

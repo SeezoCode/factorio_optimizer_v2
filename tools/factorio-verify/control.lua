@@ -781,12 +781,12 @@ local function start(params)
   --  * A fluid port has such deciders too; the test copy's port is an infinity pipe, so the script stands in for the
   --    pump: it reads the port's signal off the poles and lets a little out while it is on (relief_fluid_gates).
   -- Limits as in relief_scan.
-  if run.params.relief_built then
+  if run.params.relief_built or run.params.pull_built then
     local W = defines.wire_connector_id
     local rb = { poles = 0, pole_wires = 0, ports = 0, gates_wired = 0, gates_unwired = 0, deciders = 0, demand_deciders = 0, no_room = 0, dead_ends = 0,
       fluid_ports = 0, fluid_deciders = 0, signals = {}, errors = {} }
     run.rb = rb
-    local with_demand = run.params.relief_demand and true or false
+    local with_demand = (run.params.relief_demand or run.params.pull_built) and true or false
     local function fail(what, err) rb.errors[what .. ": " .. tostring(err)] = (rb.errors[what .. ": " .. tostring(err)] or 0) + 1 end
     local poles = surface.find_entities_filtered { type = "electric-pole", force = force }
     for _, p in pairs(poles) do
@@ -867,7 +867,7 @@ local function start(params)
     local onto = run.onto
     -- A decider beside machine [m]: red in from the machine; with [green_in] green in from the poles; its output on
     -- the poles' wire of colour [out_color]. Tried ring by ring around the machine, both ways round.
-    local function place_decider(m, green_in, out_color)
+    local function place_decider(m, green_in, out_color, to_machine)
       local bb = m.bounding_box
       local out_conn = out_color == W.circuit_green and W.combinator_output_green or W.combinator_output_red
       for ring = 1, 8 do
@@ -880,10 +880,12 @@ local function start(params)
                 local d = surface.create_entity { name = "decider-combinator", position = pos, direction = dir, force = force }
                 if d then
                   local inp = d.get_wire_connector(W.combinator_input_red, true)
-                  if inp.can_wire_reach(m.get_wire_connector(W.circuit_red, true)) and to_pole(d, out_conn, out_color, false)
+                  if inp.can_wire_reach(m.get_wire_connector(W.circuit_red, true)) and (to_machine or to_pole(d, out_conn, out_color, false))
                       and (not green_in or to_pole(d, W.combinator_input_green, W.circuit_green, false)) then
                     inp.connect_to(m.get_wire_connector(W.circuit_red, true), false)
-                    to_pole(d, out_conn, out_color)
+                    -- (to_machine: the output on the machine's own red wire, where its enable condition reads it.)
+                    if to_machine then d.get_wire_connector(W.combinator_output_red, true).connect_to(m.get_wire_connector(W.circuit_red, true), false)
+                    else to_pole(d, out_conn, out_color) end
                     if green_in then to_pole(d, W.combinator_input_green, W.circuit_green) end
                     local cbm = m.get_or_create_control_behavior()
                     cbm.circuit_read_contents = true
@@ -1009,7 +1011,7 @@ local function start(params)
       end
       return conds
     end
-    for _, sk in pairs(run.sinks) do
+    for _, sk in pairs(run.params.relief_built and run.sinks or {}) do
       local b = sk.overflow and not sk.mixed and sk.gate.valid and sink_belt(sk)
       local net = b and b.valid and run.net_of[b.unit_number]
       if net then
@@ -1055,7 +1057,7 @@ local function start(params)
       end
     end
     -- Fluid ports: a signal each, sent by a decider at every maker with an output box of that fluid on its pipes.
-    for _, g in pairs(run.rgates or {}) do
+    for _, g in pairs(run.params.relief_built and run.rgates or {}) do
       local ok, err = pcall(function()
         local seg = g.e.get_fluid_segment_id(1)
         if not seg then g.no_segment = true; return end
@@ -1084,7 +1086,179 @@ local function start(params)
       end)
       if not ok then fail("fluid port", err) end
     end
+    -- params.pull_built: pull from real parts. Each machine works only while its own signal is on its wire: a decider
+    -- beside it, green in from the demand wire over the poles, sends that signal onto the machine's red wire while
+    -- any demand signal the machine can serve is on (a user on a belt it drops the item onto, a machine it hands to,
+    -- a user on its fluid's pipes, holding less than a craft's worth). A machine making a target, one none of whose
+    -- products is used, and one no demand signal reaches work whenever they can.
+    if run.params.pull_built then
+      rb.pull_deciders, rb.pull_free, rb.pull_no_room = 0, 0, 0
+      local target = {}
+      for _, n in pairs(run.params.targets or {}) do target[n] = true end
+      local go = { type = "virtual", name = "signal-R" }
+      for _, m in pairs(run.machines) do
+        local e = m.e
+        local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+        if r then
+          local ok, err = pcall(function()
+            local free, conds, seen = false, {}, {}
+            for _, p in pairs(r.products) do if target[p.name] then free = true end end
+            local any_used = false
+            for _, c in pairs(products_of(m, r)) do
+              if c.any_used then any_used = true end
+              for _, dsg in pairs(c.demand) do
+                if not seen[dsg.name] then
+                  seen[dsg.name] = true
+                  conds[#conds + 1] = { first_signal = dsg, comparator = ">", constant = 0, first_signal_networks = GREEN, compare_type = "or" }
+                end
+              end
+            end
+            if free or not any_used or #conds == 0 then rb.pull_free = rb.pull_free + 1; return end
+            local d = place_decider(e, true, W.circuit_red, true)
+            if not d then rb.pull_no_room = rb.pull_no_room + 1; return end
+            d.get_or_create_control_behavior().parameters = { conditions = conds, outputs = { { signal = go, copy_count_from_input = false, constant = 1 } } }
+            local cb = e.get_or_create_control_behavior()
+            cb.circuit_condition = { first_signal = go, comparator = ">", constant = 0 }
+            cb.circuit_enable_disable = true
+            rb.pull_deciders = rb.pull_deciders + 1
+          end)
+          if not ok then fail("pull", err) end
+        end
+      end
+    end
     rb.signals_used = next_name
+  end
+
+  -- params.relief_exits: params.relief for items from real parts, at the machine itself. Each machine with a product
+  -- that could stop it and another used product gets one filter inserter out of it into a chest of its own (an
+  -- infinity chest that empties itself here; in a game an active provider chest, or a belt to a port), and a decider
+  -- per such product on a red wire from the machine: "P at its limit AND (Q1 under its limit OR Q2 ...)" sends P's own
+  -- signal to the inserter, which takes what it is sent (filters set by the circuit). Nothing leaves by a belt or a
+  -- port that another maker shares. Fluids stay with params.relief's script, and so do machines with no room for
+  -- the inserter and its chest (counted).
+  if run.params.relief_exits then
+    local W = defines.wire_connector_id
+    local rx = { machines = 0, inserters = 0, deciders = 0, no_room = 0, no_decider = 0, errors = {} }
+    run.rx = rx
+    run.rx_done = {}
+    local used_by = {}
+    for _, o in pairs(run.machines) do
+      local ro = o.e.valid and (o.e.get_recipe() or (o.plan_recipe and prototypes.recipe[o.plan_recipe]))
+      if ro then for _, ing in pairs(ro.ingredients) do
+        used_by[ing.name] = used_by[ing.name] or {}
+        used_by[ing.name][o.e.unit_number] = true
+      end end
+    end
+    local sides = { { 0, -1, defines.direction.south }, { 1, 0, defines.direction.west }, { 0, 1, defines.direction.north }, { -1, 0, defines.direction.east } }
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+      if r then
+        local ok, err = pcall(function()
+          local own = {}
+          for _, ing in pairs(r.ingredients) do own[ing.name] = true end
+          local function used(name) for u in pairs(used_by[name] or {}) do if u ~= e.unit_number then return true end end return false end
+          local items, all, any_used = {}, {}, false
+          for _, p in pairs(r.products) do
+            if not own[p.name] then
+              local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
+              local c
+              if p.type == "item" then
+                local stack = prototypes.item[p.name] and prototypes.item[p.name].stack_size or 100
+                c = { name = p.name, signal = { type = "item", name = p.name },
+                  limit = math.max(1, math.min(math.ceil(relief_limit(e, r) * amount * (p.probability or p.independent_probability or 1)), stack - math.ceil(amount) + 1)) }
+                items[#items + 1] = c
+              else
+                for i = 1, (e.fluids_count or 0) do
+                  local proto = e.get_fluid_box_prototype(i)
+                  if proto and proto.index == nil and proto[1] then proto = proto[1] end
+                  local flt = e.get_fluid_filter(i)
+                  if proto and proto.production_type == "output" and flt and flt.name == p.name then
+                    c = { name = p.name, signal = { type = "fluid", name = p.name }, limit = math.max(1, math.floor(e.get_fluid_capacity(i) - amount) + 1) }
+                  end
+                end
+              end
+              if c then c.used = used(p.name); if c.used then any_used = true end; all[#all + 1] = c end
+            end
+          end
+          local jobs = {}
+          for _, p in pairs(items) do
+            local conds = {}
+            if not any_used then
+              conds[1] = { first_signal = p.signal, comparator = ">=", constant = p.limit }
+            else
+              for _, q in pairs(all) do
+                if q.used and q.name ~= p.name then
+                  conds[#conds + 1] = { first_signal = p.signal, comparator = ">=", constant = p.limit, compare_type = "or" }
+                  conds[#conds + 1] = { first_signal = q.signal, comparator = "<", constant = q.limit, compare_type = "and" }
+                end
+              end
+            end
+            if #conds > 0 then jobs[#jobs + 1] = { p = p, conds = conds } end
+          end
+          if #jobs == 0 then return end
+          rx.machines = rx.machines + 1
+          -- The inserter on a free tile against the machine with a free tile behind it for the chest.
+          local bb = e.bounding_box
+          local x0, y0, x1, y1 = math.floor(bb.left_top.x + 0.5), math.floor(bb.left_top.y + 0.5), math.ceil(bb.right_bottom.x - 0.5) - 1, math.ceil(bb.right_bottom.y - 0.5) - 1
+          local ins, chest
+          for _, sd in pairs(sides) do
+            if ins then break end
+            local from, to = (sd[1] ~= 0) and y0 or x0, (sd[1] ~= 0) and y1 or x1
+            for k = from, to do
+              local ix = sd[1] > 0 and x1 + 1 or sd[1] < 0 and x0 - 1 or k
+              local iy = sd[2] > 0 and y1 + 1 or sd[2] < 0 and y0 - 1 or k
+              local ip, cp = { ix + 0.5, iy + 0.5 }, { ix + sd[1] + 0.5, iy + sd[2] + 0.5 }
+              if surface.can_place_entity { name = "fast-inserter", position = ip, direction = sd[3], force = force }
+                  and surface.can_place_entity { name = "infinity-chest", position = cp, force = force } then
+                ins = surface.create_entity { name = "fast-inserter", position = ip, direction = sd[3], force = force }
+                chest = ins and surface.create_entity { name = "infinity-chest", position = cp, force = force }
+                if ins and chest then break end
+                if ins then ins.destroy(); ins = nil end
+              end
+            end
+          end
+          if not (ins and chest) then rx.no_room = rx.no_room + 1; return end
+          chest.remove_unfiltered_items = true
+          rx.inserters = rx.inserters + 1
+          local icb = ins.get_or_create_control_behavior()
+          ins.use_filters = true
+          icb.circuit_set_filters = true
+          local cbm = e.get_or_create_control_behavior()
+          cbm.circuit_read_contents = true
+          pcall(function() cbm.include_in_crafting = false end)
+          local placed = 0
+          for _, j in pairs(jobs) do
+            local d
+            for ring = 1, 6 do
+              if d then break end
+              for dx = -ring, ring do for dy = -ring, ring do
+                if not d and (math.abs(dx) == ring or math.abs(dy) == ring) then
+                  for _, dir in pairs({ defines.direction.north, defines.direction.east }) do
+                    local pos = { ins.position.x + dx + (dir == defines.direction.east and 0.5 or 0), ins.position.y + dy + (dir == defines.direction.north and 0.5 or 0) }
+                    if not d and surface.can_place_entity { name = "decider-combinator", position = pos, direction = dir, force = force } then
+                      local c = surface.create_entity { name = "decider-combinator", position = pos, direction = dir, force = force }
+                      if c then
+                        local inp, outp = c.get_wire_connector(W.combinator_input_red, true), c.get_wire_connector(W.combinator_output_green, true)
+                        if inp.can_wire_reach(e.get_wire_connector(W.circuit_red, true)) and outp.can_wire_reach(ins.get_wire_connector(W.circuit_green, true)) then
+                          inp.connect_to(e.get_wire_connector(W.circuit_red, true), false)
+                          outp.connect_to(ins.get_wire_connector(W.circuit_green, true), false)
+                          c.get_or_create_control_behavior().parameters = { conditions = j.conds, outputs = { { signal = j.p.signal, copy_count_from_input = false, constant = 1 } } }
+                          d = c
+                        else c.destroy() end
+                      end
+                    end
+                  end
+                end
+              end end
+            end
+            if d then placed = placed + 1; rx.deciders = rx.deciders + 1 else rx.no_decider = rx.no_decider + 1 end
+          end
+          if placed == #jobs then run.rx_done[e.unit_number] = true end
+        end)
+        if not ok then rx.errors[tostring(err)] = (rx.errors[tostring(err)] or 0) + 1 end
+      end
+    end
   end
 
   run.build = {
@@ -1540,7 +1714,7 @@ local function finish(run)
     overflow_last = run.ov_outs and (function() local n, opened, secs_open = 0, 0, 0
       for _, o in pairs(run.ov_outs) do n = n + 1; if o.open_s > 0 then opened = opened + 1; secs_open = secs_open + o.open_s end end
       return { exits = n, opened = opened, open_s = secs_open } end)() or nil,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, relief_built = run.rb, duty_clocks = run.duty_clocks, relief_fluid_ports = run.rgates and (function() local o = {}
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, relief_built = run.rb, relief_exits = run.rx, duty_clocks = run.duty_clocks, relief_fluid_ports = run.rgates and (function() local o = {}
       for _, g in pairs(run.rgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.open_s or 0, out = g.out, out_measure = g.out_measure, makers = g.makers and #g.makers or nil, no_segment = g.no_segment } end end
       return o end)() or nil, relieved = run.relieved, relieved_measure = run.relieved_measure, relieved_by = run.relieved_by, relief_errors = run.relief_errors, void_kept = run.void_kept, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
@@ -2454,6 +2628,8 @@ local function relief(run)
         end
         for _, b in pairs(sc.blocking) do
           if (run.params.void_except or {})[b.p.name] then
+          elseif not b.k and run.rx_done and run.rx_done[e.unit_number] then
+            -- (params.relief_exits: this machine's items leave by its own inserter.)
           elseif b.k then
             e.set_fluid(b.k, { name = b.f.name, amount = b.keep, temperature = b.f.temperature })
             record("[" .. b.p.name .. "]", b.f.amount - b.keep)
