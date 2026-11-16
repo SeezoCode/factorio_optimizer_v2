@@ -503,3 +503,42 @@ makes science at plan from empty, the rest is scale. If it does not, big Py shou
   planned flows; then need first and a fluid stock built instead of stood in for; then the start, with first fills
   handed over. A start from empty stays the wrong test.
 
+## The fourth night: belts with by-products
+
+Details in [NIGHT_LOG_2026-11-16.md](NIGHT_LOG_2026-11-16.md). The question: can the belt-built logistic factory
+(325 machines, 319 x 342, laid out 2026-11-09) pass the warm 16-hour test, with overflow control at the producer and
+circuit logic, and how much of the check's help does it need?
+
+| Belt-built logistic factory, warm start, the check's help | Packs by hour 8 (48.5 due) | Measured half |
+|---|---:|---|
+| none (the layout's own overflow ports) | 4 by hour 3.6 | stopped |
+| flow rules: pull, quotas, gates, loop carriers | 12 by hour 6.5 | stopped |
+| **flow rules and an overflow at every producer** | 47 | **82%**, with a third of the slaughterhouse's animals handed in |
+| flow rules without quotas, or without pull, with the overflow | 6 and 4 by hour 3 | stopped |
+| overflow at the producer alone, as a circuit can decide it | 3 by hour 3.9 | stopped |
+| flow rules, the overflow from real parts (90 inserters, 156 deciders) | 49 | 103% by packs; 259 of 313 recipes at their rate in the last four hours, nearly half of the animals handed in |
+| robot-built, for comparison (third night) | | 97% |
+
+- **12. Relief at the machine.** A product at the game's own limit in a machine's output (two to five crafts' worth
+  by the recipe's speed, or the next craft not fitting its stack) is taken out there while another product of that
+  machine is still wanted. Decided by decider combinators on a wire from the machine, built in the game from real
+  parts, and what keeps a multi-product machine from standing. It has to take from the machine: a gate on a port
+  that other makers share moves their goods too.
+- **Relief is not demand.** On its own it lets every machine run for its neighbour's appetite (1.5 million steam let
+  out in four hours, 3 packs). Which machine is wanted is pull; who gets a shared belt's goods is quotas. Belts need
+  both from outside; a robot network has both in it (requests and one stock).
+- **Pull can be built** (a demand decider per machine and ingredient, an enable condition per maker: 1,092 deciders
+  here, all with room). Its one run stood still for a reason of the check; not decided.
+- **Quotas have no part**, and rate caps did not stand in for them (24 packs and a halt, at 2, 3 and 5 times plan).
+- **13. No splitting by turns.** A maker with two belts gives each half whatever each needs: the lab instruments,
+  planned 95% of the rubber, got half of it for 13 hours while 353 lay on the other belt. The stitch calls this
+  harmless until belts back up; for a slow item that is most of a day. An inserter toward a belt should work only
+  while that belt holds little (a wire to the belt). Not written; the check's `--belt-pull`, which looks at the user
+  instead, did not stop it.
+- **No belt run is steady.** By packs the measured halves read 82 to 105%; by recipes at their rate the ones not fed starters
+  to the end run down, about 305 to 246 to 259 of 313 over the 16 hours, with a third to a half of the slaughterhouse's animals handed in
+  by the check. The last hours' packs come out of stock.
+- **Verdict on belts:** possible, not close: a factory that runs down under four helps (one of them now a real
+  part) against one that held 97% with one. Go on with robots for the links; take rules 12 and 13 into the planner
+  for whatever carries the items.
+
