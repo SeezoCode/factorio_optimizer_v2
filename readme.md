@@ -1245,6 +1245,21 @@ blueprint: they are the check's own help or control, run by the verify mod.
   `--request-trip N` (with it): and at least N robot trips' worth of the link's flow, the trip from the nearest
   provider chest of the item. An experiment: it takes the flow from the built request, which overstates slow links,
   and starved small users in one of its two runs (`docs/NIGHT_LOG_2026-11-15.md`).
+- `--relief` (belt-built factories; `docs/NIGHT_LOG_2026-11-16.md`): overflow at the producer, by what a circuit at
+  the machine can read. A product that stops a machine (at the game's limit in its output: two to five crafts' worth
+  by the recipe's speed, or the next craft not fitting the stack; a fluid box with no room for a craft) is taken out
+  while another product of that machine, one some machine uses, is still leaving. `--dead-end` with it: every port
+  but a target's stays shut and every fluid port is a plain pipe end, so belts and pipes are stock and surplus leaves
+  at machines only. `--relief-exits`: the same from real parts built in the game (a filter inserter into a chest of
+  its own at each such machine, its filters set by a decider per product on a wire from the machine).
+  `--relief-gate` and `--relief-built` let the surplus out through the layout's own ports instead, by script and
+  from deciders, pole wires and gated belts; one maker's relief then moves a belt other makers share.
+  `--relief-demand`: another product counts as wanted only while a user the machine can reach stands short of it;
+  `--relief-main`: only while it is one the plan uses up. Neither made relief enough on its own.
+  `--pull-built` (with `--flow --no-pull`): pull from real parts, a demand decider per machine and ingredient on a
+  wire over the poles and an enable condition on each maker. `--bootstrap`: loop carriers alone, as `--flow` gives
+  them. `--duty F`: a rate cap as an enable condition against a shared clock would give it (no saving up; `--meter F`
+  is the cap with a token bucket).
 - `--overflow-last` (robot-built factories): a machine's exit to an overflow chest works only once the machine has
   stood full for a minute, where the item has another way out. `--provider-level STACKS`: its exit to a provider chest
   works only while the network holds at most so many stacks, where it also feeds a user itself. The planner writes
