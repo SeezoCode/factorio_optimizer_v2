@@ -870,7 +870,7 @@ local function start(params)
     local function place_decider(m, green_in, out_color, to_machine)
       local bb = m.bounding_box
       local out_conn = out_color == W.circuit_green and W.combinator_output_green or W.combinator_output_red
-      for ring = 1, 8 do
+      for ring = 1, 10 do
         local x0, y0, x1, y1 = math.floor(bb.left_top.x) - ring, math.floor(bb.left_top.y) - ring, math.ceil(bb.right_bottom.x) + ring - 1, math.ceil(bb.right_bottom.y) + ring - 1
         for x = x0, x1 do for y = y0, y1 do
           if x == x0 or x == x1 or y == y0 or y == y1 then
@@ -880,7 +880,9 @@ local function start(params)
                 local d = surface.create_entity { name = "decider-combinator", position = pos, direction = dir, force = force }
                 if d then
                   local inp = d.get_wire_connector(W.combinator_input_red, true)
-                  if inp.can_wire_reach(m.get_wire_connector(W.circuit_red, true)) and (to_machine or to_pole(d, out_conn, out_color, false))
+                  -- (And only where a pole powers it: a combinator without power sends nothing. The first run with pull
+                  -- built this way stood still for that: 129 of 1,247 deciders had no power.)
+                  if d.is_connected_to_electric_network() and inp.can_wire_reach(m.get_wire_connector(W.circuit_red, true)) and (to_machine or to_pole(d, out_conn, out_color, false))
                       and (not green_in or to_pole(d, W.combinator_input_green, W.circuit_green, false)) then
                     inp.connect_to(m.get_wire_connector(W.circuit_red, true), false)
                     -- (to_machine: the output on the machine's own red wire, where its enable condition reads it.)
@@ -1212,6 +1214,7 @@ local function start(params)
               if surface.can_place_entity { name = "fast-inserter", position = ip, direction = sd[3], force = force }
                   and surface.can_place_entity { name = "infinity-chest", position = cp, force = force } then
                 ins = surface.create_entity { name = "fast-inserter", position = ip, direction = sd[3], force = force }
+                if ins and not ins.is_connected_to_electric_network() then ins.destroy(); ins = nil end
                 chest = ins and surface.create_entity { name = "infinity-chest", position = cp, force = force }
                 if ins and chest then break end
                 if ins then ins.destroy(); ins = nil end
@@ -1240,7 +1243,7 @@ local function start(params)
                       local c = surface.create_entity { name = "decider-combinator", position = pos, direction = dir, force = force }
                       if c then
                         local inp, outp = c.get_wire_connector(W.combinator_input_red, true), c.get_wire_connector(W.combinator_output_green, true)
-                        if inp.can_wire_reach(e.get_wire_connector(W.circuit_red, true)) and outp.can_wire_reach(ins.get_wire_connector(W.circuit_green, true)) then
+                        if c.is_connected_to_electric_network() and inp.can_wire_reach(e.get_wire_connector(W.circuit_red, true)) and outp.can_wire_reach(ins.get_wire_connector(W.circuit_green, true)) then
                           inp.connect_to(e.get_wire_connector(W.circuit_red, true), false)
                           outp.connect_to(ins.get_wire_connector(W.circuit_green, true), false)
                           c.get_or_create_control_behavior().parameters = { conditions = j.conds, outputs = { { signal = j.p.signal, copy_count_from_input = false, constant = 1 } } }
