@@ -695,6 +695,10 @@ def main():
     ap.add_argument("--bootstrap", action="store_true",
                     help="a loop starved of its carrier for two minutes (barrels, cages) is given it, as --flow does and "
                          "as a player fills a new loop by hand; nothing else of --flow")
+    ap.add_argument("--duty", type=float, default=None, metavar="FACTOR",
+                    help="every machine is held to FACTOR times its planned rate by a duty cycle: it works a fixed share "
+                         "of a clock's period (10 s, 10 min or 10 h, the shortest that gives it a second), as an enable "
+                         "condition against a clock signal would; nothing is saved up")
     ap.add_argument("--dead-end", action="store_true",
                     help="the overflow ports of items the factory uses stay shut: their belts are stock, and surplus "
                          "leaves at the producer only (--relief or --void-full)")
@@ -816,7 +820,7 @@ def main():
         params["robots_per_roboport"] = args.robots
     if args.debug_at:
         params["debug_at"] = args.debug_at
-    if args.side_cap or args.rate_cap or args.meter or args.meter_file or args.relief_main:
+    if args.side_cap or args.rate_cap or args.meter or args.meter_file or args.relief_main or args.duty:
         fp = built_plan_path(args.target)
         if fp and os.path.exists(fp):
             purpose, crafts = defaultdict(set), defaultdict(float)
@@ -933,6 +937,9 @@ def main():
                 params["relief_main"] = True
                 print(f"relief-main: {sum(len(v) for v in tight.values())} products of {len(tight)} recipes count as what their machines are wanted for")
             params["plan_crafts"] = dict(crafts)
+            if args.duty:
+                params["duty"] = args.duty
+                print(f"duty: every machine works the share of a clock's period that gives {args.duty} times its planned rate")
     if args.robot:
         params["robot"] = args.robot
     if args.requester_demand:

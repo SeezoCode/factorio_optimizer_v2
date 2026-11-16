@@ -1517,7 +1517,7 @@ local function finish(run)
     overflow_last = run.ov_outs and (function() local n, opened, secs_open = 0, 0, 0
       for _, o in pairs(run.ov_outs) do n = n + 1; if o.open_s > 0 then opened = opened + 1; secs_open = secs_open + o.open_s end end
       return { exits = n, opened = opened, open_s = secs_open } end)() or nil,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, relief_built = run.rb, relief_fluid_ports = run.rgates and (function() local o = {}
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, relief_built = run.rb, duty_clocks = run.duty_clocks, relief_fluid_ports = run.rgates and (function() local o = {}
       for _, g in pairs(run.rgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.open_s or 0, out = g.out, out_measure = g.out_measure, makers = g.makers and #g.makers or nil, no_segment = g.no_segment } end end
       return o end)() or nil, relieved = run.relieved, relieved_measure = run.relieved_measure, relieved_by = run.relieved_by, relief_errors = run.relief_errors, void_kept = run.void_kept, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
@@ -3276,6 +3276,43 @@ script.on_event(defines.events.on_tick, function()
             if not run.params.pull then e.disabled_by_script = false end
           end
         end
+      end
+    end
+    run.metered = held
+  end
+  -- params.duty: every machine held to that many times its planned rate the way a blueprint can do it with no
+  -- combinator of its own: an enable condition on the machine, "clock < K", against a clock signal on a wire over the
+  -- poles. The machine works K ticks of every period, K = period x factor x planned rate / its top rate. Three clocks
+  -- (10 s, 10 min, 10 h): each machine takes the shortest whose window is a second or more, so slivers get a window
+  -- at all (a craft that does not fit one window goes on in the next). Unlike params.meter nothing is saved up, and
+  -- every machine on one clock works at the same time.
+  if run.params.duty then
+    local crafts = run.params.plan_crafts or {}
+    if not run.duty_set then
+      run.duty_set = true
+      local n = { 0, 0, 0, 0 }
+      for _, m in pairs(run.machines) do
+        local e = m.e
+        local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+        local c = r and crafts[r.name]
+        if c and c > 0 then
+          local top = e.crafting_speed / r.energy
+          local d = math.min(1, run.params.duty * c / top)
+          if d < 1 then
+            for i, period in ipairs({ 600, 36000, 2160000 }) do
+              if d * period >= 60 or i == 3 then m.duty = { period = period, k = math.max(1, math.floor(d * period + 0.5)) }; n[i] = n[i] + 1; break end
+            end
+          else n[4] = n[4] + 1 end
+        end
+      end
+      run.duty_clocks = { ["10s"] = n[1], ["10min"] = n[2], ["10h"] = n[3], free = n[4] }
+    end
+    local held = 0
+    for _, m in pairs(run.machines) do
+      if m.duty and m.e.valid then
+        local off = (game.tick - run.t0) % m.duty.period >= m.duty.k
+        if off then held = held + 1 end
+        if off ~= (m.duty_off or false) then m.duty_off = off; m.e.disabled_by_script = off end
       end
     end
     run.metered = held
