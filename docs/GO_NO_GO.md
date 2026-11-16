@@ -516,7 +516,7 @@ circuit logic, and how much of the check's help does it need?
 | **flow rules and an overflow at every producer** | 47 | **82%**, with a third of the slaughterhouse's animals handed in |
 | flow rules without quotas, or without pull, with the overflow | 6 and 4 by hour 3 | stopped |
 | overflow at the producer alone, as a circuit can decide it | 3 by hour 3.9 | stopped |
-| flow rules, the overflow from real parts (90 inserters, 156 deciders) | 49 | 103% by packs; 259 of 313 recipes at their rate in the last four hours, nearly half of the animals handed in |
+| flow rules, the overflow from real parts (90 inserters, 156 deciders) | 49 | 103% by packs, from a rubber chain at twice its plan that loses half to a second belt (night log); 259 of 313 recipes at their rate in the last four hours, nearly half of the animals handed in |
 | robot-built, for comparison (third night) | | 97% |
 
 - **12. Relief at the machine.** A product at the game's own limit in a machine's output (two to five crafts' worth
