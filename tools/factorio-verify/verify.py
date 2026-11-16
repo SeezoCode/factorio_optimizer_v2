@@ -672,6 +672,26 @@ def main():
                          "is handed out is in the report by item and by hour (a loop that closed stops drawing)")
     ap.add_argument("--void-wait", type=int, default=None, metavar="S",
                     help="with --void-full: a machine must stand full this many seconds before anything is deleted (30)")
+    ap.add_argument("--relief", action="store_true",
+                    help="overflow at the producer, by what a circuit at the machine could read: a product that blocks a "
+                         "machine (a craft's worth in its output, a fluid box nine tenths full) is taken out while "
+                         "another product of that machine, one some machine uses, is still leaving; a machine with "
+                         "every used product lying in its output stands")
+    ap.add_argument("--relief-gate", action="store_true",
+                    help="the overflow ports of items the factory uses are gates on a wire from the makers on their "
+                         "belts: open while one of them is blocked by a product on that belt and another used product "
+                         "of its still leaves (the --relief condition), shut otherwise; nothing is taken at machines")
+    ap.add_argument("--relief-built", action="store_true",
+                    help="--relief-gate from real parts: a decider combinator at each such maker on a wire from the "
+                         "machine, a red wire over every pole, and the last belt before each overflow port enabled by "
+                         "its signal; the check itself gates nothing")
+    ap.add_argument("--relief-demand", action="store_true",
+                    help="with --relief or --relief-gate: another product counts as still wanted only while a user "
+                         "on a belt or pipe network the machine puts it on stands short of it (less than a craft's "
+                         "worth), not merely while it has room in the output")
+    ap.add_argument("--dead-end", action="store_true",
+                    help="the overflow ports of items the factory uses stay shut: their belts are stock, and surplus "
+                         "leaves at the producer only (--relief or --void-full)")
     ap.add_argument("--void-full", action="store_true",
                     help="a helper, 'virtual sinks': a machine standing with a full output (and not switched off by flow "
                          "control) has half its stuck products deleted every second, counted per recipe and item: does the "
@@ -906,6 +926,22 @@ def main():
         params["fluid_gates"] = True
     if args.overflow_keep is not None:
         params["overflow_keep"] = args.overflow_keep
+    if args.relief:
+        params["relief"] = True
+        print("relief: a product blocking a machine is taken out while another used product of it still leaves")
+    if args.dead_end:
+        params["dead_end"] = True
+    if args.relief_demand:
+        params["relief_demand"] = True
+    if args.dead_end or args.relief_gate or args.relief_built:
+        tg = {t["name"] for t in (job or {}).get("targets", [])}
+        params["target_at"] = [[o["x"] + 0.5, o["y"] + 0.5] for o in ports.get("outputs", []) if not o.get("fluid") and o["item"].split("#")[0] in tg]
+    if args.relief_built:
+        params["relief_built"] = True
+        print("relief-built: deciders, wires and belt gates built in the game; the check gates no overflow port")
+    if args.relief_gate:
+        params["relief_gate"] = True
+        print("relief-gate: overflow ports of used items open only for a maker blocked by that item and wanted for another")
     if args.void_full:
         params["void_full"] = True
     if args.virtual_bots:

@@ -345,6 +345,21 @@ local function power(run, surface, force, x0, y0)
   return count, unwired
 end
 
+-- The pipe networks a machine's fluid storage [i] belongs to (its own segment, or those of the pipes it connects to).
+local function box_segments(e, i)
+  local out = {}
+  pcall(function()
+    if e.has_fluid_segment(i) then out[#out + 1] = e.get_fluid_segment_id(i)
+    else
+      for _, c in pairs(e.get_fluid_box_pipe_connections(i) or {}) do
+        local j = c.target_fluidbox_index or 1
+        if c.target and c.target.valid and c.target.has_fluid_segment(j) then out[#out + 1] = c.target.get_fluid_segment_id(j) end
+      end
+    end
+  end)
+  return out
+end
+
 local function start(params)
   -- params.mod_settings: runtime-global settings of other mods to set first (the factory-flow mod's, for --flow-mod).
   for k, v in pairs(params.mod_settings or {}) do
@@ -477,7 +492,16 @@ local function start(params)
       end
     elseif t == "infinity-pipe" then
       local f = e.get_infinity_pipe_filter()
-      if f and (f.mode == "remove" or ((f.mode == "exactly" or f.mode == "at-most") and (f.percentage or 0) == 0)) then
+      if f and (run.params.dead_end or run.params.relief_gate or run.params.relief_built)
+          and (f.mode == "remove" or f.mode == "at-most" or (f.mode == "exactly" and (f.percentage or 0) == 0)) then
+        -- Under the relief rules every fluid port is a plain pipe end (no filter: it takes nothing) and its pipes
+        -- are stock; relief_fluid_gates lets a craft's worth out for a maker it stops. A fluid overflow kept nine
+        -- tenths full, or a planned surplus drained without limit, made every fluid look wanted: a lamp maker with
+        -- methane and oxygen beside the lamps ran at 5,000 times its plan.
+        run.rgates = run.rgates or {}
+        run.rgates[#run.rgates + 1] = { e = e, filter = f, open = false }
+        e.set_infinity_pipe_filter(nil)
+      elseif f and (f.mode == "remove" or ((f.mode == "exactly" or f.mode == "at-most") and (f.percentage or 0) == 0)) then
         e.set_infinity_pipe_filter(nil)
         run.drains[#run.drains + 1] = { e = e, fluid = f.name, pos = bp_pos(run, e.position), amount = 0 }
       elseif f and f.mode == "at-most" and run.params.fluid_gates then
@@ -539,6 +563,17 @@ local function start(params)
   for _, at in pairs(run.params.overflow_at or {}) do
     local s = nearest_sink(at)
     if s and not s.mixed then s.overflow = true; s.gate.disabled_by_script = true end
+  end
+  -- Under the relief rules every port but a target's is a relief port: a leftovers belt and a by-product's planned
+  -- surplus too. Left open, whatever went onto them looked wanted for good (a nexelit ore crusher with its tailings
+  -- dust on a leftovers belt: 14,700 crafts in four hours, 2,100 times its plan).
+  run.relief_mode = (run.params.relief_gate or run.params.relief_built or run.params.dead_end) and true or false
+  if run.relief_mode then
+    local keep = {}
+    for _, at in pairs(run.params.target_at or {}) do local s = nearest_sink(at); if s then keep[s] = true end end
+    for _, s in pairs(run.sinks) do
+      if not keep[s] then s.overflow = true; s.mixed = nil; s.gate.disabled_by_script = true end
+    end
   end
 
   -- Belt networks (belts joined through their neighbours, undergrounds and splitters): which ones each machine's
@@ -695,6 +730,341 @@ local function start(params)
     end
   end
 
+  -- What each machine drops onto each belt network: its filtered inserters' items, or everything it makes ("*").
+  run.onto = {}
+  for _, o in pairs(run.outs or {}) do
+    if o.e.valid and o.m.valid then
+      local t = run.onto[o.m.unit_number] or {}; run.onto[o.m.unit_number] = t
+      local items = t[o.net] or {}; t[o.net] = items
+      local filtered = false
+      pcall(function()
+        if o.e.use_filters then for k = 1, o.e.filter_slot_count do
+          local f = o.e.get_filter(k)
+          if f then filtered = true; items[type(f) == "table" and f.name or f] = true end
+        end end
+      end)
+      if not filtered then items["*"] = true end
+    end
+  end
+
+  -- params.relief_built: params.relief_gate (with params.relief_demand: and its demand) from real parts, so the rule
+  -- runs on the game alone. Every pole gets a red and a green wire along its copper ones: two networks over the factory.
+  --  * Demand (green), with params.relief_demand: at each machine, for each ingredient, a decider combinator on a red
+  --    wire from the machine (which puts its contents on it) sends a signal of its own for that item and each belt
+  --    network the machine takes from (for a fluid: each pipe network of its box; for a hand-over: its maker) while the
+  --    machine holds less than a craft's worth.
+  --  * Relief (red): each port but a target's has its last belt wired to the nearest pole and enabled only while the
+  --    port's own signal is on the red network. For each maker dropping onto that belt network a product it could be
+  --    stopped by, a decider near the machine (red in from the machine, green in from the poles, red out to the poles)
+  --    sends the port's signal while
+  --      (P at its limit AND Q under its limit AND Q's demand on) OR ...
+  --    for the products P it drops there and its other used products Q, each with the demand signals it can serve.
+  --    Without params.relief_demand the demand term is left out.
+  --  * A fluid port has such deciders too; the test copy's port is an infinity pipe, so the script stands in for the
+  --    pump: it reads the port's signal off the poles and lets a little out while it is on (relief_fluid_gates).
+  -- Limits as in relief_scan.
+  if run.params.relief_built then
+    local W = defines.wire_connector_id
+    local rb = { poles = 0, pole_wires = 0, ports = 0, gates_wired = 0, gates_unwired = 0, deciders = 0, demand_deciders = 0, no_room = 0, dead_ends = 0,
+      fluid_ports = 0, fluid_deciders = 0, signals = {}, errors = {} }
+    run.rb = rb
+    local with_demand = run.params.relief_demand and true or false
+    local function fail(what, err) rb.errors[what .. ": " .. tostring(err)] = (rb.errors[what .. ": " .. tostring(err)] or 0) + 1 end
+    local poles = surface.find_entities_filtered { type = "electric-pole", force = force }
+    for _, p in pairs(poles) do
+      rb.poles = rb.poles + 1
+      local ok, err = pcall(function()
+        local c = p.get_wire_connector(W.pole_copper, false)
+        for _, conn in pairs(c and c.connections or {}) do
+          local q = conn.target.owner
+          if q.valid and q.type == "electric-pole" and q.unit_number > p.unit_number then
+            if p.get_wire_connector(W.circuit_red, true).connect_to(q.get_wire_connector(W.circuit_red, true), false) then rb.pole_wires = rb.pole_wires + 1 end
+            p.get_wire_connector(W.circuit_green, true).connect_to(q.get_wire_connector(W.circuit_green, true), false)
+          end
+        end
+      end)
+      if not ok then fail("pole", err) end
+    end
+    run.rb_anchor = poles[1]
+    -- The pole nearest [e] that its [connector] reaches, on the pole wire of colour [color]; wired when [wire].
+    local function to_pole(e, connector, color, wire)
+      local c = e.get_wire_connector(connector, true)
+      local best, bd
+      for _, p in pairs(surface.find_entities_filtered { type = "electric-pole", force = force, position = e.position, radius = 24 }) do
+        local pc = p.get_wire_connector(color, true)
+        if p ~= e and not (rb.loose or {})[p.unit_number] and c.can_wire_reach(pc) then
+          local d = (p.position.x - e.position.x) ^ 2 + (p.position.y - e.position.y) ^ 2
+          if not bd or d < bd then best, bd = pc, d end
+        end
+      end
+      if best and wire ~= false then return c.connect_to(best, false) end
+      return best ~= nil
+    end
+    -- A port's belt at the factory's edge is often out of a pole's reach (a belt's wire spans 9 tiles): medium poles
+    -- are set toward the nearest pole until one reaches (a planner would place them with the port).
+    local function wire_to_network(e, connector)
+      if to_pole(e, connector, W.circuit_red) then return true end
+      local target, td
+      for _, p in pairs(poles) do
+        if p.valid then
+          local d = (p.position.x - e.position.x) ^ 2 + (p.position.y - e.position.y) ^ 2
+          if not td or d < td then target, td = p, d end
+        end
+      end
+      if not target then return false end
+      rb.loose = rb.loose or {}
+      local prev, prev_conn, px, py, chain = e, connector, e.position.x, e.position.y, {}
+      for _ = 1, 6 do
+        local dx, dy = target.position.x - px, target.position.y - py
+        local len = math.sqrt(dx * dx + dy * dy)
+        local hop = math.min(7, len)
+        local at = surface.find_non_colliding_position("medium-electric-pole", { px + dx / len * hop, py + dy / len * hop }, 2.5, 0.5)
+        local np = at and surface.create_entity { name = "medium-electric-pole", position = at, force = force }
+        if not np then break end
+        rb.helper_poles = (rb.helper_poles or 0) + 1
+        chain[#chain + 1] = np
+        rb.loose[np.unit_number] = true
+        if not prev.get_wire_connector(prev_conn, true).connect_to(np.get_wire_connector(W.circuit_red, true), false) then break end
+        if to_pole(np, W.circuit_red, W.circuit_red) then
+          for _, q in pairs(chain) do rb.loose[q.unit_number] = nil end
+          return true
+        end
+        prev, prev_conn, px, py = np, W.circuit_red, np.position.x, np.position.y
+      end
+      return false
+    end
+    local names = {}
+    for n, it in pairs(prototypes.item) do if not it.hidden then names[#names + 1] = n end end
+    table.sort(names)
+    local next_name = 0
+    local function new_signal() next_name = next_name + 1; return { type = "item", name = names[next_name] } end
+    local used_by = {}
+    for _, o in pairs(run.machines) do
+      local ro = o.e.valid and (o.e.get_recipe() or (o.plan_recipe and prototypes.recipe[o.plan_recipe]))
+      if ro then for _, ing in pairs(ro.ingredients) do
+        used_by[ing.name] = used_by[ing.name] or {}
+        used_by[ing.name][o.e.unit_number] = true
+      end end
+    end
+    local onto = run.onto
+    -- A decider beside machine [m]: red in from the machine; with [green_in] green in from the poles; its output on
+    -- the poles' wire of colour [out_color]. Tried ring by ring around the machine, both ways round.
+    local function place_decider(m, green_in, out_color)
+      local bb = m.bounding_box
+      local out_conn = out_color == W.circuit_green and W.combinator_output_green or W.combinator_output_red
+      for ring = 1, 8 do
+        local x0, y0, x1, y1 = math.floor(bb.left_top.x) - ring, math.floor(bb.left_top.y) - ring, math.ceil(bb.right_bottom.x) + ring - 1, math.ceil(bb.right_bottom.y) + ring - 1
+        for x = x0, x1 do for y = y0, y1 do
+          if x == x0 or x == x1 or y == y0 or y == y1 then
+            for _, dir in pairs({ defines.direction.north, defines.direction.east }) do
+              local pos = dir == defines.direction.north and { x + 0.5, y + 1 } or { x + 1, y + 0.5 }
+              if surface.can_place_entity { name = "decider-combinator", position = pos, direction = dir, force = force } then
+                local d = surface.create_entity { name = "decider-combinator", position = pos, direction = dir, force = force }
+                if d then
+                  local inp = d.get_wire_connector(W.combinator_input_red, true)
+                  if inp.can_wire_reach(m.get_wire_connector(W.circuit_red, true)) and to_pole(d, out_conn, out_color, false)
+                      and (not green_in or to_pole(d, W.combinator_input_green, W.circuit_green, false)) then
+                    inp.connect_to(m.get_wire_connector(W.circuit_red, true), false)
+                    to_pole(d, out_conn, out_color)
+                    if green_in then to_pole(d, W.combinator_input_green, W.circuit_green) end
+                    local cbm = m.get_or_create_control_behavior()
+                    cbm.circuit_read_contents = true
+                    pcall(function() cbm.include_in_crafting = false end)
+                    return d
+                  end
+                  d.destroy()
+                end
+              end
+            end
+          end
+        end end
+      end
+    end
+    local RED, GREEN = { red = true, green = false }, { red = false, green = true }
+    -- Demand: a signal for each (item, belt network), (fluid, pipe network) and (item, maker handing it over).
+    local dsig = {}
+    local function demand_signal(key) if not dsig[key] then dsig[key] = new_signal() end return dsig[key] end
+    if with_demand then
+      local hands_to = {}
+      for maker, users in pairs(run.hands or {}) do for u in pairs(users) do hands_to[u] = hands_to[u] or {}; hands_to[u][maker] = true end end
+      for _, m in pairs(run.machines) do
+        local e = m.e
+        local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+        if r then
+          for _, ing in pairs(r.ingredients) do
+            local ok, err = pcall(function()
+              local keys = {}
+              if ing.type == "fluid" then
+                for i = 1, (e.fluids_count or 0) do
+                  local flt = e.get_fluid_filter(i)
+                  local proto = e.get_fluid_box_prototype(i)
+                  if proto and proto.index == nil and proto[1] then proto = proto[1] end
+                  if flt and flt.name == ing.name and proto and proto.production_type ~= "output" then
+                    for _, seg in pairs(box_segments(e, i)) do keys["f:" .. ing.name .. ":" .. seg] = true end
+                  end
+                end
+              else
+                for net in pairs(run.feeds[e.unit_number] or {}) do keys["i:" .. ing.name .. ":" .. net] = true end
+                for maker in pairs(hands_to[e.unit_number] or {}) do keys["h:" .. ing.name .. ":" .. maker] = true end
+              end
+              if not next(keys) then return end
+              local d = place_decider(e, false, W.circuit_green)
+              if not d then rb.no_room = rb.no_room + 1; return end
+              local outs = {}
+              for key in pairs(keys) do outs[#outs + 1] = { signal = demand_signal(key), copy_count_from_input = false, constant = 1 } end
+              d.get_or_create_control_behavior().parameters = {
+                conditions = { { first_signal = { type = ing.type == "fluid" and "fluid" or "item", name = ing.name }, comparator = "<", constant = math.max(1, math.ceil(ing.amount)), first_signal_networks = RED } },
+                outputs = outs }
+              rb.demand_deciders = rb.demand_deciders + 1
+            end)
+            if not ok then fail("demand", err) end
+          end
+        end
+      end
+    end
+    -- One machine's products as a decider sees them: each with its signal, its limit, and the demand signals the
+    -- machine can serve (items: per belt network it drops the item onto, and its hand-overs; fluids: per pipe network).
+    local function products_of(m, r)
+      local e = m.e
+      local own = {}
+      for _, ing in pairs(r.ingredients) do own[ing.name] = true end
+      local function used(name) for u in pairs(used_by[name] or {}) do if u ~= e.unit_number then return true end end return false end
+      local list = {}
+      for _, p in pairs(r.products) do
+        if not own[p.name] then
+          local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
+          local c
+          if p.type == "item" then
+            c = { name = p.name, signal = { type = "item", name = p.name }, limit = math.max(1, math.ceil(5 * amount * (p.probability or p.independent_probability or 1))), demand = {} }
+            for net, its in pairs(onto[e.unit_number] or {}) do
+              if (its[p.name] or its["*"]) and dsig["i:" .. p.name .. ":" .. net] then c.demand[#c.demand + 1] = dsig["i:" .. p.name .. ":" .. net] end
+            end
+            if dsig["h:" .. p.name .. ":" .. e.unit_number] then c.demand[#c.demand + 1] = dsig["h:" .. p.name .. ":" .. e.unit_number] end
+          else
+            for i = 1, (e.fluids_count or 0) do
+              local proto = e.get_fluid_box_prototype(i)
+              if proto and proto.index == nil and proto[1] then proto = proto[1] end
+              local flt = e.get_fluid_filter(i)
+              if proto and proto.production_type == "output" and flt and flt.name == p.name then
+                c = c or { name = p.name, fluid = true, signal = { type = "fluid", name = p.name }, limit = math.max(1, math.floor(e.get_fluid_capacity(i) - amount) + 1), demand = {}, segs = {}, amount = amount }
+                for _, seg in pairs(box_segments(e, i)) do
+                  c.segs[seg] = true
+                  if dsig["f:" .. p.name .. ":" .. seg] then c.demand[#c.demand + 1] = dsig["f:" .. p.name .. ":" .. seg] end
+                end
+              end
+            end
+          end
+          if c then c.used = used(p.name); list[#list + 1] = c end
+        end
+      end
+      return list
+    end
+    -- The conditions under which products [P] of a machine are let out: each stopped by it and another used product
+    -- still leaving (and, with demand, asked for).
+    local function conditions(P, all)
+      local conds, any_used = {}, false
+      for _, q in pairs(all) do if q.used then any_used = true end end
+      for _, p in pairs(P) do
+        if not any_used then
+          -- (A machine none of whose products is used runs to take something away: whatever stops it leaves.)
+          conds[#conds + 1] = { first_signal = p.signal, comparator = ">=", constant = p.limit, first_signal_networks = RED, compare_type = "or" }
+        else
+          for _, q in pairs(all) do
+            if q.used and q.name ~= p.name then
+              if not with_demand then
+                conds[#conds + 1] = { first_signal = p.signal, comparator = ">=", constant = p.limit, first_signal_networks = RED, compare_type = "or" }
+                conds[#conds + 1] = { first_signal = q.signal, comparator = "<", constant = q.limit, first_signal_networks = RED, compare_type = "and" }
+              else
+                for _, dsg in pairs(q.demand) do
+                  conds[#conds + 1] = { first_signal = p.signal, comparator = ">=", constant = p.limit, first_signal_networks = RED, compare_type = "or" }
+                  conds[#conds + 1] = { first_signal = q.signal, comparator = "<", constant = q.limit, first_signal_networks = RED, compare_type = "and" }
+                  conds[#conds + 1] = { first_signal = dsg, comparator = ">", constant = 0, first_signal_networks = GREEN, compare_type = "and" }
+                end
+              end
+            end
+          end
+        end
+      end
+      return conds
+    end
+    for _, sk in pairs(run.sinks) do
+      local b = sk.overflow and not sk.mixed and sk.gate.valid and sink_belt(sk)
+      local net = b and b.valid and run.net_of[b.unit_number]
+      if net then
+        rb.ports = rb.ports + 1
+        local sig = new_signal()
+        local deciders = 0
+        for _, m in pairs(run.machines) do
+          local items = m.e.valid and (onto[m.e.unit_number] or {})[net]
+          local r = items and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+          if r then
+            local ok, err = pcall(function()
+              local all = products_of(m, r)
+              local P = {}
+              for _, c in pairs(all) do if not c.fluid and (items[c.name] or items["*"]) then P[#P + 1] = c end end
+              local conds = conditions(P, all)
+              if #conds == 0 then return end
+              local d = place_decider(m.e, with_demand, W.circuit_red)
+              if not d then rb.no_room = rb.no_room + 1; return end
+              d.get_or_create_control_behavior().parameters = { conditions = conds, outputs = { { signal = sig, copy_count_from_input = false, constant = 1 } } }
+              rb.deciders = rb.deciders + 1
+              deciders = deciders + 1
+            end)
+            if not ok then fail("decider", err) end
+          end
+        end
+        if deciders == 0 then
+          -- (No maker here can be stopped by this belt and wanted for something else: the port never opens.)
+          rb.dead_ends = rb.dead_ends + 1
+          sk.dead_end = true
+        elseif b.type == "transport-belt" and pcall(function()
+              assert(wire_to_network(b, W.circuit_red))
+              local cb = b.get_or_create_control_behavior()
+              cb.circuit_condition = { first_signal = sig, comparator = ">", constant = 0 }
+              cb.circuit_enable_disable = true
+            end) then
+          rb.gates_wired = rb.gates_wired + 1
+          sk.wired = true
+          rb.signals[#rb.signals + 1] = { x = sk.pos.x, y = sk.pos.y, signal = sig.name, deciders = deciders }
+        else
+          rb.gates_unwired = rb.gates_unwired + 1
+          sk.dead_end = true
+        end
+      end
+    end
+    -- Fluid ports: a signal each, sent by a decider at every maker with an output box of that fluid on its pipes.
+    for _, g in pairs(run.rgates or {}) do
+      local ok, err = pcall(function()
+        local seg = g.e.get_fluid_segment_id(1)
+        if not seg then g.no_segment = true; return end
+        rb.fluid_ports = rb.fluid_ports + 1
+        local sig = new_signal()
+        g.signal, g.pulse = sig, 0
+        for _, m in pairs(run.machines) do
+          local r = m.e.valid and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+          if r then
+            local all = products_of(m, r)
+            local P = {}
+            for _, c in pairs(all) do if c.fluid and c.name == g.filter.name and c.segs[seg] then P[#P + 1] = c; g.pulse = math.max(g.pulse, 2 * c.amount) end end
+            if #P > 0 then
+              local conds = conditions(P, all)
+              if #conds > 0 then
+                local d = place_decider(m.e, with_demand, W.circuit_red)
+                if d then
+                  d.get_or_create_control_behavior().parameters = { conditions = conds, outputs = { { signal = sig, copy_count_from_input = false, constant = 1 } } }
+                  rb.fluid_deciders = rb.fluid_deciders + 1
+                  g.deciders = (g.deciders or 0) + 1
+                else rb.no_room = rb.no_room + 1 end
+              end
+            end
+          end
+        end
+      end)
+      if not ok then fail("fluid port", err) end
+    end
+    rb.signals_used = next_name
+  end
+
   run.build = {
     blueprint_entities = #bp_entities, ghosts = entity_ghosts, tiles = tiles, revived = revived, failed = failed, modules_inserted = modules,
     power_networks = networks, power_networks_unwired = unwired, entities = counts,
@@ -711,6 +1081,123 @@ local function start(params)
     sinks = #run.sinks, drains = #run.drains, build = { revived = revived, failed = failed, ghosts = entity_ghosts, tiles = tiles,
     power_networks = networks, power_networks_unwired = unwired, modules_inserted = modules }, warnings = warnings,
   }
+end
+
+-- params.relief_demand: what users stand short of, once a second: a machine holding less than a craft's worth of an
+-- ingredient marks that item on the belt networks it takes from (and on a machine that hands to it), that fluid on
+-- its box's pipe network. In a blueprint: a decider at each user per ingredient, on a wire from the machine, putting
+-- a signal of its own for that item and network on a second wire over the poles.
+local function relief_demand(run)
+  if not run.params.relief_demand or game.tick % 60 ~= 29 then return end
+  local items, fluids, direct = {}, {}, {}
+  local hands_to = run.hands_to
+  if not hands_to then
+    hands_to = {}
+    for maker, users in pairs(run.hands or {}) do for u in pairs(users) do hands_to[u] = hands_to[u] or {}; hands_to[u][maker] = true end end
+    run.hands_to = hands_to
+  end
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+    if r then
+      for _, ing in pairs(r.ingredients) do
+        if ing.type == "fluid" then
+          for i = 1, (e.fluids_count or 0) do
+            local flt = e.get_fluid_filter(i)
+            local proto = e.get_fluid_box_prototype(i)
+            if proto and proto.index == nil and proto[1] then proto = proto[1] end
+            if flt and flt.name == ing.name and proto and proto.production_type ~= "output" then
+              local f = e.get_fluid(i)
+              if (f and f.amount or 0) < ing.amount then
+                fluids[ing.name] = fluids[ing.name] or {}
+                for _, seg in pairs(box_segments(e, i)) do fluids[ing.name][seg] = true end
+              end
+            end
+          end
+        elseif e.get_item_count(ing.name) < ing.amount then
+          items[ing.name] = items[ing.name] or {}
+          for net in pairs(run.feeds[e.unit_number] or {}) do items[ing.name][net] = true end
+          for maker in pairs(hands_to[e.unit_number] or {}) do direct[maker] = direct[maker] or {}; direct[maker][ing.name] = true end
+        end
+      end
+    end
+  end
+  run.demand = { items = items, fluids = fluids, direct = direct }
+end
+
+-- What a decider combinator wired to a machine would see (params.relief, params.relief_gate): which of its products
+-- block it, and whether another product of its that some other machine uses is still leaving. A product blocks at
+-- the game's own limit, measured in a sandbox 2026-11-16: a machine stops taking ingredients once five crafts'
+-- expected worth of a product lies in its output (one item at a 50% chance: 3), whatever the recipe's speed, and
+-- reads "output full" from then on; what it already holds it still crafts. A fluid blocks when a craft's worth no
+-- longer fits its box. A catalyst, which comes back into the machine's own input, is neither wanted nor in the way.
+local function relief_scan(run, m)
+  local e = m.e
+  local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+  if not r then return nil end
+  if not run.used_by then
+    run.used_by = {}
+    for _, o in pairs(run.machines) do
+      local ro = o.e.valid and (o.e.get_recipe() or (o.plan_recipe and prototypes.recipe[o.plan_recipe]))
+      if ro then for _, ing in pairs(ro.ingredients) do
+        run.used_by[ing.name] = run.used_by[ing.name] or {}
+        run.used_by[ing.name][o.e.unit_number] = true
+      end end
+    end
+  end
+  local function used(name)
+    for u in pairs(run.used_by[name] or {}) do if u ~= e.unit_number then return true end end
+    return false
+  end
+  -- params.relief_demand: a product still leaving counts as wanted only while a user it can reach stands short of
+  -- it. Room in the output alone is no sign of that: on a belt or pipe shared with other makers, room comes from
+  -- whatever lets anything out, another maker's relief too (a propene maker with lead plates as input ran at 93 times
+  -- its plan and threw the propene away, while the one user of propene and the other user of lead plates stood short).
+  local dm = run.params.relief_demand and (run.demand or { items = {}, fluids = {}, direct = {} })
+  local function wanted(p, box)
+    if not used(p.name) then return false end
+    if not dm then return true end
+    if p.type == "fluid" then
+      local t = dm.fluids[p.name]
+      if t then for _, seg in pairs(box_segments(e, box)) do if t[seg] then return true end end end
+      return false
+    end
+    if (dm.direct[e.unit_number] or {})[p.name] then return true end
+    local t = dm.items[p.name]
+    if t then for net, its in pairs((run.onto or {})[e.unit_number] or {}) do if (its[p.name] or its["*"]) and t[net] then return true end end end
+    return false
+  end
+  local out = e.get_output_inventory()
+  local own = {}
+  for _, ing in pairs(r.ingredients) do own[ing.name] = true end
+  local want, blocking, any_used = false, {}, false
+  for _, p in pairs(r.products) do
+    local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
+    if not own[p.name] and used(p.name) then any_used = true end
+    if own[p.name] then
+    elseif p.type == "item" then
+      local n = out and out.get_item_count(p.name) or 0
+      local limit = 5 * amount * (p.probability or p.independent_probability or 1)
+      if n >= limit and n > 0 then blocking[#blocking + 1] = { p = p, n = n, keep = math.max(0, math.ceil(limit) - math.max(1, math.ceil(amount))) }
+      elseif wanted(p) then want = true end
+    else
+      for k = 1, (e.fluids_count or 0) do
+        local f = e.get_fluid(k)
+        local proto = e.get_fluid_box_prototype(k)
+        if proto and proto.index == nil and proto[1] then proto = proto[1] end
+        local flt = e.get_fluid_filter(k)
+        if proto and proto.production_type == "output" and ((f and f.name == p.name) or (flt and flt.name == p.name)) then
+          local cap = e.get_fluid_capacity(k)
+          local have = f and f.amount or 0
+          if cap - have < amount then blocking[#blocking + 1] = { p = p, k = k, f = f, keep = math.max(0, cap - 2 * amount) }
+          elseif wanted(p, k) then want = true end
+        end
+      end
+    end
+  end
+  -- (A machine none of whose products is used runs to take something away: whatever stops it leaves.)
+  if not any_used then want = true end
+  return { r = r, out = out, want = want, blocking = blocking }
 end
 
 local function flows(run, counting)
@@ -782,7 +1269,7 @@ local function flows(run, counting)
       for _, it in pairs(s.inv.get_contents()) do
         local k = key(it.name, it.quality)
         local n = it.count
-        if caps and caps[k] then
+        if caps and caps[k] and not (run.relief_mode and s.overflow) then
           run.budget = run.budget or {}
           local b = run.budget[k] or 0
           n = math.min(n, math.floor(b))
@@ -793,13 +1280,48 @@ local function flows(run, counting)
           s.inv.remove { name = it.name, quality = it.quality, count = n }
         end
       end
-      if caps then s.gate.disabled_by_script = s.inv.get_item_count() >= 20 end
+      if caps and not (run.relief_mode and s.overflow) then s.gate.disabled_by_script = s.inv.get_item_count() >= 20 end
     end
     -- An overflow (params.overflow: items the factory also uses) takes only while the belt into its loader is
     -- backed up and a maker of the item stands full: the factory's own users always take first, however fast they
     -- run, and a belt that runs on past its users to the edge fills up as their buffer instead of draining what
     -- passed them (Py science 2's stone-brick ring, which nothing adds to, starved that way).
-    if next(overflow) and s.gate.valid and not s.mixed then
+    if run.params.relief_built and s.gate.valid and not s.mixed and s.overflow then
+      -- (Built: the belt before the port is the gate, on its wire. The port itself takes whatever comes; one no maker
+      -- can open, or whose belt no wire reached, stays shut.)
+      s.gate.disabled_by_script = s.dead_end or false
+      local b = s.wired and game.tick % 60 == 11 and sink_belt(s)
+      if b and b.valid then pcall(function() if not b.get_control_behavior().disabled then s.open_s = (s.open_s or 0) + 1 end end) end
+    elseif run.params.relief_gate and s.gate.valid and not s.mixed and s.overflow then
+      -- params.relief_gate: the overflow port of an item the factory uses is a gate on a wire from the makers on its
+      -- belt. Open while one of them has a product at its limit that this belt has carried and another used product
+      -- of its still leaving (relief_scan: what a decider at the machine reads); shut otherwise, whatever the belt
+      -- holds. Nothing is taken at the machine: surplus leaves through the ports the layout has.
+      local b = sink_belt(s)
+      local net = game.tick % 30 == 7 and b and b.valid and run.net_of and run.net_of[b.unit_number]
+      if net then
+        if not s.makers then
+          s.makers = {}
+          for _, m in pairs(run.machines) do
+            if m.e.valid and (run.drops[m.e.unit_number] or {})[net] then s.makers[#s.makers + 1] = m end
+          end
+        end
+        local open = false
+        for _, m in pairs(s.makers) do
+          if m.e.valid then
+            local ok, sc = pcall(relief_scan, run, m)
+            if ok and sc and sc.want then
+              local items = (run.onto[m.e.unit_number] or {})[net] or {}
+              for _, bl in pairs(sc.blocking) do
+                if not bl.k and (items[bl.p.name] or items["*"]) then open = true end
+              end
+            elseif not ok then run.relief_errors = run.relief_errors or {}; run.relief_errors[tostring(sc)] = (run.relief_errors[tostring(sc)] or 0) + 1 end
+          end
+        end
+        s.gate.disabled_by_script = not open
+        if open then s.open_s = (s.open_s or 0) + 0.5 end
+      end
+    elseif next(overflow) and s.gate.valid and not s.mixed then
       local b = sink_belt(s)
       if b and b.valid then
         local mine, full, extra = false, false, false
@@ -841,7 +1363,7 @@ local function flows(run, counting)
         end
         if mine or s.overflow then
           s.overflow = true
-          if not (full and extra and backed_up()) then s.gate.disabled_by_script = true elseif not (caps and s.inv.get_item_count() >= 20) then s.gate.disabled_by_script = false end
+          if run.params.dead_end or not (full and extra and backed_up()) then s.gate.disabled_by_script = true elseif not (caps and s.inv.get_item_count() >= 20) then s.gate.disabled_by_script = false end
         end
       end
     end
@@ -976,7 +1498,9 @@ local function finish(run)
     overflow_last = run.ov_outs and (function() local n, opened, secs_open = 0, 0, 0
       for _, o in pairs(run.ov_outs) do n = n + 1; if o.open_s > 0 then opened = opened + 1; secs_open = secs_open + o.open_s end end
       return { exits = n, opened = opened, open_s = secs_open } end)() or nil,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, void_kept = run.void_kept, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, relief_built = run.rb, relief_fluid_ports = run.rgates and (function() local o = {}
+      for _, g in pairs(run.rgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.open_s or 0, out = g.out, out_measure = g.out_measure, makers = g.makers and #g.makers or nil, no_segment = g.no_segment } end end
+      return o end)() or nil, relieved = run.relieved, relieved_measure = run.relieved_measure, relieved_by = run.relieved_by, relief_errors = run.relief_errors, void_kept = run.void_kept, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
     fluid_gates = run.fgates and (function() local o = {}
       for _, g in pairs(run.fgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.opened or 0,
@@ -1039,7 +1563,7 @@ local function finish(run)
     for k, v in pairs(s.items) do rates[k] = v / secs end
     local b = s.gate.valid and sink_belt(s)
     report.outputs[#report.outputs + 1] = { x = s.pos.x, y = s.pos.y, per_s = rates, net = b and (run.net_of or {})[b.unit_number] or nil,
-      overflow = s.overflow or nil, mixed = s.mixed or nil, ["local"] = s["local"] or nil }
+      overflow = s.overflow or nil, mixed = s.mixed or nil, ["local"] = s["local"] or nil, open_s = s.open_s }
   end
   for _, s in pairs(run.sources) do
     local rates = {}
@@ -1743,6 +2267,7 @@ local function timeline(run)
   for k, v in pairs(run.seeded or {}) do sd[k] = v end
   local vd = {}
   for k, v in pairs(run.voided or {}) do vd[k] = v end
+  for k, v in pairs(run.relieved or {}) do vd[k] = (vd[k] or 0) + v end
   run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st, seeded = sd, voided = vd }
 end
 
@@ -1851,6 +2376,143 @@ local function void_full(run)
           end
         end
       end) end
+    end
+  end
+end
+
+-- params.relief: overflow at the producer, by what a circuit at the machine could read (its own output and nothing
+-- else). Once a second, a machine standing with a full output has a product taken out when that product blocks it (a
+-- product at its limit in the output; its burnt result) AND another product of
+-- its that some other machine uses is still leaving (under the same limit): the machine is wanted for the one and
+-- stopped by the other. A product blocks at the game's own limit: five crafts' worth in the output, or a fluid box
+-- with no room for a craft. A machine whose used products all lie in its
+-- output is wanted for nothing and stands, so no relief lets it run on and eat inputs (the sand washer at 16 times its
+-- plan). Unlike params.void_full it waits for no time and asks no user. With params.dead_end the overflow ports of
+-- items the factory uses stay shut for good: their belts are stock, and surplus leaves here only.
+local function relief(run)
+  if not run.params.relief or game.tick % 60 ~= 30 then return end
+  run.relieved = run.relieved or {}
+  run.relieved_measure = run.relieved_measure or {}
+  run.relieved_by = run.relieved_by or {}
+  for _, m in pairs(run.machines) do
+    local e = m.e
+    if e.valid and not e.disabled_by_script and FULL_OUT[e.status] then
+      local ok, err = pcall(function()
+        local sc = relief_scan(run, m)
+        if not sc then return end
+        local burnt = e.status == defines.entity_status.full_burnt_result_output and e.get_burnt_result_inventory()
+        if not sc.want then return end
+        local function record(k, d)
+          run.relieved[k] = (run.relieved[k] or 0) + d
+          if run.phase == "measure" then
+            run.relieved_measure[k] = (run.relieved_measure[k] or 0) + d
+            local rk = sc.r.name .. " " .. k
+            run.relieved_by[rk] = (run.relieved_by[rk] or 0) + d
+          end
+        end
+        for _, b in pairs(sc.blocking) do
+          if (run.params.void_except or {})[b.p.name] then
+          elseif b.k then
+            e.set_fluid(b.k, { name = b.f.name, amount = b.keep, temperature = b.f.temperature })
+            record("[" .. b.p.name .. "]", b.f.amount - b.keep)
+          else
+            local removed = sc.out.remove { name = b.p.name, count = b.n - b.keep }
+            if removed > 0 then record(b.p.name, removed) end
+          end
+        end
+        if burnt and not burnt.is_empty() then
+          for _, it in pairs(burnt.get_contents()) do
+            local removed = burnt.remove { name = it.name, count = it.count }
+            if removed > 0 then record(it.name, removed) end
+          end
+        end
+      end)
+      if not ok then run.relief_errors = run.relief_errors or {}; run.relief_errors[tostring(err)] = (run.relief_errors[tostring(err)] or 0) + 1 end
+    end
+  end
+end
+
+-- params.relief_gate, params.relief_built: a fluid port lets a little out while a maker on its pipes has no room for a
+-- craft's worth of that fluid and another used product of its still leaves; shut otherwise. In a blueprint: a pump before the port, enabled by a decider at the maker like an item port's belt. (By
+-- script here in both modes: the test copy's port is an infinity pipe.)
+local function relief_fluid_gates(run)
+  if not run.rgates or game.tick % 30 ~= 13 or not (run.params.relief_gate or run.params.relief_built) then return end
+  if run.params.relief_built then
+    -- (Built: the deciders decide; the script is the pump at the port, on while the port's signal is on the red wire.)
+    local anchor = run.rb_anchor
+    if not (anchor and anchor.valid) then return end
+    for _, g in pairs(run.rgates) do
+      if g.e.valid and g.signal then
+        local ok, err = pcall(function()
+          local on = anchor.get_signal(g.signal, defines.wire_connector_id.circuit_red) > 0
+          g.open = on
+          if on then
+            g.open_s = (g.open_s or 0) + 0.5
+            local sf = g.e.get_fluid_segment_fluid(1)
+            if sf and sf.amount > 0 then
+              local got = g.e.remove_fluid_segment_fluid(1, math.min(sf.amount, g.pulse))
+              g.out = (g.out or 0) + (got or 0)
+              if run.phase == "measure" then g.out_measure = (g.out_measure or 0) + (got or 0) end
+            end
+          end
+        end)
+        if not ok then run.relief_errors = run.relief_errors or {}; run.relief_errors[tostring(err)] = (run.relief_errors[tostring(err)] or 0) + 1 end
+      end
+    end
+    return
+  end
+  for _, g in pairs(run.rgates) do
+    if g.e.valid then
+      if not g.makers then
+        g.makers = {}
+        local ok, seg = pcall(function() return g.e.get_fluid_segment_id(1) end)
+        if ok and seg then
+          for _, m in pairs(run.machines) do
+            if m.e.valid then pcall(function()
+              for i = 1, (m.e.fluids_count or 0) do
+                local proto = m.e.get_fluid_box_prototype(i)
+                if proto and proto.index == nil and proto[1] then proto = proto[1] end
+                local flt = m.e.get_fluid_filter(i)
+                if proto and proto.production_type == "output" and flt and flt.name == g.filter.name then
+                  local hit = false
+                  if m.e.has_fluid_segment(i) then hit = m.e.get_fluid_segment_id(i) == seg
+                  else
+                    for _, c in pairs(m.e.get_fluid_box_pipe_connections(i) or {}) do
+                      local j = c.target_fluidbox_index or 1
+                      if c.target and c.target.valid and c.target.has_fluid_segment(j) and c.target.get_fluid_segment_id(j) == seg then hit = true end
+                    end
+                  end
+                  if hit then g.makers[#g.makers + 1] = { m = m, k = i } end
+                end
+              end
+            end) end
+          end
+        else g.no_segment = true end
+      end
+      -- (Two crafts' worth for each maker it stops, every half second it does: a pump on a decider's signal lets out
+      -- little more. Kept four tenths full while open, the pipes had room for every other maker on them as well.)
+      local open, amount = false, 0
+      for _, mk in pairs(g.makers) do
+        if mk.m.e.valid then
+          local ok, sc = pcall(relief_scan, run, mk.m)
+          if ok and sc and sc.want then for _, b in pairs(sc.blocking) do
+            if b.k == mk.k then open = true; amount = amount + 2 * (b.p.amount or ((b.p.amount_min or 0) + (b.p.amount_max or 0)) / 2) end
+          end end
+        end
+      end
+      g.open = open
+      if open then
+        g.open_s = (g.open_s or 0) + 0.5
+        local ok, err = pcall(function()
+          local sf = g.e.get_fluid_segment_fluid(1)
+          if sf and sf.amount > 0 then
+            local got = g.e.remove_fluid_segment_fluid(1, math.min(sf.amount, amount))
+            g.out = (g.out or 0) + (got or 0)
+            if run.phase == "measure" then g.out_measure = (g.out_measure or 0) + (got or 0) end
+          end
+        end)
+        if not ok then run.relief_errors = run.relief_errors or {}; run.relief_errors[tostring(err)] = (run.relief_errors[tostring(err)] or 0) + 1 end
+      end
     end
   end
 end
@@ -2115,6 +2777,9 @@ script.on_event(defines.events.on_tick, function()
   virtual_tanks(run)
   request_need(run)
   void_full(run)
+  relief_demand(run)
+  relief(run)
+  relief_fluid_gates(run)
   sink_temperatures(run)
   overflow_last(run)
   provider_level(run)
