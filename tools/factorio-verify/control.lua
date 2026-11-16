@@ -345,6 +345,13 @@ local function power(run, surface, force, x0, y0)
   return count, unwired
 end
 
+-- How many crafts' expected worth of a product in its output stops a machine taking ingredients: the game's overload
+-- multiplier, one more than the crafts it finishes in a second, at least two.
+local FULL_OUT_STATUS = { [defines.entity_status.full_output] = true }
+local function relief_limit(e, r)
+  return math.max(2, math.ceil(e.crafting_speed / r.energy) + 1)
+end
+
 -- The pipe networks a machine's fluid storage [i] belongs to (its own segment, or those of the pipes it connects to).
 local function box_segments(e, i)
   local out = {}
@@ -946,7 +953,9 @@ local function start(params)
           local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
           local c
           if p.type == "item" then
-            c = { name = p.name, signal = { type = "item", name = p.name }, limit = math.max(1, math.ceil(5 * amount * (p.probability or p.independent_probability or 1))), demand = {} }
+            local stack = prototypes.item[p.name] and prototypes.item[p.name].stack_size or 100
+            c = { name = p.name, signal = { type = "item", name = p.name },
+              limit = math.max(1, math.min(math.ceil(relief_limit(e, r) * amount * (p.probability or p.independent_probability or 1)), stack - math.ceil(amount) + 1)), demand = {} }
             for net, its in pairs(onto[e.unit_number] or {}) do
               if (its[p.name] or its["*"]) and dsig["i:" .. p.name .. ":" .. net] then c.demand[#c.demand + 1] = dsig["i:" .. p.name .. ":" .. net] end
             end
@@ -1190,14 +1199,23 @@ local function relief_scan(run, m)
   local own = {}
   for _, ing in pairs(r.ingredients) do own[ing.name] = true end
   local want, blocking, any_used = false, {}, false
+  -- (The limit in crafts: relief_limit. A survey of every machine standing full in three runs, 2026-11-16: two crafts'
+  -- worth for a craft of 1.25 s or longer, three at 0.75 to 1 s, five at 0.25 s; and a product whose next craft
+  -- would not fit its stack stops the machine whatever the count, 73 flasks at 40 a craft.)
+  local mult = relief_limit(e, r)
+  local most, most_ratio = nil, 0
   for _, p in pairs(r.products) do
     local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
     if not own[p.name] and used(p.name) then any_used = true end
     if own[p.name] then
     elseif p.type == "item" then
       local n = out and out.get_item_count(p.name) or 0
-      local limit = 5 * amount * (p.probability or p.independent_probability or 1)
-      if n >= limit and n > 0 then blocking[#blocking + 1] = { p = p, n = n, keep = math.max(0, math.ceil(limit) - math.max(1, math.ceil(amount))) }
+      local expected = amount * (p.probability or p.independent_probability or 1)
+      local limit = mult * expected
+      local stack = prototypes.item[p.name] and prototypes.item[p.name].stack_size or 100
+      local b = { p = p, n = n, keep = math.max(0, math.min(math.ceil(limit), stack) - math.max(1, math.ceil(amount))) }
+      if expected > 0 and n / expected > most_ratio then most, most_ratio = b, n / expected end
+      if n > 0 and (n >= limit or n + amount > stack) then b.keep = math.min(b.keep, math.max(0, stack - 2 * math.ceil(amount))); blocking[#blocking + 1] = b
       elseif wanted(p) then want = true end
     else
       for k = 1, (e.fluids_count or 0) do
@@ -1216,6 +1234,11 @@ local function relief_scan(run, m)
   end
   -- (A machine none of whose products is used runs to take something away: whatever stops it leaves.)
   if not any_used then want = true end
+  -- (Standing full with nothing at its limit by this count: the product it holds most crafts' worth of is the one.)
+  if #blocking == 0 and most and most_ratio >= 1 and FULL_OUT_STATUS[e.status] then
+    most.keep = math.max(0, math.ceil(most.n - (most.p.amount or 1)))
+    blocking[1] = most
+  end
   return { r = r, out = out, want = want, blocking = blocking }
 end
 
