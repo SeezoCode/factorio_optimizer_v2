@@ -498,9 +498,20 @@ local function start(params)
         -- are stock; relief_fluid_gates lets a craft's worth out for a maker it stops. A fluid overflow kept nine
         -- tenths full, or a planned surplus drained without limit, made every fluid look wanted: a lamp maker with
         -- methane and oxygen beside the lamps ran at 5,000 times its plan.
+        -- (A plain pipe in the infinity pipe's place. An infinity pipe with no filter is no pipe end: it destroys
+        -- what its pipes hold. Tried in the game 2026-11-16: 150 water put into two pipes and such an infinity pipe was
+        -- gone three seconds later. Five batches of runs had every fluid port a hole that way.)
+        -- (The pipe beside it gives the kind: Py's pipes do not join the plain "pipe".)
+        local pos, kind = e.position, "pipe"
+        for _, x in pairs(surface.find_entities_filtered { position = pos, radius = 1.2, type = { "pipe", "pipe-to-ground" }, force = force }) do
+          if x.type == "pipe" then kind = x.name
+          elseif kind == "pipe" and prototypes.entity[(x.name:gsub("%-to%-ground", ""))] then kind = (x.name:gsub("%-to%-ground", "")) end
+        end
+        e.destroy()
+        local np = surface.create_entity { name = kind, position = pos, force = force }
         run.rgates = run.rgates or {}
-        run.rgates[#run.rgates + 1] = { e = e, filter = f, open = false }
-        e.set_infinity_pipe_filter(nil)
+        if np then run.rgates[#run.rgates + 1] = { e = np, filter = f, open = false }
+        else warnings[#warnings + 1] = "a fluid port could not be turned into a pipe end" end
       elseif f and (f.mode == "remove" or ((f.mode == "exactly" or f.mode == "at-most") and (f.percentage or 0) == 0)) then
         e.set_infinity_pipe_filter(nil)
         run.drains[#run.drains + 1] = { e = e, fluid = f.name, pos = bp_pos(run, e.position), amount = 0 }
@@ -954,7 +965,9 @@ local function start(params)
               end
             end
           end
-          if c then c.used = used(p.name); list[#list + 1] = c end
+          -- (params.relief_main: only what the machine was planned for counts as wanted.)
+          local purpose = run.params.relief_main and (run.params.purpose or {})[r.name]
+          if c then c.used = used(p.name) and (not purpose or purpose[p.name] == true); c.any_used = used(p.name); list[#list + 1] = c end
         end
       end
       return list
@@ -963,7 +976,7 @@ local function start(params)
     -- still leaving (and, with demand, asked for).
     local function conditions(P, all)
       local conds, any_used = {}, false
-      for _, q in pairs(all) do if q.used then any_used = true end end
+      for _, q in pairs(all) do if q.any_used then any_used = true end end
       for _, p in pairs(P) do
         if not any_used then
           -- (A machine none of whose products is used runs to take something away: whatever stops it leaves.)
@@ -1154,8 +1167,14 @@ local function relief_scan(run, m)
   -- whatever lets anything out, another maker's relief too (a propene maker with lead plates as input ran at 93 times
   -- its plan and threw the propene away, while the one user of propene and the other user of lead plates stood short).
   local dm = run.params.relief_demand and (run.demand or { items = {}, fluids = {}, direct = {} })
+  -- params.relief_main (with params.purpose): only what the machine was planned for counts as wanted (its main
+  -- product, or every product the plan uses when the main one leaves as a by-product). A by-product with many users
+  -- is always leaving: a propene maker, with water beside the propene, ran for the water at 93 times its plan and
+  -- took the lead plates another machine waited for.
+  local purpose = run.params.relief_main and (run.params.purpose or {})[r.name]
   local function wanted(p, box)
     if not used(p.name) then return false end
+    if purpose and not purpose[p.name] then return false end
     if not dm then return true end
     if p.type == "fluid" then
       local t = dm.fluids[p.name]
@@ -2451,8 +2470,9 @@ local function relief_fluid_gates(run)
             local sf = g.e.get_fluid_segment_fluid(1)
             if sf and sf.amount > 0 then
               local got = g.e.remove_fluid_segment_fluid(1, math.min(sf.amount, g.pulse))
-              g.out = (g.out or 0) + (got or 0)
-              if run.phase == "measure" then g.out_measure = (g.out_measure or 0) + (got or 0) end
+              got = type(got) == "table" and got.amount or tonumber(got) or 0
+              g.out = (g.out or 0) + got
+              if run.phase == "measure" then g.out_measure = (g.out_measure or 0) + got end
             end
           end
         end)
@@ -2507,8 +2527,9 @@ local function relief_fluid_gates(run)
           local sf = g.e.get_fluid_segment_fluid(1)
           if sf and sf.amount > 0 then
             local got = g.e.remove_fluid_segment_fluid(1, math.min(sf.amount, amount))
-            g.out = (g.out or 0) + (got or 0)
-            if run.phase == "measure" then g.out_measure = (g.out_measure or 0) + (got or 0) end
+            got = type(got) == "table" and got.amount or tonumber(got) or 0
+            g.out = (g.out or 0) + got
+            if run.phase == "measure" then g.out_measure = (g.out_measure or 0) + got end
           end
         end)
         if not ok then run.relief_errors = run.relief_errors or {}; run.relief_errors[tostring(err)] = (run.relief_errors[tostring(err)] or 0) + 1 end

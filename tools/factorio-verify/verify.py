@@ -689,6 +689,9 @@ def main():
                     help="with --relief or --relief-gate: another product counts as still wanted only while a user "
                          "on a belt or pipe network the machine puts it on stands short of it (less than a craft's "
                          "worth), not merely while it has room in the output")
+    ap.add_argument("--relief-main", action="store_true",
+                    help="with --relief or --relief-gate: only a product the machine was planned for (the plan's main "
+                         "product of its recipe) counts as still wanted, never a by-product")
     ap.add_argument("--dead-end", action="store_true",
                     help="the overflow ports of items the factory uses stay shut: their belts are stock, and surplus "
                          "leaves at the producer only (--relief or --void-full)")
@@ -810,7 +813,7 @@ def main():
         params["robots_per_roboport"] = args.robots
     if args.debug_at:
         params["debug_at"] = args.debug_at
-    if args.side_cap or args.rate_cap or args.meter or args.meter_file:
+    if args.side_cap or args.rate_cap or args.meter or args.meter_file or args.relief_main:
         fp = built_plan_path(args.target)
         if fp and os.path.exists(fp):
             purpose, crafts = defaultdict(set), defaultdict(float)
@@ -897,8 +900,35 @@ def main():
                     params["meter_bucket"] = args.meter_bucket
                     print(f"meter-bucket: a waiting machine saves up to {args.meter_bucket:.0f} s of its planned rate")
                 print(f"meter: every machine held to {args.meter} times its planned rate")
-            if args.side_cap or args.rate_cap:
+            if args.side_cap or args.rate_cap or args.relief_main:
                 params["purpose"] = {r: {p: True for p in ps} for r, ps in purpose.items()}
+            if args.relief_main:
+                # What each recipe is planned for: its products the plan uses up (a planned surplus of at most a
+                # twentieth of what is made of the item), or failing that the one with the least surplus. The plan's
+                # own "main product" will not do: a slaughterhouse's is bones, and its brains are what the pack needs.
+                pl = json.load(open(fp))
+                made, tg = defaultdict(float), {t["name"] for t in (job or {}).get("targets", [])}
+                for m in pl.get("machines", []):
+                    for k, v in m.get("products", {}).items():
+                        made[k] += v
+                surplus = pl.get("outputs", {})
+                cons = {t["item"] for t in pl.get("terminals", []) if t.get("role") == "CONSUMER"}
+                tight = {}
+                for m in pl.get("machines", []):
+                    rn = m["recipe"].split("#")[0].split("@")[0]
+                    fr = {}
+                    for k in m.get("products", {}):
+                        base = k.split("#")[0]
+                        if base in tg:
+                            fr[base] = 0.0
+                        elif k in cons or base in cons:
+                            fr[base] = min(fr.get(base, 9.0), (surplus.get(k, 0.0) / made[k]) if made[k] > 0 else 0.0)
+                    if fr:
+                        keep = {b for b, f in fr.items() if f <= 0.05} or {min(fr, key=fr.get)}
+                        tight[rn] = tight.get(rn, set()) | keep
+                params["purpose"] = {r: {p: True for p in ps} for r, ps in tight.items()}
+                params["relief_main"] = True
+                print(f"relief-main: {sum(len(v) for v in tight.values())} products of {len(tight)} recipes count as what their machines are wanted for")
             params["plan_crafts"] = dict(crafts)
     if args.robot:
         params["robot"] = args.robot
