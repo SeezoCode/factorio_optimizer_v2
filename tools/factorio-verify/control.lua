@@ -891,7 +891,10 @@ local function start(params)
                     if green_in then to_pole(d, W.combinator_input_green, W.circuit_green) end
                     local cbm = m.get_or_create_control_behavior()
                     cbm.circuit_read_contents = true
-                    pcall(function() cbm.include_in_crafting = false end)
+                    -- (With demand: the craft in hand counts as held, so a machine at work is not short of what it
+                    -- is using up. Counted as short all through each craft, users kept their makers on for good:
+                    -- the chlorine cells at 6.5 times their plan in the first run with pull built.)
+                    pcall(function() cbm.include_in_crafting = with_demand end)
                     return d
                   end
                   d.destroy()
@@ -1229,7 +1232,7 @@ local function start(params)
           icb.circuit_set_filters = true
           local cbm = e.get_or_create_control_behavior()
           cbm.circuit_read_contents = true
-          pcall(function() cbm.include_in_crafting = false end)
+          pcall(function() cbm.include_in_crafting = (run.params.pull_built or run.params.relief_demand) and true or false end)
           local placed = 0
           for _, j in pairs(jobs) do
             local d
