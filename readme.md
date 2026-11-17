@@ -385,6 +385,16 @@ Unknown keys are an error. Everything except `targets` has a default.
   (`steam#250` and other temperatures) still leave at the edge. The test copy holds such a port at most half full
   with an infinity pipe instead, as for an overflow at the edge. Where no void fits beside a port (rare), the port is
   left a dead end and a note says so.
+- `sinks.burn` (a list of items, `["*"]` for every item; off by default): surplus items are destroyed inside the
+  factory instead of leaving it, where the game data has a building for that (Py's burner turns any item into a fifth
+  of an ash). A named item may not leave as a by-product; what is left over of it goes to a burner planned like any
+  other machine, with its fuel by belt and its ash to whoever uses ash, or burned in turn. A raw resource made as a
+  by-product (`stone#byproduct`) is burned under its own name. Py has no burner recipe for items that are fuel
+  (coal dust, logs, carbon black: they burn as the burner's fuel) or for filled barrels, so those still leave. Py
+  logistic science with `["*"]`: 31 burners for 2,700 items an hour, 352 machines instead of 325, and one item port
+  left on the factory's edge besides the pack's. With `blocks.local_sinks` for the fluids, nothing the plan knows of
+  leaves the factory unplanned; what a machine makes beyond its plan in a game still needs somewhere to go (see the
+  check's `--relief-exits`).
 - `blocks.bot_links` (items/s, off by default): a small item between two blocks goes by logistic robots instead of
   a belt through the corridors (Py production science: 444 of its 636 links between blocks carry under 0.1/s). The
   sending block's port belt ends in an inserter into `blocks.bot_provider_chest` (default `passive-provider-chest`),
@@ -1260,6 +1270,19 @@ blueprint: they are the check's own help or control, run by the verify mod.
   wire over the poles and an enable condition on each maker. `--bootstrap`: loop carriers alone, as `--flow` gives
   them. `--duty F`: a rate cap as an enable condition against a shared clock would give it (no saving up; `--meter F`
   is the cap with a token bucket).
+- `--carrier-kit [warmup|run]` (with `--flow` or `--bootstrap`): loop carriers as a player's kit. Only the empty form
+  is handed in (a carrier some recipe makes from no other carrier: barrel, cage, stone brick; a filled one came with
+  its content, and a caged animal with the animal), and no overflow takes a carrier out of a machine. `warmup`
+  (default): during the warm-up only, so a loop that leaks shows while measured; `run`: through the run, counted by
+  the hour (timeline `boot`). `--seed-stop S`: loop starters only in the first S game seconds.
+- `--real-voids`: each fluid output port ends as it would in a game: a pipe, Py's overflow valve (it opens above 80%
+  full) and an exhaust pipe (gases, 1x1) or sinkhole (liquids, 3x3), which need no power and pick their recipe by
+  what arrives, in place of the test copy's infinity pipe. Up to six more pipes where the first tiles are taken;
+  the report's `real_voids` counts what each destroyed and the ports left as they were (`no_room`).
+- `--belt-hold [K]`: each inserter from a machine onto a belt is wired to the belt tile it drops on (read whole belt,
+  hold) and works only while the belt holds less than K crafts' worth (default 2) of the item; with several item
+  products, a decider per product sets the inserter's filter. An experiment that failed as built: what rests at the
+  end of a belt past its users counts as enough, and the maker stops feeding (`docs/NIGHT_LOG_2026-11-17.md`).
 - `--overflow-last` (robot-built factories): a machine's exit to an overflow chest works only once the machine has
   stood full for a minute, where the item has another way out. `--provider-level STACKS`: its exit to a provider chest
   works only while the network holds at most so many stacks, where it also feeds a user itself. The planner writes
