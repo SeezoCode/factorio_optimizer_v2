@@ -4106,14 +4106,16 @@ script.on_event(defines.events.on_tick, function()
           -- params.loop_first: the port of a belt that a loop's own item is put onto stays shut. The moss farm drops
           -- its catalyst onto a belt back to itself and on to the next moss machine; standing full of moss it opened
           -- that belt's overflow, and the catalyst left the factory (46 coarse left of 190).
-          local lf = run.params.loop_first
+          -- (And, with params.carrier_kit, the port of a belt a carrier is put onto: no overflow takes a carrier.)
+          local lf = run.params.loop_first or (run.params.carrier_kit and { inside = {} })
+          local keep = run.params.carrier_kit and run.params.void_except or {}
           if lf then
             for _, me in pairs(g.makers) do
               local onto = ((run.onto or {})[me.unit_number] or {})[g.net] or {}
               local mr
               for _, mm in pairs(run.machines) do if mm.e == me then mr = me.get_recipe() or (mm.plan_recipe and prototypes.recipe[mm.plan_recipe]) end end
               for _, p in pairs(mr and mr.products or {}) do
-                if p.type == "item" and lf.inside[p.name] and (onto[p.name] or onto["*"]) then g.loop = true end
+                if p.type == "item" and (lf.inside[p.name] or keep[p.name]) and (onto[p.name] or onto["*"]) then g.loop = true end
               end
             end
             if g.loop then run.loop_gates = (run.loop_gates or 0) + 1 end
