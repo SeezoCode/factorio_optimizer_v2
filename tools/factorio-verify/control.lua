@@ -3654,8 +3654,9 @@ script.on_event(defines.events.on_tick, function()
             if wanted then known = true; break end
           end
         end
-        -- (A machine whose outputs could not be traced keeps running.)
-        local off = known and not wanted
+        -- (A machine whose outputs could not be traced keeps running. So does one that only destroys a surplus, Py's
+        -- burner with a void recipe (sinks.burn): nobody waits for its ash, and it is there to run whenever it is fed.)
+        local off = known and not wanted and not (e.name == "py-burner" or r.name:find("-pyvoid", 1, true))
         if run.dlog then
           local ds = {}
           for n in pairs(drops) do ds[#ds + 1] = tostring(n) end
