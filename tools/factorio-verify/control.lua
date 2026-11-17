@@ -3500,6 +3500,10 @@ script.on_event(defines.events.on_tick, function()
       end
       if e.valid and not e.disabled_by_script and SHORT[e.status] then
         local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
+        -- (A machine that only destroys a surplus, Py's burner, waits for nothing: it takes what is left over and
+        -- pulls nothing. Counted as a user it ran its makers at their cap, and the blood the plan turns into albumin
+        -- to burn went there first while the animal samples stood short of it.)
+        if e.name == "py-burner" then r = nil end
         if r then
           -- (A burner without fuel waits for its fuel, which is no ingredient of the recipe.)
           if e.status == defines.entity_status.no_fuel then for _, f in pairs(fuel_items(run, r)) do wait_for(e, f) end end
