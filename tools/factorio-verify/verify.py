@@ -707,11 +707,11 @@ def main():
                          "its planned share: the inserters of a network ahead of F times its share (default 1.2) of "
                          "what all of them carried are held, unless every network behind its share is blocked")
     ap.add_argument("--loop-first", nargs="?", type=float, const=1800.0, default=None, metavar="S",
-                    help="with --flow: a production loop feeds itself first. For an item made inside a loop of recipes "
-                         "(a cycle through items in the plan), a user outside the loop has its inserters bringing that "
-                         "item held while a user inside the loop stands short of it and took less than its plan over "
-                         "the last S game seconds (default 1800). A breeding loop planned with no margin otherwise "
-                         "dies out once anything is lost: what the animals' own science takes is never grown back")
+                    help="with --flow: a production loop feeds itself first. A user of an item whose own products come "
+                         "back to a maker of that item within three recipes (0: it makes the item itself) is in the "
+                         "item's loop; any other user has its inserters bringing the item held while a user in the "
+                         "loop stands short of it and took less than its plan over the last S game seconds (default "
+                         "1800). A breeding loop planned with no margin otherwise dies out once anything is lost")
     ap.add_argument("--real-voids", action="store_true",
                     help="fluid output ports end as in a game: Py's overflow valve (opens above 80%% full) and an exhaust "
                          "pipe or sinkhole behind it, in place of the test copy's infinity pipe; counted in the report "
@@ -1203,43 +1203,29 @@ def main():
             for i in r["in"]:
                 for mk in makers.get(i, ()):
                     adj[mk].add(n)
-        # Strongly connected components (Tarjan, iterative): the loops.
-        index, low, comp, stack, on, counter = {}, {}, {}, [], set(), [0]
-        for root in recs:
-            if root in index:
-                continue
-            work = [(root, iter(sorted(adj[root])))]
-            index[root] = low[root] = counter[0]; counter[0] += 1; stack.append(root); on.add(root)
-            while work:
-                v, it = work[-1]
-                advanced = False
-                for w in it:
-                    if w not in index:
-                        index[w] = low[w] = counter[0]; counter[0] += 1; stack.append(w); on.add(w)
-                        work.append((w, iter(sorted(adj[w])))); advanced = True; break
-                    elif w in on:
-                        low[v] = min(low[v], index[w])
-                if advanced:
-                    continue
-                work.pop()
-                if work:
-                    low[work[-1][0]] = min(low[work[-1][0]], low[v])
-                if low[v] == index[v]:
-                    members = []
-                    while True:
-                        w = stack.pop(); on.discard(w); members.append(w)
-                        if w == v:
-                            break
-                    for w in members:
-                        comp[w] = (v, len(members))
+        # A user's way back to a maker of the item, in recipes: 0 when it makes the item itself (a catalyst's farm), 1
+        # when what it makes goes straight into a maker, and so on; None when nothing it makes ever comes back.
+        # Py logistic science is one loop of 53 recipes by way of ash, biomass and barrels, so "in the loop" says
+        # nothing: the users within three steps are the item's own loop, the rest take what that leaves.
+        from collections import deque
+        def back(mks, start):
+            if start in mks:
+                return 0
+            seen, todo = {start}, deque([(start, 0)])
+            while todo:
+                v, d = todo.popleft()
+                for w in adj[v]:
+                    if w in mks:
+                        return d + 1
+                    if w not in seen:
+                        seen.add(w); todo.append((w, d + 1))
+            return None
         inside, outside = defaultdict(dict), defaultdict(dict)
         for item, mks in makers.items():
-            loops = {comp[mk][0] for mk in mks if comp[mk][1] > 1 or mk in adj[mk]}
-            if not loops:
-                continue
             for n, r in recs.items():
                 if item in r["in"]:
-                    (inside if comp[n][0] in loops else outside)[item][n] = True
+                    d = back(mks, n)
+                    (inside if d is not None and d <= 3 else outside)[item][n] = True
         both = {i for i in inside if i in outside}
         params["loop_first"] = {"window": args.loop_first, "inside": {i: inside[i] for i in both}, "outside": {i: outside[i] for i in both}}
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
