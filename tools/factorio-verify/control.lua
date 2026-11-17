@@ -3488,6 +3488,31 @@ script.on_event(defines.events.on_tick, function()
         local cur = e.get_recipe()
         local name = cur and cur.name
         if not name then pcall(function() local pr = e.previous_recipe; if pr then name = type(pr.name) == "string" and pr.name or pr.name.name end end) end
+        -- One that has never crafted (Py science 2's natural-gas barrel filler never saw a barrel): the one planned
+        -- recipe of its categories that takes the fluid it holds.
+        if not name and game.tick % 600 == 0 then
+          pcall(function()
+            local holds = {}
+            for k = 1, (e.fluids_count or 0) do local f = e.get_fluid(k); if f then holds[f.name] = true end end
+            if not next(holds) then return end
+            local cats = e.prototype.crafting_categories or {}
+            local found, n = nil, 0
+            for rn in pairs(run.params.demand_of or {}) do
+              local rp = prototypes.recipe[rn]
+              if rp then
+                local fits = false
+                pcall(function() fits = cats[rp.category] == true end)
+                if not fits then pcall(function() for c in pairs(rp.categories or {}) do if cats[c] then fits = true end end end) end
+                if fits then
+                  local takes = false
+                  for _, ing in pairs(rp.ingredients) do if ing.type == "fluid" and holds[ing.name] then takes = true end end
+                  if takes then found = rn; n = n + 1 end
+                end
+              end
+            end
+            if n == 1 then name = found end
+          end)
+        end
         if name then m.plan_recipe = name; run.learned = (run.learned or 0) + 1 end
       end
       if e.valid and dbg[m.pos.x .. "," .. m.pos.y] then
