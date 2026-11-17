@@ -2713,8 +2713,9 @@ end
 -- params.out_share (F): a maker with inserters onto several belt networks gives each its planned share. An inserter
 -- shares out what a machine makes by turns, whatever the plan gave each belt: Py logistic science's water-barrel filler
 -- has two, onto a belt planned 94% of the barrels and one planned 6%, and half its barrels went to each (1,479 lying on
--- the small one at hour 3.7 while the animals on the big one stood short); its rubber maker the same. For every machine
--- with one item product and inserters onto two or more networks that have a user of it, the script counts what each
+-- the small one at hour 3.7 while the animals on the big one stood short); its rubber maker the same. For every item a
+-- machine puts onto two or more networks by inserters that carry nothing else (their one filter, or the machine's
+-- one item product), the script counts what each
 -- network's inserters carried (their hands, sampled) and holds those of a network that is ahead of F times its share
 -- of what all carried (plus two crafts' worth), unless every network behind its share is blocked (an inserter there
 -- holding an item for five seconds): then a full belt stops nobody. Shares are the planned use of the users on each
@@ -2756,19 +2757,30 @@ local function out_share(run)
       local items = {}
       for _, p in pairs(r and r.products or {}) do if p.type == "item" then items[#items + 1] = p end end
       if r then run.os.done[u] = true end
-      if #items == 1 then
-        local P = items[1].name
+      -- Each inserter's one item: its only filter, or the machine's only item product.
+      for _, o in pairs(g.outs) do
+        o.only = nil
+        local n, f1 = 0, nil
+        pcall(function()
+          if o.e.use_filters then for k = 1, o.e.filter_slot_count do
+            local f = o.e.get_filter(k)
+            if f then n = n + 1; f1 = type(f) == "table" and f.name or f end
+          end end
+        end)
+        if n == 1 then o.only = f1 elseif n == 0 and #items == 1 then o.only = items[1].name end
+      end
+      for _, p in pairs(items) do
+        local P = p.name
         local nets, n, total = {}, 0, 0
         for _, o in pairs(g.outs) do
-          if not nets[o.net] then nets[o.net] = { ins = {}, moved = 0, rate = (use[P] or {})[o.net] or 0 }; n = n + 1; total = total + nets[o.net].rate end
-          table.insert(nets[o.net].ins, { e = o.e, had = 0 })
+          if o.only == P then
+            if not nets[o.net] then nets[o.net] = { ins = {}, moved = 0, rate = (use[P] or {})[o.net] or 0 }; n = n + 1; total = total + nets[o.net].rate end
+            table.insert(nets[o.net].ins, { e = o.e, had = 0 })
+          end
         end
-        -- (Only networks with a user of it count as wanting a share; a maker whose every network is such a one.)
-        local with_user = 0
-        for _, t in pairs(nets) do if t.rate > 0 then with_user = with_user + 1 end end
-        if n >= 2 and with_user >= 1 and total > 0 then
+        if n >= 2 and total > 0 then
           for _, t in pairs(nets) do t.share = t.rate / total end
-          local amount = (items[1].amount or ((items[1].amount_min or 0) + (items[1].amount_max or 0)) / 2)
+          local amount = (p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2)
           run.os.groups[#run.os.groups + 1] = { m = g.m, item = P, nets = nets, slack = math.max(12, 2 * amount), recipe = r.name }
         end
       end
