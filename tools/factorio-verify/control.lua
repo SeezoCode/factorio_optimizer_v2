@@ -3900,7 +3900,7 @@ script.on_event(defines.events.on_tick, function()
     run.quota_held, run.quota_stopped = 0, 0
     -- Pass 1: what each machine took against its quota.
     local over, behind_short = {}, {}
-    local loop_out, loop_short = {}, {}
+    local loop_out, loop_short, out_short = {}, {}, {}
     run.loop_held = 0
     for _, m in pairs(run.machines) do
       local e = m.e
@@ -3957,12 +3957,19 @@ script.on_event(defines.events.on_tick, function()
           if taken > (rates[ing.name] or 0) * span * (run.params.quota_factor or 1.5) + ing.amount * 2 then
             o[ing.name] = true
           elseif mine[ing.name] or (ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name]) then
-            behind_short[ing.name] = (behind_short[ing.name] or 0) + 1
+            -- (A user outside the loop that makes the item, params.loop_first, counts only while the loop is not
+            -- short of it itself: held by that rule it stands short, and counted then it had the quotas hold the
+            -- loop's own users in turn, the breeder off its meat for the sample's sake.)
+            if (loop_out[e.unit_number] or {})[ing.name] then out_short[ing.name] = (out_short[ing.name] or 0) + 1
+            else behind_short[ing.name] = (behind_short[ing.name] or 0) + 1 end
           end
         end
         over[e.unit_number] = o
         m.fq.r = r
       end
+    end
+    for item, n in pairs(out_short) do
+      if not loop_short[item] then behind_short[item] = (behind_short[item] or 0) + n end
     end
     -- Pass 2: hold those ahead while someone behind waits.
     for _, m in pairs(run.machines) do
