@@ -549,7 +549,8 @@ a counted kit, starters for a few hours, real fluid voids, and flow rules that e
 its inserters and the demand signal of its belts.
 
 - **It does not hold yet.** 1.4 to 1.7 times plan for five to twelve hours, then a stop; six causes traced and
-  each got past, the last one two hours before the report.
+  each got past, the last one two hours before the report, and a seventh found behind it (the share rule lets go
+  while the breeders stand at their cap).
 - **The fourth night's 82% and 103% rested on hand-ins**: 44% of the water barrels and nearly half the scrondrix
   were given by the check, which hid that it could not see Py's barrel fillers wait.
 - **Found and fixed in the check, and true of any belt layout we make today:** a maker with several belts shares
@@ -570,4 +571,5 @@ its inserters and the demand signal of its belts.
 | + cap 2, real fluid voids | 9 | the starters and five hours more |
 | + loop-first, quota window, loop ports shut, starters to hour 2 | 9 to 10 | three to four hours after the starters |
 | the same, starters to hour 6 or 8 | 10 | six hours in all (the share rule's fault) |
+| the same, the share rule following demand, starters to hour 4 or 8 | 9 to 10 | seven hours in all |
 | Py science 1 (56 machines), all rules, starters to hour 2 | 48 of 24 due | all 16 hours |
