@@ -620,6 +620,14 @@ data class SinkConfig(
     /** "port": products leave on a belt (or pipe) at the box edge; "chest": an inserter into a chest per producer. */
     val mode: String = "port",
     val chest: String = "steel-chest",
+    /**
+     * Surplus items destroyed inside the factory instead of leaving it: each item named here ("*": every item) may
+     * not leave as a by-product, and what is left over of it goes to the game's own void building for items (Py's
+     * burner, which turns any item into a fifth of an ash), planned like any other machine: its fuel comes by belt,
+     * and its ash goes to whoever uses ash or is burned in turn. Only data with such recipes (see plan.itemVoid).
+     * Fluids end in their own void buildings through blocks.local_sinks.
+     */
+    val burn: List<String> = emptyList(),
 )
 
 @Serializable

@@ -39,6 +39,16 @@ fun recyclingAllowed(r: Recipe, config: RunConfiguration): Boolean {
         else -> if (selfRecycling(r)) r.ingredients[0].name in rc.voidItems else true
     }
 }
+/** Categories whose recipes only destroy an item (Py's burner: any item into a fifth of an ash). */
+internal val ITEM_VOID_CATEGORIES = setOf("py-incineration")
+
+/** A recipe that only destroys one item, in the game's void building for items. */
+fun itemVoid(r: Recipe): Boolean = r.inAny(ITEM_VOID_CATEGORIES) && r.ingredients.size == 1 && !r.ingredients[0].isFluid
+
+/** Whether the job burns the surplus of the item [r] destroys ([config.SinkConfig.burn]); false for any other recipe. */
+fun burnAllowed(r: Recipe, config: RunConfiguration): Boolean =
+    itemVoid(r) && config.sinks.burn.let { b -> "*" in b || gameName(r.ingredients[0].name) in b }
+
 // Emptying barrels gains nothing, except for a fluid nothing else makes (Py's milk: see solveRates); filling them
 // only when a recipe takes a filled barrel (Py does), which the program sees itself.
 private val EXCLUDED_SUBGROUPS = setOf("empty-barrel")
@@ -234,7 +244,8 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
         if (r.inAny(EXCLUDED_CATEGORIES) || (r.subgroup in EXCLUDED_SUBGROUPS && !barrelOnly) || r.name in config.forbiddenRecipes) return@mapNotNull null
         // Hidden recipes (recycling excepted) and the job's skip list (Py's upgrade and voiding recipes),
         // unless a recipe override names it.
-        val named = r.name in config.recipeOverrides.values
+        // (sinks.burn: the void recipes of the items it names, hidden and on Py's skip list as they are.)
+        val named = r.name in config.recipeOverrides.values || burnAllowed(r, config)
         if (!named && r.hidden == true && !r.inAny(RECYCLING_CATEGORIES)) return@mapNotNull null
         if (!named && config.skipRecipes.any { it in r.name }) return@mapNotNull null
         if (!recyclingAllowed(r, config)) return@mapNotNull null
@@ -285,7 +296,9 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     val supplyAllowed = items.filter { it in sourced || (it in raw && !(it in targets && it in makeable)) }.toSet()
     val s = supplyAllowed.associateWith { solver.makeNumVar(0.0, inf, "s_$it") }
     // Items the job voids by recycling may not leave the block (unless they are targets): their surplus is destroyed.
-    val voided = if (config.recycling.mode == "off") emptySet() else config.recycling.voidItems.toSet()
+    // (And the items sinks.burn names, where a void recipe for them was among the choices.)
+    val burned = choices.filter { burnAllowed(it.recipe, config) }.map { it.recipe.ingredients[0].name }.toSet()
+    val voided = (if (config.recycling.mode == "off") emptySet() else config.recycling.voidItems.toSet()) + burned
     val out = items.associateWith { solver.makeNumVar(0.0, if (it in voided && it !in targets) 0.0 else inf, "o_$it") }
     items.forEach { item ->
         val t = targets[item] ?: 0.0
