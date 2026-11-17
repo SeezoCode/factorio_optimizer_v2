@@ -1279,6 +1279,19 @@ blueprint: they are the check's own help or control, run by the verify mod.
   full) and an exhaust pipe (gases, 1x1) or sinkhole (liquids, 3x3), which need no power and pick their recipe by
   what arrives, in place of the test copy's infinity pipe. Up to six more pipes where the first tiles are taken;
   the report's `real_voids` counts what each destroyed and the ports left as they were (`no_room`).
+- `--out-share [F]`: a maker's inserters onto several belt networks carry each network its planned share (the use of
+  the item by the machines that take from that network). Inserters share out by turns whatever the plan gave each
+  belt: Py logistic science's water-barrel filler has one onto a belt planned 94% of its barrels and one onto a belt
+  planned 6%, and half went each way. For every item a machine puts onto two or more networks by inserters that
+  carry nothing else, the script counts what each network's inserters carried and holds those of a network ahead
+  of F times (default 1.2) its share of the total, unless every network behind its share is blocked. It reads its
+  own inserters' hands and nothing else: a counter per inserter and a comparison in a game. Report: `out_share`.
+- `--loop-first [S]` (with `--flow`): a production loop feeds itself first. A user of an item whose own products
+  come back to a maker of that item within three recipes (0: it makes the item itself, a farm and its catalyst) is
+  the item's loop; any other user is held from the item while a user in the loop stands short of it and took less
+  than its plan in the last S game seconds (default 1800). For plans whose loops have no margin: Py's scrondrix give
+  11% more meat than breeding them takes, and the plan spends exactly that. Use with `--quota-window`, or the
+  quotas, which count from the start of the run, lock a breeder out for having run ahead early.
 - `--belt-hold [K]`: each inserter from a machine onto a belt is wired to the belt tile it drops on (read whole belt,
   hold) and works only while the belt holds less than K crafts' worth (default 2) of the item; with several item
   products, a decider per product sets the inserter's filter. An experiment that failed as built: what rests at the
