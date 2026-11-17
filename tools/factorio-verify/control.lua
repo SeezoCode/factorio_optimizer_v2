@@ -1901,7 +1901,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
-    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s,
+    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates,
     out_share = run.os and (function()
       local o = { held_s = run.os.held_s, groups = {} }
       for _, g in pairs(run.os.groups) do
@@ -4103,6 +4103,21 @@ script.on_event(defines.events.on_tick, function()
           for _, m in pairs(run.machines) do
             if m.e.valid and (run.drops[m.e.unit_number] or {})[g.net] then g.makers[#g.makers + 1] = m.e end
           end
+          -- params.loop_first: the port of a belt that a loop's own item is put onto stays shut. The moss farm drops
+          -- its catalyst onto a belt back to itself and on to the next moss machine; standing full of moss it opened
+          -- that belt's overflow, and the catalyst left the factory (46 coarse left of 190).
+          local lf = run.params.loop_first
+          if lf then
+            for _, me in pairs(g.makers) do
+              local onto = ((run.onto or {})[me.unit_number] or {})[g.net] or {}
+              local mr
+              for _, mm in pairs(run.machines) do if mm.e == me then mr = me.get_recipe() or (mm.plan_recipe and prototypes.recipe[mm.plan_recipe]) end end
+              for _, p in pairs(mr and mr.products or {}) do
+                if p.type == "item" and lf.inside[p.name] and (onto[p.name] or onto["*"]) then g.loop = true end
+              end
+            end
+            if g.loop then run.loop_gates = (run.loop_gates or 0) + 1 end
+          end
         end
         local close = true
         for _, e in pairs(g.makers) do
@@ -4117,6 +4132,7 @@ script.on_event(defines.events.on_tick, function()
           end
         end
         for item, nets in pairs(run.short.net) do if overflow[item] and nets[g.net] then close = true; break end end
+        if g.loop then close = true end
         if close then run.gates_closed = run.gates_closed + 1 end
         if close ~= (g.closed or false) then
           g.closed = close
