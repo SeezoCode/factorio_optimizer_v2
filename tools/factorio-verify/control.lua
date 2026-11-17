@@ -2807,10 +2807,14 @@ local function out_share(run)
     for _, g in pairs(run.os.groups) do
       local total = 0
       for _, t in pairs(g.nets) do total = total + t.moved end
-      -- Is some network behind its share free to take more?
+      -- Is some network behind its share free to take more, with a user on it waiting for the item? (Without the
+      -- last: shares are the plan's, and a user running ahead of its plan while another runs behind it got its
+      -- planned share and no more. 867 titanium plates lay on the belt of a user that was switched off while the
+      -- bio-container maker on the other belt stood short, and the batteries behind it.)
       local behind_free = false
-      for _, t in pairs(g.nets) do
-        if t.moved < t.share * total then
+      local waited = run.short and run.short.net and run.short.net[g.item] or {}
+      for net, t in pairs(g.nets) do
+        if t.moved < t.share * total and (waited[net] or not run.params.pull) then
           for _, i in pairs(t.ins) do
             if i.e.valid and not (i.since and game.tick - i.since >= 300) then behind_free = true end
           end
