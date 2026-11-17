@@ -1901,7 +1901,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
-    belt_hold = run.bh, learned_recipes = run.learned,
+    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s,
     out_share = run.os and (function()
       local o = { held_s = run.os.held_s, groups = {} }
       for _, g in pairs(run.os.groups) do
@@ -3900,6 +3900,8 @@ script.on_event(defines.events.on_tick, function()
     run.quota_held, run.quota_stopped = 0, 0
     -- Pass 1: what each machine took against its quota.
     local over, behind_short = {}, {}
+    local loop_out, loop_short = {}, {}
+    run.loop_held = 0
     for _, m in pairs(run.machines) do
       local e = m.e
       local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
@@ -3916,6 +3918,27 @@ script.on_event(defines.events.on_tick, function()
           local now = ing.type == "item" and held(e, ing.name) or math.min(e.get_fluid_count(ing.name) or 0, 2 * ing.amount)
           if c0 == nil then c0 = now; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + now - c0
+          -- params.loop_first: a loop's own users first. A user outside the loop that makes the item is held from it
+          -- while one inside stands short of it and took less than its plan over the last half hour (the window).
+          -- Py logistic science's scrondrix loop is planned with no margin: each animal gives 8.3 meat (5 as meat, the
+          -- rest by way of its bones) and takes 7.5 to breed, and the 11% over is exactly what the animal samples and
+          -- two small users take. Whatever is lost is never grown back, and the loop was dead within two hours of the
+          -- starters ending in every run.
+          local lf = run.params.loop_first
+          if lf and ing.type == "item" then
+            if (lf.outside[ing.name] or {})[r.name] then
+              loop_out[e.unit_number] = loop_out[e.unit_number] or {}
+              loop_out[e.unit_number][ing.name] = true
+            elseif (lf.inside[ing.name] or {})[r.name] then
+              m.lf = m.lf or {}
+              local h = m.lf[ing.name]
+              if not h then h = { { tick = game.tick, taken = taken } }; m.lf[ing.name] = h end
+              if game.tick - h[#h].tick >= 3600 then h[#h + 1] = { tick = game.tick, taken = taken } end
+              while #h > 1 and game.tick - h[2].tick >= (lf.window or 1800) * 60 do table.remove(h, 1) end
+              local span_w = (game.tick - h[1].tick) / 60
+              if mine[ing.name] and taken - h[1].taken < (rates[ing.name] or 0) * span_w then loop_short[ing.name] = true end
+            end
+          end
           -- params.quota_window (seconds): what it took in that last stretch, not since the start, so that running
           -- ahead early on does not lock a machine out for hours (chemical science's REE concentrate made 10 crafts
           -- against a plan of 2 in 20 minutes at the start, then stood held while reduction waited for its sand).
@@ -3959,6 +3982,12 @@ script.on_event(defines.events.on_tick, function()
         for _, ing in pairs(m.fq.r.ingredients) do
           if o[ing.name] and behind_short[ing.name] and not is_pushed(ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+          end
+          if loop_short[ing.name] and (loop_out[e.unit_number] or {})[ing.name] and not is_pushed(ing) then
+            capped[ing.name] = true
+            run.loop_held = run.loop_held + 1
+            run.loop_held_s = run.loop_held_s or {}
+            run.loop_held_s[ing.name] = (run.loop_held_s[ing.name] or 0) + 1
           end
         end
         -- A returned catalyst stuck in its output (it stands full): it takes that item only from its own loop until
