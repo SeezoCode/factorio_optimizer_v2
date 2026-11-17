@@ -10,7 +10,12 @@
 --           (planned intake x factor + two crafts), and for a fluid stops the machine itself, while a machine still
 --           behind its own plan waits for that item anywhere in the factory;
 --   gates:  on each overflow port's belt, stops the belt just past the last machine taking from it while a machine on
---           it waits, or while no machine putting onto it stands with a full output.
+--           it waits, or while no machine putting onto it stands with a full output; for good where a loop's own item
+--           or a carrier is put onto that belt;
+--   loop first: holds the users outside an item's own production loop (tags.flow.loop_out) from it while a user inside
+--           the loop (tags.flow.loop_in) stands short of it and took less than its plan over the last half hour;
+--   shares: where one machine puts an item onto several belt networks, holds the inserters of a network nobody waits
+--           on while another waits, and of one ahead of its planned share while one behind it is free.
 -- Tested in game by tools/factorio-verify/verify.py --flow-mod (the same rules as its --flow).
 
 local CRAFTERS = { ["assembling-machine"] = true, ["furnace"] = true }
@@ -47,8 +52,43 @@ end
 script.on_init(init)
 script.on_configuration_changed(init)
 
+-- A furnace whose blueprint named no recipe (Py's barrel fillers hold none while empty) carries the recipes the plan
+-- has for its kind (tags.flow.candidates: recipe -> its tags). It is taken for the one it crafts, last crafted, or,
+-- before its first craft, the only one that takes a fluid it holds. Unknown, it stood short of nothing: it pulled no
+-- barrels from their maker (the in-game check: 38 water barrels in 2.3 hours of 661 an hour planned).
+local function learn(m)
+  local e = m.e
+  local name
+  local cur = e.get_recipe()
+  if cur and m.cands[cur.name] then name = cur.name end
+  if not name then pcall(function() local pr = e.previous_recipe; if pr then local n = type(pr.name) == "string" and pr.name or pr.name.name; if m.cands[n] then name = n end end end) end
+  if not name then
+    pcall(function()
+      local holds = {}
+      for k = 1, (e.fluids_count or 0) do local f = e.get_fluid(k); if f then holds[f.name] = true end end
+      local found, n = nil, 0
+      for rn in pairs(m.cands) do
+        local rp = prototypes.recipe[rn]
+        local takes = false
+        for _, ing in pairs(rp and rp.ingredients or {}) do if ing.type == "fluid" and holds[ing.name] then takes = true end end
+        if takes then found = rn; n = n + 1 end
+      end
+      if n == 1 then name = found end
+    end)
+  end
+  if not name then return end
+  local f = m.cands[name]
+  local function set(l) if not l then return nil end local t = {}; for _, x in pairs(l) do t[x] = true end return t end
+  m.recipe, m.take, m.target, m.carriers, m.crafts = name, f.take or {}, f.target, f.carriers, f.crafts
+  m.purpose, m.loop_in, m.loop_out = set(f.purpose), set(f.loop_in), set(f.loop_out)
+  m.cands = nil
+  storage.stale = true
+end
+
 local function recipe_of(m)
   local e = m.e
+  if m.cands and e.valid then learn(m) end
+  if m.cands then return nil end
   return e.get_recipe() or (m.recipe and prototypes.recipe[m.recipe])
 end
 
@@ -72,8 +112,9 @@ local function on_built(ev)
   if f and CRAFTERS[e.type] then
     local purpose
     if f.purpose then purpose = {}; for _, p in pairs(f.purpose) do purpose[p] = true end end
+    local function set(l) if not l then return nil end local t = {}; for _, x in pairs(l) do t[x] = true end return t end
     storage.machines[e.unit_number] = { e = e, take = f.take or {}, target = f.target, recipe = tags.recipe, carriers = f.carriers,
-      purpose = purpose, crafts = f.crafts }
+      purpose = purpose, crafts = f.crafts, loop_in = set(f.loop_in), loop_out = set(f.loop_out), cands = f.candidates }
   elseif f and f.overflow and BELTS[e.type] then
     storage.ends[e.unit_number] = { e = e, item = f.overflow }
   elseif f and f.bot and e.type == "logistic-container" then
@@ -121,7 +162,7 @@ local function at(surface, p)
 end
 
 local function rebuild()
-  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {}, sinks = {}, reqs = {} }
+  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {}, sinks = {}, reqs = {}, outs = {} }
   -- A belt's network: everything joined to it through belt neighbours, undergrounds and splitters.
   local function net(b)
     local id = T.net_of[b.unit_number]
@@ -168,7 +209,10 @@ local function rebuild()
             add(T.hands, pk.unit_number, unit)
           end
         elseif pk and pk.unit_number == unit and d then
-          if BELTS[d.type] then add(T.drops, unit, net(d)) end
+          if BELTS[d.type] then
+            add(T.drops, unit, net(d))
+            T.outs[#T.outs + 1] = { e = i, unit = unit, net = net(d) }
+          end
           if CRAFTERS[d.type] then add(T.hands, unit, d.unit_number) end
         end
       end
@@ -202,6 +246,7 @@ local function rebuild()
     local function remap(t) for k, s in pairs(t) do local o = {}; for n in pairs(s) do o[rep[n] or n] = true end; t[k] = o end end
     remap(T.feeds); remap(T.drops)
     for k, n in pairs(T.ins_net) do T.ins_net[k] = rep[n] or n end
+    for _, o in pairs(T.outs) do o.net = rep[o.net] or o.net end
     for _, rq in pairs(T.reqs) do rq.net = rep[rq.belt_net] or rq.belt_net end
   end
   -- Gates: walking up from each overflow port's last belt, the belt just past the first one a machine takes from.
@@ -281,7 +326,123 @@ local function rebuild()
   end
   storage.topo = T
   storage.dirty = false
+  storage.stale = true
   storage.rebuilt = game.tick
+end
+
+-- Shares: for every item a machine puts onto two or more belt networks by inserters that carry nothing else (their
+-- one filter, or the machine's only item product): the networks, each with its share of the planned use by the
+-- machines taking from it, its inserters and those users. Balances are kept across a rebuild.
+local function share_setup(T, recipes)
+  local old = storage.os or {}
+  for _, g in pairs(old) do
+    for _, t in pairs(g.nets) do
+      for _, i in pairs(t.ins) do if t.hold and i.e.valid then i.e.disabled_by_script = false end end
+    end
+  end
+  local os = {}
+  local use, users = {}, {}
+  for unit, m in pairs(storage.machines) do
+    local r = recipes[unit]
+    if r then
+      for _, ing in pairs(r.ingredients) do
+        if ing.type == "item" then
+          local rate = m.take[ing.name] or 0
+          for n in pairs(T.feeds[unit] or {}) do
+            use[ing.name] = use[ing.name] or {}
+            use[ing.name][n] = (use[ing.name][n] or 0) + rate
+            users[ing.name] = users[ing.name] or {}
+            users[ing.name][n] = users[ing.name][n] or {}
+            table.insert(users[ing.name][n], unit)
+          end
+        end
+      end
+    end
+  end
+  local by = {}
+  for _, o in pairs(T.outs or {}) do
+    if o.e.valid then by[o.unit] = by[o.unit] or {}; table.insert(by[o.unit], o) end
+  end
+  for unit, outs in pairs(by) do
+    local r = recipes[unit]
+    if r then
+      local items = {}
+      for _, p in pairs(r.products) do if p.type == "item" then items[#items + 1] = p end end
+      for _, o in pairs(outs) do
+        o.only = nil
+        local n, f1 = 0, nil
+        pcall(function()
+          if o.e.use_filters then for k = 1, o.e.filter_slot_count do
+            local f = o.e.get_filter(k)
+            if f then n = n + 1; f1 = type(f) == "table" and f.name or f end
+          end end
+        end)
+        if n == 1 then o.only = f1 elseif n == 0 and #items == 1 then o.only = items[1].name end
+      end
+      for _, p in pairs(items) do
+        local nets, n, total = {}, 0, 0
+        for _, o in pairs(outs) do
+          if o.only == p.name then
+            if not nets[o.net] then
+              nets[o.net] = { ins = {}, rate = (use[p.name] or {})[o.net] or 0, users = (users[p.name] or {})[o.net] or {} }
+              n = n + 1
+              total = total + nets[o.net].rate
+            end
+            table.insert(nets[o.net].ins, { e = o.e, had = 0 })
+          end
+        end
+        if n >= 2 and total > 0 then
+          local key = unit .. ":" .. p.name
+          local was = old[key]
+          for id, t in pairs(nets) do
+            t.share = t.rate / total
+            local w = was and was.nets[id]
+            t.sum, t.seen, t.bal = w and w.sum or 0, w and w.seen or 0, w and w.bal or 0
+          end
+          local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
+          os[key] = { item = p.name, nets = nets, slack = math.max(12, 2 * amount) }
+        end
+      end
+    end
+  end
+  storage.os = os
+end
+
+-- Gates that stay shut: the port of a belt onto which a machine puts a loop's own item (tags loop_in of its users)
+-- or a carrier. Py's moss farm drops its catalyst onto a belt back to itself; standing full of moss it opened that
+-- belt's overflow and the catalyst left the factory.
+local function loop_gates(T, recipes)
+  local keep = {}
+  for _, m in pairs(storage.machines) do
+    if setting("loop-first") then for item in pairs(m.loop_in or {}) do keep[item] = true end end
+    for _, item in pairs(m.carriers or {}) do keep[item] = true end
+  end
+  local onto = {}
+  for _, o in pairs(T.outs or {}) do
+    if o.e.valid then
+      local t = onto[o.unit] or {}
+      onto[o.unit] = t
+      t[o.net] = t[o.net] or {}
+      local any = true
+      pcall(function()
+        if o.e.use_filters then for k = 1, o.e.filter_slot_count do
+          local f = o.e.get_filter(k)
+          if f then any = false; t[o.net][type(f) == "table" and f.name or f] = true end
+        end end
+      end)
+      if any then t[o.net]["*"] = true end
+    end
+  end
+  for _, g in pairs(T.gates) do
+    g.loop = false
+    for _, unit in pairs(g.makers) do
+      local r = recipes[unit]
+      local on = (onto[unit] or {})[g.net] or {}
+      for _, p in pairs(r and r.products or {}) do
+        if p.type == "item" and keep[p.name] and (on[p.name] or on["*"]) then g.loop = true end
+      end
+    end
+  end
 end
 
 -- Letting go of everything the mod stopped.
@@ -296,6 +457,13 @@ local function release()
     if a.closed and a.belt.valid then pcall(function() a.belt.get_or_create_control_behavior().circuit_enable_disable = false end) end
     a.closed = false
   end
+  for _, g in pairs(storage.os or {}) do
+    for _, t in pairs(g.nets) do
+      if t.hold then for _, i in pairs(t.ins) do if i.e.valid then i.e.disabled_by_script = false end end end
+      t.hold = false
+    end
+  end
+  storage.stale = true
 end
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(ev)
@@ -353,7 +521,8 @@ end
 local function control()
   local T = storage.topo
   local tick = game.tick
-  local stats = { machines = 0, off = 0, held = 0, stopped = 0, gates = 0, gates_closed = 0, capped = 0 }
+  local stats = { machines = 0, off = 0, held = 0, stopped = 0, gates = 0, gates_closed = 0, capped = 0, share_held = 0 }
+  local capped_at = {}   -- machine -> items a quota or the loop-first rule holds it from right now
   -- What machines wait for: item -> belt networks along which one waits, machine -> items, fluids.
   local short_net, short_at, fluid_at, short_fluid = {}, {}, {}, {}
   local function wait(unit, item)
@@ -385,6 +554,12 @@ local function control()
         end
       end
     end
+  end
+
+  if storage.stale then
+    storage.stale = false
+    share_setup(T, recipes)
+    loop_gates(T, recipes)
   end
 
   -- Requester demand (setting): a robot link's requester chest holding less than its request counts as a machine
@@ -599,6 +774,13 @@ local function control()
   if setting("quotas") then
     local factor = setting("quota-factor")
     local over, behind = {}, {}
+    -- Loop first (setting): a loop's own users first. A user of an item whose own products come back to a maker of
+    -- that item within three recipes is in the item's loop (tags.flow.loop_in); any other user of it (loop_out) is
+    -- held from it while one in the loop stands short of it and took less than its plan over the last half hour.
+    -- Py logistic science's scrondrix loop is planned with no margin: each animal gives 8.3 meat and takes 7.5 to
+    -- breed, and the 11% over is exactly what the other users take. Whatever is lost is never grown back otherwise.
+    local lf = setting("loop-first")
+    local loop_out, loop_short, out_short = {}, {}, {}
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
       if e.valid and r then
@@ -612,6 +794,22 @@ local function control()
           local c0 = m.fq.c0[ing.name]
           if c0 == nil then c0 = have; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + have - c0
+          if lf and ing.type == "item" then
+            if m.loop_out and m.loop_out[ing.name] then
+              loop_out[unit] = loop_out[unit] or {}
+              loop_out[unit][ing.name] = true
+            elseif m.loop_in and m.loop_in[ing.name] then
+              m.lf = m.lf or {}
+              local h = m.lf[ing.name]
+              if not h then h = { { tick = tick, taken = taken } }; m.lf[ing.name] = h end
+              if tick - h[#h].tick >= 3600 then h[#h + 1] = { tick = tick, taken = taken } end
+              while #h > 1 and tick - h[2].tick >= 1800 * 60 do table.remove(h, 1) end
+              if short_at[unit] and short_at[unit][ing.name]
+                  and taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60 then
+                loop_short[ing.name] = true
+              end
+            end
+          end
           local span = secs
           -- (A window: what it took in that last stretch, so running ahead early on does not hold it for hours.)
           if window > 0 then
@@ -626,12 +824,16 @@ local function control()
           if taken > (m.take[ing.name] or 0) * span * factor + ing.amount * 2 then
             o[ing.name] = true
           elseif (short_at[unit] and short_at[unit][ing.name]) or (fluid_at[unit] and fluid_at[unit][ing.name]) then
-            behind[ing.name] = true
+            -- (A user outside the loop counts only while the loop is not short of the item itself: held by that
+            -- rule it stands short, and counted then it had the quotas hold the loop's own users in turn.)
+            if (loop_out[unit] or {})[ing.name] then out_short[ing.name] = true else behind[ing.name] = true end
           end
         end
         over[unit] = o
       end
     end
+    for item in pairs(out_short) do if not loop_short[item] then behind[item] = true end end
+    capped_at = {}
     for unit, m in pairs(storage.machines) do
       local e, r, o = m.e, recipes[unit], over[unit]
       if e.valid and r and o then
@@ -641,7 +843,12 @@ local function control()
           if o[ing.name] and behind[ing.name] and not pushed(unit, ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
           end
+          if loop_short[ing.name] and (loop_out[unit] or {})[ing.name] and not pushed(unit, ing) then
+            capped[ing.name] = true
+            stats.loop_held = (stats.loop_held or 0) + 1
+          end
         end
+        if next(capped) then capped_at[unit] = capped end
         m.stop = stop
         if stop then stats.stopped = stats.stopped + 1 end
         -- A returned catalyst stuck in its output (it stands full): it takes that item only from its own loop until
@@ -725,6 +932,7 @@ local function control()
           if full_other(unit) then close = false; break end
         end
         if short_net[g.item] and short_net[g.item][g.net] then close = true end
+        if g.loop then close = true end
         if close then stats.gates_closed = stats.gates_closed + 1 end
         local a = g.anchor
         if a and a.anchor.valid and close ~= a.closed then
@@ -734,6 +942,54 @@ local function control()
       end
     end
   end
+  -- Shares (setting): demand first, the plan's shares when nobody asks. An inserter shares out what a machine makes
+  -- by turns, whatever the plan gave each belt: Py logistic science's water-barrel filler has two belts, planned 94%
+  -- and 6% of its barrels, and half went to each (1,479 lying on the small one while the animals on the big one
+  -- stood short); its renderer's meat went onto the belts of two users planned 0.9% of it while the breeders ran dry.
+  --   a network with a user waiting for the item (short of it, and not held from it by a quota) takes it; among
+  --     those, one ahead of its share is held while another that waits is behind its share and free;
+  --   a network nobody waits on is held while a waiting one is free to take, and otherwise while it is ahead of its
+  --     share and one behind its share is free.
+  -- A balance per network: its share of everything carried since the last look, less what it carried. Behind is a
+  -- balance above zero, ahead one below minus the slack (two crafts' worth, at least 12); it never rises above four
+  -- times the slack, so a belt that was blocked for hours does not claim everything afterwards. Free: one of its
+  -- inserters has not held an item for five seconds. It reads nothing but its own inserters and its users' waiting.
+  if setting("shares") then
+    for _, g in pairs(storage.os or {}) do
+      local d = 0
+      for _, t in pairs(g.nets) do d = d + t.sum - t.seen end
+      for _, t in pairs(g.nets) do
+        t.bal = math.min(t.bal + t.share * d - (t.sum - t.seen), 4 * g.slack)
+        t.seen = t.sum
+      end
+      local wait_free, wait_behind_free, behind_free = false, false, false
+      for _, t in pairs(g.nets) do
+        t.free = false
+        for _, i in pairs(t.ins) do
+          if i.e.valid and not (i.since and tick - i.since >= 300) then t.free = true end
+        end
+        t.wait = false
+        for _, u in pairs(t.users) do
+          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then t.wait = true; break end
+        end
+        t.behind = t.bal > 0
+        t.ahead = t.bal < -g.slack
+        if t.free and t.wait then wait_free = true; if t.behind then wait_behind_free = true end end
+        if t.free and t.behind then behind_free = true end
+      end
+      for _, t in pairs(g.nets) do
+        local hold
+        if t.wait then hold = t.ahead and wait_behind_free
+        else hold = wait_free or (t.ahead and behind_free) end
+        if hold then stats.share_held = stats.share_held + 1 end
+        if hold ~= (t.hold == true) then
+          t.hold = hold
+          for _, i in pairs(t.ins) do if i.e.valid then i.e.disabled_by_script = hold end end
+        end
+      end
+    end
+  end
+
   -- A loop starving for its carriers (barrels, cages, bricks): a machine that has waited two minutes for one, while no
   -- machine making it stands full, gets a message (once in ten minutes per item). The mod puts nothing in itself: a
   -- new loop needs its carriers put in by hand once, as many as its machines and belts hold.
@@ -771,14 +1027,61 @@ script.on_nth_tick(60, function()
   if storage.topo then control() end
 end)
 
+-- Shares: what each network's inserters carried, from their hands.
+script.on_nth_tick(4, function()
+  if not storage.os or not setting("enabled") or not setting("shares") then return end
+  local tick = game.tick
+  for _, g in pairs(storage.os) do
+    for _, t in pairs(g.nets) do
+      for _, i in pairs(t.ins) do
+        if i.e.valid then
+          local h = i.e.held_stack
+          local c = h.valid_for_read and h.name == g.item and h.count or 0
+          if c > i.had then t.sum = t.sum + (c - i.had) end
+          if c > 0 then i.since = i.since or tick else i.since = nil end
+          i.had = c
+        end
+      end
+    end
+  end
+end)
+
 -- /factory-flow: what the mod is doing.
 commands.add_command("factory-flow", "Factory flow: machines controlled, switched off, inserters held, gates closed.", function(c)
   local s = storage.stats or {}
-  local text = string.format("factory-flow: %d machines, %d switched off or stopped (%d on fluids), %d inserters held, %d of %d gates closed, %d capped for side products",
-    s.machines or 0, s.off or 0, s.stopped or 0, s.held or 0, s.gates_closed or 0, s.gates or 0, s.capped or 0)
+  local text = string.format("factory-flow: %d machines, %d switched off or stopped (%d on fluids), %d inserters held (%d for a loop's own users), %d of %d gates closed, %d capped, %d belts held to their share",
+    s.machines or 0, s.off or 0, s.stopped or 0, s.held or 0, s.loop_held or 0, s.gates_closed or 0, s.gates or 0, s.capped or 0, s.share_held or 0)
   if c.player_index then game.get_player(c.player_index).print(text) else rcon.print(text) end
 end)
 
 remote.add_interface("factory-flow", {
   status = function() return storage.stats end,
+  -- Sets one of the mod's own map settings (only the mod that owns a setting may write it): the in-game check's way
+  -- of running the mod with the options it was given.
+  set = function(name, value) settings.global[name] = { value = value }; return settings.global[name].value end,
+  -- What the share rule sees: per machine and item, each belt network's planned share, what it carried, its balance.
+  shares = function()
+    local out = {}
+    for key, g in pairs(storage.os or {}) do
+      local nets = {}
+      for id, t in pairs(g.nets) do
+        nets[#nets + 1] = { net = id, share = t.share, sum = t.sum, bal = t.bal, hold = t.hold == true, wait = t.wait == true, free = t.free ~= false, inserters = #t.ins, users = #t.users }
+      end
+      out[#out + 1] = { key = key, item = g.item, nets = nets }
+    end
+    return out
+  end,
+  -- Counts of what the mod knows: machines, those still without a recipe, loop users, gates kept shut for a loop.
+  info = function()
+    local o = { machines = 0, unknown = 0, loop_in = 0, loop_out = 0, gates = 0, loop_gates = 0, groups = 0 }
+    for _, m in pairs(storage.machines) do
+      o.machines = o.machines + 1
+      if m.cands then o.unknown = o.unknown + 1 end
+      if m.loop_in and next(m.loop_in) then o.loop_in = o.loop_in + 1 end
+      if m.loop_out and next(m.loop_out) then o.loop_out = o.loop_out + 1 end
+    end
+    for _, g in pairs((storage.topo or {}).gates or {}) do o.gates = o.gates + 1; if g.loop then o.loop_gates = o.loop_gates + 1 end end
+    for _ in pairs(storage.os or {}) do o.groups = o.groups + 1 end
+    return o
+  end,
 })

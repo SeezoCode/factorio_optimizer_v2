@@ -456,8 +456,16 @@ end
 
 local function start(params)
   -- params.mod_settings: runtime-global settings of other mods to set first (the factory-flow mod's, for --flow-mod).
+  -- (Only the mod that owns a setting may write it: through the mod's own remote call where it has one. Writing them
+  -- from here failed silently, and every --flow-mod run before 2026-11-18 ran on the mod's defaults.)
+  local unset = {}
   for k, v in pairs(params.mod_settings or {}) do
-    pcall(function() settings.global[k] = { value = v } end)
+    local ok = false
+    if remote.interfaces["factory-flow"] and remote.interfaces["factory-flow"].set then
+      ok = pcall(function() remote.call("factory-flow", "set", k, v) end)
+    end
+    if not ok then ok = pcall(function() settings.global[k] = { value = v } end) end
+    if not ok or settings.global[k] == nil or settings.global[k].value ~= v then unset[#unset + 1] = k end
   end
   local text = table.concat(storage.buf or {})
   storage.buf = {}
@@ -1463,11 +1471,30 @@ local function start(params)
     end
   end
 
+  -- params.bp_exits: the blueprint brought its own overflow exits (verify.py --with-built). Their chests are emptied
+  -- and counted like those the check builds (found in relief(), once the inserters know their targets).
+  if params.bp_exits then run.rx = { machines = 0, inserters = 0, from_blueprint = true }; run.rx_done = {} end
+
   run.build = {
     blueprint_entities = #bp_entities, ghosts = entity_ghosts, tiles = tiles, revived = revived, failed = failed, modules_inserted = modules,
     power_networks = networks, power_networks_unwired = unwired, entities = counts,
   }
   local speed = params.speed or 1000
+  for _, k in pairs(unset) do warnings[#warnings + 1] = "mod setting not applied: " .. k end
+  -- params.export_built: the test copy as it now stands, as a blueprint string in script-output: with the overflow
+  -- exits (params.relief_exits: inserter, chest, deciders and their wires) and the fluid voids (params.real_voids)
+  -- the check built from real parts. tools/factory-flow/tag.py --built merges those into the run's own blueprint.
+  if params.export_built then
+    local ok, err = pcall(function()
+      local inv2 = game.create_inventory(1)
+      local st = inv2[1]
+      st.set_stack({ name = "blueprint" })
+      st.create_blueprint { surface = surface, force = force, area = { { -4000, -4000 }, { 4000, 4000 } }, include_entities = true, include_modules = false, include_fuel = false, always_include_tiles = false }
+      helpers.write_file("factorio-optimizer-built.txt", st.export_stack())
+      inv2.destroy()
+    end)
+    if not ok then warnings[#warnings + 1] = "export of the built copy failed: " .. tostring(err) end
+  end
   run.warmup = math.floor((params.warmup_s or 300) * 60)
   run.measure = math.floor((params.measure_s or 300) * 60)
   run.t0 = game.tick
@@ -1906,7 +1933,7 @@ local function finish(run)
       local o = { held_s = run.os.held_s, groups = {} }
       for _, g in pairs(run.os.groups) do
         local nets = {}
-        for net, t in pairs(g.nets) do nets[#nets + 1] = { share = t.share, moved = t.moved, held_s = t.held_s or 0, inserters = #t.ins } end
+        for net, t in pairs(g.nets) do nets[#nets + 1] = { net = net, share = t.share, moved = t.sum or t.moved, held_s = t.held_s or 0, wait_s = t.wait_s, inserters = #t.ins } end
         o.groups[#o.groups + 1] = { recipe = g.recipe, item = g.item, nets = nets }
       end
       return o end)() or nil,
@@ -2729,7 +2756,7 @@ local function out_share(run)
     local planned_of, rec = {}, {}
     for _, mm in pairs(run.machines) do if mm.e.valid then planned_of[mm.e.unit_number] = mm.plan_recipe; rec[mm.e.unit_number] = mm end end
     -- Planned use of each item on each network: the users whose inserters take from it.
-    local use = {}
+    local use, users = {}, {}
     for _, mm in pairs(run.machines) do
       local e = mm.e
       local r = e.valid and (e.get_recipe() or (mm.plan_recipe and prototypes.recipe[mm.plan_recipe]))
@@ -2740,10 +2767,19 @@ local function out_share(run)
           if ing.type == "item" then
             local rate = ((run.params.demand_of or {})[r.name] or {})[ing.name] or 0
             use[ing.name] = use[ing.name] or {}
-            for net in pairs(nets) do use[ing.name][net] = (use[ing.name][net] or 0) + rate end
+            users[ing.name] = users[ing.name] or {}
+            for net in pairs(nets) do
+              use[ing.name][net] = (use[ing.name][net] or 0) + rate
+              users[ing.name][net] = users[ing.name][net] or {}
+              table.insert(users[ing.name][net], e.unit_number)
+            end
           end
         end
       end
+    end
+    -- (Users are looked up again each time: a filler learns its recipe late.)
+    for _, g in pairs(run.os.groups) do
+      for net, t in pairs(g.nets) do t.users = (users[g.item] or {})[net] or t.users end
     end
     local by_machine = {}
     for _, o in pairs(run.outs) do
@@ -2774,7 +2810,7 @@ local function out_share(run)
         local nets, n, total = {}, 0, 0
         for _, o in pairs(g.outs) do
           if o.only == P then
-            if not nets[o.net] then nets[o.net] = { ins = {}, moved = 0, rate = (use[P] or {})[o.net] or 0 }; n = n + 1; total = total + nets[o.net].rate end
+            if not nets[o.net] then nets[o.net] = { ins = {}, moved = 0, sum = 0, rate = (use[P] or {})[o.net] or 0, users = (users[P] or {})[o.net] or {} }; n = n + 1; total = total + nets[o.net].rate end
             table.insert(nets[o.net].ins, { e = o.e, had = 0 })
           end
         end
@@ -2795,7 +2831,7 @@ local function out_share(run)
           if i.e.valid then
             local h = i.e.held_stack
             local c = h.valid_for_read and h.name == g.item and h.count or 0
-            if c > i.had then t.moved = t.moved + (c - i.had) end
+            if c > i.had then t.moved = t.moved + (c - i.had); t.sum = (t.sum or 0) + (c - i.had) end
             if c > 0 then i.since = i.since or game.tick else i.since = nil end
             i.had = c
           end
@@ -2803,7 +2839,60 @@ local function out_share(run)
       end
     end
   end
-  if game.tick % 30 == 7 then
+  -- params.out_share_mode: "demand" is the rule below as first written (a network behind its share counts only while a
+  -- user on it waits). It lets go whenever nobody waits, and that is most of the time in a factory that runs: the
+  -- renderer's meat went by turns onto the belts of two users planned 0.9% of it (405 lying there) while the breeders,
+  -- at their cap and so not waiting, later stood short. "both": demand first, the plan's shares when nobody asks.
+  --   a network with a user waiting for the item (short of it, its inserters not held by a quota) takes it; among
+  --     those, one ahead of its share is held while another that waits is behind its share and free;
+  --   a network nobody waits on is held while a waiting one is free to take, and otherwise while it is ahead of its
+  --     share and one behind its share is free.
+  -- "strict": the same, and a network nobody waits on that is ahead of its share stays held even when every other
+  -- belt is blocked (the maker then stands full; its overflow at the machine is the way out, not a belt nobody
+  -- asked on). Kept as a balance per network: its share of everything carried since the last look, less what it
+  -- carried itself. Behind is a balance above zero, ahead one below minus the slack (two crafts' worth, at least 12).
+  -- A balance never rises above four times the slack, so a belt that was blocked for hours does not claim everything
+  -- for hours afterwards; what a network took ahead of its share stays against it until its share has caught up (a
+  -- count that fades would hand every small belt its slack again each half hour: for the renderer's meat, 5% of it).
+  local mode = run.params.out_share_mode or "demand"
+  if game.tick % 30 == 7 and mode ~= "demand" then
+    local short_at = run.short and run.short.at or {}
+    local capped_at = run.capped_at or {}
+    for _, g in pairs(run.os.groups) do
+      local d = 0
+      for _, t in pairs(g.nets) do t.seen = t.seen or 0; d = d + (t.sum or 0) - t.seen end
+      for _, t in pairs(g.nets) do
+        t.bal = math.min((t.bal or 0) + t.share * d - ((t.sum or 0) - t.seen), 4 * g.slack)
+        t.seen = t.sum or 0
+      end
+      local wait_free, wait_behind_free, behind_free = false, false, false
+      for _, t in pairs(g.nets) do
+        t.free = false
+        for _, i in pairs(t.ins) do
+          if i.e.valid and not (i.since and game.tick - i.since >= 300) then t.free = true end
+        end
+        t.wait = false
+        for _, u in pairs(t.users or {}) do
+          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then t.wait = true; break end
+        end
+        t.behind = t.bal > 0
+        t.ahead = t.bal < -g.slack
+        if t.free and t.wait then wait_free = true; if t.behind then wait_behind_free = true end end
+        if t.free and t.behind then behind_free = true end
+      end
+      for _, t in pairs(g.nets) do
+        local hold
+        if t.wait then hold = t.ahead and wait_behind_free
+        else hold = wait_free or (t.ahead and (behind_free or mode == "strict")) end
+        for _, i in pairs(t.ins) do
+          if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
+        end
+        if hold then t.held_s = (t.held_s or 0) + 0.5; run.os.held_s = run.os.held_s + 0.5 end
+        if t.wait then t.wait_s = (t.wait_s or 0) + 0.5 end
+      end
+    end
+  end
+  if game.tick % 30 == 7 and mode == "demand" then
     for _, g in pairs(run.os.groups) do
       local total = 0
       for _, t in pairs(g.nets) do total = total + t.moved end
@@ -2951,6 +3040,22 @@ end
 -- items the factory uses stay shut for good: their belts are stock, and surplus leaves here only.
 local function relief(run)
   if not run.params.relief or game.tick % 60 ~= 30 then return end
+  -- (params.bp_exits: a steel chest that an inserter set by circuit fills from a machine is an exit's chest.)
+  if run.params.bp_exits and not run.rx_scanned and game.tick - run.t0 >= 120 then
+    run.rx_scanned = true
+    for _, i in pairs(run.surface.find_entities_filtered { type = "inserter" }) do
+      local cb = i.get_control_behavior()
+      local from, to = i.pickup_target, i.drop_target
+      if cb and cb.circuit_set_filters and from and to and to.name == "steel-chest" and (from.type == "assembling-machine" or from.type == "furnace") then
+        local rr = from.get_recipe()
+        run.rx_chests = run.rx_chests or {}
+        run.rx_chests[#run.rx_chests + 1] = { e = to, recipe = rr and rr.name or from.name }
+        run.rx_done[from.unit_number] = true
+        run.rx.inserters = run.rx.inserters + 1
+        run.rx.machines = run.rx.machines + 1
+      end
+    end
+  end
   run.relieved = run.relieved or {}
   run.relieved_measure = run.relieved_measure or {}
   run.relieved_by = run.relieved_by or {}
@@ -3772,9 +3877,15 @@ script.on_event(defines.events.on_tick, function()
         if purpose then
           m.sc = m.sc or {}
           local h = m.sc
-          h[#h + 1] = { tick = game.tick, pf = e.products_finished }
-          while #h > 1 and game.tick - h[1].tick > 600 * 60 do table.remove(h, 1) end
           local c = (run.params.plan_crafts or {})[r.name]
+          -- params.cap_slow: for a machine planned for fewer than three crafts in ten minutes the cap looks back as
+          -- far as three planned crafts take (four hours at most) and allows one craft over, not three. Ten minutes
+          -- and three crafts let a machine planned for two crafts an hour make twenty-one: Py logistic science's
+          -- powdered quartz ran at 18 times its plan and took half the crushed quartz the glass was planned 96% of.
+          local win, slack = 600, 3
+          if run.params.cap_slow and c and c > 0 and c * 600 < 3 then win, slack = math.min(3 / c, 14400), 1 end
+          if #h == 0 or game.tick - h[#h].tick >= win * 60 / 600 then h[#h + 1] = { tick = game.tick, pf = e.products_finished } end
+          while #h > 1 and game.tick - h[1].tick > win * 60 do table.remove(h, 1) end
           local span = (game.tick - h[1].tick) / 60
           if wanted and not main_wanted and c and run.params.side_cap then
             if e.products_finished - h[1].pf > c * span * run.params.side_cap + 2 then
@@ -3791,7 +3902,7 @@ script.on_event(defines.events.on_tick, function()
           local makes_target = false
           for _, p in pairs(r.products) do if target[p.name] then makes_target = true end end
           if wanted and c and run.params.rate_cap and not makes_target then
-            if e.products_finished - h[1].pf > c * span * run.params.rate_cap + 3 then
+            if e.products_finished - h[1].pf > c * span * run.params.rate_cap + slack then
               wanted = false
               capped = true
               run.side_capped = run.side_capped + 1
@@ -4001,6 +4112,9 @@ script.on_event(defines.events.on_tick, function()
       if not loop_short[item] then behind_short[item] = (behind_short[item] or 0) + n end
     end
     -- Pass 2: hold those ahead while someone behind waits.
+    -- (run.capped_at: which machine is held from which item right now; such a user does not count as waiting for it
+    -- where a maker shares out by demand, params.out_share_mode.)
+    run.capped_at = {}
     for _, m in pairs(run.machines) do
       local e = m.e
       local o = e.valid and over[e.unit_number]
@@ -4036,6 +4150,7 @@ script.on_event(defines.events.on_tick, function()
             if ing.type == "item" and out and out.get_item_count(ing.name) > 0 then returned[ing.name] = true end
           end
         end
+        if next(capped) then run.capped_at[e.unit_number] = capped end
         local drops = (run.drops or {})[e.unit_number] or {}
         for _, i in pairs(run.into[e.unit_number] or {}) do
           if i.valid then

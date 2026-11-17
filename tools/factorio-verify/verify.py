@@ -262,6 +262,13 @@ def run_game(args, bp, params, enabled, have):
         b = started["build"]
         print(f"built {b['revived']} of {b['ghosts']} entities, {started['machines']} machines, "
               f"{b['power_networks']} power networks; running {params['warmup_s']} s warm-up + {params['measure_s']} s measuring", flush=True)
+        if params.get("export_built"):
+            built = os.path.join(user, "script-output", "factorio-optimizer-built.txt")
+            if os.path.exists(built):
+                shutil.copy(built, params["export_built"])
+                print(f"built copy written to {params['export_built']}", flush=True)
+            else:
+                print("the built copy was not written: " + "; ".join(started.get("warnings") or []), flush=True)
         t0, last = time.time(), -1
         while True:
             if game.poll() is not None:
@@ -614,6 +621,10 @@ def main():
     ap.add_argument("--rate-cap", type=float, default=None, metavar="FACTOR",
                     help="with --pull or --flow: no machine runs faster than FACTOR times its plan over the last ten minutes "
                          "(plus three crafts), whatever wants it")
+    ap.add_argument("--cap-slow", action="store_true",
+                    help="with --rate-cap: a machine planned for fewer than three crafts in ten minutes is capped over "
+                         "the time three planned crafts take (at most four hours) plus one craft, not over ten minutes "
+                         "plus three crafts, which lets a machine planned for two crafts an hour make twenty-one")
     ap.add_argument("--meter", type=float, default=None, metavar="FACTOR",
                     help="every machine is held to FACTOR times its planned rate, as a meter would (a token bucket of one "
                          "craft; unlike --rate-cap it holds the slow machines too, and needs neither --pull nor --flow)")
@@ -706,6 +717,13 @@ def main():
                     help="a maker with one item product and inserters onto several belt networks gives each network "
                          "its planned share: the inserters of a network ahead of F times its share (default 1.2) of "
                          "what all of them carried are held, unless every network behind its share is blocked")
+    ap.add_argument("--out-share-mode", choices=["demand", "both", "strict"], default="both",
+                    help="with --out-share: 'both' (default) is demand first and the plan's shares when nobody asks: a "
+                         "network with a user waiting for the item takes it, one nobody waits on is held meanwhile, "
+                         "and when nobody waits a network ahead of its share is held while one behind it is free. "
+                         "'strict': the same, and a network nobody waits on that is ahead of its share stays held even "
+                         "when every other belt is blocked. 'demand': the first form, which lets go whenever nobody "
+                         "waits")
     ap.add_argument("--loop-first", nargs="?", type=float, const=1800.0, default=None, metavar="S",
                     help="with --flow: a production loop feeds itself first. A user of an item whose own products come "
                          "back to a maker of that item within three recipes (0: it makes the item itself) is in the "
@@ -716,6 +734,14 @@ def main():
                     help="fluid output ports end as in a game: Py's overflow valve (opens above 80%% full) and an exhaust "
                          "pipe or sinkhole behind it, in place of the test copy's infinity pipe; counted in the report "
                          "(real_voids)")
+    ap.add_argument("--with-built", default=None, metavar="FILE",
+                    help="with --flow-mod: test the player's blueprint. The overflow exits and fluid voids of FILE (an "
+                         "earlier run's --export-built) are merged into the test copy as blueprint parts, and the check "
+                         "builds none itself; it only empties the exits' chests")
+    ap.add_argument("--export-built", default=None, metavar="FILE",
+                    help="write the test copy as built in the game to FILE as a blueprint string, with the overflow exits "
+                         "(--relief-exits) and fluid voids (--real-voids) the check made from real parts; "
+                         "tools/factory-flow/tag.py --built FILE merges them into the run's blueprint")
     ap.add_argument("--seed-stop", type=float, default=None, metavar="S",
                     help="loop starters are handed out only in the first S game seconds (default: the whole warm-up)")
     ap.add_argument("--bootstrap", action="store_true",
@@ -838,6 +864,8 @@ def main():
         params["pull_ahead"] = args.pull_ahead
     if args.flow or args.pull or args.flow_mod:
         params["pull_stock"] = 1 if args.pull_stock is None else args.pull_stock
+    if args.cap_slow:
+        params["cap_slow"] = True
     if args.quota_window:
         params["quota_window"] = args.quota_window
     if args.quota_factor:
@@ -1150,6 +1178,26 @@ def main():
         bp_obj = flow_tag.decode(bp)
         tagged, ends = flow_tag.tag(bp_obj, json.load(open(built_plan_path(out))), ports or {},
                                     {t["name"] for t in (job or {}).get("targets", [])}, recipes)
+        if args.with_built:
+            # The player's blueprint: the overflow exits and fluid voids an earlier run built from real parts, merged
+            # in (tag.py --built does the same for the blueprint itself). The test copy's infinity pipes where a real
+            # void now stands go; the check only empties the exits' chests, as a player would.
+            ents = bp_obj["blueprint"]["entities"]
+            pipes = {e["name"] for e in ents if "pipe" in e["name"] and "infinity" not in e["name"]} | {"pipe"}
+            before = {(round(e["position"]["x"], 2), round(e["position"]["y"], 2)) for e in ents}
+            added = flow_tag.merge_built(bp_obj, flow_tag.decode(open(args.with_built).read()), pipes)
+            ents = bp_obj["blueprint"]["entities"]
+            new_at = {(round(e["position"]["x"], 2), round(e["position"]["y"], 2)) for e in ents if e["name"] != "infinity-pipe"}
+            gone = [e for e in ents if e["name"] == "infinity-pipe" and (round(e["position"]["x"], 2), round(e["position"]["y"], 2)) in new_at]
+            dead = {e["entity_number"] for e in gone}
+            bp_obj["blueprint"]["entities"] = [e for e in ents if e["entity_number"] not in dead]
+            bp_obj["blueprint"]["wires"] = [w for w in bp_obj["blueprint"].get("wires", []) if w[0] not in dead and w[2] not in dead]
+            if args.relief_exits or args.real_voids:
+                sys.exit("--with-built brings the exits and voids with the blueprint: leave out --relief-exits and --real-voids")
+            params["bp_exits"] = True
+            params["relief"] = True
+            print(f"with-built: {', '.join(f'{v} {k}' for k, v in sorted(added.items()))} from {args.with_built}; "
+                  f"{len(gone)} of the test copy's infinity pipes replaced by real voids")
         bp = flow_tag.encode(bp_obj)
         params["raise_built"] = True
         # The mod's settings as the check's options give them.
@@ -1166,6 +1214,11 @@ def main():
             ms["factory-flow-side-cap"] = args.side_cap
         if args.rate_cap:
             ms["factory-flow-rate-cap"] = args.rate_cap
+        # (The mod's own loop-first and share rules, in place of the check's.)
+        ms["factory-flow-loop-first"] = bool(args.loop_first)
+        ms["factory-flow-shares"] = bool(args.out_share)
+        args.loop_first = None
+        args.out_share = None
         if ms:
             params["mod_settings"] = ms
         # (Loop carriers as --flow puts them in: a player fills a new loop by hand.)
@@ -1183,7 +1236,8 @@ def main():
         print(f"belt-hold: an inserter onto a belt works only while that belt holds less than {args.belt_hold:g} crafts' worth of the item (wired in the game)")
     if args.out_share:
         params["out_share"] = args.out_share
-        print(f"out-share: a maker's inserters onto several belt networks carry each network's planned share (within {args.out_share:g} times)")
+        params["out_share_mode"] = args.out_share_mode
+        print(f"out-share: a maker's inserters onto several belt networks carry each network's planned share (within {args.out_share:g} times), mode {args.out_share_mode}")
     if args.loop_first:
         lp = built_plan_path(args.target)
         if not (lp and os.path.exists(lp)):
@@ -1232,6 +1286,8 @@ def main():
     if args.real_voids:
         params["real_voids"] = True
         print("real-voids: fluid ports end in an overflow valve and Py's exhaust pipe or sinkhole")
+    if args.export_built:
+        params["export_built"] = os.path.abspath(args.export_built)
     if args.seed_stop is not None:
         params["seed_stop"] = args.seed_stop
         print(f"seed-stop: loop starters only in the first {args.seed_stop:g} game seconds")

@@ -10,4 +10,6 @@ data:extend({
   { type = "double-setting", name = "factory-flow-quota-factor", setting_type = "runtime-global", default_value = 1.5, minimum_value = 1, maximum_value = 100, order = "d" },
   { type = "int-setting", name = "factory-flow-quota-window", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 600, order = "d2" },
   { type = "bool-setting", name = "factory-flow-gates", setting_type = "runtime-global", default_value = true, order = "e" },
+  { type = "bool-setting", name = "factory-flow-loop-first", setting_type = "runtime-global", default_value = true, order = "f" },
+  { type = "bool-setting", name = "factory-flow-shares", setting_type = "runtime-global", default_value = true, order = "g" },
 })

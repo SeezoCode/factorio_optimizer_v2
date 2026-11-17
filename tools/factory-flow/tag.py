@@ -13,7 +13,7 @@ import base64
 import json
 import os
 import zlib
-from collections import defaultdict
+from collections import defaultdict, deque
 
 BELTS = ("transport-belt", "underground-belt", "splitter")
 
@@ -80,6 +80,51 @@ def carriers(plan):
     return {base(n) for n in names}
 
 
+def loops(plan):
+    """(inside, outside): item -> the recipes using it that are in the item's own production loop, and those that are
+    not, for every item with users of both kinds. A user is in the loop when what it makes comes back to a maker of
+    the item within three recipes (0: it makes the item itself, a catalyst's farm). Py logistic science is one loop of
+    53 recipes by way of ash, biomass and barrels, so "in a loop at all" says nothing: the users within three steps
+    are the item's own loop, the rest take what that leaves (the mod's loop-first rule)."""
+    recs = {}
+    for m in plan.get("machines", []):
+        r = recs.setdefault(base(m["recipe"]), {"in": set(), "out": set()})
+        r["in"] |= {base(k) for k in m.get("demand", {})}
+        r["out"] |= {base(k) for k in m.get("products", {})}
+    makers = defaultdict(set)
+    for n, r in recs.items():
+        for o in r["out"]:
+            makers[o].add(n)
+    adj = {n: set() for n in recs}
+    for n, r in recs.items():
+        for i in r["in"]:
+            for mk in makers.get(i, ()):
+                adj[mk].add(n)
+
+    def back(mks, start):
+        if start in mks:
+            return 0
+        seen, todo = {start}, deque([(start, 0)])
+        while todo:
+            v, d = todo.popleft()
+            for w in adj[v]:
+                if w in mks:
+                    return d + 1
+                if w not in seen:
+                    seen.add(w)
+                    todo.append((w, d + 1))
+        return None
+
+    inside, outside = defaultdict(set), defaultdict(set)
+    for item, mks in makers.items():
+        for n, r in recs.items():
+            if item in r["in"]:
+                d = back(mks, n)
+                (inside if d is not None and d <= 3 else outside)[item].add(n)
+    both = {i for i in inside if i in outside}
+    return {i: inside[i] for i in both}, {i: outside[i] for i in both}
+
+
 def overflow_ports(plan, ports, targets):
     """Item outputs that only take what is left over: 0/s by-products, and items the factory itself also uses."""
     used = {base(t["item"]) for t in plan.get("terminals", []) if t.get("role") == "CONSUMER"}
@@ -99,11 +144,13 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
     by_tile = {}
     for e in bp["entities"]:
         by_tile[(int(e["position"]["x"] // 1), int(e["position"]["y"] // 1))] = e
-    machines = 0
-    for e in bp["entities"]:
-        r = e.get("recipe") or (e.get("tags") or {}).get("recipe")
-        if not r or r not in intake:
-            continue
+    inside, outside = loops(plan)
+    # (The recipes the plan has for each kind of machine: a furnace whose blueprint names none is one of them.)
+    of_machine = defaultdict(set)
+    for m in plan.get("machines", []):
+        of_machine[m.get("machine")].add(base(m["recipe"]))
+
+    def flow_of(r):
         flow = {"take": {k: round(v, 9) for k, v in intake[r].items()}}
         # (What it was planned for, and how fast: the side-product cap.)
         if purpose.get(r):
@@ -115,7 +162,27 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
         held = sorted(k for k in intake[r] if k in loop)
         if held:
             flow["carriers"] = held
-        e.setdefault("tags", {})["flow"] = flow
+        # (Loop first: the items it takes as one of their loop's own users, and those it takes from outside.)
+        lin = sorted(i for i in inside if r in inside[i])
+        lout = sorted(i for i in outside if r in outside[i])
+        if lin:
+            flow["loop_in"] = lin
+        if lout:
+            flow["loop_out"] = lout
+        return flow
+
+    machines = 0
+    for e in bp["entities"]:
+        r = e.get("recipe") or (e.get("tags") or {}).get("recipe")
+        if not r and of_machine.get(e["name"]):
+            # A furnace with no recipe in the blueprint (an older layout's barrel fillers): the mod picks among the
+            # plan's recipes for that machine once it sees what the furnace holds or crafts.
+            e.setdefault("tags", {})["flow"] = {"candidates": {c: flow_of(c) for c in sorted(of_machine[e["name"]]) if c in intake}}
+            machines += 1
+            continue
+        if not r or r not in intake:
+            continue
+        e.setdefault("tags", {})["flow"] = flow_of(r)
         machines += 1
     ends = 0
     for o in overflow_ports(plan, ports, targets):
@@ -144,6 +211,67 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
     return machines, ends
 
 
+# What the in-game check builds from real parts and a player needs too: an overflow exit at each machine that could
+# stop on a product nobody takes (an inserter set by circuit, its chest, a decider per product), and at each fluid
+# output Py's overflow valve with an exhaust pipe or sinkhole behind it (and the pipes between).
+EXTRAS = {"fast-inserter", "steel-chest", "decider-combinator", "py-overflow-valve", "py-gas-vent", "py-sinkhole"}
+
+
+def merge_built(bp_obj, built_obj, pipes=()):
+    """Adds to the blueprint what the in-game check built into its test copy (verify.py --relief-exits --real-voids
+    --export-built): the entities of the kinds in EXTRAS and pipes that the blueprint does not have, with their
+    circuit wires, and the circuit settings of the machines they are wired to. Returns a count by name."""
+    bp, built = bp_obj["blueprint"], built_obj["blueprint"]
+
+    def key(e, dx=0.0, dy=0.0):
+        return e["name"], round(e["position"]["x"] - dx, 2), round(e["position"]["y"] - dy, 2)
+
+    orig = {key(e): e for e in bp["entities"]}
+    # The game centres a blueprint where it likes: the shift under which most entities fall onto the blueprint's own.
+    anchor = next(e for e in bp["entities"] if e.get("recipe"))
+    sample = built["entities"][::29]
+    best = None
+    for e in built["entities"]:
+        if e["name"] == anchor["name"] and e.get("recipe") == anchor["recipe"]:
+            dx, dy = e["position"]["x"] - anchor["position"]["x"], e["position"]["y"] - anchor["position"]["y"]
+            n = sum(1 for x in sample if key(x, dx, dy) in orig)
+            if best is None or n > best[0]:
+                best = (n, dx, dy)
+    if best is None or best[0] < 0.8 * len(sample):
+        raise SystemExit("the built copy does not match this blueprint")
+    _, dx, dy = best
+    last = max(e["entity_number"] for e in bp["entities"])
+    nxt, num, extras, counts = last + 1, {}, [], defaultdict(int)
+    matched = {}
+    for e in built["entities"]:
+        k = key(e, dx, dy)
+        if k in orig:
+            num[e["entity_number"]] = orig[k]["entity_number"]
+            matched[orig[k]["entity_number"]] = e
+        elif e["name"] in EXTRAS or e["name"] in pipes:
+            c = dict(e)
+            c["position"] = {"x": e["position"]["x"] - dx, "y": e["position"]["y"] - dy}
+            c["entity_number"] = nxt
+            num[e["entity_number"]] = nxt
+            nxt += 1
+            extras.append(c)
+            counts[e["name"]] += 1
+    wires, wired = [], set()
+    for a, ca, b, cb in built.get("wires", []):
+        if a in num and b in num and (num[a] > last or num[b] > last):
+            wires.append([num[a], ca, num[b], cb])
+            wired.update((num[a], num[b]))
+    # (A machine an exit reads: its "read contents" setting.)
+    for e in bp["entities"]:
+        m = matched.get(e["entity_number"])
+        if e["entity_number"] in wired and m is not None and m.get("control_behavior") and "control_behavior" not in e:
+            e["control_behavior"] = m["control_behavior"]
+    bp["entities"] += extras
+    bp["wires"] = bp.get("wires", []) + wires
+    counts["wires"] = len(wires)
+    return dict(counts)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
@@ -151,6 +279,8 @@ def main():
     ap.add_argument("--blueprint", default="best_output_string.txt", help="the blueprint string file in <out>")
     ap.add_argument("--recipes", help="the game data (recipes) the job used, to find what makes the targets; "
                                       "defaults to the job's own data file")
+    ap.add_argument("--built", help="the test copy as the in-game check built it (verify.py --relief-exits --real-voids "
+                                    "--export-built FILE): its overflow exits and fluid voids are added to the blueprint")
     ap.add_argument("-o", "--output", help="where to write the tagged string (default <out>/flow_blueprint.txt)")
     a = ap.parse_args()
     job = json.load(open(a.job))
@@ -163,9 +293,16 @@ def main():
     ports = json.load(open(os.path.join(a.out, "ports.json")))
     bp = decode(open(os.path.join(a.out, a.blueprint)).read())
     machines, ends = tag(bp, plan, ports, targets, recipes)
+    added = {}
+    if a.built:
+        # (Pipes: the kinds the blueprint itself uses; the check extends a port with the neighbouring pipe's own kind.)
+        pipes = {e["name"] for e in bp["blueprint"]["entities"] if "pipe" in e["name"] and "infinity" not in e["name"]} | {"pipe"}
+        added = merge_built(bp, decode(open(a.built).read()), pipes)
     path = a.output or os.path.join(a.out, "flow_blueprint.txt")
     open(path, "w").write(encode(bp))
     print(f"{machines} machines and {ends} overflow belts tagged -> {path}")
+    if added:
+        print("added from the built copy: " + ", ".join(f"{v} {k}" for k, v in sorted(added.items())))
 
 
 if __name__ == "__main__":
