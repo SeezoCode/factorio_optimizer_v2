@@ -315,7 +315,11 @@ fun solveRates(data: RootData, config: RunConfiguration, tun: PlannerTuning, war
     s.forEach { (item, v) -> obj.setCoefficient(v, if (item in fluids) tun.supplyCostFluid else tun.supplyCostItem) }
     // Items the job lets leave on a mixed belt (quality production's other qualities among them) leave almost free:
     // otherwise the planner would rather turn them into something else that leaves in smaller numbers.
-    val mayLeave = config.mixedOutputs.flatMap { it.items }.toSet()
+    // (And, where the job burns surplus items (sinks.burn), the fluids a void building takes: they are vented, which
+    // costs a valve and a 1x1 or 3x3 building. Priced as other surplus, Py logistic science turned 1,920 blood an hour
+    // into albumin to burn, and in the game that machine took the blood the animal samples were planned to get.)
+    val mayLeave = config.mixedOutputs.flatMap { it.items }.toSet() +
+        (if (config.sinks.burn.isNotEmpty()) fluids.filter { GameConstants.fluidVoid(it) != null } else emptyList())
     out.forEach { (item, v) ->
         if (item !in targets) obj.setCoefficient(v, (if (item in fluids) tun.surplusCostFluid else tun.surplusCostItem) * (if (item in mayLeave) 0.01 else 1.0))
     }
