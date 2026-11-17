@@ -542,3 +542,32 @@ circuit logic, and how much of the check's help does it need?
   part) against one that held 97% with one. Go on with robots for the links; take rules 12 and 13 into the planner
   for whatever carries the items.
 
+## The fifth night: the belt factory with fair help only
+
+2026-11-17, [NIGHT_LOG_2026-11-17.md](NIGHT_LOG_2026-11-17.md). The belt-built logistic factory with carriers as
+a counted kit, starters for a few hours, real fluid voids, and flow rules that each read only their own machine,
+its inserters and the demand signal of its belts.
+
+- **It does not hold yet.** 1.4 to 1.7 times plan for five to twelve hours, then a stop; six causes traced and
+  each got past, the last one two hours before the report.
+- **The fourth night's 82% and 103% rested on hand-ins**: 44% of the water barrels and nearly half the scrondrix
+  were given by the check, which hid that it could not see Py's barrel fillers wait.
+- **Found and fixed in the check, and true of any belt layout we make today:** a maker with several belts shares
+  out by turns (a share rule at its output inserters); pull with an overflow runs machines flat out for their
+  smallest product (a cap of twice the plan); a loop planned with no margin dies of any loss (the loop's own users
+  first, quotas over a window, ports of loop items shut).
+- **Voids:** fluids done and cheap (valve, exhaust pipe or sinkhole, no power). Items: `sinks.burn` plans a burner
+  per surplus item and the burners work in the game; the plan around them needs work (it makes things to burn),
+  and the overflow at machines still ends in chests (3,000 to 5,000 items an hour with the cap, eight exits that
+  need a burner).
+- **For the planner:** a margin on loops, a catalyst's return that passes no other user, splitter-free shares or
+  the share rule in the blueprint, and no chain made only to be burned.
+
+| Run (logistic science, belts, fair help) | Pack crafts an hour, of 6.06 due | Held for |
+|---|---|---|
+| kit carriers, starters to hour 8 | 6 to 7 | the starters, then two hours |
+| + share rule | 9 to 10 | the starters, then two hours |
+| + cap 2, real fluid voids | 9 | the starters and five hours more |
+| + loop-first, quota window, loop ports shut, starters to hour 2 | 9 to 10 | three to four hours after the starters |
+| the same, starters to hour 6 or 8 | 10 | six hours in all (the share rule's fault) |
+| Py science 1 (56 machines), all rules, starters to hour 2 | 48 of 24 due | all 16 hours |
