@@ -43,7 +43,13 @@ fun withRawByproducts(data: RootData, config: RunConfiguration): RootData {
         data.items[n]?.let { items[n + BYPRODUCT_SUFFIX] = it.copy(name = n + BYPRODUCT_SUFFIX) }
         data.fluids[n]?.let { fluids[n + BYPRODUCT_SUFFIX] = it.copy(name = n + BYPRODUCT_SUFFIX) }
     }
-    val out = data.copy(recipes = recipes, items = items, fluids = fluids)
+    // sinks.burn: such a by-product is destroyed by the void recipe of the resource it is, under its own name here.
+    val voids = recipes.values.filter { r -> burnAllowed(r, config) && r.ingredients[0].name in renamed && items[r.ingredients[0].name + BYPRODUCT_SUFFIX] != null }
+        .associate { r ->
+            val n = r.ingredients[0].name + BYPRODUCT_SUFFIX
+            (r.name + BYPRODUCT_SUFFIX) to r.copy(name = r.name + BYPRODUCT_SUFFIX, ingredients = listOf(r.ingredients[0].copy(name = n, item = items[n])))
+        }
+    val out = data.copy(recipes = recipes + voids, items = items, fluids = fluids)
     // Products point at their items (stack sizes and the like).
     out.recipes.values.forEach { r ->
         r.products.forEach { p -> if (p.item == null) p.item = items[p.name] }

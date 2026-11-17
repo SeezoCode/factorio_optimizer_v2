@@ -58,4 +58,20 @@ class BurnTest {
             GameConstants.register(base)
         }
     }
+
+    @Test
+    fun `a raw resource made as a by-product is burned under its own name`() {
+        val job = lava(listOf("*")).let { it.copy(rawResources = it.rawResources!! + "stone") }
+        val data = plan.withRawByproducts(modded(), job)
+        try {
+            GameConstants.register(data)
+            val plan = buildPlan(data, job)
+            val recipes = plan.machines.filter { it.machine == "test-burner" }.map { it.recipe }.toSet()
+            // The foundries' stone leaves as "stone#byproduct"; its burners give a fifth back as plain stone, burned in turn.
+            assertEquals(setOf("stone-pyvoid#byproduct", "stone-pyvoid"), recipes)
+            assertTrue(plan.outputs.none { (k, v) -> k.startsWith("stone") && v > 1e-9 }, "${plan.outputs}")
+        } finally {
+            GameConstants.register(base)
+        }
+    }
 }
