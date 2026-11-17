@@ -363,9 +363,11 @@ object GameConstants {
 
     /**
      * A building that destroys [fluid] and the recipe it does it with (Py's sinkhole for liquids, exhaust pipe for
-     * gases), or null. Fluids the program renamed (`#` variants: temperatures, by-products) have none.
+     * gases), or null. A fluid the program renamed (`#` variants: temperatures, by-products) goes by the game's name
+     * for it: the buildings take a fluid at any temperature (tried in the game 2026-11-17: steam at 250 and 500, outlet
+     * gas at 1000, water at 90).
      */
-    fun fluidVoid(fluid: String): Pair<String, String>? = if ('#' in fluid || '@' in fluid) null else FLUID_VOIDS[fluid]
+    fun fluidVoid(fluid: String): Pair<String, String>? = if ('@' in fluid) null else FLUID_VOIDS[gameName(fluid)]
 
     /** Whether [recipe] is one of those buildings' recipes (it destroys a fluid). */
     fun isFluidVoidRecipe(recipe: String?): Boolean = recipe != null && FLUID_VOIDS.values.any { it.second == recipe }

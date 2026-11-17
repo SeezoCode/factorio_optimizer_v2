@@ -175,7 +175,7 @@ class ExportedDataTest {
         try {
             GameConstants.register(modded)
             assertEquals("test-sinkhole" to "petroleum-gas-void", GameConstants.fluidVoid("petroleum-gas"))
-            assertEquals(null, GameConstants.fluidVoid("petroleum-gas#300"))
+            assertEquals("test-sinkhole" to "petroleum-gas-void", GameConstants.fluidVoid("petroleum-gas#300"))
             assertEquals(null, GameConstants.fluidVoid("heavy-oil"))
             val spec = validate.ValidationSpec(requirePower = false, checkRates = false, recipeInfo = validate.recipeInfoFrom(modded))
             for (d in Dir.entries) {

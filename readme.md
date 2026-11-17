@@ -381,8 +381,8 @@ Unknown keys are an error. Everything except `targets` has a default.
   chest backs its belt up like any full output, so empty them now and then (a steel chest holds 48 stacks: hours
   at these rates). A fluid does the same where the game data has a building that destroys it (Py's sinkhole for
   liquids, exhaust pipe for gases): past its port pipe an overflow valve (the block's own users keep what they need:
-  it lets out only above 80% full), then that building, turned to take from it. Fluids the program renamed
-  (`steam#250` and other temperatures) still leave at the edge. The test copy holds such a port at most half full
+  it lets out only above 80% full), then that building, turned to take from it (fluids the program renamed,
+  `steam#250` and other temperatures, too: the buildings take a fluid at any temperature). The test copy holds such a port at most half full
   with an infinity pipe instead, as for an overflow at the edge. Where no void fits beside a port (rare), the port is
   left a dead end and a note says so.
 - `sinks.burn` (a list of items, `["*"]` for every item; off by default): surplus items are destroyed inside the
