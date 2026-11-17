@@ -282,6 +282,8 @@ local function seed_tick(run)
   -- from empty (Py logistic science: tin, acetone, fish, lamps, circuits, tin plate), and 26 to 33 recipes that ran at
   -- their rate stood within three hours of the hand-outs ending; what is handed out is counted by the hour instead.
   if not (run.phase == "warmup" or (run.phase == "measure" and run.params.seed_through)) or game.tick % 120 ~= 0 then return end
+  -- params.seed_stop: only in the first so many game seconds, as a player's one delivery.
+  if run.params.seed_stop and game.tick - run.t0 > run.params.seed_stop * 60 then return end
   local short = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
     [defines.entity_status.fluid_ingredient_shortage] = true }
   for _, p in pairs(run.primes or {}) do
@@ -365,6 +367,91 @@ local function box_segments(e, i)
     end
   end)
   return out
+end
+
+-- params.real_voids: a fluid output port of the test copy (an infinity pipe that drains its pipes, or holds them at
+-- most half full) ends as it would in a game instead: a pipe in its place, Py's overflow valve (it lets through what
+-- lies above 80% full) and behind it the building that destroys the fluid, an exhaust pipe for a gas (1x1) or a
+-- sinkhole for a liquid (3x3). Neither needs power and both pick their recipe by what arrives (measured 2026-11-17:
+-- about 3,500/s through the valve). Counted by the building's crafts (report "real_voids"). False where the three
+-- do not fit, and the port stays the test copy's.
+local function real_void(run, surface, force, e, f)
+  if not run.void_of then
+    run.void_of = {}
+    for _, v in pairs({ { "py-venting", "py-gas-vent" }, { "py-runoff", "py-sinkhole" } }) do
+      if prototypes.entity[v[2]] then
+        for _, rp in pairs(prototypes.get_recipe_filtered { { filter = "category", category = v[1] } }) do
+          local ing = rp.ingredients[1]
+          if ing and ing.type == "fluid" and #rp.ingredients == 1 then run.void_of[ing.name] = { name = v[2], amount = ing.amount } end
+        end
+      end
+    end
+    run.real_voids = { built = {}, no_room = 0, no_void = {} }
+  end
+  local rv = run.real_voids
+  local v = run.void_of[f.name]
+  if not v or not prototypes.entity["py-overflow-valve"] then rv.no_void[f.name] = true; return false end
+  local pos, kind = e.position, "pipe"
+  for _, x in pairs(surface.find_entities_filtered { position = pos, radius = 1.2, type = { "pipe", "pipe-to-ground" }, force = force }) do
+    if x.type == "pipe" then kind = x.name
+    elseif kind == "pipe" and prototypes.entity[(x.name:gsub("%-to%-ground", ""))] then kind = (x.name:gsub("%-to%-ground", "")) end
+  end
+  local D = defines.direction
+  local size = prototypes.entity[v.name].tile_width
+  local half = (size - 1) / 2
+  local FLUID_TYPES = { "pipe", "pipe-to-ground", "infinity-pipe", "storage-tank", "pump", "valve", "furnace", "assembling-machine", "boiler", "generator" }
+  -- Straight out of the port, or behind up to six more pipes where the first tiles are taken (a sinkhole is 3x3).
+  for k = 0, 6 do
+    for _, d in pairs({ { 1, 0, D.west }, { -1, 0, D.east }, { 0, 1, D.north }, { 0, -1, D.south } }) do
+      local chain = {}
+      for i = 1, k do chain[i] = { pos.x + d[1] * i, pos.y + d[2] * i } end
+      local vp = { pos.x + d[1] * (k + 1), pos.y + d[2] * (k + 1) }
+      local sp = { pos.x + d[1] * (k + 2 + half), pos.y + d[2] * (k + 2 + half) }
+      local fits = surface.can_place_entity { name = "py-overflow-valve", position = vp, direction = d[3], force = force }
+        and surface.can_place_entity { name = v.name, position = sp, force = force }
+      -- (A pipe joins whatever holds fluid beside it: the added ones stand clear of everything but their own line.)
+      for _, cp in pairs(chain) do
+        if fits and not surface.can_place_entity { name = kind, position = cp, force = force } then fits = false end
+        if fits then
+          for _, side in pairs({ { d[2], d[1] }, { -d[2], -d[1] } }) do
+            if #surface.find_entities_filtered { position = { cp[1] + side[1], cp[2] + side[2] }, type = FLUID_TYPES, force = force } > 0 then fits = false end
+          end
+        end
+      end
+      if fits then
+        e.destroy()
+        local made = {}
+        made[#made + 1] = surface.create_entity { name = kind, position = pos, force = force }
+        for _, cp in pairs(chain) do made[#made + 1] = surface.create_entity { name = kind, position = cp, force = force } end
+        local valve = surface.create_entity { name = "py-overflow-valve", position = vp, direction = d[3], force = force }
+        made[#made + 1] = valve
+        local sink
+        for _, sd in pairs({ D.north, D.east, D.south, D.west }) do
+          sink = surface.create_entity { name = v.name, position = sp, direction = sd, force = force }
+          local joined = false
+          if sink then
+            for _, c in pairs(sink.get_fluid_box_pipe_connections(1)) do if c.target == valve then joined = true end end
+            if joined then break end
+            sink.destroy(); sink = nil
+          end
+        end
+        if #made == k + 2 and valve and sink then
+          rv.built[#rv.built + 1] = { e = sink, fluid = f.name, amount = v.amount, pos = bp_pos(run, pos), was = f.mode, pipes = k }
+          return true
+        end
+        -- (Could not be joined: back to a port of the test copy.)
+        if sink then sink.destroy() end
+        for _, x in pairs(made) do if x and x.valid then x.destroy() end end
+        local back = surface.create_entity { name = "infinity-pipe", position = pos, force = force }
+        back.set_infinity_pipe_filter(f)
+        rv.no_room = rv.no_room + 1
+        rv.failed = (rv.failed or 0) + 1
+        return true
+      end
+    end
+  end
+  rv.no_room = rv.no_room + 1
+  return false
 end
 
 local function start(params)
@@ -499,7 +586,10 @@ local function start(params)
       end
     elseif t == "infinity-pipe" then
       local f = e.get_infinity_pipe_filter()
-      if f and (run.params.dead_end or run.params.relief_gate or run.params.relief_built)
+      local out_port = f and (f.mode == "remove" or f.mode == "at-most" or (f.mode == "exactly" and (f.percentage or 0) == 0))
+      if out_port and run.params.real_voids and real_void(run, surface, force, e, f) then
+        -- (params.real_voids: the port ends in the game's own void, see real_void.)
+      elseif f and (run.params.dead_end or run.params.relief_gate or run.params.relief_built)
           and (f.mode == "remove" or f.mode == "at-most" or (f.mode == "exactly" and (f.percentage or 0) == 0)) then
         -- Under the relief rules every fluid port is a plain pipe end (no filter: it takes nothing) and its pipes
         -- are stock; relief_fluid_gates lets a craft's worth out for a maker it stops. A fluid overflow kept nine
@@ -762,6 +852,104 @@ local function start(params)
         end end
       end)
       if not filtered then items["*"] = true end
+    end
+  end
+
+  -- params.belt_hold (K crafts' worth): no maker piles a product onto one belt while another goes short, from real
+  -- parts. A machine with two inserters onto two belts shares out what it makes by turns, whatever the plan gave each
+  -- belt (Py logistic science's rubber: 95% planned for the lab instruments, half delivered, 742 lying on the stopper's
+  -- belt). Each inserter from a machine onto a belt gets a green wire to the belt tile it drops on, set to read the
+  -- whole belt (hold), and works only while that belt holds less than K crafts' worth of the item: its enable
+  -- condition for a machine with one item product; with several, a decider per product ("P on the belt < limit" sends
+  -- P) setting the inserter's filter, so it carries what its belt lacks. No script acts after the build.
+  if run.params.belt_hold and run.outs then
+    local W = defines.wire_connector_id
+    local K = run.params.belt_hold
+    local bh = { inserters = 0, direct = 0, deciders = 0, no_belt = 0, no_room = 0, taken = 0, errors = {} }
+    run.bh = bh
+    run.bh_list = {}
+    local hold_mode = defines.control_behavior.transport_belt.content_read_mode.entire_belt_hold
+    local planned_of = {}
+    for _, mm in pairs(run.machines) do if mm.e.valid then planned_of[mm.e.unit_number] = mm.plan_recipe end end
+    for _, o in pairs(run.outs) do
+      local e, m = o.e, o.m
+      local r = e.valid and m.valid and (m.get_recipe() or (planned_of[m.unit_number] and prototypes.recipe[planned_of[m.unit_number]]))
+      if r then
+        local ok, err = pcall(function()
+          bh.inserters = bh.inserters + 1
+          -- The belt tile it drops on; where that is an underground belt or a splitter (no circuit connection), nothing.
+          local belt
+          for _, x in pairs(surface.find_entities_filtered { area = { { e.drop_position.x - 0.05, e.drop_position.y - 0.05 }, { e.drop_position.x + 0.05, e.drop_position.y + 0.05 } }, type = "transport-belt", force = force }) do belt = x end
+          if not belt then bh.no_belt = bh.no_belt + 1; return end
+          local icb = e.get_or_create_control_behavior()
+          if icb.circuit_enable_disable or icb.circuit_set_filters then bh.taken = bh.taken + 1; return end
+          -- Its items: its filters where it has them, else every item the recipe gives.
+          local allowed, any = {}, false
+          if e.use_filters then for k = 1, e.filter_slot_count do
+            local f = e.get_filter(k)
+            if f then any = true; allowed[type(f) == "table" and f.name or f] = true end
+          end end
+          local prods = {}
+          for _, p in pairs(r.products) do
+            if p.type == "item" and (not any or allowed[p.name]) then
+              local amount = (p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2) * (p.probability or 1)
+              prods[#prods + 1] = { name = p.name, limit = math.max(2, math.ceil(K * amount)) }
+            end
+          end
+          if #prods == 0 then return end
+          local bcb = belt.get_or_create_control_behavior()
+          bcb.read_contents = true
+          bcb.read_contents_mode = hold_mode
+          if #prods == 1 then
+            e.get_wire_connector(W.circuit_green, true).connect_to(belt.get_wire_connector(W.circuit_green, true), false)
+            icb.circuit_enable_disable = true
+            icb.circuit_condition = { first_signal = { type = "item", name = prods[1].name }, comparator = "<", constant = prods[1].limit }
+            bh.direct = bh.direct + 1
+            run.bh_list[#run.bh_list + 1] = { e = e, belt = belt, prods = prods }
+            return
+          end
+          local made = {}
+          for _, p in pairs(prods) do
+            local d
+            for ring = 1, 6 do
+              if d then break end
+              for dx = -ring, ring do for dy = -ring, ring do
+                if not d and (math.abs(dx) == ring or math.abs(dy) == ring) then
+                  for _, dir in pairs({ defines.direction.north, defines.direction.east }) do
+                    local pos = { e.position.x + dx + (dir == defines.direction.east and 0.5 or 0), e.position.y + dy + (dir == defines.direction.north and 0.5 or 0) }
+                    if not d and surface.can_place_entity { name = "decider-combinator", position = pos, direction = dir, force = force } then
+                      local c = surface.create_entity { name = "decider-combinator", position = pos, direction = dir, force = force }
+                      if c then
+                        local inp, outp = c.get_wire_connector(W.combinator_input_green, true), c.get_wire_connector(W.combinator_output_red, true)
+                        if c.is_connected_to_electric_network() and inp.can_wire_reach(belt.get_wire_connector(W.circuit_green, true)) and outp.can_wire_reach(e.get_wire_connector(W.circuit_red, true)) then
+                          inp.connect_to(belt.get_wire_connector(W.circuit_green, true), false)
+                          outp.connect_to(e.get_wire_connector(W.circuit_red, true), false)
+                          local sig = { type = "item", name = p.name }
+                          c.get_or_create_control_behavior().parameters = { conditions = { { first_signal = sig, comparator = "<", constant = p.limit } },
+                            outputs = { { signal = sig, copy_count_from_input = false, constant = 1 } } }
+                          d = c
+                        else c.destroy() end
+                      end
+                    end
+                  end
+                end
+              end end
+            end
+            if d then made[#made + 1] = d end
+          end
+          if #made < #prods then
+            for _, c in pairs(made) do c.destroy() end
+            bh.no_room = bh.no_room + 1
+            return
+          end
+          e.use_filters = true
+          pcall(function() e.inserter_filter_mode = "whitelist" end)
+          icb.circuit_set_filters = true
+          bh.deciders = bh.deciders + #made
+          run.bh_list[#run.bh_list + 1] = { e = e, belt = belt, prods = prods }
+        end)
+        if not ok then bh.errors[tostring(err)] = (bh.errors[tostring(err)] or 0) + 1 end
+      end
     end
   end
 
@@ -1189,7 +1377,9 @@ local function start(params)
           local jobs = {}
           for _, p in pairs(items) do
             local conds = {}
-            if not any_used then
+            if (run.params.void_except or {})[p.name] then
+              -- (a loop's carrier stays: params.carrier_kit)
+            elseif not any_used then
               conds[1] = { first_signal = p.signal, comparator = ">=", constant = p.limit }
             else
               for _, q in pairs(all) do
@@ -1225,7 +1415,13 @@ local function start(params)
             end
           end
           if not (ins and chest) then rx.no_room = rx.no_room + 1; return end
-          chest.remove_unfiltered_items = true
+          -- (A plain chest in its place, emptied and counted once a second by relief(): what the exits take, by item
+          -- and recipe, is what a real void behind them would have to burn.)
+          local cpos = chest.position
+          chest.destroy()
+          chest = surface.create_entity { name = "steel-chest", position = cpos, force = force }
+          run.rx_chests = run.rx_chests or {}
+          run.rx_chests[#run.rx_chests + 1] = { e = chest, recipe = r.name }
           rx.inserters = rx.inserters + 1
           local icb = ins.get_or_create_control_behavior()
           ins.use_filters = true
@@ -1618,6 +1814,7 @@ end
 local function begin_measure(run)
   run.phase = "measure"
   run.m0 = game.tick
+  for _, b in pairs(run.real_voids and run.real_voids.built or {}) do if b.e.valid then b.c0 = b.e.products_finished end end
   for _, m in pairs(run.machines) do if m.e.valid then m.start = m.e.products_finished end end
   -- Rocket parts built so far: finished rockets times the parts each takes, plus the parts of the one being built.
   for _, s in pairs(run.silos or {}) do
@@ -1703,7 +1900,17 @@ local function finish(run)
   local report = {
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
-    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, debug = run.debug,
+    inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
+    belt_hold = run.bh, learned_recipes = run.learned,
+    real_voids = run.real_voids and (function()
+      local o = { no_room = run.real_voids.no_room, failed = run.real_voids.failed, no_void = run.real_voids.no_void, built = {} }
+      for _, b in pairs(run.real_voids.built) do
+        if b.e.valid then
+          local c = b.e.products_finished
+          o.built[#o.built + 1] = { fluid = b.fluid, building = b.e.name, x = b.pos.x, y = b.pos.y, was = b.was, voided = c * b.amount, voided_measure = (c - (b.c0 or 0)) * b.amount }
+        end
+      end
+      return o end)() or nil,
     seeded = run.seeded, seeded_measure = run.seeded_measure, where = where_is(run),
     sink_temperatures = run.sink_temps,
     provider_level = run.pv_outs and (function()
@@ -2490,7 +2697,9 @@ local function timeline(run)
   local vd = {}
   for k, v in pairs(run.voided or {}) do vd[k] = v end
   for k, v in pairs(run.relieved or {}) do vd[k] = (vd[k] or 0) + v end
-  run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st, seeded = sd, voided = vd }
+  local bt = {}
+  for k, v in pairs(run.bootstrapped or {}) do bt[k] = v end
+  run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st, seeded = sd, voided = vd, boot = bt }
 end
 
 -- params.void_full, a helper ("virtual sinks"): a machine standing with a full output and not switched off by flow
@@ -2616,6 +2825,22 @@ local function relief(run)
   run.relieved = run.relieved or {}
   run.relieved_measure = run.relieved_measure or {}
   run.relieved_by = run.relieved_by or {}
+  for _, c in pairs(run.rx_chests or {}) do
+    if c.e.valid then
+      local inv = c.e.get_inventory(defines.inventory.chest)
+      if inv and not inv.is_empty() then
+        for _, it in pairs(inv.get_contents()) do
+          run.relieved[it.name] = (run.relieved[it.name] or 0) + it.count
+          if run.phase == "measure" then
+            run.relieved_measure[it.name] = (run.relieved_measure[it.name] or 0) + it.count
+            local rk = c.recipe .. " " .. it.name
+            run.relieved_by[rk] = (run.relieved_by[rk] or 0) + it.count
+          end
+        end
+        inv.clear()
+      end
+    end
+  end
   for _, m in pairs(run.machines) do
     local e = m.e
     if e.valid and not e.disabled_by_script and FULL_OUT[e.status] then
@@ -3129,6 +3354,16 @@ script.on_event(defines.events.on_tick, function()
     run.dlog = dlog
     for _, m in pairs(run.machines) do
       local e = m.e
+      -- A furnace-type machine with no planned recipe on record (a layout from before blueprints carried it) is taken
+      -- to be planned for what it crafts: Py's barrel fillers hold no recipe while empty, and so stood short of
+      -- nothing, pulled no barrels from their maker and were given none (Py logistic science: 38 water barrels in
+      -- 2.3 hours of 661 an hour planned, once the check stopped handing filled barrels to the animals).
+      if e.valid and not m.plan_recipe and e.type == "furnace" then
+        local cur = e.get_recipe()
+        local name = cur and cur.name
+        if not name then pcall(function() local pr = e.previous_recipe; if pr then name = type(pr.name) == "string" and pr.name or pr.name.name end end) end
+        if name then m.plan_recipe = name; run.learned = (run.learned or 0) + 1 end
+      end
       if e.valid and dbg[m.pos.x .. "," .. m.pos.y] then
         local r = e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe])
         local ings = {}
@@ -3629,9 +3864,26 @@ script.on_event(defines.events.on_tick, function()
   -- no empty barrels, and the animals that give barrels back get them only with water barrels. (A ring with too many
   -- locks: a full maker stops this.)
   -- (params.bootstrap: this alone, under another flow control such as the factory-flow mod: a player's carriers.)
-  if (run.params.flow or run.params.bootstrap) and game.tick % 60 == 0 and run.short then
+  -- params.carrier_kit: as a player's kit. Only the empty form is handed in (a carrier some recipe makes from no other
+  -- carrier: barrel, cage, stone brick; a caged scrondrix handed in came with the scrondrix, and the logistic factory
+  -- took 520 of them in eight hours, nearly half its animals), and with "warmup" only during the warm-up.
+  if (run.params.flow or run.params.bootstrap) and game.tick % 60 == 0 and run.short
+      and not (run.params.carrier_kit == "warmup" and run.phase ~= "warmup") then
     local carrier = {}
     for _, n in pairs(run.params.seed_carriers or {}) do carrier[n] = true end
+    if run.params.carrier_kit then
+      if not run.carrier_base then
+        run.carrier_base = {}
+        for _, rp in pairs(prototypes.recipe) do
+          local from_carrier, any = false, false
+          for _, ing in pairs(rp.ingredients) do any = true; if carrier[ing.name] then from_carrier = true end end
+          if any and not from_carrier then
+            for _, p in pairs(rp.products) do if carrier[p.name] and p.type == "item" then run.carrier_base[p.name] = true end end
+          end
+        end
+      end
+      carrier = run.carrier_base
+    end
     local full = {}
     for _, m in pairs(run.machines) do
       local e = m.e

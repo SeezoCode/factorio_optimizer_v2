@@ -692,6 +692,22 @@ def main():
     ap.add_argument("--relief-main", action="store_true",
                     help="with --relief or --relief-gate: only a product the machine was planned for (the plan's main "
                          "product of its recipe) counts as still wanted, never a by-product")
+    ap.add_argument("--carrier-kit", nargs="?", const="warmup", choices=["warmup", "run"],
+                    help="loop carriers as a player's kit: the check hands in only the empty form (barrels, cages, plain "
+                         "bricks: a carrier some recipe makes from no other carrier), never a filled one (a caged animal "
+                         "came with the animal), and no overflow takes a carrier out of a machine. 'warmup' (default): "
+                         "handed in during the warm-up only, so a loop that leaks shows while measured; 'run': through "
+                         "the whole run, counted, so the count while measured is the leak")
+    ap.add_argument("--belt-hold", nargs="?", type=float, const=2.0, default=None, metavar="K",
+                    help="built in the game: each inserter from a machine onto a belt is wired to that belt (read whole "
+                         "belt) and works only while the belt holds less than K crafts' worth (default 2) of the item, "
+                         "so a maker with two belts stops sharing out by turns once one of them has enough")
+    ap.add_argument("--real-voids", action="store_true",
+                    help="fluid output ports end as in a game: Py's overflow valve (opens above 80%% full) and an exhaust "
+                         "pipe or sinkhole behind it, in place of the test copy's infinity pipe; counted in the report "
+                         "(real_voids)")
+    ap.add_argument("--seed-stop", type=float, default=None, metavar="S",
+                    help="loop starters are handed out only in the first S game seconds (default: the whole warm-up)")
     ap.add_argument("--bootstrap", action="store_true",
                     help="a loop starved of its carrier for two minutes (barrels, cages) is given it, as --flow does and "
                          "as a player fills a new loop by hand; nothing else of --flow")
@@ -974,6 +990,8 @@ def main():
         params["fluid_gates"] = True
     if args.overflow_keep is not None:
         params["overflow_keep"] = args.overflow_keep
+    if args.relief_exits:
+        args.relief = True  # (fluids, and machines with no room for the parts, stay with the script's relief)
     if args.relief:
         params["relief"] = True
         print("relief: a product blocking a machine is taken out while another used product of it still leaves")
@@ -1144,6 +1162,21 @@ def main():
         params["bootstrap"] = True
         print(f"flow mod: {tagged} machines and {ends} overflow belts tagged; the factory-flow mod controls them, "
               f"the check puts in loop carriers as a player would")
+    if args.carrier_kit:
+        params["carrier_kit"] = args.carrier_kit
+        # (No overflow takes a carrier: --void-full, --relief and --relief-exits leave them in the machine.)
+        params["void_except"] = {**{c: True for c in params.get("seed_carriers", [])}, **params.get("void_except", {})}
+        print(f"carrier-kit: empty carriers only, {'during the warm-up' if args.carrier_kit == 'warmup' else 'counted through the run'}; "
+              f"no overflow takes {', '.join(sorted(params['void_except'])) or 'any (the plan names no carriers)'}")
+    if args.belt_hold:
+        params["belt_hold"] = args.belt_hold
+        print(f"belt-hold: an inserter onto a belt works only while that belt holds less than {args.belt_hold:g} crafts' worth of the item (wired in the game)")
+    if args.real_voids:
+        params["real_voids"] = True
+        print("real-voids: fluid ports end in an overflow valve and Py's exhaust pipe or sinkhole")
+    if args.seed_stop is not None:
+        params["seed_stop"] = args.seed_stop
+        print(f"seed-stop: loop starters only in the first {args.seed_stop:g} game seconds")
     if args.bootstrap:
         params["bootstrap"] = True
         print("bootstrap: starved loops get their carriers from the check, as from a player")
