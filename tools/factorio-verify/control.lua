@@ -1902,6 +1902,14 @@ local function finish(run)
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
     belt_hold = run.bh, learned_recipes = run.learned,
+    out_share = run.os and (function()
+      local o = { held_s = run.os.held_s, groups = {} }
+      for _, g in pairs(run.os.groups) do
+        local nets = {}
+        for net, t in pairs(g.nets) do nets[#nets + 1] = { share = t.share, moved = t.moved, held_s = t.held_s or 0, inserters = #t.ins } end
+        o.groups[#o.groups + 1] = { recipe = g.recipe, item = g.item, nets = nets }
+      end
+      return o end)() or nil,
     real_voids = run.real_voids and (function()
       local o = { no_room = run.real_voids.no_room, failed = run.real_voids.failed, no_void = run.real_voids.no_void, built = {} }
       for _, b in pairs(run.real_voids.built) do
@@ -2702,6 +2710,111 @@ local function timeline(run)
   run.timeline[#run.timeline + 1] = { h = (game.tick - run.t0) / 216000, phase = run.phase, pf = pf, store = st, seeded = sd, voided = vd, boot = bt }
 end
 
+-- params.out_share (F): a maker with inserters onto several belt networks gives each its planned share. An inserter
+-- shares out what a machine makes by turns, whatever the plan gave each belt: Py logistic science's water-barrel filler
+-- has two, onto a belt planned 94% of the barrels and one planned 6%, and half its barrels went to each (1,479 lying on
+-- the small one at hour 3.7 while the animals on the big one stood short); its rubber maker the same. For every machine
+-- with one item product and inserters onto two or more networks that have a user of it, the script counts what each
+-- network's inserters carried (their hands, sampled) and holds those of a network that is ahead of F times its share
+-- of what all carried (plus two crafts' worth), unless every network behind its share is blocked (an inserter there
+-- holding an item for five seconds): then a full belt stops nobody. Shares are the planned use of the users on each
+-- network. What a counter per inserter and a comparison would do in a game: it reads nothing but its own inserters.
+local function out_share(run)
+  if not run.params.out_share or not run.outs or run.phase == nil then return end
+  -- (Looked at again every ten seconds for the first ten minutes: Py's barrel fillers have a recipe only once they
+  -- have crafted.)
+  if game.tick - run.t0 >= 600 and game.tick - run.t0 <= 36000 and (game.tick - run.t0) % 600 == 0 then
+    run.os = run.os or { groups = {}, held_s = 0, done = {} }
+    local planned_of, rec = {}, {}
+    for _, mm in pairs(run.machines) do if mm.e.valid then planned_of[mm.e.unit_number] = mm.plan_recipe; rec[mm.e.unit_number] = mm end end
+    -- Planned use of each item on each network: the users whose inserters take from it.
+    local use = {}
+    for _, mm in pairs(run.machines) do
+      local e = mm.e
+      local r = e.valid and (e.get_recipe() or (mm.plan_recipe and prototypes.recipe[mm.plan_recipe]))
+      if r then
+        local nets, n = (run.feeds or {})[e.unit_number] or {}, 0
+        for _ in pairs(nets) do n = n + 1 end
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "item" then
+            local rate = ((run.params.demand_of or {})[r.name] or {})[ing.name] or 0
+            use[ing.name] = use[ing.name] or {}
+            for net in pairs(nets) do use[ing.name][net] = (use[ing.name][net] or 0) + rate end
+          end
+        end
+      end
+    end
+    local by_machine = {}
+    for _, o in pairs(run.outs) do
+      if o.e.valid and o.m.valid then
+        by_machine[o.m.unit_number] = by_machine[o.m.unit_number] or { m = o.m, outs = {} }
+        table.insert(by_machine[o.m.unit_number].outs, o)
+      end
+    end
+    for u, g in pairs(by_machine) do
+      local r = (not run.os.done[u]) and (g.m.get_recipe() or (planned_of[u] and prototypes.recipe[planned_of[u]]))
+      local items = {}
+      for _, p in pairs(r and r.products or {}) do if p.type == "item" then items[#items + 1] = p end end
+      if r then run.os.done[u] = true end
+      if #items == 1 then
+        local P = items[1].name
+        local nets, n, total = {}, 0, 0
+        for _, o in pairs(g.outs) do
+          if not nets[o.net] then nets[o.net] = { ins = {}, moved = 0, rate = (use[P] or {})[o.net] or 0 }; n = n + 1; total = total + nets[o.net].rate end
+          table.insert(nets[o.net].ins, { e = o.e, had = 0 })
+        end
+        -- (Only networks with a user of it count as wanting a share; a maker whose every network is such a one.)
+        local with_user = 0
+        for _, t in pairs(nets) do if t.rate > 0 then with_user = with_user + 1 end end
+        if n >= 2 and with_user >= 1 and total > 0 then
+          for _, t in pairs(nets) do t.share = t.rate / total end
+          local amount = (items[1].amount or ((items[1].amount_min or 0) + (items[1].amount_max or 0)) / 2)
+          run.os.groups[#run.os.groups + 1] = { m = g.m, item = P, nets = nets, slack = math.max(12, 2 * amount), recipe = r.name }
+        end
+      end
+    end
+  end
+  if not run.os then return end
+  local F = run.params.out_share
+  if game.tick % 4 == 0 then
+    for _, g in pairs(run.os.groups) do
+      for _, t in pairs(g.nets) do
+        for _, i in pairs(t.ins) do
+          if i.e.valid then
+            local h = i.e.held_stack
+            local c = h.valid_for_read and h.name == g.item and h.count or 0
+            if c > i.had then t.moved = t.moved + (c - i.had) end
+            if c > 0 then i.since = i.since or game.tick else i.since = nil end
+            i.had = c
+          end
+        end
+      end
+    end
+  end
+  if game.tick % 30 == 7 then
+    for _, g in pairs(run.os.groups) do
+      local total = 0
+      for _, t in pairs(g.nets) do total = total + t.moved end
+      -- Is some network behind its share free to take more?
+      local behind_free = false
+      for _, t in pairs(g.nets) do
+        if t.moved < t.share * total then
+          for _, i in pairs(t.ins) do
+            if i.e.valid and not (i.since and game.tick - i.since >= 300) then behind_free = true end
+          end
+        end
+      end
+      for _, t in pairs(g.nets) do
+        local hold = behind_free and t.moved > t.share * total * F + g.slack
+        for _, i in pairs(t.ins) do
+          if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
+        end
+        if hold then t.held_s = (t.held_s or 0) + 0.5; run.os.held_s = run.os.held_s + 0.5 end
+      end
+    end
+  end
+end
+
 -- params.void_full, a helper ("virtual sinks"): a machine standing with a full output and not switched off by flow
 -- control has its surplus deleted every second: half of each product item in its output, half of each product fluid in
 -- its output boxes, half of its burnt result. Counted per item, per recipe and per machine. It does what a gated sink
@@ -3230,6 +3343,7 @@ script.on_event(defines.events.on_tick, function()
   void_full(run)
   relief_demand(run)
   relief(run)
+  out_share(run)
   relief_fluid_gates(run)
   sink_temperatures(run)
   overflow_last(run)

@@ -702,6 +702,10 @@ def main():
                     help="built in the game: each inserter from a machine onto a belt is wired to that belt (read whole "
                          "belt) and works only while the belt holds less than K crafts' worth (default 2) of the item, "
                          "so a maker with two belts stops sharing out by turns once one of them has enough")
+    ap.add_argument("--out-share", nargs="?", type=float, const=1.2, default=None, metavar="F",
+                    help="a maker with one item product and inserters onto several belt networks gives each network "
+                         "its planned share: the inserters of a network ahead of F times its share (default 1.2) of "
+                         "what all of them carried are held, unless every network behind its share is blocked")
     ap.add_argument("--real-voids", action="store_true",
                     help="fluid output ports end as in a game: Py's overflow valve (opens above 80%% full) and an exhaust "
                          "pipe or sinkhole behind it, in place of the test copy's infinity pipe; counted in the report "
@@ -1171,6 +1175,9 @@ def main():
     if args.belt_hold:
         params["belt_hold"] = args.belt_hold
         print(f"belt-hold: an inserter onto a belt works only while that belt holds less than {args.belt_hold:g} crafts' worth of the item (wired in the game)")
+    if args.out_share:
+        params["out_share"] = args.out_share
+        print(f"out-share: a maker's inserters onto several belt networks carry each network's planned share (within {args.out_share:g} times)")
     if args.real_voids:
         params["real_voids"] = True
         print("real-voids: fluid ports end in an overflow valve and Py's exhaust pipe or sinkhole")
