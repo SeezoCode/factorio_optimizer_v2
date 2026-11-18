@@ -735,6 +735,14 @@ def main():
                          "item's loop; any other user has its inserters bringing the item held while a user in the "
                          "loop stands short of it and took less than its plan over the last S game seconds (default "
                          "1800). A breeding loop planned with no margin otherwise dies out once anything is lost")
+    ap.add_argument("--reserve", nargs="?", type=int, const=4, default=None, metavar="N",
+                    help="with --loop-first: a standing queue at each of a loop's own users. The belt tile just past "
+                         "the pickup tile of an inserter bringing a loop's item to one of the loop's users stays shut "
+                         "until the tile N back up the belt (default 4) has a lane full, so N tiles of queue stand at "
+                         "the user before anything goes on")
+    ap.add_argument("--loop-quota", action="store_true",
+                    help="with --loop-first: a loop's own user is held to its quota of the loop's item only for another "
+                         "of the loop's users, never for a user outside the loop")
     ap.add_argument("--loop-strict", action="store_true",
                     help="with --loop-first: users outside a loop wait whenever a user in the loop stands short of the "
                          "item, not only while that user is behind its plan")
@@ -1305,6 +1313,10 @@ def main():
         params["loop_first"] = {"window": args.loop_first, "inside": {i: inside[i] for i in both}, "outside": {i: outside[i] for i in both}}
         if args.loop_strict:
             params["loop_first"]["strict"] = True
+        if args.loop_quota:
+            params["loop_first"]["quota"] = True
+        if args.reserve:
+            params["reserve"] = args.reserve
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
     if args.flow and built_plan_path(args.target) and os.path.exists(built_plan_path(args.target)):
         # Machines the plan has only to get rid of something (sinks.burn): every product goes to a burner or to other

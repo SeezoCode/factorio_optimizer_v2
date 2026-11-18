@@ -1946,6 +1946,10 @@ local function finish(run)
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
     belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
+    reserve = run.rs and (function()
+      local o = { gates = #run.rs.gates, skipped = run.rs.skipped, by_item = {} }
+      for _, g in pairs(run.rs.gates) do o.by_item[g.item] = (o.by_item[g.item] or 0) + 1 end
+      return o end)() or nil,
     out_share = run.os and (function()
       local o = { held_s = run.os.held_s, groups = {} }
       for _, g in pairs(run.os.groups) do
@@ -2948,6 +2952,88 @@ local function out_share(run)
   end
 end
 
+-- params.reserve (N tiles, with params.loop_first): a standing queue at each of a loop's own users. A belt serves a
+-- user only as items pass it, or once the queue from the belt's end stands at its inserter; with belts kept lean by
+-- pull and the caps nothing queues, and what passes a user that is not asking at that moment parks at the far end.
+-- Every stop of 2026-11-18 was that: Py science 1's seaweed loop stood with its fertilizer maker 2 seaweed short and
+-- 146 lying past it on the loop's own belt. For every inserter seen bringing a loop's item to one of the loop's own
+-- users, the belt tile just past its pickup tile is a gate that stays shut until the tile N back up the belt has a
+-- lane full: N tiles of queue stand at the user before anything goes on to the users behind it or to the belt's end.
+-- A gate opens for whatever fills the belt, so a mixed belt cannot lock. In a game: a wire from the tile N back
+-- (read contents) to the gate tile's enable condition.
+local function reserve_gates(run)
+  local lf = run.params.loop_first
+  if not run.params.reserve or not lf or run.phase == nil then return end
+  local t = game.tick - run.t0
+  if t >= 600 and t % 600 == 0 and (t <= 36000 or t % 36000 == 0) then
+    run.rs = run.rs or { gates = {}, done = {}, taken = {}, skipped = 0 }
+    for _, g in pairs(run.gates or {}) do if g.e.valid then run.rs.taken[g.e.unit_number] = true end end
+    local N = math.max(1, math.floor(run.params.reserve))
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+      if r and m.fq then
+        for _, i in pairs((run.into or {})[e.unit_number] or {}) do
+          local it = i.valid and m.fq.item_of[i.unit_number]
+          if it and (lf.inside[it] or {})[r.name] and not run.rs.done[i.unit_number] then
+            run.rs.done[i.unit_number] = true
+            local pb
+            for _, x in pairs(run.surface.find_entities_filtered { area = { { i.pickup_position.x - 0.05, i.pickup_position.y - 0.05 }, { i.pickup_position.x + 0.05, i.pickup_position.y + 0.05 } }, type = "transport-belt" }) do pb = x end
+            -- (The gate: the first plain belt tile on down the belt, through an underground, never past a splitter.)
+            local gate = pb
+            for _ = 1, 8 do
+              local outs = gate and ((gate.belt_neighbours or {}).outputs or {}) or {}
+              if gate and gate.type == "underground-belt" and gate.belt_to_ground_type == "input" then outs = { gate.underground_belt_neighbour } end
+              gate = outs[1]
+              if not gate or not gate.valid or gate.type == "transport-belt" or gate.type == "splitter" then break end
+            end
+            if gate and gate.valid and gate.type == "transport-belt" and not run.rs.taken[gate.unit_number] then
+              local sensor = pb
+              for _ = 2, N do
+                local ins = (sensor.belt_neighbours or {}).inputs or {}
+                if #ins ~= 1 or ins[1].type ~= "transport-belt" then break end
+                sensor = ins[1]
+              end
+              if not run.rs.anchor then
+                local at = run.surface.find_non_colliding_position("constant-combinator", gate.position, 50, 1)
+                run.rs.anchor = at and run.surface.create_entity { name = "constant-combinator", position = at, force = e.force }
+              end
+              local ac = run.rs.anchor and run.rs.anchor.valid and run.rs.anchor.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+              local ok = ac ~= nil and pcall(function()
+                gate.get_wire_connector(defines.wire_connector_id.circuit_red, true).connect_to(ac, false)
+                local cb = gate.get_or_create_control_behavior()
+                cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
+                cb.circuit_enable_disable = false
+              end)
+              if ok then
+                run.rs.taken[gate.unit_number] = true
+                run.rs.gates[#run.rs.gates + 1] = { e = gate, s = sensor, item = it, closed = false, shut_s = 0 }
+              else run.rs.skipped = run.rs.skipped + 1 end
+            else
+              run.rs.skipped = run.rs.skipped + 1
+            end
+          end
+        end
+      end
+    end
+  end
+  if not run.rs or game.tick % 6 ~= 0 then return end
+  for _, g in pairs(run.rs.gates) do
+    if g.e.valid and g.s.valid then
+      local full = false
+      for k = 1, g.s.get_max_transport_line_index() do
+        if g.s.get_transport_line(k).get_item_count() >= 4 then full = true end
+      end
+      local close = not full
+      if close then g.shut_s = g.shut_s + 0.1 end
+      if close ~= g.closed then
+        g.closed = close
+        pcall(function() g.e.get_or_create_control_behavior().circuit_enable_disable = close end)
+      end
+    end
+  end
+end
+
 -- params.void_full, a helper ("virtual sinks"): a machine standing with a full output and not switched off by flow
 -- control has its surplus deleted every second: half of each product item in its output, half of each product fluid in
 -- its output boxes, half of its burnt result. Counted per item, per recipe and per machine. It does what a gated sink
@@ -3493,6 +3579,7 @@ script.on_event(defines.events.on_tick, function()
   relief_demand(run)
   relief(run)
   out_share(run)
+  reserve_gates(run)
   relief_fluid_gates(run)
   sink_temperatures(run)
   overflow_last(run)
@@ -4109,6 +4196,7 @@ script.on_event(defines.events.on_tick, function()
     -- Pass 1: what each machine took against its quota.
     local over, behind_short = {}, {}
     local loop_out, loop_short, out_short = {}, {}, {}
+    local in_short = {}
     run.loop_held = 0
     -- params.disposal (recipe -> true): machines the plan has only to get rid of something, every product of theirs
     -- going to a burner or a vent (sinks.burn: blood made into albumin to burn). They take an ingredient last: held
@@ -4193,7 +4281,11 @@ script.on_event(defines.events.on_tick, function()
             -- loop's own users in turn, the breeder off its meat for the sample's sake.)
             if disp and disp[r.name] then
             elseif (loop_out[e.unit_number] or {})[ing.name] then out_short[ing.name] = (out_short[ing.name] or 0) + 1
-            else behind_short[ing.name] = (behind_short[ing.name] or 0) + 1 end
+            else
+              behind_short[ing.name] = (behind_short[ing.name] or 0) + 1
+              -- (lf.quota: who waits behind, of the loop's own users alone.)
+              if lf and ing.type == "item" and (lf.inside[ing.name] or {})[r.name] then in_short[ing.name] = true end
+            end
           end
         end
         over[e.unit_number] = o
@@ -4221,8 +4313,13 @@ script.on_event(defines.events.on_tick, function()
           if pn then for net in pairs(feeds) do if pn[net] then return true end end end
           return false
         end
+        local lfq = run.params.loop_first
         for _, ing in pairs(m.fq.r.ingredients) do
-          if o[ing.name] and behind_short[ing.name] and not is_pushed(ing) then
+          -- (lf.quota: a loop's own user gives way on the loop's item only to another of the loop's users. Its quota
+          -- otherwise held it to one and a half times its plan for the sake of the users outside, and what keeps a
+          -- loop alive is that it runs rich: Py science 1's seaweed loop held to its plan stood within four hours.)
+          local inside = lfq and lfq.quota and ing.type == "item" and (lfq.inside[ing.name] or {})[m.fq.r.name]
+          if o[ing.name] and behind_short[ing.name] and not is_pushed(ing) and (not inside or in_short[ing.name]) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
           end
           if disp and disp[m.fq.r.name] and real_short[ing.name] then
