@@ -582,8 +582,11 @@ its inserters and the demand signal of its belts.
   rate, under the check's script and hour for hour the same under the factory-flow mod on a blueprint that brings
   its own overflow exits and fluid voids. Starters for two hours (577 seaweed, 30 coarse, 200 methanol, 80
   phytoplankton), nothing after.
-- **Logistic science (337 to 352 machines) does not**: twice the plan while the starters flow, a stop one to three
-  hours after.
+- **Logistic science (337 machines, the margin layout) held once**: 20 hours to the end under the last rule set of
+  the night, 0.0204 packs a second at the port against 0.02 planned, and 14 hours under the mod on the player's
+  blueprint. A third run under the same rules without the two reserve gates stopped at hour 11 (the seaweed loop),
+  so it is not yet every time. Under every earlier rule set, and on the burner layout under all of them: twice the
+  plan while the starters flow, a stop one to three hours after.
 - **The cause behind the stops is one**: lean belts do not queue. A user is served only as items pass it or once
   the queue from its belt's end stands at its inserter; under pull and caps what it does not need at that moment
   parks past it, and a loop then dies with its stock in sight.

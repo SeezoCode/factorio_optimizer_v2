@@ -64,11 +64,12 @@ Once a second, for the machines of a tagged blueprint:
   the inserters' hands and the users' waiting.
 - **Slow machines** and **cap fill** (settings, off): slow machines counted over the time three of their planned
   crafts take, and a capped machine left running for a user that is itself behind its plan. They stop slow machines
-  running at ten times their plan, and in the in-game check the factory then starved (night log of 2026-11-18).
+  running at ten times their plan; slow machines alone starved the factory in the in-game check (night log of
+  2026-11-18).
   **Loop strict** (off): users outside a loop wait whenever a loop user is short, not only while it is behind plan.
   **Loop stock** (0, off): they also wait while a loop user holds less than that many crafts' worth. Slow machines,
-  cap fill and loop stock 2 together are the rule set the logistic science layout ran longest under in the check
-  (seven hours and running when the night log closed); under the mod that set has only been run on Py science 1.
+  cap fill and loop stock 2 together are the rule set logistic science held under (20 hours in the check, 14 under
+  the mod, and one run of three that stopped at hour 11).
 - **Furnaces without a recipe**: a furnace the blueprint names no recipe for (an older layout's barrel fillers) is
   tagged with the plan's recipes for its kind, and taken for the one it crafts or, before its first craft, the one
   that takes the fluid it holds.
@@ -133,4 +134,5 @@ in the console, with the machine's place. A machine replaced by an upgrade loses
 in-game check does, with the check's options as the mod's settings (`--with-built FILE` for a blueprint that brings
 its exits and voids). What it does and does not hold is in `docs/NIGHT_LOG_2026-11-18.md`: Py science 1 (56 machines)
 makes its planned packs through a 24-hour run under the mod, on starters for the first two hours and nothing
-after; the logistic science layouts (337 to 352 machines) do not hold yet.
+after; logistic science on the margin layout (337 machines) ran its 14 hours under the mod with slow machines, cap fill
+and loop stock 2 switched on, where one of three runs of those rules in the check stopped at hour 11.
