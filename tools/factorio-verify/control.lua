@@ -1668,12 +1668,33 @@ local function relief_scan(run, m)
 end
 
 local function flows(run, counting)
+  -- params.input_ports (--input-cap): each raw input belt is given at most its planned rate times a factor, from a
+  -- budget that carries over at most a minute's worth, as a mine or a train stop of the planned size would deliver.
+  -- Without it the inputs are unlimited, and a factory may run its makers at twice the plan.
+  local ip = run.params.input_ports
+  if ip and not run.src_rate then
+    run.src_rate = true
+    for _, s in pairs(run.sources) do
+      local best, bd = nil, 3.5
+      for _, p in pairs(ip) do
+        local d = math.abs(p[1] - s.pos.x) + math.abs(p[2] - s.pos.y)
+        local fits = false
+        for _, k in pairs(s.keep) do if k.name == p[3] then fits = true end end
+        if fits and d <= bd then best, bd = p, d end
+      end
+      if best then s.rate, s.bud = best[4], 0 end
+    end
+  end
   for _, s in pairs(run.sources) do
     if s.chest.valid then
+      if s.rate then s.bud = math.min(s.bud + s.rate / 60, math.max(5, s.rate * 60)) end
       for _, k in pairs(s.keep) do
         local have = s.inv.get_item_count({ name = k.name, quality = k.quality })
         if have < k.count then
-          local n = s.inv.insert { name = k.name, quality = k.quality, count = k.count - have }
+          local want = k.count - have
+          if s.rate then want = math.min(want, math.floor(s.bud)) end
+          local n = want > 0 and s.inv.insert { name = k.name, quality = k.quality, count = want } or 0
+          if s.rate then s.bud = s.bud - n end
           if counting then add(s.items, key(k.name, k.quality), n) end
         end
       end

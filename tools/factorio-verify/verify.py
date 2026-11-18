@@ -604,6 +604,10 @@ def main():
     ap.add_argument("--machines", action="store_true", help="list every machine (default: all when 40 or fewer, else the idle ones)")
     ap.add_argument("--belts", type=int, default=10, help="stuck belts to list (default 10)")
     ap.add_argument("--timeout", type=int, default=600, help="seconds to wait for the server, on top of the run")
+    ap.add_argument("--input-cap", type=float, default=None, metavar="F",
+                    help="each raw input belt is given at most F times its planned rate (ports.json), with at most a "
+                         "minute's worth saved up, as a mine or train stop of the planned size would deliver (default: "
+                         "unlimited; fluid inputs stay unlimited)")
     ap.add_argument("--uncapped", action="store_true",
                     help="empty output chests without limit (default: take each output item at its planned rate, so a "
                          "factory cannot look good by over-making one pack while starving another)")
@@ -890,6 +894,10 @@ def main():
             if not o.get("fluid") and o["rate"] > 1e-12 and o["item"].split("#")[0] not in overflow:
                 rates[o["item"].split("#")[0]] += o["rate"]
         params["sink_rates"] = dict(rates)
+    if args.input_cap and ports:
+        params["input_ports"] = [[i["x"] + 0.5, i["y"] + 0.5, i["item"].split("#")[0], i["rate"] * args.input_cap]
+                                 for i in ports.get("inputs", []) if not i.get("fluid") and i["rate"] > 0]
+        print(f"input-cap: {len(params['input_ports'])} raw input belts given at most {args.input_cap:g} times their planned rate")
     if args.dump:
         params["dump"] = True
     if args.prime_all:
