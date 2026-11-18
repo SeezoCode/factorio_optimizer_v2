@@ -660,8 +660,10 @@ local function control()
       recipes[unit] = r
       if r and not e.disabled_by_script and SHORT[e.status] then
         if e.status == defines.entity_status.no_fuel then for _, f in pairs(fuels(m, r)) do wait(unit, f) end end
+        -- (Behind its own plan, or waited on in the last seconds by a user that is: the leave passes up the chain.)
         local behind = fill and (not (m.crafts and m.sc and m.sc[1])
-          or (e.products_finished - m.sc[1].pf) < m.crafts * (tick - m.sc[1].tick) / 60)
+          or (e.products_finished - m.sc[1].pf) < m.crafts * (tick - m.sc[1].tick) / 60
+          or (m.fb ~= nil and tick - m.fb <= 180))
         for _, ing in pairs(r.ingredients) do
           if ing.type == "item" then
             if held(e, ing.name) < ing.amount then
@@ -872,6 +874,18 @@ local function control()
             if hit then
               wanted = true
               if not capping or m.purpose[p.name] then main = true; break end
+            end
+          end
+        end
+        if fill then
+          local drops, hands = T.drops[unit] or {}, T.hands[unit] or {}
+          for _, p in pairs(r.products) do
+            if p.type == "fluid" then
+              if fhit(behind_fluid, m.e, p.name) then m.fb = tick end
+            else
+              local bn = behind_net[p.name]
+              for n in pairs(drops) do if bn and bn[n] then m.fb = tick end end
+              for u in pairs(hands) do if behind_at[u] and behind_at[u][p.name] then m.fb = tick end end
             end
           end
         end

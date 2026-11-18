@@ -54,7 +54,9 @@ Once a second, for the machines of a tagged blueprint:
   with its stock in sight (Py science 1's seaweed loop: its fertilizer maker 2 seaweed short, 146 lying past it on
   the loop's own belt). Per loop item and belt, the first plain belt tile past the last of the loop's users is
   stopped until that many tiles in front of it are full, and opens for whatever fills them. The mod stops the tile
-  by the same hidden combinator it uses for the overflow gates.
+  by the same hidden combinator it uses for the overflow gates. It is what carried Py science 1 through a day; on
+  the logistic science layouts a loop that the other users had already drained left its gate shut for good, and the
+  users behind it got nothing: set it to 0 to compare.
 - **Shares** (a setting, on by default): where one machine puts an item onto several belts, its inserters would
   share it out by turns whatever each belt's users need (Py logistic science's water-barrel filler: two belts planned
   94% and 6% of its barrels, half going to each). The belt of a user waiting for the item comes first; among those,
