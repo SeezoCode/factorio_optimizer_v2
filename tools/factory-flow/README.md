@@ -125,4 +125,6 @@ in the console, with the machine's place. A machine replaced by an upgrade loses
 
 `verify.py <run> --job <job> --flow-mod` builds the tagged test copy with this mod installed and runs it as the
 in-game check does, with the check's options as the mod's settings (`--with-built FILE` for a blueprint that brings
-its exits and voids). What it does and does not hold is in `docs/NIGHT_LOG_2026-11-18.md`: MOD_TESTED_PLACEHOLDER
+its exits and voids). What it does and does not hold is in `docs/NIGHT_LOG_2026-11-18.md`: Py science 1 (56 machines)
+makes its planned packs through a 24-hour run under the mod, on starters for the first two hours and nothing
+after; the logistic science layouts (337 to 352 machines) do not hold yet.

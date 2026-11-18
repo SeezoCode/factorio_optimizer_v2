@@ -3832,6 +3832,10 @@ script.on_event(defines.events.on_tick, function()
           if run.params.cap_fill then
             local c, h = (run.params.plan_crafts or {})[r.name], m.sc
             behind = not (c and h and h[1]) or (e.products_finished - h[1].pf) < c * (game.tick - h[1].tick) / 60
+            -- (Or one a user behind its plan waited on in the last seconds: the leave passes up the chain. The trit
+            -- breeders waited for filtration media, its maker was let run and stood without cellulose, and the
+            -- cellulose maker, whose user was ahead of its plan, stayed at its cap.)
+            if m.fb and game.tick - m.fb <= 180 then behind = true end
           end
           for _, ing in pairs(r.ingredients) do
             if ing.type == "item" then
@@ -4074,6 +4078,17 @@ script.on_event(defines.events.on_tick, function()
           if hit then
             wanted = true
             if not purpose or purpose[p.name] or target[p.name] then main_wanted = true; break end
+          end
+        end
+        if run.params.cap_fill and run.short.behind_net then
+          for _, p in pairs(products) do
+            if p.type == "fluid" then
+              if fhit(run.short.behind_fluid, e, p.name) then m.fb = game.tick end
+            else
+              local bn = run.short.behind_net[p.name]
+              for net in pairs(drops) do if bn and bn[net] then m.fb = game.tick end end
+              for u in pairs(hands) do if run.short.behind_at[u] and run.short.behind_at[u][p.name] then m.fb = game.tick end end
+            end
           end
         end
         if purpose then
