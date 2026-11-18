@@ -230,6 +230,9 @@ local function prime(run, e, r, crafted, rec)
             if rate then
               rec.given = rec.given or {}
               local allowed = rate * 5 * (game.tick - run.t0) / 60 + want
+              -- (params.seed_budget, hours: in all, at most that many hours of the machine's planned use: the
+              -- starters as a kit of known size, handed in as the machine runs short.)
+              if run.params.seed_budget then allowed = rate * run.params.seed_budget * 3600 + want end
               add = math.min(add, math.floor(allowed - (rec.given[ing.name] or 0)))
             end
           end
@@ -257,12 +260,20 @@ local function prime(run, e, r, crafted, rec)
             local t, ok = cands[1], false
             for _, c in ipairs(cands) do if takes(c) then t, ok = c, true; break end end
             local have = e.get_fluid(k)
-            if ok and f and f.name == ing.name and proto and proto.production_type == "input" and (not have or have.amount < ing.amount) then
+            -- (params.seed_budget: a fluid too, once the machine has crafted.)
+            local spent = false
+            if run.params.seed_budget and crafted and rec then
+              local rate = ((run.params.seed_rates or {})[r.name] or {})[ing.name]
+              rec.given = rec.given or {}
+              if rate and (rec.given["[" .. ing.name .. "]"] or 0) >= rate * run.params.seed_budget * 3600 then spent = true end
+            end
+            if ok and not spent and f and f.name == ing.name and proto and proto.production_type == "input" and (not have or have.amount < ing.amount) then
               -- Two crafts' worth, or one where the box holds less.
               if not pcall(function() e.set_fluid(k, { name = ing.name, amount = ing.amount * 2, temperature = t }) end) then
                 e.set_fluid(k, { name = ing.name, amount = ing.amount, temperature = t })
               end
               local now = e.get_fluid(k)
+              if rec then rec.given = rec.given or {}; rec.given["[" .. ing.name .. "]"] = (rec.given["[" .. ing.name .. "]"] or 0) + (now and now.amount or 0) - (have and have.amount or 0) end
               seeded_count(run, "[" .. ing.name .. "]", (now and now.amount or 0) - (have and have.amount or 0))
             end
           end

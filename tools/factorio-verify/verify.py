@@ -740,6 +740,10 @@ def main():
                     help="with --flow-mod: test the player's blueprint. The overflow exits and fluid voids of FILE (an "
                          "earlier run's --export-built) are merged into the test copy as blueprint parts, and the check "
                          "builds none itself; it only empties the exits' chests")
+    ap.add_argument("--seed-budget", type=float, default=None, metavar="HOURS",
+                    help="loop starters as a kit of known size: each machine is handed at most HOURS of its planned "
+                         "use of a starter item or fluid in all, as it runs short (default: five times the plan's use "
+                         "for as long as starters flow)")
     ap.add_argument("--seed-kit", type=float, default=None, metavar="N",
                     help="loop starters as one delivery: each machine taking a starter item starts with N crafts' "
                          "worth of it (a stack at most) and gets nothing afterwards; fluids start with a full box "
@@ -1321,6 +1325,9 @@ def main():
     if args.real_voids:
         params["real_voids"] = True
         print("real-voids: fluid ports end in an overflow valve and Py's exhaust pipe or sinkhole")
+    if args.seed_budget:
+        params["seed_budget"] = args.seed_budget
+        print(f"seed-budget: each machine is handed at most {args.seed_budget:g} hours of its planned use of a starter")
     if args.seed_kit:
         params["seed_kit"] = args.seed_kit
         params["seed_stop"] = 30 if args.seed_stop is None else args.seed_stop
