@@ -1297,6 +1297,8 @@ blueprint: they are the check's own help or control, run by the verify mod.
   minutes, or in the quota's window, is counted over the time three planned crafts take (four hours at most) with
   one craft over. The fixed allowance (three crafts over, two for a quota) lets a machine planned for two crafts an
   hour run at ten times its plan and take what a large user was planned for.
+  Alone it starves the factory (`docs/NIGHT_LOG_2026-11-18.md`). `--cap-fill`: a machine at its cap keeps running
+  while a user that is itself behind its plan waits for one of its products, and so do the makers behind it.
 - `--loop-first [S]` (with `--flow`): a production loop feeds itself first. A user of an item whose own products
   come back to a maker of that item within three recipes (0: it makes the item itself, a farm and its catalyst) is
   the item's loop; any other user is held from the item while a user in the loop stands short of it and took less
@@ -1310,6 +1312,8 @@ blueprint: they are the check's own help or control, run by the verify mod.
   takes nothing more, and opens for whatever fills it. Without it the loop's stock ends up past the users that need
   it (a belt serves a user only as items pass, and lean belts do not queue). `--reserve-all`: such a gate past every
   user's pickup tile, for every item.
+  `--loop-stock K`: the other users also wait while a loop user that is switched on holds less than K crafts'
+  worth. `--loop-quota`: a loop's own user gives way on its quota only to another of the loop's users.
   `--loop-strict`: the other users wait whenever a user in the loop stands short, not only while it is behind its
   plan (a loop that ran ahead on its starters was not protected when they ended). With `--flow`, machines the plan
   has only to feed a burner (`sinks.burn`: blood made into albumin to burn) take their ingredients last.
