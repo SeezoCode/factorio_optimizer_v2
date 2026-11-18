@@ -1305,6 +1305,11 @@ blueprint: they are the check's own help or control, run by the verify mod.
   quotas, which count from the start of the run, lock a breeder out for having run ahead early. With it the
   overflow port of a belt that a loop's own item is put onto stays shut (and with `--carrier-kit`, of a belt that
   carries a carrier): a farm standing full of its product otherwise let its catalyst out with the surplus.
+  `--reserve [N]`: a standing queue at each of a loop's own users: per loop item and belt network, the first plain
+  belt tile past the last of the loop's users stays shut until a lane of the tile N back up the belt (default 4)
+  takes nothing more, and opens for whatever fills it. Without it the loop's stock ends up past the users that need
+  it (a belt serves a user only as items pass, and lean belts do not queue). `--reserve-all`: such a gate past every
+  user's pickup tile, for every item.
   `--loop-strict`: the other users wait whenever a user in the loop stands short, not only while it is behind its
   plan (a loop that ran ahead on its starters was not protected when they ended). With `--flow`, machines the plan
   has only to feed a burner (`sinks.burn`: blood made into albumin to burn) take their ingredients last.

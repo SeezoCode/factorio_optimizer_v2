@@ -48,11 +48,22 @@ Once a second, for the machines of a tagged blueprint:
   the last half hour. Py's breeding loops are planned with no margin (a scrondrix gives 8.3 meat by way of its bones
   and takes 7.5 to breed; the 11% over is exactly what the other users take), so whatever is lost is never grown back
   otherwise. The overflow belt of a loop's own item, or of a carrier, stays closed.
+- **Reserve** (a setting, 4 tiles by default; 0: off): a standing queue at each of a loop's own users. A belt serves
+  a user only as items pass it, or once the queue from the belt's end stands at its inserter; pull and the caps keep
+  the belts lean, so what passes a user that is not asking at that moment parks at the far end, and a loop can die
+  with its stock in sight (Py science 1's seaweed loop: its fertilizer maker 2 seaweed short, 146 lying past it on
+  the loop's own belt). Per loop item and belt, the first plain belt tile past the last of the loop's users is
+  stopped until that many tiles in front of it are full, and opens for whatever fills them. The mod stops the tile
+  by the same hidden combinator it uses for the overflow gates.
 - **Shares** (a setting, on by default): where one machine puts an item onto several belts, its inserters would
   share it out by turns whatever each belt's users need (Py logistic science's water-barrel filler: two belts planned
   94% and 6% of its barrels, half going to each). The belt of a user waiting for the item comes first; among those,
   and when nobody waits, a belt ahead of its planned share is held while one behind it has room. The mod reads only
   the inserters' hands and the users' waiting.
+- **Slow machines** and **cap fill** (settings, off): slow machines counted over the time three of their planned
+  crafts take, and a capped machine left running for a user that is itself behind its plan. They stop slow machines
+  running at ten times their plan, and in the in-game check the factory then starved (night log of 2026-11-18).
+  **Loop strict** (off): users outside a loop wait whenever a loop user is short, not only while it is behind plan.
 - **Furnaces without a recipe**: a furnace the blueprint names no recipe for (an older layout's barrel fillers) is
   tagged with the plan's recipes for its kind, and taken for the one it crafts or, before its first craft, the one
   that takes the fluid it holds.
@@ -113,5 +124,5 @@ in the console, with the machine's place. A machine replaced by an upgrade loses
 ## Tested
 
 `verify.py <run> --job <job> --flow-mod` builds the tagged test copy with this mod installed and runs it as the
-in-game check does (the check puts a starved loop's carriers in, as a player would). Py logistic science (325
-machines), Py science 1 and automation science make their planned 0.02/s under it.
+in-game check does, with the check's options as the mod's settings (`--with-built FILE` for a blueprint that brings
+its exits and voids). What it does and does not hold is in `docs/NIGHT_LOG_2026-11-18.md`: MOD_TESTED_PLACEHOLDER
