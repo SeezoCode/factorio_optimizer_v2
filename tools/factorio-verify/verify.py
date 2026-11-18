@@ -746,6 +746,9 @@ def main():
     ap.add_argument("--loop-quota", action="store_true",
                     help="with --loop-first: a loop's own user is held to its quota of the loop's item only for another "
                          "of the loop's users, never for a user outside the loop")
+    ap.add_argument("--loop-stock", type=float, default=None, metavar="K",
+                    help="with --loop-first: users outside a loop also wait while a loop user that is switched on "
+                         "holds less than K crafts' worth of the item")
     ap.add_argument("--loop-strict", action="store_true",
                     help="with --loop-first: users outside a loop wait whenever a user in the loop stands short of the "
                          "item, not only while that user is behind its plan")
@@ -1319,6 +1322,8 @@ def main():
             params["loop_first"]["strict"] = True
         if args.loop_quota:
             params["loop_first"]["quota"] = True
+        if args.loop_stock:
+            params["loop_first"]["stock"] = args.loop_stock
         if args.reserve:
             params["reserve"] = args.reserve
         if args.reserve_all:

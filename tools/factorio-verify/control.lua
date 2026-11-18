@@ -4315,6 +4315,11 @@ script.on_event(defines.events.on_tick, function()
               -- "ahead" for another half hour, the other users took the meat meanwhile, and the loop stood with
               -- part of a craft's meat in each breeder and no animal left to render.)
               if mine[ing.name] and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w) then loop_short[ing.name] = true end
+              -- (lf.stock, crafts: the other users also wait while a loop user that is switched on holds less
+              -- than that many crafts' worth. What the loop makes then stays in the loop until its own users are
+              -- full: the burner layout's scrondrix loop ended with part of a craft's meat in each of three breeders
+              -- and no animal left, the samples having taken the rest.)
+              if lf.stock and not e.disabled_by_script and held(e, ing.name) < lf.stock * ing.amount then loop_short[ing.name] = true end
             end
           end
           -- params.quota_window (seconds): what it took in that last stretch, not since the start, so that running
