@@ -1948,7 +1948,7 @@ local function finish(run)
     belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
     reserve = run.rs and (function()
       local o = { gates = #run.rs.gates, skipped = run.rs.skipped, by_item = {} }
-      for _, g in pairs(run.rs.gates) do o.by_item[g.item] = (o.by_item[g.item] or 0) + 1 end
+      for _, g in pairs(run.rs.gates) do if not g.dead then o.by_item[g.item] = (o.by_item[g.item] or 0) + 1 end end
       return o end)() or nil,
     out_share = run.os and (function()
       local o = { held_s = run.os.held_s, groups = {} }
@@ -2959,6 +2959,7 @@ end
 -- 146 lying past it on the loop's own belt. For every inserter seen bringing a loop's item to one of the loop's own
 -- users, the belt tile just past its pickup tile is a gate that stays shut until the tile N back up the belt has a
 -- lane full: N tiles of queue stand at the user before anything goes on to the users behind it or to the belt's end.
+-- One gate per item and belt network, past the last of the loop's users on it.
 -- A gate opens for whatever fills the belt, so a mixed belt cannot lock. In a game: a wire from the tile N back
 -- (read contents) to the gate tile's enable condition.
 local function reserve_gates(run)
@@ -2969,57 +2970,104 @@ local function reserve_gates(run)
     run.rs = run.rs or { gates = {}, done = {}, taken = {}, skipped = 0 }
     for _, g in pairs(run.gates or {}) do if g.e.valid then run.rs.taken[g.e.unit_number] = true end end
     local N = math.max(1, math.floor(run.params.reserve))
+    local function belt_at(p)
+      for _, x in pairs(run.surface.find_entities_filtered { area = { { p.x - 0.05, p.y - 0.05 }, { p.x + 0.05, p.y + 0.05 } }, type = "transport-belt" }) do return x end
+    end
+    local function down(b)
+      local outs = (b.belt_neighbours or {}).outputs or {}
+      if b.type == "underground-belt" and b.belt_to_ground_type == "input" then outs = { b.underground_belt_neighbour } end
+      return outs[1]
+    end
+    -- The pickup tiles of a loop's own users, by item and belt network: from the networks seen bringing the item to
+    -- the machine (run.brought), every inserter of the machine on such a network.
+    local cands = {}
     for _, m in pairs(run.machines) do
       local e = m.e
       local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
-      if r and m.fq then
-        for _, i in pairs((run.into or {})[e.unit_number] or {}) do
-          local it = i.valid and m.fq.item_of[i.unit_number]
-          if it and (lf.inside[it] or {})[r.name] and not run.rs.done[i.unit_number] then
-            run.rs.done[i.unit_number] = true
-            local pb
-            for _, x in pairs(run.surface.find_entities_filtered { area = { { i.pickup_position.x - 0.05, i.pickup_position.y - 0.05 }, { i.pickup_position.x + 0.05, i.pickup_position.y + 0.05 } }, type = "transport-belt" }) do pb = x end
-            -- (The gate: the first plain belt tile on down the belt, through an underground, never past a splitter.)
-            local gate = pb
-            for _ = 1, 8 do
-              local outs = gate and ((gate.belt_neighbours or {}).outputs or {}) or {}
-              if gate and gate.type == "underground-belt" and gate.belt_to_ground_type == "input" then outs = { gate.underground_belt_neighbour } end
-              gate = outs[1]
-              if not gate or not gate.valid or gate.type == "transport-belt" or gate.type == "splitter" then break end
-            end
-            if gate and gate.valid and gate.type == "transport-belt" and not run.rs.taken[gate.unit_number] then
-              local sensor = pb
-              for _ = 2, N do
-                local ins = (sensor.belt_neighbours or {}).inputs or {}
-                if #ins ~= 1 or ins[1].type ~= "transport-belt" then break end
-                sensor = ins[1]
+      if r then
+        for it, nets in pairs((run.brought or {})[e.unit_number] or {}) do
+          if (lf.inside[it] or {})[r.name] then
+            for _, i in pairs((run.into or {})[e.unit_number] or {}) do
+              local net = i.valid and (run.ins_net or {})[i.unit_number]
+              if net and nets[net] then
+                local pb = belt_at(i.pickup_position)
+                if pb then
+                  local key = it .. ":" .. net
+                  cands[key] = cands[key] or { item = it, picks = {} }
+                  cands[key].picks[pb.unit_number] = pb
+                end
               end
-              if not run.rs.anchor then
-                local at = run.surface.find_non_colliding_position("constant-combinator", gate.position, 50, 1)
-                run.rs.anchor = at and run.surface.create_entity { name = "constant-combinator", position = at, force = e.force }
-              end
-              local ac = run.rs.anchor and run.rs.anchor.valid and run.rs.anchor.get_wire_connector(defines.wire_connector_id.circuit_red, true)
-              local ok = ac ~= nil and pcall(function()
-                gate.get_wire_connector(defines.wire_connector_id.circuit_red, true).connect_to(ac, false)
-                local cb = gate.get_or_create_control_behavior()
-                cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
-                cb.circuit_enable_disable = false
-              end)
-              if ok then
-                run.rs.taken[gate.unit_number] = true
-                run.rs.gates[#run.rs.gates + 1] = { e = gate, s = sensor, item = it, closed = false, shut_s = 0 }
-              else run.rs.skipped = run.rs.skipped + 1 end
-            else
-              run.rs.skipped = run.rs.skipped + 1
             end
           end
         end
       end
     end
+    -- One gate per item and network, past the last of those tiles down the belt (the queue from it reaches the
+    -- others in turn; a gate at each would leave the users further down nothing until the first one's queue stood).
+    for key, c in pairs(cands) do
+      do
+        local lasts = {}
+        for u, pb in pairs(c.picks) do
+          local cur, last = pb, true
+          for _ = 1, 600 do
+            cur = down(cur)
+            if not cur or not cur.valid or cur.type == "splitter" then break end
+            if c.picks[cur.unit_number] then last = false; break end
+          end
+          if last then lasts[#lasts + 1] = pb end
+        end
+        -- (Looked at again as more users are seen taking the item: a gate whose tile is no longer the last opens
+        -- for good.)
+        local is_last = {}
+        for _, pb in pairs(lasts) do is_last[pb.unit_number] = true end
+        for _, g in pairs(run.rs.gates) do
+          if g.key == key and not g.dead and not is_last[g.pb] then
+            g.dead = true
+            if g.e.valid then pcall(function() g.e.get_or_create_control_behavior().circuit_enable_disable = false end); run.rs.taken[g.e.unit_number] = nil end
+          end
+          if g.key == key and not g.dead then is_last[g.pb] = nil end
+        end
+        for _, pb in pairs(lasts) do if is_last[pb.unit_number] then
+          -- (The gate: the first plain belt tile on down the belt, through an underground, never past a splitter.)
+          local gate, steps = pb, 0
+          for _ = 1, 8 do
+            gate = gate and down(gate)
+            steps = steps + 1
+            if not gate or not gate.valid or gate.type == "transport-belt" or gate.type == "splitter" then break end
+          end
+          if gate and gate.valid and gate.type == "transport-belt" and not run.rs.taken[gate.unit_number] then
+            -- (The queue is N tiles from the gate back, and reaches the pickup tile at least.)
+            local sensor = pb
+            for _ = 1, N - steps do
+              local ins = (sensor.belt_neighbours or {}).inputs or {}
+              if #ins ~= 1 or ins[1].type ~= "transport-belt" then break end
+              sensor = ins[1]
+            end
+            if not run.rs.anchor then
+              local at = run.surface.find_non_colliding_position("constant-combinator", gate.position, 50, 1)
+              run.rs.anchor = at and run.surface.create_entity { name = "constant-combinator", position = at, force = gate.force }
+            end
+            local ac = run.rs.anchor and run.rs.anchor.valid and run.rs.anchor.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+            local ok = ac ~= nil and pcall(function()
+              gate.get_wire_connector(defines.wire_connector_id.circuit_red, true).connect_to(ac, false)
+              local cb = gate.get_or_create_control_behavior()
+              cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
+              cb.circuit_enable_disable = false
+            end)
+            if ok then
+              run.rs.taken[gate.unit_number] = true
+              run.rs.gates[#run.rs.gates + 1] = { e = gate, s = sensor, item = c.item, closed = false, shut_s = 0, key = key, pb = pb.unit_number }
+            else run.rs.skipped = run.rs.skipped + 1 end
+          else
+            run.rs.skipped = run.rs.skipped + 1
+          end
+        end end
+      end
+    end
   end
   if not run.rs or game.tick % 6 ~= 0 then return end
   for _, g in pairs(run.rs.gates) do
-    if g.e.valid and g.s.valid then
+    if g.e.valid and g.s.valid and not g.dead then
       local full = false
       for k = 1, g.s.get_max_transport_line_index() do
         if g.s.get_transport_line(k).get_item_count() >= 4 then full = true end
