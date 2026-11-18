@@ -14,4 +14,5 @@ data:extend({
   { type = "bool-setting", name = "factory-flow-loop-strict", setting_type = "runtime-global", default_value = false, order = "f2" },
   { type = "bool-setting", name = "factory-flow-shares", setting_type = "runtime-global", default_value = true, order = "g" },
   { type = "bool-setting", name = "factory-flow-slow-machines", setting_type = "runtime-global", default_value = true, order = "h" },
+  { type = "bool-setting", name = "factory-flow-cap-fill", setting_type = "runtime-global", default_value = true, order = "i" },
 })

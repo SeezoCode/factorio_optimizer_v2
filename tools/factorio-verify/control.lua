@@ -1945,7 +1945,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
-    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, disposal_held_s = run.disposal_held_s,
+    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
     out_share = run.os and (function()
       local o = { held_s = run.os.held_s, groups = {} }
       for _, g in pairs(run.os.groups) do
@@ -3565,6 +3565,8 @@ script.on_event(defines.events.on_tick, function()
     local SHORT = { [defines.entity_status.no_ingredients] = true, [defines.entity_status.item_ingredient_shortage] = true,
       [defines.entity_status.fluid_ingredient_shortage] = true, [defines.entity_status.no_fuel] = true }
     local short_net, short_at, short_fluid, fluid_at = {}, {}, {}, {}
+    -- (params.cap_fill: the same for users that are behind their own plan, see the rate cap.)
+    local behind_net, behind_at, behind_fluid = {}, {}, {}
     -- Demand no maker hears: a machine short of an item on none of whose belt networks a machine making it drops, and
     -- that no maker hands it directly. Counted per item and user recipe, in seconds (the factory's inputs aside, in
     -- verify.py): pull switches makers on only for users on their own belts.
@@ -3669,11 +3671,27 @@ script.on_event(defines.events.on_tick, function()
         if r then
           -- (A burner without fuel waits for its fuel, which is no ingredient of the recipe.)
           if e.status == defines.entity_status.no_fuel then for _, f in pairs(fuel_items(run, r)) do wait_for(e, f) end end
+          -- Behind its own plan: it made less than its planned crafts over the stretch its cap looks back on.
+          local behind = false
+          if run.params.cap_fill then
+            local c, h = (run.params.plan_crafts or {})[r.name], m.sc
+            behind = not (c and h and h[1]) or (e.products_finished - h[1].pf) < c * (game.tick - h[1].tick) / 60
+          end
           for _, ing in pairs(r.ingredients) do
             if ing.type == "item" then
-              if held(e, ing.name) < ing.amount then wait_for(e, ing.name) end
+              if held(e, ing.name) < ing.amount then
+                wait_for(e, ing.name)
+                if behind then
+                  local bn = behind_net[ing.name] or {}
+                  for net in pairs((run.feeds or {})[e.unit_number] or {}) do bn[net] = true end
+                  behind_net[ing.name] = bn
+                  behind_at[e.unit_number] = behind_at[e.unit_number] or {}
+                  behind_at[e.unit_number][ing.name] = true
+                end
+              end
             elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
               fmark(short_fluid, e, ing.name)
+              if behind then fmark(behind_fluid, e, ing.name) end
               fluid_at[e.unit_number] = fluid_at[e.unit_number] or {}
               fluid_at[e.unit_number][ing.name] = true
             end
@@ -3824,7 +3842,7 @@ script.on_event(defines.events.on_tick, function()
       end
     end
     run.short = { net = short_net, at = short_at, fluid = short_fluid, fluid_at = fluid_at, push_net = push_net, push_at = push_at, push_fluid = push_fluid,
-      low_net = low_net, low_at = low_at, low_fluid = low_fluid }
+      low_net = low_net, low_at = low_at, low_fluid = low_fluid, behind_net = behind_net, behind_at = behind_at, behind_fluid = behind_fluid }
     -- params.belt_pull: an inserter putting a machine's products onto a belt works only while a user on that belt
     -- network holds less than its stock of one of them (or the product is a target). A metered machine makes just its
     -- planned amount; dropping onto three belts it hands a third to each by turns, whatever each needs, and the belt
@@ -3931,9 +3949,31 @@ script.on_event(defines.events.on_tick, function()
           for _, p in pairs(r.products) do if target[p.name] then makes_target = true end end
           if wanted and c and run.params.rate_cap and not makes_target then
             if e.products_finished - h[1].pf > c * span * run.params.rate_cap + slack then
-              wanted = false
-              capped = true
-              run.side_capped = run.side_capped + 1
+              -- params.cap_fill: unless a user that is itself behind its plan waits for one of its products. A belt
+              -- has to fill once from its end back to each user before that user sees a standing queue, and what a
+              -- slow maker's first batches leave in that stretch is hours of its plan: the margin layout's
+              -- filtration media (a craft of 200 every five and a half hours a machine) had 254 lying past the trit
+              -- breeders, the breeders without any, and the maker held to its cap for three hours more. A user
+              -- running ahead of its own plan gets no such leave, so a hog is still bounded, by its own cap.
+              local fill = false
+              if run.params.cap_fill and run.short.behind_net then
+                for _, p in pairs(products) do
+                  if p.type == "fluid" then
+                    if fhit(run.short.behind_fluid, e, p.name) then fill = true end
+                  else
+                    local bn = run.short.behind_net[p.name]
+                    for net in pairs(drops) do if bn and bn[net] then fill = true end end
+                    for u in pairs(hands) do if run.short.behind_at[u] and run.short.behind_at[u][p.name] then fill = true end end
+                  end
+                end
+              end
+              if fill then
+                run.cap_filled = (run.cap_filled or 0) + 1
+              else
+                wanted = false
+                capped = true
+                run.side_capped = run.side_capped + 1
+              end
             end
           end
         end

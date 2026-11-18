@@ -534,6 +534,9 @@ local function control()
     a[item] = true
     short_at[unit] = a
   end
+  -- (The same for users that are behind their own plan: for those a maker may pass its rate cap, see there.)
+  local behind_net, behind_at, behind_fluid = {}, {}, {}
+  local fill = setting("cap-fill")
   local recipes = {}
   for unit, m in pairs(storage.machines) do
     local e = m.e
@@ -543,10 +546,22 @@ local function control()
       recipes[unit] = r
       if r and not e.disabled_by_script and SHORT[e.status] then
         if e.status == defines.entity_status.no_fuel then for _, f in pairs(fuels(m, r)) do wait(unit, f) end end
+        local behind = fill and (not (m.crafts and m.sc and m.sc[1])
+          or (e.products_finished - m.sc[1].pf) < m.crafts * (tick - m.sc[1].tick) / 60)
         for _, ing in pairs(r.ingredients) do
           if ing.type == "item" then
-            if held(e, ing.name) < ing.amount then wait(unit, ing.name) end
+            if held(e, ing.name) < ing.amount then
+              wait(unit, ing.name)
+              if behind then
+                local bn = behind_net[ing.name] or {}
+                for n in pairs(T.feeds[unit] or {}) do bn[n] = true end
+                behind_net[ing.name] = bn
+                behind_at[unit] = behind_at[unit] or {}
+                behind_at[unit][ing.name] = true
+              end
+            end
           elseif (e.get_fluid_count(ing.name) or 0) < ing.amount then
+            if behind then fmark(behind_fluid, e, ing.name) end
             fmark(short_fluid, e, ing.name)
             local a = fluid_at[unit] or {}
             a[ing.name] = true
@@ -762,9 +777,28 @@ local function control()
             stats.capped = stats.capped + 1
           end
           if rate_cap > 0 and wanted and not m.target and made > m.crafts * span * rate_cap + slack then
-            wanted = false
-            held = true
-            stats.capped = stats.capped + 1
+            -- (Cap fill, a setting: unless a user that is itself behind its plan waits for one of its products. A
+            -- belt has to fill once from its end back to each user; what a slow maker's first batches leave in
+            -- that stretch is hours of its plan, and held to its cap it left the user without for hours. A user
+            -- ahead of its own plan gets no such leave, so a hog is still bounded, by its own cap.)
+            local for_behind = false
+            if fill then
+              local drops, hands = T.drops[unit] or {}, T.hands[unit] or {}
+              for _, p in pairs(r.products) do
+                if p.type == "fluid" then
+                  if fhit(behind_fluid, m.e, p.name) then for_behind = true end
+                else
+                  local bn = behind_net[p.name]
+                  for n in pairs(drops) do if bn and bn[n] then for_behind = true end end
+                  for u in pairs(hands) do if behind_at[u] and behind_at[u][p.name] then for_behind = true end end
+                end
+              end
+            end
+            if not for_behind then
+              wanted = false
+              held = true
+              stats.capped = stats.capped + 1
+            end
           end
         end
         -- (A machine held to its cap stays off: a full maker pushing it would start it again.)

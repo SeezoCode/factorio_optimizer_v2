@@ -627,6 +627,9 @@ def main():
                          "plus three crafts, which lets a machine planned for two crafts an hour make twenty-one; and "
                          "with --quota-window a user planned for fewer than three crafts in the window is counted "
                          "over the time three planned crafts take, with one craft over, not two")
+    ap.add_argument("--cap-fill", action="store_true",
+                    help="with --rate-cap: a machine at its cap keeps running for a user that is itself behind its "
+                         "plan (the belt between them has to fill once); a user ahead of its plan gets no such leave")
     ap.add_argument("--meter", type=float, default=None, metavar="FACTOR",
                     help="every machine is held to FACTOR times its planned rate, as a meter would (a token bucket of one "
                          "craft; unlike --rate-cap it holds the slow machines too, and needs neither --pull nor --flow)")
@@ -879,6 +882,8 @@ def main():
         params["pull_stock"] = 1 if args.pull_stock is None else args.pull_stock
     if args.cap_slow:
         params["cap_slow"] = True
+    if args.cap_fill:
+        params["cap_fill"] = True
     if args.quota_window:
         params["quota_window"] = args.quota_window
     if args.quota_factor:
@@ -1232,6 +1237,7 @@ def main():
         ms["factory-flow-loop-strict"] = bool(args.loop_strict)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
+        ms["factory-flow-cap-fill"] = bool(args.cap_fill)
         args.loop_first = None
         args.out_share = None
         if ms:
