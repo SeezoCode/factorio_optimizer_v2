@@ -1928,7 +1928,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
-    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates,
+    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, disposal_held_s = run.disposal_held_s,
     out_share = run.os and (function()
       local o = { held_s = run.os.held_s, groups = {} }
       for _, g in pairs(run.os.groups) do
@@ -4042,6 +4042,12 @@ script.on_event(defines.events.on_tick, function()
     local over, behind_short = {}, {}
     local loop_out, loop_short, out_short = {}, {}, {}
     run.loop_held = 0
+    -- params.disposal (recipe -> true): machines the plan has only to get rid of something, every product of theirs
+    -- going to a burner or a vent (sinks.burn: blood made into albumin to burn). They take an ingredient last: held
+    -- from it while any other user stands short of it, and never counted as waiting behind anyone. Under pull such a
+    -- machine runs only when a full maker pushes it; even so it took 1,920 of 2,520 blood an hour, its whole plan,
+    -- while the animal samples planned 600 stood short.
+    local disp, real_short = run.params.disposal, {}
     for _, m in pairs(run.machines) do
       local e = m.e
       local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
@@ -4056,6 +4062,9 @@ script.on_event(defines.events.on_tick, function()
           -- olefin while it had no barrels, stood over its quota for hours, and the simik farms waiting for its
           -- barrels never got one.)
           local now = ing.type == "item" and held(e, ing.name) or math.min(e.get_fluid_count(ing.name) or 0, 2 * ing.amount)
+          if disp and not disp[r.name] and (mine[ing.name] or (ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name])) then
+            real_short[ing.name] = true
+          end
           if c0 == nil then c0 = now; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + now - c0
           -- params.loop_first: a loop's own users first. A user outside the loop that makes the item is held from it
@@ -4083,24 +4092,35 @@ script.on_event(defines.events.on_tick, function()
           -- ahead early on does not lock a machine out for hours (chemical science's REE concentrate made 10 crafts
           -- against a plan of 2 in 20 minutes at the start, then stood held while reduction waited for its sand).
           local span = secs
-          if run.params.quota_window then
+          -- (params.cap_slow: a user planned for fewer than three crafts in the window is counted over the time
+          -- three planned crafts take, four hours at most, with one craft's worth over, not two. Two crafts over in
+          -- half an hour let a user planned for a craft every 45 minutes take six times its plan: Py science 2's
+          -- arqad queen, planned 14% of the natural gas barrels, ran at 628% while the arqads planned 86% got a
+          -- quarter of theirs.)
+          local qwin, qslack = run.params.quota_window, 2
+          if run.params.cap_slow and qwin and ing.amount > 0 then
+            local cps = (rates[ing.name] or 0) / ing.amount
+            if cps > 0 and cps * qwin < 3 then qwin, qslack = math.min(3 / cps, 14400), 1 end
+          end
+          if qwin then
             m.fq.hist = m.fq.hist or {}
             local h = m.fq.hist[ing.name]
             if not h then h = { { tick = game.tick, taken = taken } }; m.fq.hist[ing.name] = h end
             if game.tick - h[#h].tick >= 3600 then h[#h + 1] = { tick = game.tick, taken = taken } end
-            while #h > 1 and game.tick - h[2].tick >= run.params.quota_window * 60 do table.remove(h, 1) end
+            while #h > 1 and game.tick - h[2].tick >= qwin * 60 do table.remove(h, 1) end
             span = (game.tick - h[1].tick) / 60
             taken = taken - h[1].taken
           end
           -- (params.quota_factor: how far ahead of its plan, default 1.5. Supply at plan, a user at 1.4 times its plan
           -- took everything: Py production science's molten steel all 6/s of molten iron, four casting machines none.)
-          if taken > (rates[ing.name] or 0) * span * (run.params.quota_factor or 1.5) + ing.amount * 2 then
+          if taken > (rates[ing.name] or 0) * span * (run.params.quota_factor or 1.5) + ing.amount * qslack then
             o[ing.name] = true
           elseif mine[ing.name] or (ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name]) then
             -- (A user outside the loop that makes the item, params.loop_first, counts only while the loop is not
             -- short of it itself: held by that rule it stands short, and counted then it had the quotas hold the
             -- loop's own users in turn, the breeder off its meat for the sample's sake.)
-            if (loop_out[e.unit_number] or {})[ing.name] then out_short[ing.name] = (out_short[ing.name] or 0) + 1
+            if disp and disp[r.name] then
+            elseif (loop_out[e.unit_number] or {})[ing.name] then out_short[ing.name] = (out_short[ing.name] or 0) + 1
             else behind_short[ing.name] = (behind_short[ing.name] or 0) + 1 end
           end
         end
@@ -4132,6 +4152,10 @@ script.on_event(defines.events.on_tick, function()
         for _, ing in pairs(m.fq.r.ingredients) do
           if o[ing.name] and behind_short[ing.name] and not is_pushed(ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+          end
+          if disp and disp[m.fq.r.name] and real_short[ing.name] then
+            if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+            run.disposal_held_s = (run.disposal_held_s or 0) + 1
           end
           if loop_short[ing.name] and (loop_out[e.unit_number] or {})[ing.name] and not is_pushed(ing) then
             capped[ing.name] = true

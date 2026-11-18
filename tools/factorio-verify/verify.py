@@ -624,7 +624,9 @@ def main():
     ap.add_argument("--cap-slow", action="store_true",
                     help="with --rate-cap: a machine planned for fewer than three crafts in ten minutes is capped over "
                          "the time three planned crafts take (at most four hours) plus one craft, not over ten minutes "
-                         "plus three crafts, which lets a machine planned for two crafts an hour make twenty-one")
+                         "plus three crafts, which lets a machine planned for two crafts an hour make twenty-one; and "
+                         "with --quota-window a user planned for fewer than three crafts in the window is counted "
+                         "over the time three planned crafts take, with one craft over, not two")
     ap.add_argument("--meter", type=float, default=None, metavar="FACTOR",
                     help="every machine is held to FACTOR times its planned rate, as a meter would (a token bucket of one "
                          "craft; unlike --rate-cap it holds the slow machines too, and needs neither --pull nor --flow)")
@@ -1283,6 +1285,34 @@ def main():
         both = {i for i in inside if i in outside}
         params["loop_first"] = {"window": args.loop_first, "inside": {i: inside[i] for i in both}, "outside": {i: outside[i] for i in both}}
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
+    if args.flow and built_plan_path(args.target) and os.path.exists(built_plan_path(args.target)):
+        # Machines the plan has only to get rid of something (sinks.burn): every product goes to a burner or to other
+        # such machines. They take their ingredients last.
+        def _bn(n): return n.split("#")[0].split("@")[0]
+        precs = {}
+        for m in json.load(open(built_plan_path(args.target))).get("machines", []):
+            r = precs.setdefault(_bn(m["recipe"]), {"in": set(), "out": set(), "void": False})
+            r["in"] |= {_bn(k) for k in {**m.get("demand", {}), **m.get("fluidDemand", {})}}
+            r["out"] |= {_bn(k) for k in m.get("products", {})}
+            r["void"] = r["void"] or "-pyvoid" in m["recipe"] or m.get("machine") == "py-burner"
+        if any(r["void"] for r in precs.values()):
+            users = defaultdict(set)
+            for n, r in precs.items():
+                for i in r["in"]:
+                    users[i].add(n)
+            tg = {t["name"] for t in (job or {}).get("targets", [])}
+            done = {n for n, r in precs.items() if r["void"]}
+            disposal = set()
+            while True:
+                more = {n for n, r in precs.items() if n not in done and r["out"] and not (r["out"] & tg)
+                        and all((users[o] - {n}) <= done for o in r["out"])}
+                if not more:
+                    break
+                disposal |= more
+                done |= more
+            if disposal:
+                params["disposal"] = {n: True for n in disposal}
+                print(f"disposal last: {len(disposal)} recipes that only feed burners take their ingredients last ({', '.join(sorted(disposal))})")
     if args.real_voids:
         params["real_voids"] = True
         print("real-voids: fluid ports end in an overflow valve and Py's exhaust pipe or sinkhole")
