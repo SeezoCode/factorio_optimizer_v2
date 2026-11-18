@@ -788,6 +788,7 @@ local function control()
     -- Py logistic science's scrondrix loop is planned with no margin: each animal gives 8.3 meat and takes 7.5 to
     -- breed, and the 11% over is exactly what the other users take. Whatever is lost is never grown back otherwise.
     local lf = setting("loop-first")
+    local strict = setting("loop-strict")
     local loop_out, loop_short, out_short = {}, {}, {}
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
@@ -812,8 +813,11 @@ local function control()
               if not h then h = { { tick = tick, taken = taken } }; m.lf[ing.name] = h end
               if tick - h[#h].tick >= 3600 then h[#h + 1] = { tick = tick, taken = taken } end
               while #h > 1 and tick - h[2].tick >= 1800 * 60 do table.remove(h, 1) end
+              -- (Loop strict, a setting: whenever it stands short, however far ahead of its plan it has run. A loop
+              -- that ran ahead on its starters is "ahead" for half an hour after they end, and the other users
+              -- drain it meanwhile.)
               if short_at[unit] and short_at[unit][ing.name]
-                  and taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60 then
+                  and (strict or taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60) then
                 loop_short[ing.name] = true
               end
             end

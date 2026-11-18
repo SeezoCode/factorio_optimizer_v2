@@ -1229,6 +1229,7 @@ def main():
             ms["factory-flow-rate-cap"] = args.rate_cap
         # (The mod's own loop-first and share rules, in place of the check's.)
         ms["factory-flow-loop-first"] = bool(args.loop_first)
+        ms["factory-flow-loop-strict"] = bool(args.loop_strict)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         args.loop_first = None
