@@ -1368,6 +1368,8 @@ local function start(params)
       end end
     end
     local sides = { { 0, -1, defines.direction.south }, { 1, 0, defines.direction.west }, { 0, 1, defines.direction.north }, { -1, 0, defines.direction.east } }
+    local rx_target = {}
+    for _, n in pairs(run.params.targets or {}) do rx_target[n] = true end
     for _, m in pairs(run.machines) do
       local e = m.e
       local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
@@ -1404,6 +1406,9 @@ local function start(params)
             local conds = {}
             if (run.params.void_except or {})[p.name] then
               -- (a loop's carrier stays: params.carrier_kit)
+            elseif rx_target[p.name] then
+              -- (what the factory is for stays too: the exit at Py science 1's pack machine took 69 packs an hour,
+              -- as many as reached the port, whenever its output stood at its limit.)
             elseif not any_used then
               conds[1] = { first_signal = p.signal, comparator = ">=", constant = p.limit }
             else
@@ -3267,8 +3272,10 @@ local function relief(run)
             run.relieved_by[rk] = (run.relieved_by[rk] or 0) + d
           end
         end
+        local tg = {}
+        for _, n in pairs(run.params.targets or {}) do tg[n] = true end
         for _, b in pairs(sc.blocking) do
-          if (run.params.void_except or {})[b.p.name] then
+          if (run.params.void_except or {})[b.p.name] or tg[b.p.name] then
           elseif not b.k and run.rx_done and run.rx_done[e.unit_number] then
             -- (params.relief_exits: this machine's items leave by its own inserter.)
           elseif b.k then
