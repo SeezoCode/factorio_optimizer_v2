@@ -1274,20 +1274,29 @@ blueprint: they are the check's own help or control, run by the verify mod.
   is handed in (a carrier some recipe makes from no other carrier: barrel, cage, stone brick; a filled one came with
   its content, and a caged animal with the animal), and no overflow takes a carrier out of a machine. `warmup`
   (default): during the warm-up only, so a loop that leaks shows while measured; `run`: through the run, counted by
-  the hour (timeline `boot`). `--seed-stop S`: loop starters only in the first S game seconds.
+  the hour (timeline `boot`). `--seed-stop S`: loop starters only in the first S game seconds (and never past the
+  warm-up). `--seed-budget H`: each machine is handed at most H hours of its planned use of a starter in all, a kit
+  of known size. `--seed-kit N`: N crafts' worth at each machine once and nothing after (too little for a breeding
+  loop: a stack of bones where the loop takes two thousand).
 - `--real-voids`: each fluid output port ends as it would in a game: a pipe, Py's overflow valve (it opens above 80%
   full) and an exhaust pipe (gases, 1x1) or sinkhole (liquids, 3x3), which need no power and pick their recipe by
   what arrives, in place of the test copy's infinity pipe. Up to six more pipes where the first tiles are taken;
   the report's `real_voids` counts what each destroyed and the ports left as they were (`no_room`).
-- `--out-share [F]`: a maker's inserters onto several belt networks carry each network its planned share (the use of
-  the item by the machines that take from that network). Inserters share out by turns whatever the plan gave each
-  belt: Py logistic science's water-barrel filler has one onto a belt planned 94% of its barrels and one onto a belt
-  planned 6%, and half went each way. For every item a machine puts onto two or more networks by inserters that
-  carry nothing else, the script counts what each network's inserters carried and holds those of a network ahead
-  of F times (default 1.2) its share of the total, while a network behind its share has a user waiting for the item
-  and an inserter free to bring it (a full belt, or users that are not asking, hold nobody back). It reads its own
-  inserters' hands and the demand signal of its belts: a counter per inserter and a comparison in a game. Report:
-  `out_share`.
+- `--out-share`: where a machine puts an item onto several belt networks, demand first and the plan's shares when
+  nobody asks. Inserters share out by turns whatever each belt needs: Py logistic science's water-barrel filler has
+  one onto a belt planned 94% of its barrels and one onto a belt planned 6%, and half went each way. For every item
+  a machine puts onto two or more networks by inserters that carry nothing else: a network with a user waiting for
+  the item (short of it, not held from it by a quota) takes it, and among those one ahead of its share is held while
+  another that waits is behind its share and has room; a network nobody waits on is held while a waiting one has
+  room, and otherwise while it is ahead of its share and one behind its share has room. Shares are the planned use
+  of the users each network has been seen bringing the item to; kept as a balance per network with a slack of one
+  inserter's hand. It reads its own inserters' hands and its users' waiting. `--out-share-mode strict` keeps a
+  network nobody waits on held even when every other belt is blocked; `demand` is the first form, which let go
+  whenever nobody waited. Report: `out_share`.
+- `--cap-slow` (with `--rate-cap`, `--quota-window`): a machine planned for fewer than three crafts in the cap's ten
+  minutes, or in the quota's window, is counted over the time three planned crafts take (four hours at most) with
+  one craft over. The fixed allowance (three crafts over, two for a quota) lets a machine planned for two crafts an
+  hour run at ten times its plan and take what a large user was planned for.
 - `--loop-first [S]` (with `--flow`): a production loop feeds itself first. A user of an item whose own products
   come back to a maker of that item within three recipes (0: it makes the item itself, a farm and its catalyst) is
   the item's loop; any other user is held from the item while a user in the loop stands short of it and took less
@@ -1296,6 +1305,9 @@ blueprint: they are the check's own help or control, run by the verify mod.
   quotas, which count from the start of the run, lock a breeder out for having run ahead early. With it the
   overflow port of a belt that a loop's own item is put onto stays shut (and with `--carrier-kit`, of a belt that
   carries a carrier): a farm standing full of its product otherwise let its catalyst out with the surplus.
+  `--loop-strict`: the other users wait whenever a user in the loop stands short, not only while it is behind its
+  plan (a loop that ran ahead on its starters was not protected when they ended). With `--flow`, machines the plan
+  has only to feed a burner (`sinks.burn`: blood made into albumin to burn) take their ingredients last.
 - `--belt-hold [K]`: each inserter from a machine onto a belt is wired to the belt tile it drops on (read whole belt,
   hold) and works only while the belt holds less than K crafts' worth (default 2) of the item; with several item
   products, a decider per product sets the inserter's filter. An experiment that failed as built: what rests at the
@@ -1306,9 +1318,15 @@ blueprint: they are the check's own help or control, run by the verify mod.
   both into the blueprint as logistic conditions (`blocks.overflow_after_stacks`, `blocks.provider_until_stacks`);
   the flags try them on a factory built without. `--void-wait S` (with `--void-full`): a machine must stand full so
   long before anything is deleted (30), and what a user still lacks is left ten minutes more.
-- `--flow-mod`: the same pull, quotas and gates run by the **factory-flow mod** (`tools/factory-flow`), which a player
-  can install: the test copy is tagged by the mod's `tag.py` and built raising build events, as a player's build would.
-  No carrier bootstrap (in a real game you put a loop's carriers in by hand once).
+- `--flow-mod`: the same pull, quotas, gates, loop-first, shares and slow-machine rule run by the **factory-flow
+  mod** (`tools/factory-flow`), which a player can install: the test copy is tagged by the mod's `tag.py` and built
+  raising build events, as a player's build would. The check's `--rate-cap`, `--quota-window`, `--pull-stock`,
+  `--loop-first`, `--out-share` and `--cap-slow` become the mod's settings (set through the mod itself; before
+  2026-11-18 they were written from the check's mod, which the game ignores, and every such run used the defaults).
+  `--export-built FILE` writes the test copy as built, with the overflow exits of `--relief-exits` and the fluid
+  voids of `--real-voids`; `--with-built FILE` merges those into the test copy as blueprint parts, as
+  `tag.py --built` does for the player's blueprint, and the check then builds none itself and only empties the
+  exits' chests.
 
 **Does a plan settle at all?** `tools/plan-sim/sim.py <run>/plan_rebalanced.json <target>` runs a plan as a factory
 with ideal transport (one pool per item, machines at their real speed, no layout) under rules named on the command
