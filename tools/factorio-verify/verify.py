@@ -336,6 +336,18 @@ def planned_crafts(args):
     return {r: tot[r] / n[r] for r in tot}
 
 
+def planned_target_crafts(args, targets):
+    """Recipe -> planned crafts per second of all its machines, for the recipes making one of the job's targets."""
+    path = built_plan_path(args.target)
+    if not path or not os.path.exists(path) or not targets:
+        return {}
+    tot = defaultdict(float)
+    for m in json.load(open(path)).get("machines", []):
+        if any(k.split("#")[0].split("@")[0] in targets for k in m.get("products", {})):
+            tot[m["recipe"].split("#")[0].split("@")[0]] += m.get("crafts", 0.0)
+    return dict(tot)
+
+
 def planned_use(args):
     """Item or fluid -> planned use per second (plan.json demands), by the game's name."""
     path = built_plan_path(args.target)
@@ -346,6 +358,9 @@ def planned_use(args):
         for k, v in {**m.get("demand", {}), **m.get("fluidDemand", {})}.items():
             use[k.split("#")[0]] += v
     return use
+
+
+VOID_MACHINES = {"py-gas-vent", "py-sinkhole"}
 
 
 def judge(report, ports, args):
@@ -365,7 +380,9 @@ def judge(report, ports, args):
     for w in report.get("warnings", []):
         notes.append(w)
 
-    machines = report["machines"]
+    # Fluid voids (Py's exhaust pipe and sinkhole, built by --real-voids or from the player's blueprint) are machines
+    # to the game, with no recipe and nothing to craft: not part of the factory's verdict.
+    machines = [m for m in report["machines"] if m["name"] not in VOID_MACHINES]
     secs = report["measured_s"]
     print(f"\nMachines ({len(machines)}), over {secs:.0f} s after a {report['warmup_s']:.0f} s warm-up:")
     groups = defaultdict(list)
@@ -504,6 +521,25 @@ def judge(report, ports, args):
     if not ports:
         notes.append("no ports.json: rates not compared with the plan")
 
+    # The port's rate alone can pass a factory that stood: a maker running at twice its plan fills the belt to the
+    # port, and the port takes from that belt for hours after the last craft (logistic science stood at hour 11 of
+    # 20 and its port still read 100%). So the target's makers must also have kept on over the last quarter of the
+    # measured time (two hours at least): 80% of their planned crafts there.
+    tl = [e for e in report.get("timeline") or [] if e.get("phase") == "measure"]
+    if tl:
+        end = tl[-1]
+        span = max(2.0, (secs / 3600) / 4)
+        before = [e for e in report["timeline"] if e["h"] <= end["h"] - span + 1e-6]
+        if before:
+            start = before[-1]
+            hours = end["h"] - start["h"]
+            for r, want in sorted(planned_target_crafts(args, getattr(args, "targets", None) or set()).items()):
+                got = end["pf"].get(r, 0) - start["pf"].get(r, 0)
+                exp = want * hours * 3600
+                print(f"\nTarget makers over the last {hours:.1f} hours: {r} {got} crafts, planned {exp:.1f}")
+                if exp >= 2 and got < 0.8 * exp:
+                    fails.append(f"{r} kept on to the end only in part: {got} crafts in the last {hours:.1f} hours, planned {exp:.1f}")
+
     # Rocket silos: parts built (each finished rocket is launched), against the plan's launched rate.
     launched = getattr(args, "launched", {}) or {}
     silos = report.get("silos") or []
@@ -532,10 +568,14 @@ def judge(report, ports, args):
     print(f"\nInserters: {report['inserters']}, stuck holding an item: {len(stuck)}, never moved with an empty hand: {report['idle_inserters']}")
     for s in stuck[:30]:
         print(f"  ({s['x']:g},{s['y']:g}) {s['name']} holding {s.get('holding')} for {s.get('drop_target')} ({s.get('status')})")
-    # Waiting for room (a backed-up belt, or direct insertion into a machine that has enough) is by design.
-    real = [s for s in stuck if not s.get("waiting")]
-    if len(real) < len(stuck):
-        print(f"  ({len(stuck) - len(real)} of them wait for room where they drop: surplus backing up, not a fault)")
+    # Waiting for room (a backed-up belt, or direct insertion into a machine that has enough) is by design, and so is
+    # an inserter switched off by the flow rules or a circuit with an item in its hand: it was held, not stuck.
+    held = [s for s in stuck if not s.get("waiting") and s.get("status") in ("disabled_by_script", "disabled_by_control_behavior")]
+    real = [s for s in stuck if not s.get("waiting") and s not in held]
+    if len(stuck) - len(held) - len(real):
+        print(f"  ({len(stuck) - len(held) - len(real)} of them wait for room where they drop: surplus backing up, not a fault)")
+    if held:
+        print(f"  ({len(held)} of them are switched off by the flow rules or a circuit: held, not a fault)")
     if real:
         fails.append(f"{len(real)} inserters stuck holding an item")
     belts = report["stuck_belts"]
