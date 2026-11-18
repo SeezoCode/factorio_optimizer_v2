@@ -144,6 +144,11 @@ local function on_removed(ev)
     if a.anchor.valid then a.anchor.destroy() end
     storage.anchors[e.unit_number] = nil
   end
+  local g = (storage.rs or {})[e.unit_number]
+  if g then
+    if g.anchor and g.anchor.valid then g.anchor.destroy() end
+    storage.rs[e.unit_number] = nil
+  end
   if CRAFTERS[e.type] or BELTS[e.type] or e.type == "inserter" then storage.dirty = true end
 end
 
@@ -446,6 +451,111 @@ local function loop_gates(T, recipes)
   end
 end
 
+-- Reserve (a setting, tiles; 0: off): a standing queue at each of a loop's own users. A belt serves a user only as
+-- items pass it, or once the queue from the belt's end stands at its inserter; pull and the caps keep belts lean, so
+-- what passes a user that is not asking at that moment parks at the far end. A loop then dies with its stock in
+-- sight: Py science 1's seaweed loop stood with its fertilizer maker 2 seaweed short and 146 lying past it on the
+-- loop's own belt. Per loop item and belt network, the first plain belt tile past the last of the loop's users on
+-- it is a gate that stays shut until a lane of the tile that many tiles back up the belt takes nothing more: that
+-- much queue stands at the loop's users before anything goes on to other users or the belt's end. It opens for
+-- whatever fills the belt, so a mixed belt cannot lock.
+local function reserve_setup(T, recipes)
+  storage.rs = storage.rs or {}
+  local N = setting("reserve")
+  local function retire(g)
+    if g.belt.valid then pcall(function() g.belt.get_or_create_control_behavior().circuit_enable_disable = false end) end
+    if g.anchor and g.anchor.valid then g.anchor.destroy() end
+  end
+  if N <= 0 or not setting("loop-first") then
+    for u, g in pairs(storage.rs) do retire(g); storage.rs[u] = nil end
+    return
+  end
+  local makes_on = {}
+  for unit in pairs(storage.machines) do
+    local r = recipes[unit]
+    for _, p in pairs(r and r.products or {}) do
+      if p.type == "item" then
+        makes_on[p.name] = makes_on[p.name] or {}
+        for n in pairs(T.drops[unit] or {}) do makes_on[p.name][n] = true end
+      end
+    end
+  end
+  local function down(b)
+    local outs = (b.belt_neighbours or {}).outputs or {}
+    if b.type == "underground-belt" and b.belt_to_ground_type == "input" then outs = { b.underground_belt_neighbour } end
+    return outs[1]
+  end
+  -- The pickup tiles of a loop's own users, by item and network: networks seen bringing the item to the machine, or
+  -- that a maker of the item drops onto.
+  local cands = {}
+  for unit, m in pairs(storage.machines) do
+    if recipes[unit] and m.loop_in and m.e.valid then
+      for item in pairs(m.loop_in) do
+        local nets = {}
+        for n in pairs((m.brought or {})[item] or {}) do nets[n] = true end
+        for n in pairs(T.feeds[unit] or {}) do if (makes_on[item] or {})[n] then nets[n] = true end end
+        for _, i in pairs(T.into[unit] or {}) do
+          local n = i.valid and T.ins_net[i.unit_number]
+          if n and nets[n] then
+            local pb
+            for _, x in pairs(i.surface.find_entities_filtered { area = { { i.pickup_position.x - 0.05, i.pickup_position.y - 0.05 }, { i.pickup_position.x + 0.05, i.pickup_position.y + 0.05 } }, type = "transport-belt" }) do pb = x end
+            if pb then
+              local key = item .. ":" .. n
+              cands[key] = cands[key] or {}
+              cands[key][pb.unit_number] = pb
+            end
+          end
+        end
+      end
+    end
+  end
+  local keep = {}
+  for key, picks in pairs(cands) do
+    for _, pb in pairs(picks) do
+      local cur, last = pb, true
+      for _ = 1, 600 do
+        cur = down(cur)
+        if not cur or not cur.valid or cur.type == "splitter" then break end
+        if picks[cur.unit_number] then last = false; break end
+      end
+      if last then
+        local gate, steps = pb, 0
+        for _ = 1, 8 do
+          gate = gate and down(gate)
+          steps = steps + 1
+          if not gate or not gate.valid or gate.type == "transport-belt" or gate.type == "splitter" then break end
+        end
+        -- (Never a belt that is an overflow gate already.)
+        if gate and gate.valid and gate.type == "transport-belt" and not (storage.anchors or {})[gate.unit_number] then
+          local u = gate.unit_number
+          keep[u] = true
+          if not storage.rs[u] then
+            local sensor = pb
+            for _ = 1, N - steps do
+              local ins = (sensor.belt_neighbours or {}).inputs or {}
+              if #ins ~= 1 or ins[1].type ~= "transport-belt" then break end
+              sensor = ins[1]
+            end
+            local anchor = gate.surface.create_entity { name = "factory-flow-gate-anchor", position = gate.position, force = gate.force }
+            local ok = anchor ~= nil and pcall(function()
+              gate.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+                .connect_to(anchor.get_wire_connector(defines.wire_connector_id.circuit_red, true), false)
+              local cb = gate.get_or_create_control_behavior()
+              cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
+              cb.circuit_enable_disable = false
+            end)
+            if ok then storage.rs[u] = { belt = gate, sensor = sensor, anchor = anchor, closed = false }
+            elseif anchor then anchor.destroy() end
+          end
+        end
+      end
+    end
+  end
+  for u, g in pairs(storage.rs) do
+    if not keep[u] or not g.belt.valid or not g.sensor.valid then retire(g); storage.rs[u] = nil end
+  end
+end
+
 -- Letting go of everything the mod stopped.
 local function release()
   for _, m in pairs(storage.machines) do
@@ -463,6 +573,10 @@ local function release()
       if t.hold then for _, i in pairs(t.ins) do if i.e.valid then i.e.disabled_by_script = false end end end
       t.hold = false
     end
+  end
+  for _, g in pairs(storage.rs or {}) do
+    if g.closed and g.belt.valid then pcall(function() g.belt.get_or_create_control_behavior().circuit_enable_disable = false end) end
+    g.closed = false
   end
   storage.stale = true
 end
@@ -577,6 +691,7 @@ local function control()
     storage.stale = false
     share_setup(T, recipes)
     loop_gates(T, recipes)
+    reserve_setup(T, recipes)
   end
 
   -- Requester demand (setting): a robot link's requester chest holding less than its request counts as a machine
@@ -1087,6 +1202,24 @@ script.on_nth_tick(60, function()
   if storage.topo then control() end
 end)
 
+-- Reserve gates: shut until a lane of the tile back up the belt takes nothing more.
+script.on_nth_tick(6, function()
+  if not storage.rs or not setting("enabled") then return end
+  for _, g in pairs(storage.rs) do
+    if g.belt.valid and g.sensor.valid then
+      local full = false
+      for k = 1, g.sensor.get_max_transport_line_index() do
+        local line = g.sensor.get_transport_line(k)
+        if line.get_item_count() > 0 and not line.can_insert_at_back() then full = true end
+      end
+      if (not full) ~= g.closed then
+        g.closed = not full
+        pcall(function() g.belt.get_or_create_control_behavior().circuit_enable_disable = g.closed end)
+      end
+    end
+  end
+end)
+
 -- Shares: what each network's inserters carried, from their hands.
 script.on_nth_tick(4, function()
   if not storage.os or not setting("enabled") or not setting("shares") then return end
@@ -1133,7 +1266,8 @@ remote.add_interface("factory-flow", {
   end,
   -- Counts of what the mod knows: machines, those still without a recipe, loop users, gates kept shut for a loop.
   info = function()
-    local o = { machines = 0, unknown = 0, loop_in = 0, loop_out = 0, gates = 0, loop_gates = 0, groups = 0 }
+    local o = { machines = 0, unknown = 0, loop_in = 0, loop_out = 0, gates = 0, loop_gates = 0, groups = 0, reserve_gates = 0, reserve_shut = 0 }
+    for _, g in pairs(storage.rs or {}) do o.reserve_gates = o.reserve_gates + 1; if g.closed then o.reserve_shut = o.reserve_shut + 1 end end
     for _, m in pairs(storage.machines) do
       o.machines = o.machines + 1
       if m.cands then o.unknown = o.unknown + 1 end

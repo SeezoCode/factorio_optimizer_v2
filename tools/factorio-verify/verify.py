@@ -1243,6 +1243,7 @@ def main():
         # (The mod's own loop-first and share rules, in place of the check's.)
         ms["factory-flow-loop-first"] = bool(args.loop_first)
         ms["factory-flow-loop-strict"] = bool(args.loop_strict)
+        ms["factory-flow-reserve"] = int(args.reserve or 0)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
