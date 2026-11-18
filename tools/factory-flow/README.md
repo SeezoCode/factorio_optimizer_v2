@@ -42,6 +42,20 @@ Once a second, for the machines of a tagged blueprint:
   the same item count as one, as robots carry between them.
 - **Push**: a machine standing with a full output (or a full burnt result slot: its ash) gets the users of what is
   stuck in it going, even if nothing they make is waited for (a ring stops for good otherwise).
+- **Loop first** (a setting, on by default): a production loop feeds itself first. A user of an item whose own products
+  come back to a maker of that item within three recipes is in the item's loop (the tags say which); any other user
+  has its inserters for that item stopped while one in the loop stands short of it and took less than its plan in
+  the last half hour. Py's breeding loops are planned with no margin (a scrondrix gives 8.3 meat by way of its bones
+  and takes 7.5 to breed; the 11% over is exactly what the other users take), so whatever is lost is never grown back
+  otherwise. The overflow belt of a loop's own item, or of a carrier, stays closed.
+- **Shares** (a setting, on by default): where one machine puts an item onto several belts, its inserters would
+  share it out by turns whatever each belt's users need (Py logistic science's water-barrel filler: two belts planned
+  94% and 6% of its barrels, half going to each). The belt of a user waiting for the item comes first; among those,
+  and when nobody waits, a belt ahead of its planned share is held while one behind it has room. The mod reads only
+  the inserters' hands and the users' waiting.
+- **Furnaces without a recipe**: a furnace the blueprint names no recipe for (an older layout's barrel fillers) is
+  tagged with the plan's recipes for its kind, and taken for the one it crafts or, before its first craft, the one
+  that takes the fluid it holds.
 
 A setting, *side-product cap* (default 0, off), holds a machine wanted only for a product it was not planned for to that
 many times its planned rate (over the last ten minutes, plus two crafts). Its purpose comes with the tags: its main
@@ -57,7 +71,8 @@ stopped again, and the rules still on take over from the next second.
 
 ## Use
 
-1. Tag the blueprint (it carries each machine's planned intake, the target makers and the overflow belts):
+1. Tag the blueprint (it carries each machine's planned intake, its place in the production loops, the target makers
+   and the overflow belts):
 
    ```bash
    python3 tools/factory-flow/tag.py solves/<run> --job jobs/<job>.json
@@ -65,6 +80,19 @@ stopped again, and the rules still on take over from the next second.
 
    This writes `solves/<run>/flow_blueprint.txt` from the run's `best_output_string.txt`, with the run's `plan.json` and
    `ports.json`.
+
+   For a belt-built factory, add what the in-game check builds from real parts and a player needs too: an overflow
+   exit at every machine that a product nobody takes could stop (a fast inserter whose filter a decider sets, a steel
+   chest, one decider per product, wired to the machine), and at every fluid output Py's overflow valve with an
+   exhaust pipe or a sinkhole behind it. One short run of the check writes them out, and `--built` merges them in:
+
+   ```bash
+   python3 tools/factorio-verify/verify.py solves/<run> --flow --relief-exits --real-voids --warmup 60 --measure 60 \
+       --export-built solves/<run>/built_blueprint.txt
+   python3 tools/factory-flow/tag.py solves/<run> --job jobs/<job>.json --built solves/<run>/built_blueprint.txt
+   ```
+
+   The exits' chests fill up and have to be emptied (or led to a burner): how fast is in the night log of 2026-11-18.
 2. Pack the mod and put the zip in Factorio's mods folder (on a Mac `~/Library/Application Support/factorio/mods`):
 
    ```bash
@@ -74,9 +102,11 @@ stopped again, and the rules still on take over from the next second.
 3. Build the tagged blueprint with the mod enabled. The mod learns its machines from the build (the tags travel with the
    ghosts), so a factory built before the mod was installed, or from an untagged blueprint, is left alone.
    `/factory-flow` in the console says what it is doing.
+4. For a belt-built factory set *Rate cap* to 2 and *Quota window* to 30 minutes in the map's mod settings, and
+   *Stock* to 1: the settings the in-game check ran it with.
 
 Loops (barrels, cages, Py's bricks) still need their carriers put in once by hand, as the blueprint's item requests
-say, and a big ring needs many: Py logistic science's ring of animals and its water-barrel filler took about 600 water
+say, and a big ring needs many: Py logistic science's ring of animals and its water-barrel filler took about 600
 barrels. When a machine has waited two minutes for a loop's carrier while no maker of it stands full, the mod says so
 in the console, with the machine's place. A machine replaced by an upgrade loses its tags.
 

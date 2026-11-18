@@ -740,6 +740,10 @@ def main():
                     help="with --flow-mod: test the player's blueprint. The overflow exits and fluid voids of FILE (an "
                          "earlier run's --export-built) are merged into the test copy as blueprint parts, and the check "
                          "builds none itself; it only empties the exits' chests")
+    ap.add_argument("--seed-kit", type=float, default=None, metavar="N",
+                    help="loop starters as one delivery: each machine taking a starter item starts with N crafts' "
+                         "worth of it (a stack at most) and gets nothing afterwards; fluids start with a full box "
+                         "(--prime-full). In place of topping up for hours whichever machine stands short")
     ap.add_argument("--export-built", default=None, metavar="FILE",
                     help="write the test copy as built in the game to FILE as a blueprint string, with the overflow exits "
                          "(--relief-exits) and fluid voids (--real-voids) the check made from real parts; "
@@ -1219,6 +1223,7 @@ def main():
         # (The mod's own loop-first and share rules, in place of the check's.)
         ms["factory-flow-loop-first"] = bool(args.loop_first)
         ms["factory-flow-shares"] = bool(args.out_share)
+        ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         args.loop_first = None
         args.out_share = None
         if ms:
@@ -1316,9 +1321,13 @@ def main():
     if args.real_voids:
         params["real_voids"] = True
         print("real-voids: fluid ports end in an overflow valve and Py's exhaust pipe or sinkhole")
+    if args.seed_kit:
+        params["seed_kit"] = args.seed_kit
+        params["seed_stop"] = 30 if args.seed_stop is None else args.seed_stop
+        print(f"seed-kit: starters once, {args.seed_kit:g} crafts' worth at each machine that takes one")
     if args.export_built:
         params["export_built"] = os.path.abspath(args.export_built)
-    if args.seed_stop is not None:
+    if args.seed_stop is not None and not args.seed_kit:
         params["seed_stop"] = args.seed_stop
         print(f"seed-stop: loop starters only in the first {args.seed_stop:g} game seconds")
     if args.bootstrap:

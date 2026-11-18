@@ -710,6 +710,7 @@ local function control()
     -- each other wanted and spun far past their plan (Py production science in the check: 330 recipes above 1.5 times
     -- their plan, the uranium enrichment cascade at 20 to 33 times), taking what other chains needed.
     local rate_cap = setting("rate-cap")
+    local slow = setting("slow-machines")
     for unit, m in pairs(storage.machines) do
       local r = recipes[unit]
       if m.e.valid and r then
@@ -745,15 +746,20 @@ local function control()
         if (capping or rate_cap > 0) and m.crafts then
           m.sc = m.sc or {}
           local h = m.sc
-          h[#h + 1] = { tick = tick, pf = m.e.products_finished }
-          while #h > 1 and tick - h[1].tick > 600 * 60 do table.remove(h, 1) end
+          -- (Slow machines, a setting: one planned for fewer than three crafts in ten minutes is capped over the
+          -- time three planned crafts take, four hours at most, plus one craft. Ten minutes plus three crafts let a
+          -- machine planned for two crafts an hour make twenty-one.)
+          local win, slack = 600, 3
+          if slow and m.crafts > 0 and m.crafts * 600 < 3 then win, slack = math.min(3 / m.crafts, 14400), 1 end
+          if #h == 0 or tick - h[#h].tick >= win * 60 / 600 then h[#h + 1] = { tick = tick, pf = m.e.products_finished } end
+          while #h > 1 and tick - h[1].tick > win * 60 do table.remove(h, 1) end
           local made, span = m.e.products_finished - h[1].pf, (tick - h[1].tick) / 60
           if capping and wanted and not main and made > m.crafts * span * cap + 2 then
             wanted = false
             held = true
             stats.capped = stats.capped + 1
           end
-          if rate_cap > 0 and wanted and not m.target and made > m.crafts * span * rate_cap + 3 then
+          if rate_cap > 0 and wanted and not m.target and made > m.crafts * span * rate_cap + slack then
             wanted = false
             held = true
             stats.capped = stats.capped + 1
@@ -786,7 +792,7 @@ local function control()
       if e.valid and r then
         m.fq = m.fq or { t0 = tick, pf0 = e.products_finished, c0 = {}, item_of = {} }
         local secs = (tick - m.fq.t0) / 60
-        local window = setting("quota-window") * 60   -- seconds; 0: since the machine was built
+        local window0 = setting("quota-window") * 60   -- seconds; 0: since the machine was built
         local o = {}
         for _, ing in pairs(r.ingredients) do
           -- (A fluid held in its box counts up to two crafts' worth: a full box is no fluid taken from anyone.)
@@ -811,6 +817,14 @@ local function control()
             end
           end
           local span = secs
+          -- (Slow machines, a setting: a user planned for fewer than three crafts in the window is counted over the
+          -- time three planned crafts take, with one craft's worth over, not two: two over in half an hour let a
+          -- user planned for a craft every 45 minutes take six times its plan.)
+          local window, qslack = window0, 2
+          if window > 0 and setting("slow-machines") and ing.amount > 0 then
+            local cps = (m.take[ing.name] or 0) / ing.amount
+            if cps > 0 and cps * window < 3 then window, qslack = math.min(3 / cps, 14400), 1 end
+          end
           -- (A window: what it took in that last stretch, so running ahead early on does not hold it for hours.)
           if window > 0 then
             m.fq.hist = m.fq.hist or {}
@@ -821,7 +835,7 @@ local function control()
             span = (tick - h[1].tick) / 60
             taken = taken - h[1].taken
           end
-          if taken > (m.take[ing.name] or 0) * span * factor + ing.amount * 2 then
+          if taken > (m.take[ing.name] or 0) * span * factor + ing.amount * qslack then
             o[ing.name] = true
           elseif (short_at[unit] and short_at[unit][ing.name]) or (fluid_at[unit] and fluid_at[unit][ing.name]) then
             -- (A user outside the loop counts only while the loop is not short of the item itself: held by that

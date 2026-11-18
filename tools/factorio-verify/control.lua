@@ -207,7 +207,13 @@ local function prime(run, e, r, crafted, rec)
         -- passing bricks hand to hand, took in 75 bricks, both outputs filled, and each refused the other's bricks.
         -- Too few only slow a ring; too many lock it.)
       elseif ing.type == "item" then
-        local want = math.ceil(ing.amount * (carrier[ing.name] and 1 or (seeded[ing.name] and 5 or 2)))
+        -- (params.seed_kit: the starters as one delivery. Each machine taking a starter item gets that many crafts'
+        -- worth of it at the start, up to a stack, and nothing afterwards (with params.seed_stop).)
+        local want = math.ceil(ing.amount * (carrier[ing.name] and 1 or (seeded[ing.name] and (((not crafted) and run.params.seed_kit) or 5) or 2)))
+        if run.params.seed_kit and seeded[ing.name] and not carrier[ing.name] and not crafted then
+          local stack = prototypes.item[ing.name] and prototypes.item[ing.name].stack_size or 50
+          want = math.min(want, math.max(stack, math.ceil(ing.amount)))
+        end
         -- Once it has crafted, an item it gives back itself only while it lacks a craft's worth, up to that: topped up
         -- past what its inserters fill to, it takes nothing from its own return loop, and its returns pile up until it
         -- stands full for good (Py production's ulric corral, topped up to 5 bedding while it waited for raw fiber).
