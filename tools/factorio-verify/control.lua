@@ -2985,8 +2985,14 @@ local function reserve_gates(run)
       local e = m.e
       local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
       if r then
-        for it, nets in pairs((run.brought or {})[e.unit_number] or {}) do
-          if (lf.inside[it] or {})[r.name] then
+        for _, ing in pairs(r.ingredients) do
+          local it = ing.name
+          if ing.type == "item" and (lf.inside[it] or {})[r.name] then
+            -- (Seen bringing it, or a network a maker of the item drops onto: a user below a gate that never opened
+            -- was never seen taking the item, and the gate stayed above it for good.)
+            local nets = {}
+            for net in pairs(((run.brought or {})[e.unit_number] or {})[it] or {}) do nets[net] = true end
+            for net in pairs((run.feeds or {})[e.unit_number] or {}) do if ((run.makes_on or {})[it] or {})[net] then nets[net] = true end end
             for _, i in pairs((run.into or {})[e.unit_number] or {}) do
               local net = i.valid and (run.ins_net or {})[i.unit_number]
               if net and nets[net] then
@@ -3069,8 +3075,11 @@ local function reserve_gates(run)
   for _, g in pairs(run.rs.gates) do
     if g.e.valid and g.s.valid and not g.dead then
       local full = false
+      -- (Full: a lane of that tile takes nothing more at its back. Counting four items a lane was wrong on a curve,
+      -- whose inner lane holds two: such a gate never opened, and the users below it got nothing.)
       for k = 1, g.s.get_max_transport_line_index() do
-        if g.s.get_transport_line(k).get_item_count() >= 4 then full = true end
+        local line = g.s.get_transport_line(k)
+        if line.get_item_count() > 0 and not line.can_insert_at_back() then full = true end
       end
       local close = not full
       if close then g.shut_s = g.shut_s + 0.1 end
