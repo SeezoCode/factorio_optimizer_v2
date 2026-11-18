@@ -348,7 +348,8 @@ local function share_setup(T, recipes)
       for _, ing in pairs(r.ingredients) do
         if ing.type == "item" then
           local rate = m.take[ing.name] or 0
-          for n in pairs(T.feeds[unit] or {}) do
+          -- (On the belts seen bringing it the item; on every belt it takes from until one has been seen.)
+          for n in pairs((m.brought or {})[ing.name] or T.feeds[unit] or {}) do
             use[ing.name] = use[ing.name] or {}
             use[ing.name][n] = (use[ing.name][n] or 0) + rate
             users[ing.name] = users[ing.name] or {}
@@ -400,7 +401,7 @@ local function share_setup(T, recipes)
             t.sum, t.seen, t.bal = w and w.sum or 0, w and w.seen or 0, w and w.bal or 0
           end
           local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
-          os[key] = { item = p.name, nets = nets, slack = math.max(12, 2 * amount) }
+          os[key] = { item = p.name, nets = nets, slack = 16 }
         end
       end
     end
@@ -556,7 +557,8 @@ local function control()
     end
   end
 
-  if storage.stale then
+  -- (Every ten minutes too: which belt brings a user its item is learned as the factory runs.)
+  if storage.stale or tick % 36000 == 0 then
     storage.stale = false
     share_setup(T, recipes)
     loop_gates(T, recipes)
@@ -883,6 +885,12 @@ local function control()
             if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
             local it = m.fq.item_of[i.unit_number]
             local net = T.ins_net[i.unit_number]
+            -- (Which belt network has brought which item into this machine: where the share rule counts it.)
+            if it and net then
+              m.brought = m.brought or {}
+              m.brought[it] = m.brought[it] or {}
+              m.brought[it][net] = true
+            end
             -- (Never one taking from its own return loop, a belt it drops onto: held, its returns could not come back.)
             local own_loop = net ~= nil and drops[net] ~= nil and drops[net] ~= false
             if it ~= nil and not own_loop and (capped[it] or (returned[it] and net ~= nil)) then
@@ -965,7 +973,7 @@ local function control()
   --   a network nobody waits on is held while a waiting one is free to take, and otherwise while it is ahead of its
   --     share and one behind its share is free.
   -- A balance per network: its share of everything carried since the last look, less what it carried. Behind is a
-  -- balance above zero, ahead one below minus the slack (two crafts' worth, at least 12); it never rises above four
+  -- balance above zero, ahead one below minus the slack (16, an inserter's hand); it never rises above four
   -- times the slack, so a belt that was blocked for hours does not claim everything afterwards. Free: one of its
   -- inserters has not held an item for five seconds. It reads nothing but its own inserters and its users' waiting.
   if setting("shares") then

@@ -732,6 +732,9 @@ def main():
                          "item's loop; any other user has its inserters bringing the item held while a user in the "
                          "loop stands short of it and took less than its plan over the last S game seconds (default "
                          "1800). A breeding loop planned with no margin otherwise dies out once anything is lost")
+    ap.add_argument("--loop-strict", action="store_true",
+                    help="with --loop-first: users outside a loop wait whenever a user in the loop stands short of the "
+                         "item, not only while that user is behind its plan")
     ap.add_argument("--real-voids", action="store_true",
                     help="fluid output ports end as in a game: Py's overflow valve (opens above 80%% full) and an exhaust "
                          "pipe or sinkhole behind it, in place of the test copy's infinity pipe; counted in the report "
@@ -1293,6 +1296,8 @@ def main():
                     (inside if d is not None and d <= 3 else outside)[item][n] = True
         both = {i for i in inside if i in outside}
         params["loop_first"] = {"window": args.loop_first, "inside": {i: inside[i] for i in both}, "outside": {i: outside[i] for i in both}}
+        if args.loop_strict:
+            params["loop_first"]["strict"] = True
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
     if args.flow and built_plan_path(args.target) and os.path.exists(built_plan_path(args.target)):
         # Machines the plan has only to get rid of something (sinks.burn): every product goes to a burner or to other

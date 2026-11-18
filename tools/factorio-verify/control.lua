@@ -2768,7 +2768,11 @@ local function out_share(run)
   if not run.params.out_share or not run.outs or run.phase == nil then return end
   -- (Looked at again every ten seconds for the first ten minutes: Py's barrel fillers have a recipe only once they
   -- have crafted.)
-  if game.tick - run.t0 >= 600 and game.tick - run.t0 <= 36000 and (game.tick - run.t0) % 600 == 0 then
+  -- (And every ten minutes after that: which belt brings a user its item is learned from the inserters' hands, and a
+  -- user counts on those belts only. Counted on every belt it takes anything from, a user with five input belts put
+  -- its planned use and its waiting on all five: Py logistic science's margin layout gave the belt of the trit
+  -- breeders a quarter of the filtration media planned 82% for them.)
+  if game.tick - run.t0 >= 600 and (game.tick - run.t0) % 600 == 0 and (game.tick - run.t0 <= 36000 or (game.tick - run.t0) % 36000 == 0) then
     run.os = run.os or { groups = {}, held_s = 0, done = {} }
     local planned_of, rec = {}, {}
     for _, mm in pairs(run.machines) do if mm.e.valid then planned_of[mm.e.unit_number] = mm.plan_recipe; rec[mm.e.unit_number] = mm end end
@@ -2778,13 +2782,13 @@ local function out_share(run)
       local e = mm.e
       local r = e.valid and (e.get_recipe() or (mm.plan_recipe and prototypes.recipe[mm.plan_recipe]))
       if r then
-        local nets, n = (run.feeds or {})[e.unit_number] or {}, 0
-        for _ in pairs(nets) do n = n + 1 end
+        local all_nets = (run.feeds or {})[e.unit_number] or {}
         for _, ing in pairs(r.ingredients) do
           if ing.type == "item" then
             local rate = ((run.params.demand_of or {})[r.name] or {})[ing.name] or 0
             use[ing.name] = use[ing.name] or {}
             users[ing.name] = users[ing.name] or {}
+            local nets = ((run.brought or {})[e.unit_number] or {})[ing.name] or all_nets
             for net in pairs(nets) do
               use[ing.name][net] = (use[ing.name][net] or 0) + rate
               users[ing.name][net] = users[ing.name][net] or {}
@@ -2794,9 +2798,14 @@ local function out_share(run)
         end
       end
     end
-    -- (Users are looked up again each time: a filler learns its recipe late.)
+    -- (Users and shares are looked up again each time: a filler learns its recipe late, a belt its users.)
     for _, g in pairs(run.os.groups) do
-      for net, t in pairs(g.nets) do t.users = (users[g.item] or {})[net] or t.users end
+      local total = 0
+      for net in pairs(g.nets) do total = total + ((use[g.item] or {})[net] or 0) end
+      for net, t in pairs(g.nets) do
+        t.users = (users[g.item] or {})[net] or {}
+        if total > 0 then t.rate = (use[g.item] or {})[net] or 0; t.share = t.rate / total end
+      end
     end
     local by_machine = {}
     for _, o in pairs(run.outs) do
@@ -2834,7 +2843,9 @@ local function out_share(run)
         if n >= 2 and total > 0 then
           for _, t in pairs(nets) do t.share = t.rate / total end
           local amount = (p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2)
-          run.os.groups[#run.os.groups + 1] = { m = g.m, item = P, nets = nets, slack = math.max(12, 2 * amount), recipe = r.name }
+          -- (The slack is one inserter's hand. It was two crafts' worth: for a recipe making 200 at a craft that is the
+          -- whole batch, and the margin layout's filtration media went a quarter to each of four belts.)
+          run.os.groups[#run.os.groups + 1] = { m = g.m, item = P, nets = nets, slack = (run.params.out_share_mode or "demand") == "demand" and math.max(12, 2 * amount) or 16, recipe = r.name }
         end
       end
     end
@@ -2867,7 +2878,7 @@ local function out_share(run)
   -- "strict": the same, and a network nobody waits on that is ahead of its share stays held even when every other
   -- belt is blocked (the maker then stands full; its overflow at the machine is the way out, not a belt nobody
   -- asked on). Kept as a balance per network: its share of everything carried since the last look, less what it
-  -- carried itself. Behind is a balance above zero, ahead one below minus the slack (two crafts' worth, at least 12).
+  -- carried itself. Behind is a balance above zero, ahead one below minus the slack (16, an inserter's hand).
   -- A balance never rises above four times the slack, so a belt that was blocked for hours does not claim everything
   -- for hours afterwards; what a network took ahead of its share stays against it until its share has caught up (a
   -- count that fades would hand every small belt its slack again each half hour: for the renderer's meat, 5% of it).
@@ -4102,7 +4113,11 @@ script.on_event(defines.events.on_tick, function()
               if game.tick - h[#h].tick >= 3600 then h[#h + 1] = { tick = game.tick, taken = taken } end
               while #h > 1 and game.tick - h[2].tick >= (lf.window or 1800) * 60 do table.remove(h, 1) end
               local span_w = (game.tick - h[1].tick) / 60
-              if mine[ing.name] and taken - h[1].taken < (rates[ing.name] or 0) * span_w then loop_short[ing.name] = true end
+              -- (lf.strict: whenever a user in the loop stands short, however far ahead of its plan it has run. While
+              -- the starters flowed, Py logistic science's scrondrix loop ran at 170% of plan; when they ended it was
+              -- "ahead" for another half hour, the other users took the meat meanwhile, and the loop stood with
+              -- part of a craft's meat in each breeder and no animal left to render.)
+              if mine[ing.name] and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w) then loop_short[ing.name] = true end
             end
           end
           -- params.quota_window (seconds): what it took in that last stretch, not since the start, so that running
@@ -4199,6 +4214,14 @@ script.on_event(defines.events.on_tick, function()
             if h and h.valid_for_read then m.fq.item_of[i.unit_number] = h.name end
             local it = m.fq.item_of[i.unit_number]
             local net = (run.ins_net or {})[i.unit_number]
+            -- (run.brought: which belt network has brought which item into which machine, for the share rule.)
+            if it and net then
+              run.brought = run.brought or {}
+              local bu = run.brought[e.unit_number] or {}
+              run.brought[e.unit_number] = bu
+              bu[it] = bu[it] or {}
+              bu[it][net] = true
+            end
             -- (Never one taking from its own return loop, a belt it drops onto: held, its returns could not come back.)
             local own_loop = net ~= nil and drops[net] == true
             local off = it ~= nil and not own_loop and (capped[it] == true or (returned[it] == true and net ~= nil))
