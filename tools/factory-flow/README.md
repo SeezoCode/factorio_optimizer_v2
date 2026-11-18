@@ -66,6 +66,9 @@ Once a second, for the machines of a tagged blueprint:
   crafts take, and a capped machine left running for a user that is itself behind its plan. They stop slow machines
   running at ten times their plan, and in the in-game check the factory then starved (night log of 2026-11-18).
   **Loop strict** (off): users outside a loop wait whenever a loop user is short, not only while it is behind plan.
+  **Loop stock** (0, off): they also wait while a loop user holds less than that many crafts' worth. Slow machines,
+  cap fill and loop stock 2 together are the rule set the logistic science layout ran longest under in the check
+  (seven hours and running when the night log closed); under the mod that set has only been run on Py science 1.
 - **Furnaces without a recipe**: a furnace the blueprint names no recipe for (an older layout's barrel fillers) is
   tagged with the plan's recipes for its kind, and taken for the one it crafts or, before its first craft, the one
   that takes the fluid it holds.

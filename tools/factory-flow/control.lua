@@ -952,6 +952,7 @@ local function control()
     -- breed, and the 11% over is exactly what the other users take. Whatever is lost is never grown back otherwise.
     local lf = setting("loop-first")
     local strict = setting("loop-strict")
+    local loop_stock = setting("loop-stock")
     local loop_out, loop_short, out_short = {}, {}, {}
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
@@ -981,6 +982,11 @@ local function control()
               -- drain it meanwhile.)
               if short_at[unit] and short_at[unit][ing.name]
                   and (strict or taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60) then
+                loop_short[ing.name] = true
+              end
+              -- (Loop stock, a setting, crafts: also while a loop user that is switched on holds less than that
+              -- many crafts' worth. What the loop makes then stays in the loop until its own users are full.)
+              if loop_stock > 0 and not e.disabled_by_script and held(e, ing.name) < loop_stock * ing.amount then
                 loop_short[ing.name] = true
               end
             end
