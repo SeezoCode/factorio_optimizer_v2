@@ -740,6 +740,9 @@ def main():
                          "the pickup tile of an inserter bringing a loop's item to one of the loop's users stays shut "
                          "until the tile N back up the belt (default 4) has a lane full, so N tiles of queue stand at "
                          "the user before anything goes on")
+    ap.add_argument("--reserve-all", action="store_true",
+                    help="with --reserve: a gate past every user's pickup tile, for every item, not only past the last "
+                         "of a loop's own users")
     ap.add_argument("--loop-quota", action="store_true",
                     help="with --loop-first: a loop's own user is held to its quota of the loop's item only for another "
                          "of the loop's users, never for a user outside the loop")
@@ -1318,6 +1321,8 @@ def main():
             params["loop_first"]["quota"] = True
         if args.reserve:
             params["reserve"] = args.reserve
+        if args.reserve_all:
+            params["reserve_all"] = True
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
     if args.flow and built_plan_path(args.target) and os.path.exists(built_plan_path(args.target)):
         # Machines the plan has only to get rid of something (sinks.burn): every product goes to a burner or to other

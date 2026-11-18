@@ -2987,7 +2987,7 @@ local function reserve_gates(run)
       if r then
         for _, ing in pairs(r.ingredients) do
           local it = ing.name
-          if ing.type == "item" and (lf.inside[it] or {})[r.name] then
+          if ing.type == "item" and (run.params.reserve_all or (lf.inside[it] or {})[r.name]) then
             -- (Seen bringing it, or a network a maker of the item drops onto: a user below a gate that never opened
             -- was never seen taking the item, and the gate stayed above it for good.)
             local nets = {}
@@ -3015,7 +3015,9 @@ local function reserve_gates(run)
         local lasts = {}
         for u, pb in pairs(c.picks) do
           local cur, last = pb, true
-          for _ = 1, 600 do
+          -- (params.reserve_all: a gate past every user's pickup tile, for every item, so each user keeps its own
+          -- few tiles of queue and the stretch between a belt's first user and its last need not fill first.)
+          for _ = 1, run.params.reserve_all and 0 or 600 do
             cur = down(cur)
             if not cur or not cur.valid or cur.type == "splitter" then break end
             if c.picks[cur.unit_number] then last = false; break end
@@ -3066,6 +3068,9 @@ local function reserve_gates(run)
             else run.rs.skipped = run.rs.skipped + 1 end
           else
             run.rs.skipped = run.rs.skipped + 1
+            run.rs.why = run.rs.why or {}
+            local w = (not gate or not gate.valid) and "belt ends" or (gate.type ~= "transport-belt" and gate.type) or "tile is a gate already"
+            run.rs.why[w] = (run.rs.why[w] or 0) + 1
           end
         end end
       end
