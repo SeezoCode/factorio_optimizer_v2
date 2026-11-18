@@ -7,8 +7,8 @@ in-game check showed the same rules work as `verify.py --flow`. This mod is thos
 Once a second, for the machines of a tagged blueprint:
 
 - **Pull**: a machine runs while a machine it feeds (along its output belts, or by hand) waits for one of its products,
-  or while it makes a target. Every machine, switched off or not, keeps three crafts' worth of each ingredient
-  (*stock*, a setting): its makers run until it does (production science in the check: 44,536 crafts in ten minutes
+  or while it makes a target. Every machine, switched off or not, keeps a craft's worth of each ingredient
+  (*stock*, a setting; three suited the robot-built factories): its makers run until it does (production science in the check: 44,536 crafts in ten minutes
   with three, 36,945 with one, 47,382 with six). Without that a machine switched off waited for nothing, so a long
   chain stayed off level by level behind the machine above it, and when demand came every level started from empty
   (Py production science in the in-game check: 528 crafts a minute and ten levels of uranium enrichment that never ran,
@@ -115,8 +115,9 @@ stopped again, and the rules still on take over from the next second.
 3. Build the tagged blueprint with the mod enabled. The mod learns its machines from the build (the tags travel with the
    ghosts), so a factory built before the mod was installed, or from an untagged blueprint, is left alone.
    `/factory-flow` in the console says what it is doing.
-4. For a belt-built factory set *Rate cap* to 2 and *Quota window* to 30 minutes in the map's mod settings, and
-   *Stock* to 1: the settings the in-game check ran it with.
+4. The mod's defaults are the settings the in-game check ran Py science 1 through a day with: *Rate cap* 2, *Quota
+   window* 30 minutes, *Stock* 1, *Reserve* 4, loop-first and shares on. (Until version 0.2.0 they were stock 3 and
+   no cap or window, from the robot-built factories.)
 
 Loops (barrels, cages, Py's bricks) still need their carriers put in once by hand, as the blueprint's item requests
 say, and a big ring needs many: Py logistic science's ring of animals and its water-barrel filler took about 600

@@ -756,6 +756,8 @@ def main():
                     help="fluid output ports end as in a game: Py's overflow valve (opens above 80%% full) and an exhaust "
                          "pipe or sinkhole behind it, in place of the test copy's infinity pipe; counted in the report "
                          "(real_voids)")
+    ap.add_argument("--mod-defaults", action="store_true",
+                    help="with --flow-mod: leave every setting of the mod as it ships, as a player's game has them")
     ap.add_argument("--with-built", default=None, metavar="FILE",
                     help="with --flow-mod: test the player's blueprint. The overflow exits and fluid voids of FILE (an "
                          "earlier run's --export-built) are merged into the test copy as blueprint parts, and the check "
@@ -1255,6 +1257,8 @@ def main():
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
         args.loop_first = None
         args.out_share = None
+        if args.mod_defaults:
+            ms = {}
         if ms:
             params["mod_settings"] = ms
         # (Loop carriers as --flow puts them in: a player fills a new loop by hand.)
