@@ -573,3 +573,27 @@ its inserters and the demand signal of its belts.
 | the same, starters to hour 6 or 8 | 10 | six hours in all (the share rule's fault) |
 | the same, the share rule following demand, starters to hour 4 or 8 | 9 to 10 | seven hours in all |
 | Py science 1 (56 machines), all rules, starters to hour 2 | 48 of 24 due | all 16 hours |
+
+## The sixth night: why it stops, and the first factory that does not
+
+2026-11-18, [NIGHT_LOG_2026-11-18.md](NIGHT_LOG_2026-11-18.md).
+
+- **Py science 1 (56 machines) holds on fair help**: 24 pack crafts in every hour of a 24-hour run, the plan's
+  rate, under the check's script and hour for hour the same under the factory-flow mod on a blueprint that brings
+  its own overflow exits and fluid voids. Starters for two hours (577 seaweed, 30 coarse, 200 methanol, 80
+  phytoplankton), nothing after.
+- **Logistic science (337 to 352 machines) does not**: twice the plan while the starters flow, a stop one to three
+  hours after.
+- **The cause behind the stops is one**: lean belts do not queue. A user is served only as items pass it or once
+  the queue from its belt's end stands at its inserter; under pull and caps what it does not need at that moment
+  parks past it, and a loop then dies with its stock in sight.
+- **The rule that carried Py science 1**: a belt gate past the last of a loop's own users, shut until a few tiles in
+  front of it are full (`--reserve`; one wire in a game). Tightening the rules instead (slow machines held to
+  plan, strict loop priority, no pull with shut ports) made every run worse.
+- **For the planner**: a loop's own users at the head of the loop's belt with a queue kept for them; no return belt
+  that leaves its loop (the layout of 2026-11-09 has one and loses 3% of its water barrels an hour); the
+  by-product belt ends and the worst overflow exits led to one burner (5,500 to 6,500 items an hour in all).
+- **Corrections to the fifth night**: starters were 19,600 to 27,800 items and 64,000 to 110,000 of fluids in four
+  hours, not a few chests; the carrier kit was handed in through an eight-hour warm-up; Py science 1's 16 hours
+  were luck with the hour (it stopped at hour 4 to 10 in six other runs under the same rules); every mod-driven
+  run before tonight ran on the mod's default settings.
