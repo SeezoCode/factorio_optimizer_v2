@@ -688,6 +688,25 @@ local function control()
     end
   end
 
+  -- Loop keep (setting, crafts): a loop's own user waits for the loop's item while it holds less than that many
+  -- crafts' worth, switched off by pull or not, so pull wakes the item's makers and the shares send it there.
+  -- Switched off, it waited for nothing, and its stock went to other users meanwhile: the seaweed farm's
+  -- fertilizer, the moss maker's coarse (logistic science, 2026-11-19; with this, no run of four lost an item loop
+  -- by hour 12, against five of nine without).
+  local loop_keep = setting("loop-first") and setting("loop-keep") or 0
+  if loop_keep > 0 then
+    for unit, m in pairs(storage.machines) do
+      local r = recipes[unit]
+      if r and m.loop_in and next(m.loop_in) and m.e.valid then
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "item" and m.loop_in[ing.name] and held(m.e, ing.name) < loop_keep * ing.amount then
+            wait(unit, ing.name)
+          end
+        end
+      end
+    end
+  end
+
   -- (Every ten minutes too: which belt brings a user its item is learned as the factory runs.)
   if storage.stale or tick % 36000 == 0 then
     storage.stale = false
@@ -1158,23 +1177,34 @@ local function control()
         t.seen = t.sum
       end
       local wait_free, wait_behind_free, behind_free = false, false, false
+      -- (Loop share, setting: a network on which one of the item's own loop users waits comes before every other,
+      -- whatever the plan's shares. Loop first held the users outside from taking, not the maker from giving: the
+      -- fertilizer maker sent its last crafts to the moondrop breeders' belt while the seaweed farm's, planned 15%,
+      -- ran dry with the farm waiting.)
+      local lshare, loop_free = setting("loop-first") and setting("loop-share"), false
       for _, t in pairs(g.nets) do
         t.free = false
         for _, i in pairs(t.ins) do
           if i.e.valid and not (i.since and tick - i.since >= 300) then t.free = true end
         end
-        t.wait = false
+        t.wait, t.loopwait = false, false
         for _, u in pairs(t.users) do
-          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then t.wait = true; break end
+          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then
+            t.wait = true
+            local um = lshare and storage.machines[u]
+            if um and um.loop_in and um.loop_in[g.item] then t.loopwait = true end
+          end
         end
         t.behind = t.bal > 0
         t.ahead = t.bal < -g.slack
         if t.free and t.wait then wait_free = true; if t.behind then wait_behind_free = true end end
         if t.free and t.behind then behind_free = true end
+        if t.free and t.loopwait then loop_free = true end
       end
       for _, t in pairs(g.nets) do
         local hold
-        if t.wait then hold = t.ahead and wait_behind_free
+        if loop_free then hold = not t.loopwait
+        elseif t.wait then hold = t.ahead and wait_behind_free
         else hold = wait_free or (t.ahead and behind_free) end
         if hold then stats.share_held = stats.share_held + 1 end
         if hold ~= (t.hold == true) then

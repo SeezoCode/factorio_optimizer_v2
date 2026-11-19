@@ -1315,6 +1315,8 @@ def main():
         ms["factory-flow-loop-strict"] = bool(args.loop_strict)
         ms["factory-flow-reserve"] = int(args.reserve or 0)
         ms["factory-flow-loop-stock"] = float(args.loop_stock or 0)
+        ms["factory-flow-loop-keep"] = float(args.loop_keep or 0)
+        ms["factory-flow-loop-share"] = bool(args.loop_share)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
