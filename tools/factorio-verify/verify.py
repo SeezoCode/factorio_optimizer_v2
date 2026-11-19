@@ -784,6 +784,11 @@ def main():
                          "the pickup tile of an inserter bringing a loop's item to one of the loop's users stays shut "
                          "until the tile N back up the belt (default 4) has a lane full, so N tiles of queue stand at "
                          "the user before anything goes on")
+    ap.add_argument("--reserve-items", action="store_true",
+                    help="with --reserve: a gate past the last user of every item on each belt, not only of a loop's "
+                         "items (what parks past the last user is lost once the inputs come at the plan's rate). "
+                         "Worse on Py science 1 at capped inputs: a gate of another item took the seaweed gate's tile "
+                         "on their shared belt and the seaweed loop died at hour 17")
     ap.add_argument("--reserve-all", action="store_true",
                     help="with --reserve: a gate past every user's pickup tile, for every item, not only past the last "
                          "of a loop's own users")
@@ -793,6 +798,9 @@ def main():
     ap.add_argument("--loop-stock", type=float, default=None, metavar="K",
                     help="with --loop-first: users outside a loop also wait while a loop user that is switched on "
                          "holds less than K crafts' worth of the item")
+    ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
+                    help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
+                         "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
     ap.add_argument("--loop-strict", action="store_true",
                     help="with --loop-first: users outside a loop wait whenever a user in the loop stands short of the "
                          "item, not only while that user is behind its plan")
@@ -1377,10 +1385,14 @@ def main():
             params["loop_first"]["quota"] = True
         if args.loop_stock:
             params["loop_first"]["stock"] = args.loop_stock
+        if args.loop_keep:
+            params["loop_first"]["keep"] = args.loop_keep
         if args.reserve:
             params["reserve"] = args.reserve
         if args.reserve_all:
             params["reserve_all"] = True
+        if args.reserve_items:
+            params["reserve_items"] = True
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
     if args.flow and built_plan_path(args.target) and os.path.exists(built_plan_path(args.target)):
         # Machines the plan has only to get rid of something (sinks.burn): every product goes to a burner or to other

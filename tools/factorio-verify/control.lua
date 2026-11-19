@@ -3013,7 +3013,10 @@ local function reserve_gates(run)
       if r then
         for _, ing in pairs(r.ingredients) do
           local it = ing.name
-          if ing.type == "item" and (run.params.reserve_all or (lf.inside[it] or {})[r.name]) then
+          -- (params.reserve_items: every item, past its last user on each belt. Py science 1 with its inputs at the
+          -- plan stood with the fertilizer maker 17 biomass short and 236 parked past it toward a shut port: with
+          -- unlimited inputs more came, at the plan's rate what parks is lost.)
+          if ing.type == "item" and (run.params.reserve_all or run.params.reserve_items or (lf.inside[it] or {})[r.name]) then
             -- (Seen bringing it, or a network a maker of the item drops onto: a user below a gate that never opened
             -- was never seen taking the item, and the gate stayed above it for good.)
             local nets = {}
@@ -3875,6 +3878,26 @@ script.on_event(defines.events.on_tick, function()
               if behind then fmark(behind_fluid, e, ing.name) end
               fluid_at[e.unit_number] = fluid_at[e.unit_number] or {}
               fluid_at[e.unit_number][ing.name] = true
+            end
+          end
+        end
+      end
+    end
+    -- params.loop_first.keep (K crafts, --loop-keep): a loop's own user waits for the loop's item while it holds less
+    -- than K crafts' worth, switched off by pull or not. Pull then wakes the item's makers and the share rule sends
+    -- it to that user's belt. Switched off, it waited for nothing: the margin layout's seaweed farm, off while its
+    -- users had seaweed, saw its fertilizer go to the moondrop breeders' belt (637 parked there) and stood without
+    -- any once it was switched on again; the fertilizer maker, at twice its plan meanwhile, had eaten the seaweed
+    -- the slaked-lime maker beside it needed for the farm's fluid.
+    local lfk = run.params.loop_first
+    if lfk and lfk.keep then
+      for _, m in pairs(run.machines) do
+        local e = m.e
+        local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+        if r then
+          for _, ing in pairs(r.ingredients) do
+            if ing.type == "item" and (lfk.inside[ing.name] or {})[r.name] and held(e, ing.name) < lfk.keep * ing.amount then
+              wait_for(e, ing.name)
             end
           end
         end
