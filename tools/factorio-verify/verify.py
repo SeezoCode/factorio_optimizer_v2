@@ -798,6 +798,12 @@ def main():
     ap.add_argument("--loop-stock", type=float, default=None, metavar="K",
                     help="with --loop-first: users outside a loop also wait while a loop user that is switched on "
                          "holds less than K crafts' worth of the item")
+    ap.add_argument("--loop-share", action="store_true",
+                    help="with --loop-first and --out-share: a maker's belt on which one of the item's loop users waits "
+                         "comes before every other belt, whatever the plan's shares")
+    ap.add_argument("--loop-fluids", action="store_true",
+                    help="with --loop-first: fluid loops too. A user outside a loop of a fluid is switched off while one "
+                         "of the loop's own users stands short of the fluid and behind its plan")
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
@@ -1377,8 +1383,35 @@ def main():
                 if item in r["in"]:
                     d = back(mks, n)
                     (inside if d is not None and d <= 3 else outside)[item][n] = True
+        # (--loop-fluids: fluid loops too, found over the graph with fluid inputs counted as well; items keep the
+        # classification above. The margin layout's syngas goes round by way of refined syngas and oleochemicals, and
+        # the plastic maker and four other users outside took it from the shared pipes until the loop stood.)
+        fluid_loops = []
+        if args.loop_fluids:
+            fin = defaultdict(set)
+            for m in json.load(open(lp)).get("machines", []):
+                fin[_b(m["recipe"])] |= {_b(k) for k in m.get("fluidDemand", {})}
+            for n, fs in fin.items():
+                for f in fs:
+                    for mk in makers.get(f, ()):
+                        adj[mk].add(n)
+            for f in {f for fs in fin.values() for f in fs}:
+                mks = makers.get(f, set())
+                if not mks:
+                    continue
+                ins_, outs_ = {}, {}
+                for n, fs in fin.items():
+                    if f in fs:
+                        d = back(mks, n)
+                        (ins_ if d is not None and d <= 3 else outs_)[n] = True
+                if ins_ and outs_:
+                    inside[f], outside[f] = ins_, outs_
+                    fluid_loops.append(f)
         both = {i for i in inside if i in outside}
         params["loop_first"] = {"window": args.loop_first, "inside": {i: inside[i] for i in both}, "outside": {i: outside[i] for i in both}}
+        if fluid_loops:
+            params["loop_first"]["fluids"] = True
+            print(f"loop-fluids: {len(fluid_loops)} fluids of production loops go to the loop's own users first ({', '.join(sorted(fluid_loops))})")
         if args.loop_strict:
             params["loop_first"]["strict"] = True
         if args.loop_quota:
@@ -1387,6 +1420,8 @@ def main():
             params["loop_first"]["stock"] = args.loop_stock
         if args.loop_keep:
             params["loop_first"]["keep"] = args.loop_keep
+        if args.loop_share:
+            params["loop_share"] = True
         if args.reserve:
             params["reserve"] = args.reserve
         if args.reserve_all:

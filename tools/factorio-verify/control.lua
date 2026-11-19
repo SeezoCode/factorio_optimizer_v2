@@ -2924,23 +2924,41 @@ local function out_share(run)
         t.seen = t.sum or 0
       end
       local wait_free, wait_behind_free, behind_free = false, false, false
+      -- (params.loop_share, with loop_first: a network on which one of the item's loop users waits comes before every
+      -- other, whatever the plan's shares. Loop priority held the users outside from taking, but not the maker from
+      -- giving: the margin layout's fertilizer maker sent its last crafts to the moondrop breeders' belt, 405 lying
+      -- there, while the seaweed farm's belt, planned 15% of it, ran dry with the farm waiting.)
+      local lfs = run.params.loop_share and run.params.loop_first
+      local inside = lfs and lfs.inside[g.item]
+      local loop_free = false
+      if inside and not run.by_unit then
+        run.by_unit = {}
+        for _, m in pairs(run.machines) do if m.e.valid then run.by_unit[m.e.unit_number] = m end end
+      end
       for _, t in pairs(g.nets) do
         t.free = false
         for _, i in pairs(t.ins) do
           if i.e.valid and not (i.since and game.tick - i.since >= 300) then t.free = true end
         end
-        t.wait = false
+        t.wait, t.loopwait = false, false
         for _, u in pairs(t.users or {}) do
-          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then t.wait = true; break end
+          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then
+            t.wait = true
+            local m = inside and run.by_unit[u]
+            local r = m and m.e.valid and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+            if r and inside[r.name] then t.loopwait = true end
+          end
         end
         t.behind = t.bal > 0
         t.ahead = t.bal < -g.slack
         if t.free and t.wait then wait_free = true; if t.behind then wait_behind_free = true end end
         if t.free and t.behind then behind_free = true end
+        if t.free and t.loopwait then loop_free = true end
       end
       for _, t in pairs(g.nets) do
         local hold
-        if t.wait then hold = t.ahead and wait_behind_free
+        if loop_free then hold = not t.loopwait
+        elseif t.wait then hold = t.ahead and wait_behind_free
         else hold = wait_free or (t.ahead and (behind_free or mode == "strict")) end
         for _, i in pairs(t.ins) do
           if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
@@ -4358,7 +4376,10 @@ script.on_event(defines.events.on_tick, function()
           -- two small users take. Whatever is lost is never grown back, and the loop was dead within two hours of the
           -- starters ending in every run.
           local lf = run.params.loop_first
-          if lf and ing.type == "item" then
+          -- (lf.fluids: a loop's fluid too. Its outside users are switched off, as a fluid cannot be held at an
+          -- inserter.)
+          local fshort = ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name]
+          if lf and (ing.type == "item" or lf.fluids) then
             if (lf.outside[ing.name] or {})[r.name] then
               loop_out[e.unit_number] = loop_out[e.unit_number] or {}
               loop_out[e.unit_number][ing.name] = true
@@ -4373,12 +4394,12 @@ script.on_event(defines.events.on_tick, function()
               -- the starters flowed, Py logistic science's scrondrix loop ran at 170% of plan; when they ended it was
               -- "ahead" for another half hour, the other users took the meat meanwhile, and the loop stood with
               -- part of a craft's meat in each breeder and no animal left to render.)
-              if mine[ing.name] and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w) then loop_short[ing.name] = true end
+              if (mine[ing.name] or fshort) and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w) then loop_short[ing.name] = true end
               -- (lf.stock, crafts: the other users also wait while a loop user that is switched on holds less
               -- than that many crafts' worth. What the loop makes then stays in the loop until its own users are
               -- full: the burner layout's scrondrix loop ended with part of a craft's meat in each of three breeders
               -- and no animal left, the samples having taken the rest.)
-              if lf.stock and not e.disabled_by_script and held(e, ing.name) < lf.stock * ing.amount then loop_short[ing.name] = true end
+              if lf.stock and ing.type == "item" and not e.disabled_by_script and held(e, ing.name) < lf.stock * ing.amount then loop_short[ing.name] = true end
             end
           end
           -- params.quota_window (seconds): what it took in that last stretch, not since the start, so that running
@@ -4460,7 +4481,7 @@ script.on_event(defines.events.on_tick, function()
             run.disposal_held_s = (run.disposal_held_s or 0) + 1
           end
           if loop_short[ing.name] and (loop_out[e.unit_number] or {})[ing.name] and not is_pushed(ing) then
-            capped[ing.name] = true
+            if ing.type == "fluid" then stop = true else capped[ing.name] = true end
             run.loop_held = run.loop_held + 1
             run.loop_held_s = run.loop_held_s or {}
             run.loop_held_s[ing.name] = (run.loop_held_s[ing.name] or 0) + 1
