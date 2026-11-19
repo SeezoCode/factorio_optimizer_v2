@@ -600,3 +600,19 @@ its inserters and the demand signal of its belts.
   hours, not a few chests; the carrier kit was handed in through an eight-hour warm-up; Py science 1's 16 hours
   were luck with the hour (it stopped at hour 4 to 10 in six other runs under the same rules); every mod-driven
   run before tonight ran on the mod's default settings.
+
+## The seventh night: repeats
+
+2026-11-19, [NIGHT_LOG_2026-11-19.md](NIGHT_LOG_2026-11-19.md).
+
+- **Logistic science's rule set holds about one run in three.** Nine repeats of the rules that ran 20 hours: three
+  still making packs at hour 16 to 17 when stopped, six stopped (five within four hours of the starters ending).
+  Not yet a factory that runs every time.
+- **Every stop is a loop that runs short once and never restarts, in one of four ways**: the item parked past the
+  last loop user on a dead-end belt (fish); a loop user switched off by pull, so not counted as waiting while its
+  stock went elsewhere (the seaweed farm, the moss maker); a maker sharing out by the plan while a loop user waits
+  (fertilizer); a loop of fluids (syngas). The check has a rule for each of the last three; the first is the layout's.
+- **Counting switched-off loop users as waiting looks right**: none of four runs lost to an item loop by hour 12,
+  against five of nine without it. Too few runs to call.
+- **Py science 1 runs on the plan's own inputs** (24 pack crafts an hour from hour 9 to 24 with every raw input
+  capped at the plan) **and on a small starter kit** (150 seaweed, 18 coarse, 200 methanol, 80 phytoplankton).

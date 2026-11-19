@@ -13,7 +13,7 @@ go round. Hours are game hours.
 | Factory | Best result on fair help | |
 |---|---|---|
 | Py science 1 (56 machines) | 24 hours at exactly the planned rate | once under the check, once under the mod, and four shorter runs alike |
-| Logistic science, margin layout (337) | 20 hours to the end at the planned rate; 14 hours under the mod | one run each; a third run of the same rules stopped at hour 11 |
+| Logistic science, margin layout (337) | 20 hours to the end at the planned rate; 14 hours under the mod | the same rules hold about one run in three: 3 of 9 repeats alive at hour 16 to 17 on 2026-11-19 |
 | Logistic science, burner layout (352) | stops one to four hours after its starters | under every rule set |
 | Logistic science, old layout of 2026-11-09 (325) | stops when the last barrel has been handed in | the layout has a fault of its own |
 | Py science 2 (406) | stops after its starters | not traced |
@@ -98,6 +98,16 @@ run (see "Timing" below).
 | Raw inputs | unlimited at every input belt |
 
 ## What I want to work on, in order
+
+**Update 2026-11-19** ([NIGHT_LOG_2026-11-19.md](NIGHT_LOG_2026-11-19.md)): step 1 is answered (the rules hold about
+one run in three) and every stop was traced. They come in four kinds: fish parked past the last loop user, a loop
+user switched off by pull and so not counted as waiting, a maker sharing out by plan while a loop user waits, and
+fluid loops. The check has a rule for each of the last three (`--loop-keep`, `--loop-share`, `--loop-fluids`), and
+`--loop-keep` alone already looks better (none of four runs lost to an item loop by hour 12). Step 3 is done for Py
+science 1 (150 seaweed, 18 coarse, 200 methanol, 80 phytoplankton) and step 6 started (Py science 1 runs at plan on
+inputs capped at the plan, after a slump). Next: the three new rules together, eight runs of 24 hours, with the loop
+fluids narrowed. Then the parked fish, which needs the layout (step 5). Then the kit and capped inputs on logistic
+science.
 
 1. **Find out whether it holds, by repeats.** The rule set that held on the margin layout, five runs with the gates
    and five without, 24 hours each, and three under the mod. Done when every run reaches its end or every stop is
