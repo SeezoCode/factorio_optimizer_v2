@@ -1395,9 +1395,11 @@ def main():
                 for f in fs:
                     for mk in makers.get(f, ()):
                         adj[mk].add(n)
+            # (Not a fluid that an input pipe brings: it does not run out.)
+            raw_f = {i["item"].split("#")[0] for i in (ports or {}).get("inputs", []) if i.get("fluid")}
             for f in {f for fs in fin.values() for f in fs}:
                 mks = makers.get(f, set())
-                if not mks:
+                if not mks or f in raw_f:
                     continue
                 ins_, outs_ = {}, {}
                 for n, fs in fin.items():
