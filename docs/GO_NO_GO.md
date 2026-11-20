@@ -616,3 +616,16 @@ its inserters and the demand signal of its belts.
   against five of nine without it. Too few runs to call.
 - **Py science 1 runs on the plan's own inputs** (24 pack crafts an hour from hour 9 to 24 with every raw input
   capped at the plan) **and on a small starter kit** (150 seaweed, 18 coarse, 200 methanol, 80 phytoplankton).
+
+## The eighth night: the loop rules together
+
+2026-11-20, [NIGHT_LOG_2026-11-20.md](NIGHT_LOG_2026-11-20.md).
+
+- **Logistic science ran 24 hours on fair help in five of seven runs**, verdict passing: 0.02 packs a second at the
+  port, the pack machine at its plan over the last six hours. Rules: last night's base set with the three loop rules
+  (`--loop-keep 2 --loop-share --loop-fluids`). The other two stopped at hour 20 on the sea-sponge loop (a reserve
+  of two crafts is two sponges; the next step counts it in time).
+- **A quarter-hour starter kit** (3,492 items, 29,672 of fluids) carried it to hour 22, when the run was stopped.
+- **The mod carries two of the three rules** (off by default); under the mod the margin blueprint ran to hour 11.6
+  by morning after one mend. Not yet a 24-hour mod run with them.
+- Still by script: exit chests emptied (about 4,000 items an hour), by-product belt ends, unlimited raw inputs.

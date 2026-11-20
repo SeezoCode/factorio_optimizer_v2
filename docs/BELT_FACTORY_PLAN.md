@@ -13,7 +13,7 @@ go round. Hours are game hours.
 | Factory | Best result on fair help | |
 |---|---|---|
 | Py science 1 (56 machines) | 24 hours at exactly the planned rate | once under the check, once under the mod, and four shorter runs alike |
-| Logistic science, margin layout (337) | 20 hours to the end at the planned rate; 14 hours under the mod | the same rules hold about one run in three: 3 of 9 repeats alive at hour 16 to 17 on 2026-11-19 |
+| Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | 5 of 7 runs on 2026-11-20 with the three loop rules (2 stopped at hour 20, sea sponge); the base rules alone hold about one in three |
 | Logistic science, burner layout (352) | stops one to four hours after its starters | under every rule set |
 | Logistic science, old layout of 2026-11-09 (325) | stops when the last barrel has been handed in | the layout has a fault of its own |
 | Py science 2 (406) | stops after its starters | not traced |
@@ -98,6 +98,12 @@ run (see "Timing" below).
 | Raw inputs | unlimited at every input belt |
 
 ## What I want to work on, in order
+
+**Update 2026-11-20** ([NIGHT_LOG_2026-11-20.md](NIGHT_LOG_2026-11-20.md)): with `--loop-keep 2 --loop-share
+--loop-fluids` added, five of seven logistic science runs ran 24 hours and pass; the two others stopped at hour 20
+on the sea-sponge loop, whose reserve of two crafts is two sponges (next: count the reserve in time). The mod has
+`loop-keep` and `loop-share`; a quarter-hour starter kit (3,492 items, 29,672 of fluids) carried logistic science
+to hour 22.
 
 **Update 2026-11-19** ([NIGHT_LOG_2026-11-19.md](NIGHT_LOG_2026-11-19.md)): step 1 is answered (the rules hold about
 one run in three) and every stop was traced. They come in four kinds: fish parked past the last loop user, a loop
