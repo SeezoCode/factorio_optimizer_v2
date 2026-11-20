@@ -1192,7 +1192,9 @@ local function control()
           if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then
             t.wait = true
             local um = lshare and storage.machines[u]
-            if um and um.loop_in and um.loop_in[g.item] then t.loopwait = true end
+            -- (Only one switched on, which can take: the barrel maker ran at 14 times its plan onto the belt of a
+            -- switched-off filler that counted as waiting by loop keep, 689 barrels parked there.)
+            if um and um.loop_in and um.loop_in[g.item] and um.e.valid and not um.e.disabled_by_script then t.loopwait = true end
           end
         end
         t.behind = t.bal > 0

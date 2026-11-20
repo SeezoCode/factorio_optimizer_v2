@@ -2946,7 +2946,10 @@ local function out_share(run)
             t.wait = true
             local m = inside and run.by_unit[u]
             local r = m and m.e.valid and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
-            if r and inside[r.name] then t.loopwait = true end
+            -- (Only one switched on: a user switched off takes nothing, and the margin layout's barrel maker, under
+            -- the mod, ran at 14 times its plan onto the belt of a switched-off filler that counted as waiting by
+            -- loop keep: 689 barrels parked there while the geothermal filler the packs need had none.)
+            if r and inside[r.name] and not m.e.disabled_by_script then t.loopwait = true end
           end
         end
         t.behind = t.bal > 0
