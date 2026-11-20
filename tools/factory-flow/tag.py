@@ -80,7 +80,7 @@ def carriers(plan):
     return {base(n) for n in names}
 
 
-def loops(plan):
+def loops(plan, ports=None):
     """(inside, outside): item -> the recipes using it that are in the item's own production loop, and those that are
     not, for every item with users of both kinds. A user is in the loop when what it makes comes back to a maker of
     the item within three recipes (0: it makes the item itself, a catalyst's farm). Py logistic science is one loop of
@@ -121,6 +121,29 @@ def loops(plan):
             if item in r["in"]:
                 d = back(mks, n)
                 (inside if d is not None and d <= 3 else outside)[item].add(n)
+    # (Fluid loops too, found over the graph with fluid inputs counted as well; items keep the classification above.
+    # The mod uses them under its loop-fluids setting. Not a fluid that an input pipe brings: it does not run out.
+    # The margin layout's syngas goes round by way of refined syngas and oleochemicals, and the plastic maker and four
+    # other users outside took it from the shared pipes until the loop stood.)
+    fin = defaultdict(set)
+    for m in plan.get("machines", []):
+        fin[base(m["recipe"])] |= {base(k) for k in m.get("fluidDemand", {})}
+    for n, fs in fin.items():
+        for f in fs:
+            for mk in makers.get(f, ()):
+                adj[mk].add(n)
+    raw_f = {base(i["item"]) for i in (ports or {}).get("inputs", []) if i.get("fluid")}
+    for f in {f for fs in fin.values() for f in fs}:
+        mks = makers.get(f, set())
+        if not mks or f in raw_f:
+            continue
+        ins_, outs_ = set(), set()
+        for n, fs in fin.items():
+            if f in fs:
+                d = back(mks, n)
+                (ins_ if d is not None and d <= 3 else outs_).add(n)
+        if ins_ and outs_:
+            inside[f], outside[f] = ins_, outs_
     both = {i for i in inside if i in outside}
     return {i: inside[i] for i in both}, {i: outside[i] for i in both}
 
@@ -144,7 +167,7 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
     by_tile = {}
     for e in bp["entities"]:
         by_tile[(int(e["position"]["x"] // 1), int(e["position"]["y"] // 1))] = e
-    inside, outside = loops(plan)
+    inside, outside = loops(plan, ports)
     # (The recipes the plan has for each kind of machine: a furnace whose blueprint names none is one of them.)
     of_machine = defaultdict(set)
     for m in plan.get("machines", []):

@@ -70,6 +70,14 @@ Once a second, for the machines of a tagged blueprint:
   **Loop stock** (0, off): they also wait while a loop user holds less than that many crafts' worth. Slow machines,
   cap fill and loop stock 2 together are the rule set logistic science held under (20 hours in the check, 14 under
   the mod, and one run of three that stopped at hour 11).
+  **Loop keep** (0, off): a loop's own user asks for the loop's item while it holds less than that many crafts'
+  worth, switched off or not, so its makers run and the shares send the item there. **Loop keep in time** (seconds,
+  0: off): it also asks while it has less than that long of its planned intake, counting what lies on the belt tiles
+  its inserters pick from, until a queue stands there; inserters fill a slow machine with about two crafts, so the
+  reserve has to lie in front of it. **Loop share** (off): a maker's belt on which a loop user waits comes first.
+  **Loop fluids** (off): fluid loops too; a fluid's users outside its loop are switched off while the loop is short.
+  Loop keep 2, loop share and loop fluids added to the rules above held logistic science for 24 hours in five of
+  seven check runs (night log of 2026-11-20).
 - **Furnaces without a recipe**: a furnace the blueprint names no recipe for (an older layout's barrel fillers) is
   tagged with the plan's recipes for its kind, and taken for the one it crafts or, before its first craft, the one
   that takes the fluid it holds.

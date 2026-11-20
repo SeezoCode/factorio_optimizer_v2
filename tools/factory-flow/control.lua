@@ -693,14 +693,36 @@ local function control()
   -- Switched off, it waited for nothing, and its stock went to other users meanwhile: the seaweed farm's
   -- fertilizer, the moss maker's coarse (logistic science, 2026-11-19; with this, no run of four lost an item loop
   -- by hour 12, against five of nine without).
+  -- Loop keep in time (setting, seconds): the user also asks while it has less than that long of its planned
+  -- intake, counting what lies on the belt tiles its inserters pick from, unless a queue stands there (4 or more of
+  -- the item on a tile). Inserters fill a slow machine with about two crafts, so the reserve has to lie in front of
+  -- it. Two crafts of the sprout maker's recipe are two sea sponges, no reserve: the sponge loop stopped at hour 20
+  -- in two runs of seven (2026-11-20).
   local loop_keep = setting("loop-first") and setting("loop-keep") or 0
-  if loop_keep > 0 then
+  local loop_keep_time = setting("loop-first") and setting("loop-keep-time") or 0
+  if loop_keep > 0 or loop_keep_time > 0 then
     for unit, m in pairs(storage.machines) do
       local r = recipes[unit]
       if r and m.loop_in and next(m.loop_in) and m.e.valid then
         for _, ing in pairs(r.ingredients) do
-          if ing.type == "item" and m.loop_in[ing.name] and held(m.e, ing.name) < loop_keep * ing.amount then
-            wait(unit, ing.name)
+          if ing.type == "item" and m.loop_in[ing.name] then
+            local h = held(m.e, ing.name)
+            local short = h < loop_keep * ing.amount
+            local want = loop_keep_time * (m.take[ing.name] or 0)
+            if not short and h < want then
+              local front, queue = 0, false
+              for _, i in pairs(T.into[unit] or {}) do
+                local b = i.valid and i.pickup_target
+                if b and BELTS[b.type] then
+                  local n = 0
+                  for li = 1, b.get_max_transport_line_index() do n = n + b.get_transport_line(li).get_item_count(ing.name) end
+                  front = front + n
+                  if n >= 4 then queue = true end
+                end
+              end
+              short = not queue and h + front < want
+            end
+            if short then wait(unit, ing.name) end
           end
         end
       end
@@ -972,6 +994,9 @@ local function control()
     local lf = setting("loop-first")
     local strict = setting("loop-strict")
     local loop_stock = setting("loop-stock")
+    -- (Loop fluids, a setting: a fluid's loop too (the tags name fluid loops as well). Its outside users are
+    -- switched off while the loop is short, as a fluid cannot be held at an inserter.)
+    local loop_fluids = setting("loop-fluids")
     local loop_out, loop_short, out_short = {}, {}, {}
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
@@ -986,7 +1011,7 @@ local function control()
           local c0 = m.fq.c0[ing.name]
           if c0 == nil then c0 = have; m.fq.c0[ing.name] = c0 end
           local taken = (e.products_finished - m.fq.pf0) * ing.amount + have - c0
-          if lf and ing.type == "item" then
+          if lf and (ing.type == "item" or loop_fluids) then
             if m.loop_out and m.loop_out[ing.name] then
               loop_out[unit] = loop_out[unit] or {}
               loop_out[unit][ing.name] = true
@@ -999,13 +1024,14 @@ local function control()
               -- (Loop strict, a setting: whenever it stands short, however far ahead of its plan it has run. A loop
               -- that ran ahead on its starters is "ahead" for half an hour after they end, and the other users
               -- drain it meanwhile.)
-              if short_at[unit] and short_at[unit][ing.name]
+              if ((short_at[unit] and short_at[unit][ing.name])
+                  or (ing.type == "fluid" and fluid_at[unit] and fluid_at[unit][ing.name]))
                   and (strict or taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60) then
                 loop_short[ing.name] = true
               end
               -- (Loop stock, a setting, crafts: also while a loop user that is switched on holds less than that
               -- many crafts' worth. What the loop makes then stays in the loop until its own users are full.)
-              if loop_stock > 0 and not e.disabled_by_script and held(e, ing.name) < loop_stock * ing.amount then
+              if loop_stock > 0 and ing.type == "item" and not e.disabled_by_script and held(e, ing.name) < loop_stock * ing.amount then
                 loop_short[ing.name] = true
               end
             end
@@ -1052,7 +1078,7 @@ local function control()
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
           end
           if loop_short[ing.name] and (loop_out[unit] or {})[ing.name] and not pushed(unit, ing) then
-            capped[ing.name] = true
+            if ing.type == "fluid" then stop = true else capped[ing.name] = true end
             stats.loop_held = (stats.loop_held or 0) + 1
           end
         end

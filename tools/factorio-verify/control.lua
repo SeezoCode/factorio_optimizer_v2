@@ -3910,15 +3910,51 @@ script.on_event(defines.events.on_tick, function()
     -- users had seaweed, saw its fertilizer go to the moondrop breeders' belt (637 parked there) and stood without
     -- any once it was switched on again; the fertilizer maker, at twice its plan meanwhile, had eaten the seaweed
     -- the slaked-lime maker beside it needed for the farm's fluid.
+    -- params.loop_first.keep_time (seconds, --loop-keep-time): the user also asks while it has less than that long of
+    -- its planned use, counting what lies on the belt tiles its inserters pick from, unless a queue stands there (a
+    -- tile holding 4 or more of the item: the belt is backed up to it). Inserters fill a slow machine with about two
+    -- crafts, so the reserve has to lie in front of it. Two crafts of the sprout maker's recipe are two sea sponges,
+    -- no reserve at all: the trit makers outside the loop took the rest and the sponge loop stopped at hour 20 in two
+    -- runs of seven (2026-11-20).
     local lfk = run.params.loop_first
-    if lfk and lfk.keep then
+    if lfk and (lfk.keep or lfk.keep_time) then
+      local pc = run.params.plan_crafts or {}
+      if lfk.keep_time and not run.lk_pick then
+        run.lk_pick = {}
+        local BELT = { ["transport-belt"] = true, ["underground-belt"] = true, ["splitter"] = true }
+        for _, i in pairs(run.inserters) do
+          local pk, d = i.e.valid and i.e.pickup_target, i.e.valid and i.e.drop_target
+          if pk and d and BELT[pk.type] and d.unit_number then
+            local l = run.lk_pick[d.unit_number] or {}
+            l[#l + 1] = pk
+            run.lk_pick[d.unit_number] = l
+          end
+        end
+      end
       for _, m in pairs(run.machines) do
         local e = m.e
         local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
         if r then
           for _, ing in pairs(r.ingredients) do
-            if ing.type == "item" and (lfk.inside[ing.name] or {})[r.name] and held(e, ing.name) < lfk.keep * ing.amount then
-              wait_for(e, ing.name)
+            if ing.type == "item" and (lfk.inside[ing.name] or {})[r.name] then
+              local h = held(e, ing.name)
+              local short = lfk.keep and h < lfk.keep * ing.amount
+              if not short and lfk.keep_time then
+                local want = lfk.keep_time * (pc[r.name] or 0) * ing.amount
+                if h < want then
+                  local front, queue = 0, false
+                  for _, b in pairs(run.lk_pick[e.unit_number] or {}) do
+                    if b.valid then
+                      local n = 0
+                      for li = 1, b.get_max_transport_line_index() do n = n + b.get_transport_line(li).get_item_count(ing.name) end
+                      front = front + n
+                      if n >= 4 then queue = true end
+                    end
+                  end
+                  short = not queue and h + front < want
+                end
+              end
+              if short then wait_for(e, ing.name) end
             end
           end
         end

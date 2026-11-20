@@ -807,6 +807,9 @@ def main():
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
+    ap.add_argument("--loop-keep-time", type=float, default=None, metavar="S",
+                    help="with --loop-first: as --loop-keep, counted in time: a loop's own user waits for the loop's item "
+                         "while it holds less than S seconds of its planned use (the larger of the two when both are given)")
     ap.add_argument("--loop-strict", action="store_true",
                     help="with --loop-first: users outside a loop wait whenever a user in the loop stands short of the "
                          "item, not only while that user is behind its plan")
@@ -1316,7 +1319,9 @@ def main():
         ms["factory-flow-reserve"] = int(args.reserve or 0)
         ms["factory-flow-loop-stock"] = float(args.loop_stock or 0)
         ms["factory-flow-loop-keep"] = float(args.loop_keep or 0)
+        ms["factory-flow-loop-keep-time"] = float(args.loop_keep_time or 0)
         ms["factory-flow-loop-share"] = bool(args.loop_share)
+        ms["factory-flow-loop-fluids"] = bool(args.loop_fluids)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
@@ -1424,6 +1429,8 @@ def main():
             params["loop_first"]["stock"] = args.loop_stock
         if args.loop_keep:
             params["loop_first"]["keep"] = args.loop_keep
+        if args.loop_keep_time:
+            params["loop_first"]["keep_time"] = args.loop_keep_time
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:

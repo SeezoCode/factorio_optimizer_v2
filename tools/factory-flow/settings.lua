@@ -14,6 +14,8 @@ data:extend({
   { type = "bool-setting", name = "factory-flow-loop-strict", setting_type = "runtime-global", default_value = false, order = "f2" },
   { type = "double-setting", name = "factory-flow-loop-stock", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 10, order = "f25" },
   { type = "double-setting", name = "factory-flow-loop-keep", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 10, order = "f26" },
+  { type = "double-setting", name = "factory-flow-loop-keep-time", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 36000, order = "f265" },
+  { type = "bool-setting", name = "factory-flow-loop-fluids", setting_type = "runtime-global", default_value = false, order = "f28" },
   { type = "bool-setting", name = "factory-flow-loop-share", setting_type = "runtime-global", default_value = false, order = "f27" },
   { type = "int-setting", name = "factory-flow-reserve", setting_type = "runtime-global", default_value = 4, minimum_value = 0, maximum_value = 32, order = "f3" },
   { type = "bool-setting", name = "factory-flow-shares", setting_type = "runtime-global", default_value = true, order = "g" },
