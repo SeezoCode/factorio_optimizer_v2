@@ -103,7 +103,9 @@ run (see "Timing" below).
 --loop-fluids` added, five of seven logistic science runs ran 24 hours and pass; the two others stopped at hour 20
 on the sea-sponge loop, whose reserve of two crafts is two sponges (next: count the reserve in time). The mod has
 `loop-keep` and `loop-share`; a quarter-hour starter kit (3,492 items, 29,672 of fluids) carried logistic science
-to hour 22.
+to hour 22. Afternoon: the reserve counted in time (`--loop-keep-time`, with the belt tiles in front of the user)
+in the check and the mod, and loop fluids in the mod; tested only to hour 15 on Py science 1 and hour 2.5 on logistic
+science, so the 24-hour repeats are still to run.
 
 **Update 2026-11-19** ([NIGHT_LOG_2026-11-19.md](NIGHT_LOG_2026-11-19.md)): step 1 is answered (the rules hold about
 one run in three) and every stop was traced. They come in four kinds: fish parked past the last loop user, a loop
