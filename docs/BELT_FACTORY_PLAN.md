@@ -13,10 +13,10 @@ go round. Hours are game hours.
 | Factory | Best result on fair help | |
 |---|---|---|
 | Py science 1 (56 machines) | 24 hours at exactly the planned rate | once under the check, once under the mod, and four shorter runs alike |
-| Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | 5 of 7 runs on 2026-11-20 with the three loop rules (2 stopped at hour 20, sea sponge); the base rules alone hold about one in three |
+| Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | with the time reserve (2026-11-21) every run, 3 distinct of 3; without it 4 distinct of 5 (2026-11-20); runs with the same flags are often identical |
 | Logistic science, burner layout (352) | stops one to four hours after its starters | under every rule set |
 | Logistic science, old layout of 2026-11-09 (325) | stops when the last barrel has been handed in | the layout has a fault of its own |
-| Py science 2 (406) | stops after its starters | not traced |
+| Py science 2 (406) | stops 2 to 3 hours after its starters | five causes traced on 2026-11-21, four mended; now barrels parked away from their users |
 
 So: the small factory is solved as far as the rules go, the big one has held once, and nothing is proven by a single
 run (see "Timing" below).
@@ -98,6 +98,12 @@ run (see "Timing" below).
 | Raw inputs | unlimited at every input belt |
 
 ## What I want to work on, in order
+
+**Update 2026-11-21** ([NIGHT_LOG_2026-11-21.md](NIGHT_LOG_2026-11-21.md)): with `--loop-keep-time 3600` all five
+logistic science runs pass 24 hours (three distinct: repeats with the same flags are often identical, so make them
+differ). Py science 2 traced through five stops: a reserve gate locked on a catalyst's belt (mended in check and
+mod), fluid-loop users soaking up the loop (`--loop-valves`, which breaks logistic science), an exit chest on a drop
+tile (mended), a loop item's port shut past its last user (`--loop-port-catalyst`), and now parked barrels.
 
 **Update 2026-11-20** ([NIGHT_LOG_2026-11-20.md](NIGHT_LOG_2026-11-20.md)): with `--loop-keep 2 --loop-share
 --loop-fluids` added, five of seven logistic science runs ran 24 hours and pass; the two others stopped at hour 20
