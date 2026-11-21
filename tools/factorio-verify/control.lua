@@ -4775,8 +4775,14 @@ script.on_event(defines.events.on_tick, function()
               local onto = ((run.onto or {})[me.unit_number] or {})[g.net] or {}
               local mr
               for _, mm in pairs(run.machines) do if mm.e == me then mr = me.get_recipe() or (mm.plan_recipe and prototypes.recipe[mm.plan_recipe]) end end
+              -- (params.loop_port_catalyst: only a catalyst, an item its maker also takes, or a carrier. Py science
+              -- 2's third mulcher drops its fertilizer past the sap tree nursery, the belt's only user, toward the
+              -- port: shut, 330 fertilizer stood there, the mulcher stood full, and a third of the arqads' saps with it.)
+              local takes = {}
+              for _, i in pairs(mr and mr.ingredients or {}) do takes[i.name] = true end
               for _, p in pairs(mr and mr.products or {}) do
-                if p.type == "item" and (lf.inside[p.name] or keep[p.name]) and (onto[p.name] or onto["*"]) then g.loop = true end
+                if p.type == "item" and (lf.inside[p.name] or keep[p.name]) and (onto[p.name] or onto["*"])
+                    and (keep[p.name] or not run.params.loop_port_catalyst or takes[p.name]) then g.loop = true end
               end
             end
             if g.loop then run.loop_gates = (run.loop_gates or 0) + 1 end

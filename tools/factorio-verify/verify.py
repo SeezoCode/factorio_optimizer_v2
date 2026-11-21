@@ -807,6 +807,9 @@ def main():
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
+    ap.add_argument("--loop-port-catalyst", action="store_true",
+                    help="with --loop-first: the overflow port of a belt a loop's item is put onto stays shut only for a "
+                         "catalyst (an item its maker also takes) or a carrier, not for every loop item")
     ap.add_argument("--loop-valves", action="store_true",
                     help="with --loop-fluids: a user outside a fluid's production loop takes it through Py's overflow "
                          "valve (only what lies above 80%% full in the pipe), built in place of the pipe at its input")
@@ -1436,6 +1439,8 @@ def main():
             params["loop_first"]["keep_time"] = args.loop_keep_time
         if args.loop_valves:
             params["loop_valves"] = True
+        if args.loop_port_catalyst:
+            params["loop_port_catalyst"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:
