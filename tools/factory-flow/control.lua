@@ -529,7 +529,11 @@ local function reserve_setup(T, recipes)
         if gate and gate.valid and gate.type == "transport-belt" and not (storage.anchors or {})[gate.unit_number] then
           local u = gate.unit_number
           keep[u] = true
-          if not storage.rs[u] then
+          if storage.rs[u] then
+            local g = storage.rs[u]
+            g.picks = g.picks or {}
+            g.picks[pb.unit_number] = pb
+          else
             local sensor = pb
             for _ = 1, N - steps do
               local ins = (sensor.belt_neighbours or {}).inputs or {}
@@ -544,7 +548,7 @@ local function reserve_setup(T, recipes)
               cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
               cb.circuit_enable_disable = false
             end)
-            if ok then storage.rs[u] = { belt = gate, sensor = sensor, anchor = anchor, closed = false }
+            if ok then storage.rs[u] = { belt = gate, sensor = sensor, anchor = anchor, closed = false, picks = { [pb.unit_number] = pb } }
             elseif anchor then anchor.destroy() end
           end
         end
@@ -1280,16 +1284,32 @@ script.on_nth_tick(60, function()
   if storage.topo then control() end
 end)
 
--- Reserve gates: shut until a lane of the tile back up the belt takes nothing more.
+-- Reserve gates: shut until a lane of the tile back up the belt takes nothing more, or of a user's pickup tile for ten
+-- minutes (a queue stands at the user, which is what the gate is for, and what comes onto the belt below the sensor
+-- tile never fills it). Py science 2's fish breeder drops its fish food onto a
+-- gate's sensor tile from the side, so the back of that tile never filled, the gate stayed shut from the start, and
+-- the breeder's own fish food never came back to it.
 script.on_nth_tick(6, function()
   if not storage.rs or not setting("enabled") then return end
   for _, g in pairs(storage.rs) do
     if g.belt.valid and g.sensor.valid then
-      local full = false
-      for k = 1, g.sensor.get_max_transport_line_index() do
-        local line = g.sensor.get_transport_line(k)
-        if line.get_item_count() > 0 and not line.can_insert_at_back() then full = true end
+      local function at_back(b)
+        for k = 1, b.get_max_transport_line_index() do
+          local line = b.get_transport_line(k)
+          if line.get_item_count() > 0 and not line.can_insert_at_back() then return true end
+        end
+        return false
       end
+      local full = at_back(g.sensor)
+      local pick = false
+      for _, pb in pairs(g.picks or {}) do if pb.valid and at_back(pb) then pick = true end end
+      if not full and pick then
+        g.pick_full = g.pick_full or game.tick
+        if game.tick - g.pick_full >= 36000 then full = true; g.open_until = game.tick + 3600; g.pick_full = nil end
+      else
+        g.pick_full = nil
+      end
+      if g.open_until and game.tick < g.open_until then full = true end
       if (not full) ~= g.closed then
         g.closed = not full
         pcall(function() g.belt.get_or_create_control_behavior().circuit_enable_disable = g.closed end)

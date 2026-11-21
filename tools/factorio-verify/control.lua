@@ -3114,7 +3114,7 @@ local function reserve_gates(run)
             end)
             if ok then
               run.rs.taken[gate.unit_number] = true
-              run.rs.gates[#run.rs.gates + 1] = { e = gate, s = sensor, item = c.item, closed = false, shut_s = 0, key = key, pb = pb.unit_number }
+              run.rs.gates[#run.rs.gates + 1] = { e = gate, s = sensor, item = c.item, closed = false, shut_s = 0, key = key, pb = pb.unit_number, pbe = pb }
             else run.rs.skipped = run.rs.skipped + 1 end
           else
             run.rs.skipped = run.rs.skipped + 1
@@ -3132,10 +3132,27 @@ local function reserve_gates(run)
       local full = false
       -- (Full: a lane of that tile takes nothing more at its back. Counting four items a lane was wrong on a curve,
       -- whose inner lane holds two: such a gate never opened, and the users below it got nothing.)
-      for k = 1, g.s.get_max_transport_line_index() do
-        local line = g.s.get_transport_line(k)
-        if line.get_item_count() > 0 and not line.can_insert_at_back() then full = true end
+      local function at_back(b)
+        for k = 1, b.get_max_transport_line_index() do
+          local line = b.get_transport_line(k)
+          if line.get_item_count() > 0 and not line.can_insert_at_back() then return true end
+        end
+        return false
       end
+      full = at_back(g.s)
+      -- (Or full at the user's own pickup tile for ten minutes: a queue stands at the user, which is what the gate is
+      -- for, and what comes onto the belt below the sensor tile never fills it. Py science 2's fish breeder drops its
+      -- fish food onto a gate's sensor tile from the side, so the back of that tile never filled; the gate, one for
+      -- fish, an item that belt never carried, stayed shut from the start, the breeder's own fish food never came
+      -- back to it, and the fish, the zipir eggs and the packs stopped when the starters ended.)
+      -- (Then open for a minute, so what queued behind it moves on, not a few items.)
+      if not full and g.pbe and g.pbe.valid and at_back(g.pbe) then
+        g.pick_full = g.pick_full or game.tick
+        if game.tick - g.pick_full >= 36000 then full = true; g.open_until = game.tick + 3600; g.pick_full = nil end
+      else
+        g.pick_full = nil
+      end
+      if g.open_until and game.tick < g.open_until then full = true end
       local close = not full
       if close then g.shut_s = g.shut_s + 0.1 end
       if close ~= g.closed then
