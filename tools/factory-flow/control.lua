@@ -533,6 +533,8 @@ local function reserve_setup(T, recipes)
             local g = storage.rs[u]
             g.picks = g.picks or {}
             g.picks[pb.unit_number] = pb
+            g.items = g.items or {}
+            g.items[key:match("^(.*):")] = true
           else
             local sensor = pb
             for _ = 1, N - steps do
@@ -548,7 +550,7 @@ local function reserve_setup(T, recipes)
               cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-A" }, comparator = ">", constant = 0 }
               cb.circuit_enable_disable = false
             end)
-            if ok then storage.rs[u] = { belt = gate, sensor = sensor, anchor = anchor, closed = false, picks = { [pb.unit_number] = pb } }
+            if ok then storage.rs[u] = { belt = gate, sensor = sensor, anchor = anchor, closed = false, picks = { [pb.unit_number] = pb }, items = { [key:match("^(.*):")] = true } }
             elseif anchor then anchor.destroy() end
           end
         end
@@ -1303,6 +1305,21 @@ script.on_nth_tick(6, function()
       local full = at_back(g.sensor)
       local pick = false
       for _, pb in pairs(g.picks or {}) do if pb.valid and at_back(pb) then pick = true end end
+      -- (Nor while what stands at the users' pickup tiles is none of the gate's items: it holds back nothing of its
+      -- own then, only the others. Py science 2's gate for fish stood on a belt that only ever carried fish food.)
+      if not full and g.items then
+        local n, mine = 0, 0
+        for _, pb in pairs(g.picks or {}) do
+          if pb.valid then
+            for k = 1, pb.get_max_transport_line_index() do
+              local line = pb.get_transport_line(k)
+              n = n + line.get_item_count()
+              for it in pairs(g.items) do mine = mine + line.get_item_count(it) end
+            end
+          end
+        end
+        if n > 0 and mine == 0 then full = true end
+      end
       if not full and pick then
         g.pick_full = g.pick_full or game.tick
         if game.tick - g.pick_full >= 36000 then full = true; g.open_until = game.tick + 3600; g.pick_full = nil end

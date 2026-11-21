@@ -807,6 +807,9 @@ def main():
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
+    ap.add_argument("--loop-valves", action="store_true",
+                    help="with --loop-fluids: a user outside a fluid's production loop takes it through Py's overflow "
+                         "valve (only what lies above 80%% full in the pipe), built in place of the pipe at its input")
     ap.add_argument("--loop-keep-time", type=float, default=None, metavar="S",
                     help="with --loop-first: as --loop-keep, counted in time: a loop's own user waits for the loop's item "
                          "while it holds less than S seconds of its planned use (the larger of the two when both are given)")
@@ -1431,6 +1434,8 @@ def main():
             params["loop_first"]["keep"] = args.loop_keep
         if args.loop_keep_time:
             params["loop_first"]["keep_time"] = args.loop_keep_time
+        if args.loop_valves:
+            params["loop_valves"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:

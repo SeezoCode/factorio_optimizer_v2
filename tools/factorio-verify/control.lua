@@ -386,6 +386,23 @@ local function box_segments(e, i)
   return out
 end
 
+-- The tiles a machine places its results on directly (vector_to_place_result: Py's sap extractor, like a drill): the
+-- check builds nothing there. An exit chest at the sap extractor's drop tile took every sap it made on Py science 2
+-- (4,500 in four hours, counted as the neighbouring mulcher's overflow) while the seed maker stood without.
+local function on_drop_tile(run, surface, x, y)
+  if not run.drop_tiles then
+    run.drop_tiles = {}
+    for _, e in pairs(surface.find_entities_filtered { type = { "assembling-machine", "furnace", "mining-drill" } }) do
+      local v = e.prototype.vector_to_place_result
+      if v and (v[1] ~= 0 or v[2] ~= 0 or (v.x or 0) ~= 0 or (v.y or 0) ~= 0) then
+        local d = e.drop_position
+        run.drop_tiles[math.floor(d.x) .. "," .. math.floor(d.y)] = true
+      end
+    end
+  end
+  return run.drop_tiles[math.floor(x) .. "," .. math.floor(y)] == true
+end
+
 -- params.real_voids: a fluid output port of the test copy (an infinity pipe that drains its pipes, or holds them at
 -- most half full) ends as it would in a game instead: a pipe in its place, Py's overflow valve (it lets through what
 -- lies above 80% full) and behind it the building that destroys the fluid, an exhaust pipe for a gas (1x1) or a
@@ -426,6 +443,11 @@ local function real_void(run, surface, force, e, f)
       local sp = { pos.x + d[1] * (k + 2 + half), pos.y + d[2] * (k + 2 + half) }
       local fits = surface.can_place_entity { name = "py-overflow-valve", position = vp, direction = d[3], force = force }
         and surface.can_place_entity { name = v.name, position = sp, force = force }
+        and not on_drop_tile(run, surface, vp[1], vp[2])
+      for ox = -half, half do for oy = -half, half do
+        if fits and on_drop_tile(run, surface, sp[1] + ox, sp[2] + oy) then fits = false end
+      end end
+      for _, cp in pairs(chain) do if fits and on_drop_tile(run, surface, cp[1], cp[2]) then fits = false end end
       -- (A pipe joins whatever holds fluid beside it: the added ones stand clear of everything but their own line.)
       for _, cp in pairs(chain) do
         if fits and not surface.can_place_entity { name = kind, position = cp, force = force } then fits = false end
@@ -1347,6 +1369,78 @@ local function start(params)
     rb.signals_used = next_name
   end
 
+  -- params.loop_valves (with params.loop_first.fluids): a user outside a fluid's production loop takes the fluid
+  -- through Py's overflow valve, which lets through only what lies above 80% full in the pipe behind it, so it gets
+  -- the loop's surplus and no more. Switched off, such a user still fills its input box from the pipe: on Py science
+  -- 2 the bacteria barreller and the resilin maker held 1,049 bacteria while the oleochemicals maker, whose loop it
+  -- is (10 in, 11 out a craft), stood with 6, and the plastic and the packs behind it stopped. The pipe tile at the
+  -- user's input becomes the valve where it leads straight on to one other pipe (counted where it does not).
+  if run.params.loop_valves and run.params.loop_first and run.params.loop_first.fluids and prototypes.entity["py-overflow-valve"] then
+    local lf = run.params.loop_first
+    local lv = { users = 0, valves = 0, not_straight = 0, not_pipe = 0, failed = 0, by_fluid = {} }
+    run.lv = lv
+    local D = defines.direction
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+      if r then
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "fluid" and (lf.outside[ing.name] or {})[r.name] then
+            lv.users = lv.users + 1
+            pcall(function()
+              for k = 1, (e.fluids_count or 0) do
+                local f = e.get_fluid_filter(k)
+                local proto = e.get_fluid_box_prototype(k)
+                if proto and proto.index == nil and proto[1] then proto = proto[1] end
+                -- (A furnace has no filter on its box: Py's barreller.)
+                if ((f and f.name == ing.name) or (not f and e.type == "furnace")) and proto and proto.production_type == "input" then
+                  for _, c in pairs(e.get_fluid_box_pipe_connections(k) or {}) do
+                    local t = c.target
+                    if t and t.valid then
+                      if t.type ~= "pipe" then lv.not_pipe = lv.not_pipe + 1
+                      else
+                        local others = {}
+                        for _, tc in pairs(t.get_fluid_box_pipe_connections(1) or {}) do
+                          if tc.target and tc.target.valid and tc.target ~= e then others[#others + 1] = tc end
+                        end
+                        local tp = t.position
+                        local o = others[1]
+                        local op = o and (o.target_position or o.target.position)
+                        local ep = c.position
+                        -- (Straight: the user on one side, one pipe on the other.)
+                        if #others ~= 1 or not op or not ep or math.abs((op.x - tp.x) + (ep.x - tp.x)) > 0.6 or math.abs((op.y - tp.y) + (ep.y - tp.y)) > 0.6 then
+                          lv.not_straight = lv.not_straight + 1
+                        else
+                          local dx, dy = op.x - tp.x, op.y - tp.y
+                          local dir = math.abs(dx) > math.abs(dy) and (dx > 0 and D.east or D.west) or (dy > 0 and D.south or D.north)
+                          local name, pos, force, surface = t.name, { x = tp.x, y = tp.y }, t.force, t.surface
+                          t.destroy()
+                          local v = surface.create_entity { name = "py-overflow-valve", position = pos, direction = dir, force = force }
+                          local joined_e, joined_o = false, false
+                          for _, vc in pairs(v and v.get_fluid_box_pipe_connections(1) or {}) do
+                            if vc.target == e then joined_e = true elseif vc.target then joined_o = true end
+                          end
+                          if v and joined_e and joined_o then
+                            lv.valves = lv.valves + 1
+                            lv.by_fluid[ing.name] = (lv.by_fluid[ing.name] or 0) + 1
+                          else
+                            if v then v.destroy() end
+                            surface.create_entity { name = name, position = pos, force = force }
+                            lv.failed = lv.failed + 1
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end)
+          end
+        end
+      end
+    end
+  end
+
   -- params.relief_exits: params.relief for items from real parts, at the machine itself. Each machine with a product
   -- that could stop it and another used product gets one filter inserter out of it into a chest of its own (an
   -- infinity chest that empties itself here; in a game an active provider chest, or a belt to a port), and a decider
@@ -1435,7 +1529,8 @@ local function start(params)
               local iy = sd[2] > 0 and y1 + 1 or sd[2] < 0 and y0 - 1 or k
               local ip, cp = { ix + 0.5, iy + 0.5 }, { ix + sd[1] + 0.5, iy + sd[2] + 0.5 }
               if surface.can_place_entity { name = "fast-inserter", position = ip, direction = sd[3], force = force }
-                  and surface.can_place_entity { name = "infinity-chest", position = cp, force = force } then
+                  and surface.can_place_entity { name = "infinity-chest", position = cp, force = force }
+                  and not on_drop_tile(run, surface, ip[1], ip[2]) and not on_drop_tile(run, surface, cp[1], cp[2]) then
                 ins = surface.create_entity { name = "fast-inserter", position = ip, direction = sd[3], force = force }
                 if ins and not ins.is_connected_to_electric_network() then ins.destroy(); ins = nil end
                 chest = ins and surface.create_entity { name = "infinity-chest", position = cp, force = force }
@@ -2009,7 +2104,7 @@ local function finish(run)
     overflow_last = run.ov_outs and (function() local n, opened, secs_open = 0, 0, 0
       for _, o in pairs(run.ov_outs) do n = n + 1; if o.open_s > 0 then opened = opened + 1; secs_open = secs_open + o.open_s end end
       return { exits = n, opened = opened, open_s = secs_open } end)() or nil,
-    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, relief_built = run.rb, relief_exits = run.rx, duty_clocks = run.duty_clocks, relief_fluid_ports = run.rgates and (function() local o = {}
+    voided = run.voided, voided_measure = run.voided_measure, voided_by = run.voided_by, relief_built = run.rb, relief_exits = run.rx, loop_valves = run.lv, duty_clocks = run.duty_clocks, relief_fluid_ports = run.rgates and (function() local o = {}
       for _, g in pairs(run.rgates) do if g.e.valid then o[#o + 1] = { fluid = g.filter.name, x = bp_pos(run, g.e.position).x, y = bp_pos(run, g.e.position).y, open_s = g.open_s or 0, out = g.out, out_measure = g.out_measure, makers = g.makers and #g.makers or nil, no_segment = g.no_segment } end end
       return o end)() or nil, relieved = run.relieved, relieved_measure = run.relieved_measure, relieved_by = run.relieved_by, relief_errors = run.relief_errors, void_kept = run.void_kept, moved = run.moved, moved_measure = run.moved_measure, stored = run.store, stored_fluids = run.fstore, timeline = run.timeline, orphan_s = run.orphan_s,
     pumped = run.pumped, pumped_measure = run.pumped_measure,
@@ -3140,6 +3235,17 @@ local function reserve_gates(run)
         return false
       end
       full = at_back(g.s)
+      -- (Nor while what stands at the user's pickup tile is none of the gate's item: it holds back nothing of its own
+      -- then, only the others. Py science 2's gate for fish stood on a belt that only ever carried fish food.)
+      if not full and g.pbe and g.pbe.valid then
+        local n, mine = 0, 0
+        for k = 1, g.pbe.get_max_transport_line_index() do
+          local line = g.pbe.get_transport_line(k)
+          n = n + line.get_item_count()
+          mine = mine + line.get_item_count(g.item)
+        end
+        if n > 0 and mine == 0 then full = true end
+      end
       -- (Or full at the user's own pickup tile for ten minutes: a queue stands at the user, which is what the gate is
       -- for, and what comes onto the belt below the sensor tile never fills it. Py science 2's fish breeder drops its
       -- fish food onto a gate's sensor tile from the side, so the back of that tile never filled; the gate, one for
