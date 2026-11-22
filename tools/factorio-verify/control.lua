@@ -3015,6 +3015,15 @@ local function out_share(run)
   -- A balance never rises above four times the slack, so a belt that was blocked for hours does not claim everything
   -- for hours afterwards; what a network took ahead of its share stays against it until its share has caught up (a
   -- count that fades would hand every small belt its slack again each half hour: for the renderer's meat, 5% of it).
+  -- (params.loop_dead_end: the belt networks any machine takes from, for fuel too: a burner's biomass belt has no
+  -- recipe user. Held there, Py's molten-salt burner ran out of fuel and the brick heaters' gas with it.)
+  if run.params.loop_dead_end and not run.taken_nets then
+    run.taken_nets = {}
+    for _, l in pairs(run.into or {}) do
+      for _, i in pairs(l) do local n = i.valid and (run.ins_net or {})[i.unit_number]; if n then run.taken_nets[n] = true end end
+    end
+    for _, g in pairs(run.os.groups) do for net, t in pairs(g.nets) do t.net = net end end
+  end
   local mode = run.params.out_share_mode or "demand"
   if game.tick % 30 == 7 and mode ~= "demand" then
     local short_at = run.short and run.short.at or {}
@@ -3069,7 +3078,7 @@ local function out_share(run)
         -- (params.loop_dead_end: never a loop's item onto a belt with no user of it: its port is shut, so all it can do
         -- there is park. Under the mod the sea-sponge farm filled such a belt with 92 sponges, the loop's whole stock,
         -- whenever nobody waited, and the loop stood at hour 16.)
-        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) then hold = true end
+        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) and not (run.taken_nets or {})[t.net or -1] then hold = true end
         for _, i in pairs(t.ins) do
           if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
         end
@@ -3097,7 +3106,7 @@ local function out_share(run)
       end
       for _, t in pairs(g.nets) do
         local hold = behind_free and t.moved > t.share * total * F + g.slack
-        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) then hold = true end
+        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) and not (run.taken_nets or {})[t.net or -1] then hold = true end
         for _, i in pairs(t.ins) do
           if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
         end

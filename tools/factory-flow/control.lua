@@ -1216,8 +1216,14 @@ local function control()
   if setting("shares") then
     local dead_end = setting("loop-first") and setting("loop-dead-end")
     local loop_items = {}
+    -- (Only a belt no machine takes from at all, for fuel neither: a burner's biomass belt has no recipe user.)
+    local taken_nets = {}
     if dead_end then
       for _, m in pairs(storage.machines) do for it in pairs(m.loop_in or {}) do loop_items[it] = true end end
+      for _, l in pairs(T.into or {}) do
+        for _, i in pairs(l) do local n = i.valid and T.ins_net[i.unit_number]; if n then taken_nets[n] = true end end
+      end
+      for _, g in pairs(storage.os or {}) do for net, t in pairs(g.nets) do t.net = net end end
     end
     for _, g in pairs(storage.os or {}) do
       local d = 0
@@ -1261,7 +1267,7 @@ local function control()
         -- (Loop dead end, a setting: never a loop's item onto a belt with no user of it; its port is shut, so all it
         -- can do there is park. The sea-sponge farm filled such a belt with 92 sponges, the loop's whole stock, and
         -- the loop stood at hour 16.)
-        if dead_end and loop_items[g.item] and not next(t.users or {}) then hold = true end
+        if dead_end and loop_items[g.item] and not next(t.users or {}) and not taken_nets[t.net or -1] then hold = true end
         if hold then stats.share_held = stats.share_held + 1 end
         if hold ~= (t.hold == true) then
           t.hold = hold
