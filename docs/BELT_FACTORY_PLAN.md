@@ -13,10 +13,10 @@ go round. Hours are game hours.
 | Factory | Best result on fair help | |
 |---|---|---|
 | Py science 1 (56 machines) | 24 hours at exactly the planned rate | once under the check, once under the mod, and four shorter runs alike |
-| Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | with the time reserve (2026-11-21) every run, 3 distinct of 3; without it 4 distinct of 5 (2026-11-20); runs with the same flags are often identical |
+| Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | with the time reserve: 4 of 6 distinct check runs pass, the 2 stops traced (2026-11-22); the mod passed once of two; runs with the same flags are often identical |
 | Logistic science, burner layout (352) | stops one to four hours after its starters | under every rule set |
 | Logistic science, old layout of 2026-11-09 (325) | stops when the last barrel has been handed in | the layout has a fault of its own |
-| Py science 2 (406) | stops 2 to 3 hours after its starters | five causes traced on 2026-11-21, four mended; now barrels parked away from their users |
+| Py science 2 (406) | at plan 2 to 3 hours after its starters, then stops | eleven causes traced 2026-11-21/22; the rest are its animal chains and barrels |
 
 So: the small factory is solved as far as the rules go, the big one has held once, and nothing is proven by a single
 run (see "Timing" below).
@@ -98,6 +98,12 @@ run (see "Timing" below).
 | Raw inputs | unlimited at every input belt |
 
 ## What I want to work on, in order
+
+**Update 2026-11-22** ([NIGHT_LOG_2026-11-22.md](NIGHT_LOG_2026-11-22.md)): the mod ran logistic science 24 hours
+with all loop rules and the time reserve (one run of two; the other stopped at hour 16.5 on sponge parked on a dead
+end, now `loop-dead-end`). Distinct check runs: four of six pass, the two stops traced to rule faults with new
+options (`--quota-catalyst`, `--loop-short-on`); k1's start with its option passed. Py science 2 runs at plan two to
+three hours past its starters and stops on its animal chains or barrels. Probes are in `tools/factorio-verify/probes`.
 
 **Update 2026-11-21** ([NIGHT_LOG_2026-11-21.md](NIGHT_LOG_2026-11-21.md)): with `--loop-keep-time 3600` all five
 logistic science runs pass 24 hours (three distinct: repeats with the same flags are often identical, so make them
