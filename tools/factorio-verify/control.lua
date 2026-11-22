@@ -3066,6 +3066,10 @@ local function out_share(run)
         if loop_free then hold = not t.loopwait
         elseif t.wait then hold = t.ahead and wait_behind_free
         else hold = wait_free or (t.ahead and (behind_free or mode == "strict")) end
+        -- (params.loop_dead_end: never a loop's item onto a belt with no user of it: its port is shut, so all it can do
+        -- there is park. Under the mod the sea-sponge farm filled such a belt with 92 sponges, the loop's whole stock,
+        -- whenever nobody waited, and the loop stood at hour 16.)
+        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) then hold = true end
         for _, i in pairs(t.ins) do
           if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
         end
@@ -3093,6 +3097,7 @@ local function out_share(run)
       end
       for _, t in pairs(g.nets) do
         local hold = behind_free and t.moved > t.share * total * F + g.slack
+        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) then hold = true end
         for _, i in pairs(t.ins) do
           if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
         end

@@ -1214,6 +1214,11 @@ local function control()
   -- times the slack, so a belt that was blocked for hours does not claim everything afterwards. Free: one of its
   -- inserters has not held an item for five seconds. It reads nothing but its own inserters and its users' waiting.
   if setting("shares") then
+    local dead_end = setting("loop-first") and setting("loop-dead-end")
+    local loop_items = {}
+    if dead_end then
+      for _, m in pairs(storage.machines) do for it in pairs(m.loop_in or {}) do loop_items[it] = true end end
+    end
     for _, g in pairs(storage.os or {}) do
       local d = 0
       for _, t in pairs(g.nets) do d = d + t.sum - t.seen end
@@ -1253,6 +1258,10 @@ local function control()
         if loop_free then hold = not t.loopwait
         elseif t.wait then hold = t.ahead and wait_behind_free
         else hold = wait_free or (t.ahead and behind_free) end
+        -- (Loop dead end, a setting: never a loop's item onto a belt with no user of it; its port is shut, so all it
+        -- can do there is park. The sea-sponge farm filled such a belt with 92 sponges, the loop's whole stock, and
+        -- the loop stood at hour 16.)
+        if dead_end and loop_items[g.item] and not next(t.users or {}) then hold = true end
         if hold then stats.share_held = stats.share_held + 1 end
         if hold ~= (t.hold == true) then
           t.hold = hold
