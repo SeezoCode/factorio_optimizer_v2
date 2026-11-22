@@ -807,6 +807,12 @@ def main():
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
+    ap.add_argument("--exit-catalyst", action="store_true",
+                    help="with --relief-exits: a machine's overflow exit also takes a catalyst it gives back, once its "
+                         "input holds what the inserters put in and its output stands at its limit (its loop is overfull)")
+    ap.add_argument("--quota-catalyst", action="store_true",
+                    help="with --flow: no quota on a catalyst, an ingredient the recipe gives back at least as much of "
+                         "as it takes (taking it deprives nobody)")
     ap.add_argument("--loop-port-catalyst", action="store_true",
                     help="with --loop-first: the overflow port of a belt a loop's item is put onto stays shut only for a "
                          "catalyst (an item its maker also takes) or a carrier, not for every loop item")
@@ -1145,6 +1151,8 @@ def main():
         print("pull-built: demand deciders and enable conditions built in the game")
     if args.relief_exits:
         params["relief_exits"] = True
+        if args.exit_catalyst:
+            params["exit_catalyst"] = True
         print("relief-exits: an inserter, a chest and deciders at each machine that needs them, built in the game")
     if args.relief_demand:
         params["relief_demand"] = True
@@ -1328,6 +1336,7 @@ def main():
         ms["factory-flow-loop-keep-time"] = float(args.loop_keep_time or 0)
         ms["factory-flow-loop-share"] = bool(args.loop_share)
         ms["factory-flow-loop-fluids"] = bool(args.loop_fluids)
+        ms["factory-flow-quota-catalyst"] = bool(args.quota_catalyst)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
@@ -1441,6 +1450,8 @@ def main():
             params["loop_valves"] = True
         if args.loop_port_catalyst:
             params["loop_port_catalyst"] = True
+        if args.quota_catalyst:
+            params["quota_catalyst"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:

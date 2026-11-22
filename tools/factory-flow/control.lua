@@ -1003,6 +1003,7 @@ local function control()
     -- (Loop fluids, a setting: a fluid's loop too (the tags name fluid loops as well). Its outside users are
     -- switched off while the loop is short, as a fluid cannot be held at an inserter.)
     local loop_fluids = setting("loop-fluids")
+    local quota_catalyst = setting("quota-catalyst")
     local loop_out, loop_short, out_short = {}, {}, {}
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
@@ -1061,7 +1062,19 @@ local function control()
             span = (tick - h[1].tick) / 60
             taken = taken - h[1].taken
           end
-          if taken > (m.take[ing.name] or 0) * span * factor + ing.amount * qslack then
+          -- (Quota catalyst, a setting: not a catalyst the recipe gives back as much of as it takes; taking it
+          -- deprives nobody. Logistic science's brick heaters pass outlet gas on to each other, 100 in and 100 out:
+          -- the quota stopped the hot-brick heater while the one before it stood short of gas, and the packs stopped.)
+          local given = 0
+          if quota_catalyst then
+            for _, pr in pairs(r.products) do
+              if pr.name == ing.name then
+                given = given + (pr.amount or ((pr.amount_min or 0) + (pr.amount_max or 0)) / 2) * (pr.probability or 1)
+              end
+            end
+          end
+          if given >= ing.amount then
+          elseif taken > (m.take[ing.name] or 0) * span * factor + ing.amount * qslack then
             o[ing.name] = true
           elseif (short_at[unit] and short_at[unit][ing.name]) or (fluid_at[unit] and fluid_at[unit][ing.name]) then
             -- (A user outside the loop counts only while the loop is not short of the item itself: held by that

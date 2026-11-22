@@ -1473,14 +1473,22 @@ local function start(params)
           for _, ing in pairs(r.ingredients) do own[ing.name] = true end
           local function used(name) for u in pairs(used_by[name] or {}) do if u ~= e.unit_number then return true end end return false end
           local items, all, any_used = {}, {}, false
+          -- (params.exit_catalyst: a catalyst too, the item the machine also takes, once its input holds what the
+          -- inserters put in and its output stands at its limit (a machine reads input and output as one count): its
+          -- loop has more then than it can hold. Py science 2's mukmoux pasture gives back a food a craft onto a belt
+          -- into its own input; the starters overfilled that loop, the belt stood packed, the pasture full, and the
+          -- mukmoux and the skin behind it stopped.)
+          local own_amount = {}
+          for _, ing in pairs(r.ingredients) do own_amount[ing.name] = ing.amount end
           for _, p in pairs(r.products) do
-            if not own[p.name] then
+            if not own[p.name] or (run.params.exit_catalyst and p.type == "item") then
               local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
               local c
               if p.type == "item" then
                 local stack = prototypes.item[p.name] and prototypes.item[p.name].stack_size or 100
                 c = { name = p.name, signal = { type = "item", name = p.name },
                   limit = math.max(1, math.min(math.ceil(relief_limit(e, r) * amount * (p.probability or p.independent_probability or 1)), stack - math.ceil(amount) + 1)) }
+                if own[p.name] then c.limit = c.limit + relief_limit(e, r) * (own_amount[p.name] or 1); c.catalyst = true end
                 items[#items + 1] = c
               else
                 for i = 1, (e.fluids_count or 0) do
@@ -4589,7 +4597,20 @@ script.on_event(defines.events.on_tick, function()
           end
           -- (params.quota_factor: how far ahead of its plan, default 1.5. Supply at plan, a user at 1.4 times its plan
           -- took everything: Py production science's molten steel all 6/s of molten iron, four casting machines none.)
-          if taken > (rates[ing.name] or 0) * span * (run.params.quota_factor or 1.5) + ing.amount * qslack then
+          -- (params.quota_catalyst: not a catalyst the recipe gives back as much of as it takes: taking it deprives
+          -- nobody. Logistic science's three brick heaters pass outlet gas on to each other, 100 in and 100 out a
+          -- craft; the quota stopped the hot-brick heater as over its share of the gas while the heater before it
+          -- stood short of gas, the hot-air maker got no hot bricks, and the packs stopped at hour 3 in one run.)
+          local given = 0
+          if run.params.quota_catalyst then
+            for _, pr in pairs(r.products) do
+              if pr.name == ing.name then
+                given = given + (pr.amount or ((pr.amount_min or 0) + (pr.amount_max or 0)) / 2) * (pr.probability or 1)
+              end
+            end
+          end
+          if given >= ing.amount then
+          elseif taken > (rates[ing.name] or 0) * span * (run.params.quota_factor or 1.5) + ing.amount * qslack then
             o[ing.name] = true
           elseif mine[ing.name] or (ing.type == "fluid" and run.short.fluid_at[e.unit_number] and run.short.fluid_at[e.unit_number][ing.name]) then
             -- (A user outside the loop that makes the item, params.loop_first, counts only while the loop is not
