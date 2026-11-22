@@ -1004,6 +1004,7 @@ local function control()
     -- switched off while the loop is short, as a fluid cannot be held at an inserter.)
     local loop_fluids = setting("loop-fluids")
     local quota_catalyst = setting("quota-catalyst")
+    local loop_short_on = setting("loop-short-on")
     local loop_out, loop_short, out_short = {}, {}, {}
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
@@ -1031,8 +1032,12 @@ local function control()
               -- (Loop strict, a setting: whenever it stands short, however far ahead of its plan it has run. A loop
               -- that ran ahead on its starters is "ahead" for half an hour after they end, and the other users
               -- drain it meanwhile.)
+              -- (Loop short on, a setting: only a loop user that is switched on counts; one switched off takes
+              -- nothing. The water barreller, off with nobody needing water barrels, held the geothermal barreller
+              -- from 254 barrels on its belt.)
               if ((short_at[unit] and short_at[unit][ing.name])
                   or (ing.type == "fluid" and fluid_at[unit] and fluid_at[unit][ing.name]))
+                  and not (loop_short_on and e.disabled_by_script)
                   and (strict or taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60) then
                 loop_short[ing.name] = true
               end

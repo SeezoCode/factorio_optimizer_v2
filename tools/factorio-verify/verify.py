@@ -807,6 +807,9 @@ def main():
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
+    ap.add_argument("--loop-short-on", action="store_true",
+                    help="with --loop-first: users outside a loop are held for a loop user standing short only while "
+                         "that user is switched on")
     ap.add_argument("--loop-dead-end", action="store_true",
                     help="with --loop-first and --out-share: a maker never puts a loop's item onto a belt with no user "
                          "of it (its port is shut, so it could only park there)")
@@ -1344,6 +1347,7 @@ def main():
         ms["factory-flow-loop-fluids"] = bool(args.loop_fluids)
         ms["factory-flow-quota-catalyst"] = bool(args.quota_catalyst)
         ms["factory-flow-loop-dead-end"] = bool(args.loop_dead_end)
+        ms["factory-flow-loop-short-on"] = bool(args.loop_short_on)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
@@ -1463,6 +1467,8 @@ def main():
             params["quota_fluid_net"] = True
         if args.loop_dead_end:
             params["loop_dead_end"] = True
+        if args.loop_short_on:
+            params["loop_short_on"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:

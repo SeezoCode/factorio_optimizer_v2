@@ -4592,7 +4592,11 @@ script.on_event(defines.events.on_tick, function()
               -- the starters flowed, Py logistic science's scrondrix loop ran at 170% of plan; when they ended it was
               -- "ahead" for another half hour, the other users took the meat meanwhile, and the loop stood with
               -- part of a craft's meat in each breeder and no animal left to render.)
-              if (mine[ing.name] or fshort) and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w) then loop_short[ing.name] = true end
+              -- (params.loop_short_on: only a loop user that is switched on: one switched off takes nothing. Logistic
+              -- science's water barreller, off with nobody needing water barrels, counted as short of barrels, and the
+              -- geothermal barreller beside a belt of 254 barrels stood held from them, and the packs behind it.)
+              if (mine[ing.name] or fshort) and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w)
+                  and not (run.params.loop_short_on and e.disabled_by_script) then loop_short[ing.name] = true end
               -- (lf.stock, crafts: the other users also wait while a loop user that is switched on holds less
               -- than that many crafts' worth. What the loop makes then stays in the loop until its own users are
               -- full: the burner layout's scrondrix loop ended with part of a craft's meat in each of three breeders
