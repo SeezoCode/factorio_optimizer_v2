@@ -18,7 +18,7 @@ plan = json.load(open(f'solves/{d}/plan_rebalanced.json'))
 def base(n): return n.split('#')[0].split('@')[0]
 rate = collections.defaultdict(float)
 for m in plan['machines']: rate[base(m['recipe'])] += m['crafts']
-target = 'logistic-science-pack'
+target = json.load(open(f'solves/{d}/resume/job.json'))['targets'][0]['name']
 pk = [t['pf'].get(target, 0) for t in tl]
 per = [b - a for a, b in zip([0] + pk, pk)]
 print('%s: hour %.1f (%s); pack crafts %d, due %.0f; by hour %s' % (d, h, phase, pk[-1] if pk else 0, h * rate[target] * 3600, ' '.join(str(x) for x in per)))
