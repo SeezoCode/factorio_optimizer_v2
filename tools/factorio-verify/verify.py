@@ -807,6 +807,9 @@ def main():
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
+    ap.add_argument("--quota-fluid-net", action="store_true",
+                    help="with --flow: a fluid user over its quota is stopped only for a user behind on its own pipe "
+                         "network, not for one short of the same fluid elsewhere (steam at another temperature)")
     ap.add_argument("--exit-catalyst", action="store_true",
                     help="with --relief-exits: a machine's overflow exit also takes a catalyst it gives back, once its "
                          "input holds what the inserters put in and its output stands at its limit (its loop is overfull)")
@@ -1452,6 +1455,8 @@ def main():
             params["loop_port_catalyst"] = True
         if args.quota_catalyst:
             params["quota_catalyst"] = True
+        if args.quota_fluid_net:
+            params["quota_fluid_net"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:

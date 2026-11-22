@@ -4511,6 +4511,20 @@ script.on_event(defines.events.on_tick, function()
     run.quota_held, run.quota_stopped = 0, 0
     -- Pass 1: what each machine took against its quota.
     local over, behind_short = {}, {}
+    -- (params.quota_fluid_net: which pipe networks a fluid user behind its plan stands short on.)
+    local behind_seg = {}
+    local function fluid_segs(e, name)
+      local out = {}
+      for k = 1, (e.fluids_count or 0) do
+        local okf, f = pcall(function() return e.get_fluid_filter(k) end)
+        local proto = e.get_fluid_box_prototype(k)
+        if proto and proto.index == nil and proto[1] then proto = proto[1] end
+        if okf and f and f.name == name and proto and proto.production_type == "input" then
+          for _, sgm in pairs(box_segments(e, k)) do out[#out + 1] = sgm end
+        end
+      end
+      return out
+    end
     local loop_out, loop_short, out_short = {}, {}, {}
     local in_short = {}
     run.loop_held = 0
@@ -4620,6 +4634,10 @@ script.on_event(defines.events.on_tick, function()
             elseif (loop_out[e.unit_number] or {})[ing.name] then out_short[ing.name] = (out_short[ing.name] or 0) + 1
             else
               behind_short[ing.name] = (behind_short[ing.name] or 0) + 1
+              if run.params.quota_fluid_net and ing.type == "fluid" then
+                behind_seg[ing.name] = behind_seg[ing.name] or {}
+                for _, sgm in pairs(fluid_segs(e, ing.name)) do behind_seg[ing.name][sgm] = true end
+              end
               -- (lf.quota: who waits behind, of the loop's own users alone.)
               if lf and ing.type == "item" and (lf.inside[ing.name] or {})[r.name] then in_short[ing.name] = true end
             end
@@ -4656,7 +4674,15 @@ script.on_event(defines.events.on_tick, function()
           -- otherwise held it to one and a half times its plan for the sake of the users outside, and what keeps a
           -- loop alive is that it runs rich: Py science 1's seaweed loop held to its plan stood within four hours.)
           local inside = lfq and lfq.quota and ing.type == "item" and (lfq.inside[ing.name] or {})[m.fq.r.name]
-          if o[ing.name] and behind_short[ing.name] and not is_pushed(ing) and (not inside or in_short[ing.name]) then
+          -- (params.quota_fluid_net: a fluid user is stopped only for one behind on its own pipe network. Steam at
+          -- 250 and at 150 degrees runs in pipes of its own, and Py science 2's lignin maker, on the 250 pipe, stood
+          -- stopped for a 150 user short elsewhere; the melamine and the plastic behind it stopped.)
+          local same = true
+          if run.params.quota_fluid_net and ing.type == "fluid" then
+            same = false
+            for _, sgm in pairs(fluid_segs(e, ing.name)) do if (behind_seg[ing.name] or {})[sgm] then same = true end end
+          end
+          if o[ing.name] and behind_short[ing.name] and same and not is_pushed(ing) and (not inside or in_short[ing.name]) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
           end
           if disp and disp[m.fq.r.name] and real_short[ing.name] then
