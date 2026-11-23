@@ -812,7 +812,7 @@ def main():
                          "that user is switched on")
     ap.add_argument("--loop-dead-end", action="store_true",
                     help="with --loop-first and --out-share: a maker never puts a loop's item onto a belt with no user "
-                         "of it (its port is shut, so it could only park there)")
+                         "of it (its port is shut, so it could only park there), while it has another belt free")
     ap.add_argument("--quota-fluid-net", action="store_true",
                     help="with --flow: a fluid user over its quota is stopped only for a user behind on its own pipe "
                          "network, not for one short of the same fluid elsewhere (steam at another temperature)")

@@ -1230,6 +1230,9 @@ local function control()
       end
       for _, g in pairs(storage.os or {}) do for net, t in pairs(g.nets) do t.net = net end end
     end
+    local function is_dead(g, t)
+      return dead_end and loop_items[g.item] and not next(t.users or {}) and not taken_nets[t.net or -1]
+    end
     for _, g in pairs(storage.os or {}) do
       local d = 0
       for _, t in pairs(g.nets) do d = d + t.sum - t.seen end
@@ -1272,7 +1275,13 @@ local function control()
         -- (Loop dead end, a setting: never a loop's item onto a belt with no user of it; its port is shut, so all it
         -- can do there is park. The sea-sponge farm filled such a belt with 92 sponges, the loop's whole stock, and
         -- the loop stood at hour 16.)
-        if dead_end and loop_items[g.item] and not next(t.users or {}) and not taken_nets[t.net or -1] then hold = true end
+        -- Only while the maker has another belt, no dead end, free to take: else holding stands the maker full (a
+        -- mulcher in Py science 2, its fertilizer's other belt packed, stood full and the saps behind it stopped).
+        if is_dead(g, t) then
+          for _, t2 in pairs(g.nets) do
+            if t2 ~= t and t2.free and not is_dead(g, t2) then hold = true; break end
+          end
+        end
         if hold then stats.share_held = stats.share_held + 1 end
         if hold ~= (t.hold == true) then
           t.hold = hold

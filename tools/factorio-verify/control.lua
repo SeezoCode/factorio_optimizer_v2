@@ -371,6 +371,40 @@ local function relief_limit(e, r)
   return math.max(2, math.ceil(e.crafting_speed / r.energy) + 1)
 end
 
+-- params.loop_valves: the pipe behind a loop valve counts as the pipe in front of it, for who waits on what. A valve
+-- built along the pipe (not at the user) leaves the user on a segment of its own, and pull found nobody waiting on
+-- the makers' pipe: Py science 2's bioplastic maker stood without methanol, its makers switched off, the pipe at
+-- 79% and the valve opening at 80%. Looked up again every ten seconds (segments renumber when pipes change).
+local function seg_alias()
+  local run = storage.run
+  if not (run and run.lv_ents) then return nil end
+  if run.seg_alias and game.tick - (run.seg_alias_t or 0) < 600 then return run.seg_alias end
+  local a = {}
+  for _, v in pairs(run.lv_ents) do
+    if v.valid then pcall(function()
+      local vs = v.has_fluid_segment(1) and v.get_fluid_segment_id(1)
+      for _, c in pairs(v.get_fluid_box_pipe_connections(1) or {}) do
+        local t, j = c.target, c.target_fluidbox_index or 1
+        if vs and t and t.valid and t.has_fluid_segment(j) then
+          local ts = t.get_fluid_segment_id(j)
+          if ts ~= vs then a[ts] = vs end
+        end
+      end
+    end) end
+  end
+  run.seg_alias, run.seg_alias_t = a, game.tick
+  return a
+end
+
+local function with_alias(out)
+  local a = seg_alias()
+  if a then
+    local n = #out
+    for i = 1, n do if a[out[i]] then out[#out + 1] = a[out[i]] end end
+  end
+  return out
+end
+
 -- The pipe networks a machine's fluid storage [i] belongs to (its own segment, or those of the pipes it connects to).
 local function box_segments(e, i)
   local out = {}
@@ -383,7 +417,7 @@ local function box_segments(e, i)
       end
     end
   end)
-  return out
+  return with_alias(out)
 end
 
 -- The tiles a machine places its results on directly (vector_to_place_result: Py's sap extractor, like a drill): the
@@ -1396,39 +1430,47 @@ local function start(params)
                 if ((f and f.name == ing.name) or (not f and e.type == "furnace")) and proto and proto.production_type == "input" then
                   for _, c in pairs(e.get_fluid_box_pipe_connections(k) or {}) do
                     local t = c.target
-                    if t and t.valid then
-                      if t.type ~= "pipe" then lv.not_pipe = lv.not_pipe + 1
+                    -- (The first straight tile along the pipe from the user, while the pipe does not branch: a valve
+                    -- cannot stand in a corner, and the bacteria barreller's input pipe turned at once; its box held
+                    -- 1,000 of the loop's bacteria. Up to 12 tiles.)
+                    local prev, ep = e, c.position
+                    for _ = 1, 12 do
+                      if not (t and t.valid) then break end
+                      if t.type ~= "pipe" then lv.not_pipe = lv.not_pipe + 1; break end
+                      local others = {}
+                      for _, tc in pairs(t.get_fluid_box_pipe_connections(1) or {}) do
+                        if tc.target and tc.target.valid and tc.target ~= prev then others[#others + 1] = tc end
+                      end
+                      local tp = t.position
+                      local o = others[1]
+                      local op = o and (o.target_position or o.target.position)
+                      if #others ~= 1 or not op or not ep then lv.not_straight = lv.not_straight + 1; break end
+                      -- (Straight: where it came from on one side, one pipe on the other.)
+                      if math.abs((op.x - tp.x) + (ep.x - tp.x)) > 0.6 or math.abs((op.y - tp.y) + (ep.y - tp.y)) > 0.6 then
+                        lv.walked = (lv.walked or 0) + 1
+                        prev, ep, t = t, tp, o.target
                       else
-                        local others = {}
-                        for _, tc in pairs(t.get_fluid_box_pipe_connections(1) or {}) do
-                          if tc.target and tc.target.valid and tc.target ~= e then others[#others + 1] = tc end
+                        local dx, dy = op.x - tp.x, op.y - tp.y
+                        local dir = math.abs(dx) > math.abs(dy) and (dx > 0 and D.east or D.west) or (dy > 0 and D.south or D.north)
+                        local name, pos, force, surface = t.name, { x = tp.x, y = tp.y }, t.force, t.surface
+                        t.destroy()
+                        local v = surface.create_entity { name = "py-overflow-valve", position = pos, direction = dir, force = force }
+                        local joined_e, joined_o = false, false
+                        for _, vc in pairs(v and v.get_fluid_box_pipe_connections(1) or {}) do
+                          if vc.target == prev then joined_e = true elseif vc.target then joined_o = true end
                         end
-                        local tp = t.position
-                        local o = others[1]
-                        local op = o and (o.target_position or o.target.position)
-                        local ep = c.position
-                        -- (Straight: the user on one side, one pipe on the other.)
-                        if #others ~= 1 or not op or not ep or math.abs((op.x - tp.x) + (ep.x - tp.x)) > 0.6 or math.abs((op.y - tp.y) + (ep.y - tp.y)) > 0.6 then
-                          lv.not_straight = lv.not_straight + 1
+                        if v and joined_e and joined_o then
+                          run.lv_ents = run.lv_ents or {}
+                          run.lv_ents[#run.lv_ents + 1] = v
+                          lv.valves = lv.valves + 1
+                          lv.by_fluid[ing.name] = (lv.by_fluid[ing.name] or 0) + 1
+                          if prev ~= e then lv.valves_along = (lv.valves_along or 0) + 1 end
                         else
-                          local dx, dy = op.x - tp.x, op.y - tp.y
-                          local dir = math.abs(dx) > math.abs(dy) and (dx > 0 and D.east or D.west) or (dy > 0 and D.south or D.north)
-                          local name, pos, force, surface = t.name, { x = tp.x, y = tp.y }, t.force, t.surface
-                          t.destroy()
-                          local v = surface.create_entity { name = "py-overflow-valve", position = pos, direction = dir, force = force }
-                          local joined_e, joined_o = false, false
-                          for _, vc in pairs(v and v.get_fluid_box_pipe_connections(1) or {}) do
-                            if vc.target == e then joined_e = true elseif vc.target then joined_o = true end
-                          end
-                          if v and joined_e and joined_o then
-                            lv.valves = lv.valves + 1
-                            lv.by_fluid[ing.name] = (lv.by_fluid[ing.name] or 0) + 1
-                          else
-                            if v then v.destroy() end
-                            surface.create_entity { name = name, position = pos, force = force }
-                            lv.failed = lv.failed + 1
-                          end
+                          if v then v.destroy() end
+                          surface.create_entity { name = name, position = pos, force = force }
+                          lv.failed = lv.failed + 1
                         end
+                        break
                       end
                     end
                   end
@@ -3024,6 +3066,24 @@ local function out_share(run)
     end
     for _, g in pairs(run.os.groups) do for net, t in pairs(g.nets) do t.net = net end end
   end
+  -- A dead end is held only while the maker has another belt that is no dead end and free: else holding it stands
+  -- the maker full (Py science 2's third mulcher, its fertilizer's other belt packed, stood full of it and the saps
+  -- behind it stopped).
+  local function dead_end(g, t)
+    if not (run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item]) then return false end
+    return not next(t.users or {}) and not (run.taken_nets or {})[t.net or -1]
+  end
+  local function dead_hold(g, t)
+    if not dead_end(g, t) then return false end
+    for _, t2 in pairs(g.nets) do
+      if t2 ~= t and not dead_end(g, t2) then
+        for _, i in pairs(t2.ins) do
+          if i.e.valid and not (i.since and game.tick - i.since >= 300) then return true end
+        end
+      end
+    end
+    return false
+  end
   local mode = run.params.out_share_mode or "demand"
   if game.tick % 30 == 7 and mode ~= "demand" then
     local short_at = run.short and run.short.at or {}
@@ -3078,7 +3138,7 @@ local function out_share(run)
         -- (params.loop_dead_end: never a loop's item onto a belt with no user of it: its port is shut, so all it can do
         -- there is park. Under the mod the sea-sponge farm filled such a belt with 92 sponges, the loop's whole stock,
         -- whenever nobody waited, and the loop stood at hour 16.)
-        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) and not (run.taken_nets or {})[t.net or -1] then hold = true end
+        if dead_hold(g, t) then hold = true end
         for _, i in pairs(t.ins) do
           if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
         end
@@ -3106,7 +3166,7 @@ local function out_share(run)
       end
       for _, t in pairs(g.nets) do
         local hold = behind_free and t.moved > t.share * total * F + g.slack
-        if run.params.loop_dead_end and run.params.loop_first and run.params.loop_first.inside[g.item] and not next(t.users or {}) and not (run.taken_nets or {})[t.net or -1] then hold = true end
+        if dead_hold(g, t) then hold = true end
         for _, i in pairs(t.ins) do
           if i.e.valid and i.e.disabled_by_script ~= hold then i.e.disabled_by_script = hold end
         end
@@ -3890,7 +3950,7 @@ script.on_event(defines.events.on_tick, function()
         end
       end
     end)
-    return out
+    return with_alias(out)
   end
   local function fmark(tab, e, name)
     local t = tab[name] or {}
