@@ -4663,7 +4663,12 @@ script.on_event(defines.events.on_tick, function()
               -- (params.loop_short_on: only a loop user that is switched on: one switched off takes nothing. Logistic
               -- science's water barreller, off with nobody needing water barrels, counted as short of barrels, and the
               -- geothermal barreller beside a belt of 254 barrels stood held from them, and the packs behind it.)
-              if (mine[ing.name] or fshort) and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w)
+              -- (params.loop_fluid_strict: a fluid's loop user counts however far ahead of its plan. Logistic science's
+              -- oleochemicals loop (oleochemicals to syngas to refined syngas and back, 250 in and 700 back a turn) ran
+              -- at 135 to 149% of plan, so its refined-syngas maker standing short of syngas was "ahead" and held no
+              -- one; aromatics-to-plastic, outside, ran at 169% on the same syngas, the loop ran dry at hour 10 and a
+              -- fluid loop at zero never restarts.)
+              if (mine[ing.name] or fshort) and (lf.strict or (run.params.loop_fluid_strict and ing.type == "fluid") or taken - h[1].taken < (rates[ing.name] or 0) * span_w)
                   and not (run.params.loop_short_on and e.disabled_by_script) then mark_short(ing.name, e) end
               -- (lf.stock, crafts: the other users also wait while a loop user that is switched on holds less
               -- than that many crafts' worth. What the loop makes then stays in the loop until its own users are

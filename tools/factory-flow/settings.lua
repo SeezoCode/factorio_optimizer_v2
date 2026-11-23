@@ -17,6 +17,7 @@ data:extend({
   { type = "double-setting", name = "factory-flow-loop-keep-time", setting_type = "runtime-global", default_value = 0, minimum_value = 0, maximum_value = 36000, order = "f265" },
   { type = "bool-setting", name = "factory-flow-loop-short-on", setting_type = "runtime-global", default_value = false, order = "f296" },
   { type = "bool-setting", name = "factory-flow-loop-short-reach", setting_type = "runtime-global", default_value = false, order = "f2965" },
+  { type = "bool-setting", name = "factory-flow-loop-fluid-strict", setting_type = "runtime-global", default_value = false, order = "f2966" },
   { type = "bool-setting", name = "factory-flow-loop-dead-end", setting_type = "runtime-global", default_value = false, order = "f295" },
   { type = "bool-setting", name = "factory-flow-quota-catalyst", setting_type = "runtime-global", default_value = false, order = "f29" },
   { type = "bool-setting", name = "factory-flow-loop-fluids", setting_type = "runtime-global", default_value = false, order = "f28" },

@@ -1006,6 +1006,10 @@ local function control()
     local quota_catalyst = setting("quota-catalyst")
     local loop_short_on = setting("loop-short-on")
     local loop_short_reach = setting("loop-short-reach")
+    -- (Loop fluid strict, a setting: a fluid loop's user counts however far ahead of its plan: the oleochemicals loop
+    -- ran at 140% while its refined-syngas maker stood short of syngas, an outside user took the syngas, and a fluid
+    -- loop at zero never restarts.)
+    local loop_fluid_strict = setting("loop-fluid-strict")
     local loop_out, loop_short, out_short = {}, {}, {}
     -- (Loop short reach: the belt networks the short loop users take from, by item; see the hold below.)
     local short_nets = {}
@@ -1052,7 +1056,8 @@ local function control()
               if ((short_at[unit] and short_at[unit][ing.name])
                   or (ing.type == "fluid" and fluid_at[unit] and fluid_at[unit][ing.name]))
                   and not (loop_short_on and e.disabled_by_script)
-                  and (strict or taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60) then
+                  and (strict or (loop_fluid_strict and ing.type == "fluid")
+                    or taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60) then
                 mark_short(ing.name, unit)
               end
               -- (Loop stock, a setting, crafts: also while a loop user that is switched on holds less than that
