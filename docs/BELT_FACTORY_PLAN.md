@@ -13,10 +13,10 @@ go round. Hours are game hours.
 | Factory | Best result on fair help | |
 |---|---|---|
 | Py science 1 (56 machines) | 24 hours at exactly the planned rate | once under the check, once under the mod, and four shorter runs alike |
-| Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | with the time reserve: 4 of 6 distinct check runs pass, the 2 stops traced (2026-11-22); the mod passed once of two; runs with the same flags are often identical |
+| Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | final rule set (2026-11-23): 4 of 6 distinct check runs and both mod runs pass, port at 100% of plan; each of the 2 stops a different fault, one mended (`--loop-short-reach`); the mod has passed 3 of 4 |
 | Logistic science, burner layout (352) | stops one to four hours after its starters | under every rule set |
 | Logistic science, old layout of 2026-11-09 (325) | stops when the last barrel has been handed in | the layout has a fault of its own |
-| Py science 2 (406) | at plan 2 to 3 hours after its starters, then stops | eleven causes traced 2026-11-21/22; the rest are its animal chains and barrels |
+| Py science 2 (406) | at plan 2 to 3 hours after its starters, then stops | thirteen causes traced 2026-11-21/23; the rest are its long belts holding the loops' stock and loops planned with no margin: planner work |
 
 So: the small factory is solved as far as the rules go, the big one has held once, and nothing is proven by a single
 run (see "Timing" below).
@@ -98,6 +98,13 @@ run (see "Timing" below).
 | Raw inputs | unlimited at every input belt |
 
 ## What I want to work on, in order
+
+**Update 2026-11-23** ([NIGHT_LOG_2026-11-23.md](NIGHT_LOG_2026-11-23.md)): the final rule set (time reserve,
+`--quota-catalyst --loop-short-on`) on six distinct logistic science check runs: four pass 24 hours at 100% of plan at
+the port; f1 stopped at hour 14 (a short loop user holding an outside user it does not compete with: new
+`--loop-short-reach`, check and mod), f4 at hour 10 (the oleochemicals fluid loop ran dry; not mended). The mod with
+`loop-dead-end` passed both of its runs. Py science 2: loop valves now go along the pipe and pull sees users behind
+them; its remaining stops need shorter belts and loop margins in the planner.
 
 **Update 2026-11-22** ([NIGHT_LOG_2026-11-22.md](NIGHT_LOG_2026-11-22.md)): the mod ran logistic science 24 hours
 with all loop rules and the time reserve (one run of two; the other stopped at hour 16.5 on sponge parked on a dead
