@@ -1005,7 +1005,21 @@ local function control()
     local loop_fluids = setting("loop-fluids")
     local quota_catalyst = setting("quota-catalyst")
     local loop_short_on = setting("loop-short-on")
+    local loop_short_reach = setting("loop-short-reach")
     local loop_out, loop_short, out_short = {}, {}, {}
+    -- (Loop short reach: the belt networks the short loop users take from, by item; see the hold below.)
+    local short_nets = {}
+    local function feeds_of(unit)
+      local f = {}
+      for _, i in pairs(T.into[unit] or {}) do local n = i.valid and T.ins_net[i.unit_number]; if n then f[n] = true end end
+      return f
+    end
+    local function mark_short(name, unit)
+      loop_short[name] = true
+      local t = short_nets[name] or {}
+      short_nets[name] = t
+      for n in pairs(feeds_of(unit)) do t[n] = true end
+    end
     for unit, m in pairs(storage.machines) do
       local e, r = m.e, recipes[unit]
       if e.valid and r then
@@ -1039,12 +1053,12 @@ local function control()
                   or (ing.type == "fluid" and fluid_at[unit] and fluid_at[unit][ing.name]))
                   and not (loop_short_on and e.disabled_by_script)
                   and (strict or taken - h[1].taken < (m.take[ing.name] or 0) * (tick - h[1].tick) / 60) then
-                loop_short[ing.name] = true
+                mark_short(ing.name, unit)
               end
               -- (Loop stock, a setting, crafts: also while a loop user that is switched on holds less than that
               -- many crafts' worth. What the loop makes then stays in the loop until its own users are full.)
               if loop_stock > 0 and ing.type == "item" and not e.disabled_by_script and held(e, ing.name) < loop_stock * ing.amount then
-                loop_short[ing.name] = true
+                mark_short(ing.name, unit)
               end
             end
           end
@@ -1101,7 +1115,30 @@ local function control()
           if o[ing.name] and behind[ing.name] and not pushed(unit, ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
           end
-          if loop_short[ing.name] and (loop_out[unit] or {})[ing.name] and not pushed(unit, ing) then
+          -- (Loop short reach, a setting: only an outside user that could take what the short loop user waits for:
+          -- on a belt network it takes from, or fed by a maker that also feeds it. The naphtha barreller, whose
+          -- barrels come back on a belt of its own from one arqad hive, stood short for good, and the geothermal
+          -- barreller beside 187 barrels on another belt stood held, and the packs behind it.)
+          local reach = true
+          if loop_short_reach and ing.type == "item" and loop_short[ing.name] then
+            reach = false
+            local short = short_nets[ing.name] or {}
+            if not T.mk_of_net then
+              T.mk_of_net = {}
+              for mu, nets in pairs(T.drops or {}) do
+                for n in pairs(nets) do T.mk_of_net[n] = T.mk_of_net[n] or {}; table.insert(T.mk_of_net[n], mu) end
+              end
+            end
+            for net in pairs(feeds_of(unit)) do
+              if short[net] then reach = true; break end
+              for _, mu in pairs(T.mk_of_net[net] or {}) do
+                for n2 in pairs(T.drops[mu] or {}) do if short[n2] then reach = true; break end end
+                if reach then break end
+              end
+              if reach then break end
+            end
+          end
+          if loop_short[ing.name] and reach and (loop_out[unit] or {})[ing.name] and not pushed(unit, ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
             stats.loop_held = (stats.loop_held or 0) + 1
           end

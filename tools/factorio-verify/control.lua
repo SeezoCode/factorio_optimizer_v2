@@ -4600,6 +4600,14 @@ script.on_event(defines.events.on_tick, function()
       return out
     end
     local loop_out, loop_short, out_short = {}, {}, {}
+    -- (params.loop_short_reach: the belt networks the short loop users take from, by item; see the hold below.)
+    local loop_short_nets = {}
+    local function mark_short(name, e)
+      loop_short[name] = true
+      local t = loop_short_nets[name] or {}
+      loop_short_nets[name] = t
+      for net in pairs((run.feeds or {})[e.unit_number] or {}) do t[net] = true end
+    end
     local in_short = {}
     run.loop_held = 0
     -- params.disposal (recipe -> true): machines the plan has only to get rid of something, every product of theirs
@@ -4656,12 +4664,12 @@ script.on_event(defines.events.on_tick, function()
               -- science's water barreller, off with nobody needing water barrels, counted as short of barrels, and the
               -- geothermal barreller beside a belt of 254 barrels stood held from them, and the packs behind it.)
               if (mine[ing.name] or fshort) and (lf.strict or taken - h[1].taken < (rates[ing.name] or 0) * span_w)
-                  and not (run.params.loop_short_on and e.disabled_by_script) then loop_short[ing.name] = true end
+                  and not (run.params.loop_short_on and e.disabled_by_script) then mark_short(ing.name, e) end
               -- (lf.stock, crafts: the other users also wait while a loop user that is switched on holds less
               -- than that many crafts' worth. What the loop makes then stays in the loop until its own users are
               -- full: the burner layout's scrondrix loop ended with part of a craft's meat in each of three breeders
               -- and no animal left, the samples having taken the rest.)
-              if lf.stock and ing.type == "item" and not e.disabled_by_script and held(e, ing.name) < lf.stock * ing.amount then loop_short[ing.name] = true end
+              if lf.stock and ing.type == "item" and not e.disabled_by_script and held(e, ing.name) < lf.stock * ing.amount then mark_short(ing.name, e) end
             end
           end
           -- params.quota_window (seconds): what it took in that last stretch, not since the start, so that running
@@ -4767,7 +4775,31 @@ script.on_event(defines.events.on_tick, function()
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
             run.disposal_held_s = (run.disposal_held_s or 0) + 1
           end
-          if loop_short[ing.name] and (loop_out[e.unit_number] or {})[ing.name] and not is_pushed(ing) then
+          -- (params.loop_short_reach: only an outside user that could take what the short loop user waits for: on a
+          -- belt network it takes from, or fed by a maker that also feeds it. Logistic science's naphtha barreller
+          -- gets its barrels back on a belt of its own from one arqad hive; that loop ran dry, and while it stood
+          -- short the geothermal barreller, on another belt beside 187 barrels, stood held for good, and the packs.)
+          local reach = true
+          if run.params.loop_short_reach and ing.type == "item" and loop_short[ing.name] then
+            reach = false
+            local short = loop_short_nets[ing.name] or {}
+            local feeds = (run.feeds or {})[e.unit_number] or {}
+            if not run.mk_of_net then
+              run.mk_of_net = {}
+              for mu, nets in pairs(run.drops or {}) do
+                for n in pairs(nets) do run.mk_of_net[n] = run.mk_of_net[n] or {}; table.insert(run.mk_of_net[n], mu) end
+              end
+            end
+            for net in pairs(feeds) do
+              if short[net] then reach = true; break end
+              for _, mu in pairs(run.mk_of_net[net] or {}) do
+                for n2 in pairs(run.drops[mu] or {}) do if short[n2] then reach = true; break end end
+                if reach then break end
+              end
+              if reach then break end
+            end
+          end
+          if loop_short[ing.name] and reach and (loop_out[e.unit_number] or {})[ing.name] and not is_pushed(ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
             run.loop_held = run.loop_held + 1
             run.loop_held_s = run.loop_held_s or {}
