@@ -1262,6 +1262,7 @@ local function control()
   -- inserters has not held an item for five seconds. It reads nothing but its own inserters and its users' waiting.
   if setting("shares") then
     local dead_end = setting("loop-first") and setting("loop-dead-end")
+    local share_wait_on = setting("share-wait-on")
     local loop_items = {}
     -- (Only a belt no machine takes from at all, for fuel neither: a burner's biomass belt has no recipe user.)
     local taken_nets = {}
@@ -1295,7 +1296,10 @@ local function control()
         end
         t.wait, t.loopwait = false, false
         for _, u in pairs(t.users) do
-          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then
+          -- (Share wait on, a setting: a switched-off user waits for nothing: the sea-sponge farm's belt to the trit
+          -- breeders stood held behind a switched-off sprout maker counted as waiting, and the packs stopped.)
+          local wm = share_wait_on and storage.machines[u]
+          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] and not (wm and wm.e.valid and wm.e.disabled_by_script) then
             t.wait = true
             local um = lshare and storage.machines[u]
             -- (Only one switched on, which can take: the barrel maker ran at 14 times its plan onto the belt of a

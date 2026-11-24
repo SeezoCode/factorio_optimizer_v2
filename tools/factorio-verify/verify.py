@@ -819,6 +819,8 @@ def main():
     ap.add_argument("--seed-carrier-cut", action="store_true",
                     help="a loop's starter that is also a carrier is topped up to a craft's worth while its user stands "
                          "short (else carriers are never topped up after the first craft)")
+    ap.add_argument("--share-wait-on", action="store_true",
+                    help="with --out-share: a switched-off user does not count as waiting for an item a maker shares out")
     ap.add_argument("--loop-dead-end", action="store_true",
                     help="with --loop-first and --out-share: a maker never puts a loop's item onto a belt with no user "
                          "of it (its port is shut, so it could only park there), while it has another belt free")
@@ -1359,6 +1361,7 @@ def main():
         ms["factory-flow-loop-short-on"] = bool(args.loop_short_on)
         ms["factory-flow-loop-short-reach"] = bool(args.loop_short_reach)
         ms["factory-flow-loop-fluid-strict"] = bool(args.loop_fluid_strict)
+        ms["factory-flow-share-wait-on"] = bool(args.share_wait_on)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
@@ -1486,6 +1489,8 @@ def main():
             params["loop_fluid_strict"] = True
         if args.seed_carrier_cut:
             params["seed_carrier_cut"] = True
+        if args.share_wait_on:
+            params["share_wait_on"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:

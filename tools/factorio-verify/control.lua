@@ -3119,8 +3119,16 @@ local function out_share(run)
           if i.e.valid and not (i.since and game.tick - i.since >= 300) then t.free = true end
         end
         t.wait, t.loopwait = false, false
+        -- (params.share_wait_on: a user that is switched off waits for nothing. Under the mod the sea-sponge farm's belt
+        -- to the trit breeders stood held for hours behind the sprout maker's two-tile belt: the sprout maker,
+        -- switched off with 4 sponges for a 1-sponge recipe, counted as waiting, and the trits and the packs stopped.)
+        if run.params.share_wait_on and not run.by_unit then
+          run.by_unit = {}
+          for _, mm in pairs(run.machines) do if mm.e.valid then run.by_unit[mm.e.unit_number] = mm end end
+        end
         for _, u in pairs(t.users or {}) do
-          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] then
+          local um = run.params.share_wait_on and run.by_unit[u]
+          if (short_at[u] or {})[g.item] and not (capped_at[u] or {})[g.item] and not (um and um.e.valid and um.e.disabled_by_script) then
             t.wait = true
             local m = inside and run.by_unit[u]
             local r = m and m.e.valid and (m.e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
