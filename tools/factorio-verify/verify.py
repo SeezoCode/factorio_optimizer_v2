@@ -810,6 +810,9 @@ def main():
     ap.add_argument("--loop-short-on", action="store_true",
                     help="with --loop-first: users outside a loop are held for a loop user standing short only while "
                          "that user is switched on")
+    ap.add_argument("--loop-tight", action="store_true",
+                    help="with --loop-first: an item's loop is only its users at the fewest recipe steps back to a "
+                         "maker; users further back count as outside")
     ap.add_argument("--loop-short-reach", action="store_true",
                     help="with --loop-first: a loop user standing short holds an outside user only if that user takes "
                          "from one of its belt networks or is fed by a maker that also feeds it")
@@ -1436,10 +1439,15 @@ def main():
             return None
         inside, outside = defaultdict(dict), defaultdict(dict)
         for item, mks in makers.items():
-            for n, r in recs.items():
-                if item in r["in"]:
-                    d = back(mks, n)
-                    (inside if d is not None and d <= 3 else outside)[item][n] = True
+            ds = {n: back(mks, n) for n, r in recs.items() if item in r["in"]}
+            # (--loop-tight: inside only at the fewest steps back. Chemical science's fish go into egg breeding (one
+            # step back to the fish breeder) and into rendering for lard (two, by way of meat and fish food); within
+            # three steps both counted as the loop, the renderer took the fish at 102% of plan, the egg breeder stood
+            # without fish, and fish, eggs and the filtration media behind them all stopped by hour 4.)
+            near = min((d for d in ds.values() if d is not None and d <= 3), default=None)
+            for n, d in ds.items():
+                ok = d is not None and d <= 3 and not (args.loop_tight and d > near)
+                (inside if ok else outside)[item][n] = True
         # (--loop-fluids: fluid loops too, found over the graph with fluid inputs counted as well; items keep the
         # classification above. The margin layout's syngas goes round by way of refined syngas and oleochemicals, and
         # the plastic maker and four other users outside took it from the shared pipes until the loop stood.)
