@@ -202,7 +202,12 @@ local function prime(run, e, r, crafted, rec)
   for _, ing in pairs(r.ingredients) do
     if back[ing.name] then
       any = true
-      if ing.type == "item" and crafted and carrier[ing.name] then
+      -- (params.seed_carrier_cut: unless it is also the starter of its loop: then a craft's worth while short. Chemical
+      -- science's hot-air loop (hot air, iron sticks, rich dust, chromite sand, acetone, solvent, outlet gas, hot
+      -- bricks) had hot bricks as its starter, a carrier too, so after its first craft the hot-air maker was never
+      -- given one: 3,455 calls, nothing handed in, and the loop ran at a tenth of its plan through the warm-up.)
+      local cut = run.params.seed_carrier_cut and seeded[ing.name] and carrier[ing.name]
+      if ing.type == "item" and crafted and carrier[ing.name] and not cut then
         -- (a loop that has started holds what was put in: added to after that, Py science 2's two-machine brick ring,
         -- passing bricks hand to hand, took in 75 bricks, both outputs filled, and each refused the other's bricks.
         -- Too few only slow a ring; too many lock it.)
@@ -218,6 +223,7 @@ local function prime(run, e, r, crafted, rec)
         -- past what its inserters fill to, it takes nothing from its own return loop, and its returns pile up until it
         -- stands full for good (Py production's ulric corral, topped up to 5 bedding while it waited for raw fiber).
         if crafted and own[ing.name] then want = ing.amount end
+        if crafted and cut then want = ing.amount end
         -- (A catalyst the machine also gives to others, Py's moss farm's coarse, is topped up like a seed: the
         -- classifier took the first batch and the farm stood short of the 15 it needs.)
         pcall(function()

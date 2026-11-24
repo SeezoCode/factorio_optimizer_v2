@@ -816,6 +816,9 @@ def main():
     ap.add_argument("--loop-fluid-strict", action="store_true",
                     help="with --loop-first --loop-fluids: a fluid loop's user standing short holds the users outside "
                          "the loop however far ahead of its plan it runs")
+    ap.add_argument("--seed-carrier-cut", action="store_true",
+                    help="a loop's starter that is also a carrier is topped up to a craft's worth while its user stands "
+                         "short (else carriers are never topped up after the first craft)")
     ap.add_argument("--loop-dead-end", action="store_true",
                     help="with --loop-first and --out-share: a maker never puts a loop's item onto a belt with no user "
                          "of it (its port is shut, so it could only park there), while it has another belt free")
@@ -1481,6 +1484,8 @@ def main():
             params["loop_short_reach"] = True
         if args.loop_fluid_strict:
             params["loop_fluid_strict"] = True
+        if args.seed_carrier_cut:
+            params["seed_carrier_cut"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:
