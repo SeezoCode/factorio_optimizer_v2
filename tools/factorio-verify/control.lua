@@ -4458,6 +4458,10 @@ script.on_event(defines.events.on_tick, function()
                   end
                 end
               end
+              -- (params.cap_fill_max: the leave is bounded too, at that many times the plan. Unbounded, Py science 2's
+              -- fertilizer-3 ran at 170 times its plan filling a 200-tile belt and took the fish breeder's biomass,
+              -- and chemical science's copper cable at 3.8 times took the copper plate that fluidize-coke needed.)
+              if fill and run.params.cap_fill_max and e.products_finished - h[1].pf > c * span * run.params.cap_fill_max + slack then fill = false end
               if fill then
                 run.cap_filled = (run.cap_filled or 0) + 1
               else

@@ -821,6 +821,8 @@ def main():
                          "short (else carriers are never topped up after the first craft)")
     ap.add_argument("--share-wait-on", action="store_true",
                     help="with --out-share: a switched-off user does not count as waiting for an item a maker shares out")
+    ap.add_argument("--cap-fill-max", type=float, default=None,
+                    help="with --cap-fill: the belt-fill leave from the rate cap ends at that many times the plan")
     ap.add_argument("--loop-dead-end", action="store_true",
                     help="with --loop-first and --out-share: a maker never puts a loop's item onto a belt with no user "
                          "of it (its port is shut, so it could only park there), while it has another belt free")
@@ -1491,6 +1493,8 @@ def main():
             params["seed_carrier_cut"] = True
         if args.share_wait_on:
             params["share_wait_on"] = True
+        if args.cap_fill_max:
+            params["cap_fill_max"] = args.cap_fill_max
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:
