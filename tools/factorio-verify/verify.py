@@ -822,6 +822,9 @@ def main():
     ap.add_argument("--seed-carrier-cut", action="store_true",
                     help="a loop's starter that is also a carrier is topped up to a craft's worth while its user stands "
                          "short (else carriers are never topped up after the first craft)")
+    ap.add_argument("--splitter-priority", action="store_true",
+                    help="a splitter gives its output priority to the side where a user waits (a loop's own user "
+                         "first); none while both or neither side waits")
     ap.add_argument("--share-wait-on", action="store_true",
                     help="with --out-share: a switched-off user does not count as waiting for an item a maker shares out")
     ap.add_argument("--cap-fill-max", type=float, default=None,
@@ -1509,6 +1512,8 @@ def main():
             params["seed_carrier_cut"] = True
         if args.share_wait_on:
             params["share_wait_on"] = True
+        if args.splitter_priority:
+            params["splitter_priority"] = True
         if args.cap_fill_max:
             params["cap_fill_max"] = args.cap_fill_max
         if args.reserve_gate_near:

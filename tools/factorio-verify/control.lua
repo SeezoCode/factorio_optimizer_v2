@@ -3200,6 +3200,82 @@ end
 -- One gate per item and belt network, past the last of the loop's users on it.
 -- A gate opens for whatever fills the belt, so a mixed belt cannot lock. In a game: a wire from the tile N back
 -- (read contents) to the gate tile's enable condition.
+-- params.splitter_priority: a splitter where a belt branches toward two groups of users gives its output priority to
+-- the side where a user stands waiting (a loop's own user first, then any), and none while both or neither wait. Even
+-- splitting sends half of a short item down the side whose users are full, where it parks until they take it: the
+-- belt fills on both sides before either side's waiting user gets all of it. A player builds the same with the
+-- splitter wired to the circuit network (2.0 sets its priority from a signal).
+local DIRV = { [defines.direction.north] = { 0, -1 }, [defines.direction.east] = { 1, 0 }, [defines.direction.south] = { 0, 1 }, [defines.direction.west] = { -1, 0 } }
+local function splitter_priority(run)
+  if not run.params.splitter_priority or run.phase == nil or not run.short or not run.feeds then return end
+  local t = game.tick - run.t0
+  if not run.sp or (t > 0 and t % 36000 == 0) then
+    run.sp = { list = {}, flips = run.sp and run.sp.flips or 0 }
+    local sf
+    for _, m in pairs(run.machines) do if m.e.valid then sf = m.e.surface; break end end
+    if not sf then return end
+    for _, sp in pairs(sf.find_entities_filtered { type = "splitter" }) do
+      local outs = sp.belt_neighbours.outputs
+      local f = DIRV[sp.direction]
+      if #outs == 2 and f then
+        local e = { e = sp, net = run.net_of and run.net_of[sp.unit_number], side = {} }
+        for _, o in pairs(outs) do
+          local dx, dy = o.position.x - sp.position.x, o.position.y - sp.position.y
+          local key = (dx * f[2] - dy * f[1]) > 0 and "left" or "right"
+          local users, seen, todo = {}, { [sp.unit_number] = true }, { o }
+          while #todo > 0 do
+            local b = table.remove(todo)
+            if b and b.valid and not seen[b.unit_number] then
+              seen[b.unit_number] = true
+              local bb = b.bounding_box
+              for _, i in pairs(sf.find_entities_filtered { area = { { bb.left_top.x - 3, bb.left_top.y - 3 }, { bb.right_bottom.x + 3, bb.right_bottom.y + 3 } }, type = "inserter" }) do
+                local d = i.pickup_target == b and i.drop_target
+                if d and d.valid and d.unit_number then users[d.unit_number] = true end
+              end
+              for _, n in pairs(b.belt_neighbours.outputs) do todo[#todo + 1] = n end
+              if b.type == "underground-belt" and b.belt_to_ground_type == "input" and b.underground_belt_neighbour then todo[#todo + 1] = b.underground_belt_neighbour end
+            end
+          end
+          e.side[key] = users
+        end
+        if e.side.left and e.side.right then run.sp.list[#run.sp.list + 1] = e end
+      end
+    end
+  end
+  if game.tick % 60 ~= 23 then return end
+  if not run.by_unit then
+    run.by_unit = {}
+    for _, m in pairs(run.machines) do if m.e.valid then run.by_unit[m.e.unit_number] = m end end
+  end
+  local lf = run.params.loop_first
+  local short_at = run.short.at or {}
+  for _, g in pairs(run.sp.list) do
+    if g.e.valid then
+      local score = {}
+      for key, users in pairs(g.side) do
+        local sc = 0
+        for u in pairs(users) do
+          local w = short_at[u]
+          local m = run.by_unit and run.by_unit[u]
+          if w and m and m.e.valid and not m.e.disabled_by_script and (not g.net or ((run.feeds[u] or {})[g.net])) then
+            local rn = m.plan_recipe or (m.e.get_recipe() and m.e.get_recipe().name)
+            for item in pairs(w) do
+              local v = (lf and rn and (lf.inside[item] or {})[rn]) and 2 or 1
+              if v > sc then sc = v end
+            end
+          end
+        end
+        score[key] = sc
+      end
+      local want = score.left > score.right and "left" or score.right > score.left and "right" or "none"
+      if g.e.splitter_output_priority ~= want then
+        g.e.splitter_output_priority = want
+        run.sp.flips = run.sp.flips + 1
+      end
+    end
+  end
+end
+
 local function reserve_gates(run)
   local lf = run.params.loop_first
   if not run.params.reserve or not lf or run.phase == nil then return end
@@ -3943,6 +4019,7 @@ script.on_event(defines.events.on_tick, function()
   relief_demand(run)
   relief(run)
   out_share(run)
+  splitter_priority(run)
   reserve_gates(run)
   relief_fluid_gates(run)
   sink_temperatures(run)
