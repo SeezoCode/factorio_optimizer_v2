@@ -4602,11 +4602,17 @@ script.on_event(defines.events.on_tick, function()
     local loop_out, loop_short, out_short = {}, {}, {}
     -- (params.loop_short_reach: the belt networks the short loop users take from, by item; see the hold below.)
     local loop_short_nets = {}
-    local function mark_short(name, e)
+    local loop_short_segs = {}
+    local function mark_short(name, e, fluid)
       loop_short[name] = true
       local t = loop_short_nets[name] or {}
       loop_short_nets[name] = t
       for net in pairs((run.feeds or {})[e.unit_number] or {}) do t[net] = true end
+      if fluid and run.params.loop_short_reach then
+        local sg = loop_short_segs[name] or {}
+        loop_short_segs[name] = sg
+        for _, id in pairs(fluid_segs(e, name)) do sg[id] = true end
+      end
     end
     local in_short = {}
     run.loop_held = 0
@@ -4669,7 +4675,7 @@ script.on_event(defines.events.on_tick, function()
               -- one; aromatics-to-plastic, outside, ran at 169% on the same syngas, the loop ran dry at hour 10 and a
               -- fluid loop at zero never restarts.)
               if (mine[ing.name] or fshort) and (lf.strict or (run.params.loop_fluid_strict and ing.type == "fluid") or taken - h[1].taken < (rates[ing.name] or 0) * span_w)
-                  and not (run.params.loop_short_on and e.disabled_by_script) then mark_short(ing.name, e) end
+                  and not (run.params.loop_short_on and e.disabled_by_script) then mark_short(ing.name, e, ing.type == "fluid") end
               -- (lf.stock, crafts: the other users also wait while a loop user that is switched on holds less
               -- than that many crafts' worth. What the loop makes then stays in the loop until its own users are
               -- full: the burner layout's scrondrix loop ended with part of a craft's meat in each of three breeders
@@ -4749,7 +4755,7 @@ script.on_event(defines.events.on_tick, function()
       local e = m.e
       local o = e.valid and over[e.unit_number]
       if o then
-        local capped, stop = {}, false
+        local capped, stop, why = {}, false, {}
         -- (Not what a full maker pushes to it: taking that stops no one behind.)
         local feeds, pushed = (run.feeds or {})[e.unit_number] or {}, run.short.push_at[e.unit_number] or {}
         local function is_pushed(ing)
@@ -4775,9 +4781,11 @@ script.on_event(defines.events.on_tick, function()
           end
           if o[ing.name] and behind_short[ing.name] and same and not is_pushed(ing) and (not inside or in_short[ing.name]) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+            why[#why + 1] = "quota:" .. ing.name
           end
           if disp and disp[m.fq.r.name] and real_short[ing.name] then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+            why[#why + 1] = "disposal:" .. ing.name
             run.disposal_held_s = (run.disposal_held_s or 0) + 1
           end
           -- (params.loop_short_reach: only an outside user that could take what the short loop user waits for: on a
@@ -4785,6 +4793,15 @@ script.on_event(defines.events.on_tick, function()
           -- gets its barrels back on a belt of its own from one arqad hive; that loop ran dry, and while it stood
           -- short the geothermal barreller, on another belt beside 187 barrels, stood held for good, and the packs.)
           local reach = true
+          -- (A fluid: only a user on a pipe network of a short loop user. Chemical science's ethylene glycol maker
+          -- stood switched off whenever the seaweed dryer, the slacked-lime loop's one user, on a pipe of its own, was
+          -- short, and the dowfroth, the antimony and the circuits behind it stopped.)
+          if run.params.loop_short_reach and ing.type == "fluid" and loop_short[ing.name] then
+            local sg, mine_segs = loop_short_segs[ing.name] or {}, fluid_segs(e, ing.name)
+            -- (A box with no filter, a barreller's, gives no network: held as before.)
+            reach = #mine_segs == 0
+            for _, id in pairs(mine_segs) do if sg[id] then reach = true; break end end
+          end
           if run.params.loop_short_reach and ing.type == "item" and loop_short[ing.name] then
             reach = false
             local short = loop_short_nets[ing.name] or {}
@@ -4806,6 +4823,7 @@ script.on_event(defines.events.on_tick, function()
           end
           if loop_short[ing.name] and reach and (loop_out[e.unit_number] or {})[ing.name] and not is_pushed(ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+            why[#why + 1] = "loop:" .. ing.name
             run.loop_held = run.loop_held + 1
             run.loop_held_s = run.loop_held_s or {}
             run.loop_held_s[ing.name] = (run.loop_held_s[ing.name] or 0) + 1
@@ -4845,6 +4863,8 @@ script.on_event(defines.events.on_tick, function()
           end
         end
         if stop then run.quota_stopped = run.quota_stopped + 1; e.disabled_by_script = true end
+        -- (Why, for a machine under params.debug_at: what held or stopped it here.)
+        if #why > 0 and run.dlog then run.dlog(m, "quota/loop " .. (stop and "stopped " or "held ") .. table.concat(why, " ")) end
       end
     end
   end
