@@ -3278,11 +3278,22 @@ local function reserve_gates(run)
         end
         for _, pb in pairs(lasts) do if is_last[pb.unit_number] then
           -- (The gate: the first plain belt tile on down the belt, through an underground, never past a splitter.)
-          local gate, steps = pb, 0
+          local gate, steps, dist, prev = pb, 0, 0, pb
           for _ = 1, 8 do
             gate = gate and down(gate)
             steps = steps + 1
+            if gate and gate.valid then dist = dist + math.abs(gate.position.x - prev.position.x) + math.abs(gate.position.y - prev.position.y); prev = gate end
             if not gate or not gate.valid or gate.type == "transport-belt" or gate.type == "splitter" then break end
+          end
+          -- (params.reserve_gate_near: past an underground more than 8 tiles long the pickup tile itself is the gate;
+          -- an inserter takes from a stopped belt, and the queue stands up the belt from it. On chemical science
+          -- the fish breeder's egg belt dives underground for 66 tiles past its pickup: the gate stood beyond them,
+          -- the queue would have had to fill all 66 tiles (about 500 eggs, of 181 in the loop) to reach the breeder,
+          -- and the breeder stood 2 eggs short with 181 parked past it.)
+          local near = false
+          if run.params.reserve_gate_near and dist > 8 and pb.type == "transport-belt" and not run.rs.taken[pb.unit_number] then
+            gate, steps, near = pb, 0, true
+            run.rs.near = (run.rs.near or 0) + 1
           end
           if gate and gate.valid and gate.type == "transport-belt" and not run.rs.taken[gate.unit_number] then
             -- (The queue is N tiles from the gate back, and reaches the pickup tile at least.)

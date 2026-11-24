@@ -825,6 +825,8 @@ def main():
                     help="with --cap-fill: the belt-fill leave from the rate cap ends at that many times the plan")
     ap.add_argument("--seed-add", default=None,
                     help="comma list of extra starter items or fluids (name or name#temperature) beside the plan's seeds")
+    ap.add_argument("--reserve-gate-near", action="store_true",
+                    help="with --reserve: past an underground longer than 8 tiles the pickup tile itself is the gate")
     ap.add_argument("--loop-dead-end", action="store_true",
                     help="with --loop-first and --out-share: a maker never puts a loop's item onto a belt with no user "
                          "of it (its port is shut, so it could only park there), while it has another belt free")
@@ -1501,6 +1503,8 @@ def main():
             params["share_wait_on"] = True
         if args.cap_fill_max:
             params["cap_fill_max"] = args.cap_fill_max
+        if args.reserve_gate_near:
+            params["reserve_gate_near"] = True
         if args.loop_share:
             params["loop_share"] = True
         if args.reserve:
