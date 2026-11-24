@@ -823,6 +823,8 @@ def main():
                     help="with --out-share: a switched-off user does not count as waiting for an item a maker shares out")
     ap.add_argument("--cap-fill-max", type=float, default=None,
                     help="with --cap-fill: the belt-fill leave from the rate cap ends at that many times the plan")
+    ap.add_argument("--seed-add", default=None,
+                    help="comma list of extra starter items or fluids (name or name#temperature) beside the plan's seeds")
     ap.add_argument("--loop-dead-end", action="store_true",
                     help="with --loop-first and --out-share: a maker never puts a loop's item onto a belt with no user "
                          "of it (its port is shut, so it could only park there), while it has another belt free")
@@ -1232,6 +1234,10 @@ def main():
     plan_path = built_plan_path(args.target)
     if plan_path and os.path.exists(plan_path):
         raw = json.load(open(plan_path)).get("seeds", [])
+        # (--seed-add: more starters than the planner chose, e.g. a ring's fluids as name#temperature. Chemical
+        # science's hot-air ring got hot bricks only, and its stone-brick belt locked full before any outlet gas came.)
+        if args.seed_add:
+            raw = list(raw) + [x for x in args.seed_add.split(",") if x]
         seeds = sorted({s.split("#")[0] for s in raw})
         if seeds:
             params["seeds"] = seeds
