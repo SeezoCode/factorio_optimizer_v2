@@ -16,6 +16,8 @@
 --           the loop (tags.flow.loop_in) stands short of it and took less than its plan over the last half hour;
 --   shares: where one machine puts an item onto several belt networks, holds the inserters of a network nobody waits
 --           on while another waits, and of one ahead of its planned share while one behind it is free.
+--   splitters (setting splitter-priority): a splitter where a belt branches gives its output priority to the side where
+--           a machine waits (one inside the item's loop first), none while both sides or neither wait.
 -- Tested in game by tools/factorio-verify/verify.py --flow-mod (the same rules as its --flow).
 
 local CRAFTERS = { ["assembling-machine"] = true, ["furnace"] = true }
@@ -167,7 +169,7 @@ local function at(surface, p)
 end
 
 local function rebuild()
-  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, gates = {}, ins_net = {}, sinks = {}, reqs = {}, outs = {} }
+  local T = { into = {}, hands = {}, feeds = {}, drops = {}, net_of = {}, pick = {}, pick_by = {}, gates = {}, ins_net = {}, sinks = {}, reqs = {}, outs = {} }
   -- A belt's network: everything joined to it through belt neighbours, undergrounds and splitters.
   local function net(b)
     local id = T.net_of[b.unit_number]
@@ -209,6 +211,7 @@ local function rebuild()
           if pk and BELTS[pk.type] then
             add(T.feeds, unit, net(pk))
             T.pick[pk.unit_number] = true
+            add(T.pick_by, pk.unit_number, unit)
             T.ins_net[i.unit_number] = net(pk)
           elseif pk and CRAFTERS[pk.type] then
             add(T.hands, pk.unit_number, unit)
@@ -328,6 +331,34 @@ local function rebuild()
       storage.anchors[g.e.unit_number] = a
     end
     g.anchor = a
+  end
+  -- Splitters where a belt branches: the machines that take from each output side, down the belt.
+  T.splitters = {}
+  local DIRV = { [defines.direction.north] = { 0, -1 }, [defines.direction.east] = { 1, 0 }, [defines.direction.south] = { 0, 1 }, [defines.direction.west] = { -1, 0 } }
+  local surfaces = {}
+  for _, m in pairs(storage.machines) do if m.e.valid then surfaces[m.e.surface.index] = m.e.surface end end
+  for _, sf in pairs(surfaces) do
+    for _, sp in pairs(sf.find_entities_filtered { type = "splitter" }) do
+      local outs, f = sp.belt_neighbours.outputs, DIRV[sp.direction]
+      if #outs == 2 and f then
+        local g = { e = sp, net = T.net_of[sp.unit_number], side = {} }
+        for _, o in pairs(outs) do
+          local dx, dy = o.position.x - sp.position.x, o.position.y - sp.position.y
+          local users, seen, todo = {}, { [sp.unit_number] = true }, { o }
+          while #todo > 0 do
+            local b = table.remove(todo)
+            if b and b.valid and b.unit_number and not seen[b.unit_number] then
+              seen[b.unit_number] = true
+              for u in pairs(T.pick_by[b.unit_number] or {}) do users[u] = true end
+              for _, n in pairs(b.belt_neighbours.outputs) do todo[#todo + 1] = n end
+              if b.type == "underground-belt" and b.belt_to_ground_type == "input" and b.underground_belt_neighbour then todo[#todo + 1] = b.underground_belt_neighbour end
+            end
+          end
+          g.side[(dx * f[2] - dy * f[1]) > 0 and "left" or "right"] = users
+        end
+        if g.side.left and g.side.right then T.splitters[#T.splitters + 1] = g end
+      end
+    end
   end
   storage.topo = T
   storage.dirty = false
@@ -1362,6 +1393,29 @@ local function control()
         else
           m.cwait[item] = nil
         end
+      end
+    end
+  end
+  -- Splitter priority: to the side where a machine waits, one inside the item's loop first.
+  if setting("splitter-priority") then
+    for _, g in pairs(T.splitters or {}) do
+      if g.e.valid then
+        local score = {}
+        for key, users in pairs(g.side) do
+          local sc = 0
+          for u in pairs(users) do
+            local m = storage.machines[u]
+            if short_at[u] and m and m.e.valid and not m.e.disabled_by_script and (not g.net or (T.feeds[u] or {})[g.net]) then
+              for item in pairs(short_at[u]) do
+                local v = (m.loop_in and m.loop_in[item]) and 2 or 1
+                if v > sc then sc = v end
+              end
+            end
+          end
+          score[key] = sc
+        end
+        local want = score.left > score.right and "left" or score.right > score.left and "right" or "none"
+        if g.e.splitter_output_priority ~= want then g.e.splitter_output_priority = want end
       end
     end
   end

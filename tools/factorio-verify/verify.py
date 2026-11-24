@@ -1378,6 +1378,7 @@ def main():
         ms["factory-flow-loop-short-reach"] = bool(args.loop_short_reach)
         ms["factory-flow-loop-fluid-strict"] = bool(args.loop_fluid_strict)
         ms["factory-flow-share-wait-on"] = bool(args.share_wait_on)
+        ms["factory-flow-splitter-priority"] = bool(args.splitter_priority)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
