@@ -16,6 +16,7 @@ go round. Hours are game hours.
 | Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | final rule set (2026-11-23): 4 of 6 distinct check runs and both mod runs pass, port at 100% of plan; each of the 2 stops a different fault, one mended (`--loop-short-reach`); the mod has passed 3 of 4 |
 | Logistic science, burner layout (352) | stops one to four hours after its starters | under every rule set |
 | Logistic science, old layout of 2026-11-09 (325) | stops when the last barrel has been handed in | the layout has a fault of its own |
+| Chemical science, 2% margin layout (598) | at plan through the starters and 1 to 2 hours after, then fades by hour 6 | 2026-11-24: 20 runs; the fish loop's renderer counts as a loop user and takes the fish (`--loop-tight`, untested past hour 3); the 3% layout stops sooner, on the nuclear sample chain |
 | Py science 2 (406) | at plan 2 to 3 hours after its starters, then stops | thirteen causes traced 2026-11-21/23; the rest are its long belts holding the loops' stock and loops planned with no margin: planner work |
 
 So: the small factory is solved as far as the rules go, the big one has held once, and nothing is proven by a single
@@ -98,6 +99,13 @@ run (see "Timing" below).
 | Raw inputs | unlimited at every input belt |
 
 ## What I want to work on, in order
+
+**Update 2026-11-24** ([NIGHT_LOG_2026-11-24.md](NIGHT_LOG_2026-11-24.md)): chemical science (598 machines) runs at
+plan through its warm-up and an hour or two after, then fades: by the check's three-step rule the fish loop's lard
+renderer counts as a loop user next to the egg breeder, takes the fish, and fish food, xyhiphoe and filtration media
+stop behind it. New `--loop-tight` (only the nearest users are the loop) is aimed at that; not yet run long enough.
+New options that helped there: `--seed-carrier-cut`, `--seed-add`, `--share-wait-on`. Logistic science with
+`--loop-short-reach`: both distinct runs pass 24 hours.
 
 **Update 2026-11-23** ([NIGHT_LOG_2026-11-23.md](NIGHT_LOG_2026-11-23.md)): the final rule set (time reserve,
 `--quota-catalyst --loop-short-on`) on six distinct logistic science check runs: four pass 24 hours at 100% of plan at
