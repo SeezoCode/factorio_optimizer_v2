@@ -3291,7 +3291,27 @@ local function reserve_gates(run)
           -- the queue would have had to fill all 66 tiles (about 500 eggs, of 181 in the loop) to reach the breeder,
           -- and the breeder stood 2 eggs short with 181 parked past it.)
           local near = false
-          if run.params.reserve_gate_near and dist > 8 and pb.type == "transport-belt" and not run.rs.taken[pb.unit_number] then
+          -- (Only where one loop user of the item takes from this network: gated at one of several, the others behind
+          -- it starved; chemical science's nichrome stood so, the ferrite behind it, and the packs from the warm-up.)
+          local one_user = true
+          if run.params.reserve_gate_near then
+            local net_k = tonumber(key:match(":(%-?%d+)$"))
+            local seen_users = 0
+            for unit, list in pairs(run.into or {}) do
+              for _, i in pairs(list) do
+                if i.valid and net_k and (run.ins_net or {})[i.unit_number] == net_k then
+                  local tm = i.drop_target
+                  local tr = tm and tm.valid and tm.get_recipe and tm.get_recipe()
+                  if tr then for _, ing2 in pairs(tr.ingredients) do
+                    if ing2.name == c.item and not ((lf.outside[c.item] or {})[tr.name]) then seen_users = seen_users + 1 end
+                  end end
+                  break
+                end
+              end
+            end
+            one_user = seen_users <= 1
+          end
+          if run.params.reserve_gate_near and one_user and dist > 8 and pb.type == "transport-belt" and not run.rs.taken[pb.unit_number] then
             gate, steps, near = pb, 0, true
             run.rs.near = (run.rs.near or 0) + 1
           end
