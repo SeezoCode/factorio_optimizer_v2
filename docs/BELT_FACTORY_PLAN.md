@@ -16,7 +16,7 @@ go round. Hours are game hours.
 | Logistic science, margin layout (337) | 24 hours at the planned rate, verdict passes | final rule set (2026-11-23): 4 of 6 distinct check runs and both mod runs pass, port at 100% of plan; each of the 2 stops a different fault, one mended (`--loop-short-reach`); the mod has passed 3 of 4 |
 | Logistic science, burner layout (352) | stops one to four hours after its starters | under every rule set |
 | Logistic science, old layout of 2026-11-09 (325) | stops when the last barrel has been handed in | the layout has a fault of its own |
-| Chemical science, 2% margin layout (598) | at plan through the starters and 1 to 2 hours after, then fades by hour 6 | 2026-11-24: 20 runs; the fish loop's renderer counts as a loop user and takes the fish (`--loop-tight`, untested past hour 3); the 3% layout stops sooner, on the nuclear sample chain |
+| Chemical science, 2% margin layout (598) | at or above plan to hour 7 to 10.3 with the plutonium lock mended and splitter priority | 2026-11-25: g5 alive at hour 10.3 at 131% of plan; a self-locking pu-241 machine (layout: return belt too short) had stopped every earlier run by hour 5; the fish loop (4% margin, outside users far over plan) stops the rest |
 | Py science 2 (406) | at plan 2 to 3 hours after its starters, then stops | thirteen causes traced 2026-11-21/23; the rest are its long belts holding the loops' stock and loops planned with no margin: planner work |
 
 So: the small factory is solved as far as the rules go, the big one has held once, and nothing is proven by a single
@@ -99,6 +99,12 @@ run (see "Timing" below).
 | Raw inputs | unlimited at every input belt |
 
 ## What I want to work on, in order
+
+**Update 2026-11-25** ([NIGHT_LOG_2026-11-25.md](NIGHT_LOG_2026-11-25.md)): chemical science past its hour-5 fade:
+pu-241 transmutation locked itself in every run (its catalyst return belt holds less than a craft's return; mended
+in the check by `--relief-own-jam`, the router should fix it), and splitter priority (check `--splitter-priority`,
+mod setting `splitter-priority`) gives about 30% more packs in the first hours. Best run at plan to hour 10.3 and
+alive; the rest stop on the fish loop at hours 7 to 8. The mod with splitter priority: logistic science passes 24 hours (m7).
 
 **Update 2026-11-24** ([NIGHT_LOG_2026-11-24.md](NIGHT_LOG_2026-11-24.md)): chemical science (598 machines) runs at
 plan through its warm-up and an hour or two after, then fades: by the check's three-step rule the fish loop's lard
