@@ -825,6 +825,9 @@ def main():
     ap.add_argument("--seed-own-wait", action="store_true",
                     help="starters: a machine that gives back an item it takes is not topped up with it while its "
                          "output holds some (script inserts pass the output limit and can lock a catalyst's loop)")
+    ap.add_argument("--relief-own-jam", action="store_true",
+                    help="with --relief: a machine standing full on a product it also takes, with less than a craft "
+                         "of it in its input, lets that product out until its output is under the limit")
     ap.add_argument("--splitter-priority", action="store_true",
                     help="a splitter gives its output priority to the side where a user waits (a loop's own user "
                          "first); none while both or neither side waits")
@@ -1520,6 +1523,8 @@ def main():
             params["splitter_priority"] = True
         if args.seed_own_wait:
             params["seed_own_wait"] = True
+        if args.relief_own_jam:
+            params["relief_own_jam"] = True
         if args.cap_fill_max:
             params["cap_fill_max"] = args.cap_fill_max
         if args.reserve_gate_near:

@@ -3647,7 +3647,6 @@ local function relief(run)
         local sc = relief_scan(run, m)
         if not sc then return end
         local burnt = e.status == defines.entity_status.full_burnt_result_output and e.get_burnt_result_inventory()
-        if not sc.want then return end
         local function record(k, d)
           run.relieved[k] = (run.relieved[k] or 0) + d
           if run.phase == "measure" then
@@ -3656,6 +3655,29 @@ local function relief(run)
             run.relieved_by[rk] = (run.relieved_by[rk] or 0) + d
           end
         end
+        -- (params.relief_own_jam: a product it also takes, held in its output at the limit while its input holds less than
+        -- a craft of it, leaves until the output is under the limit. The machine then takes ingredients again, its
+        -- own belt drains, and what it gave back comes round. Chemical science's pu-241 transmutation gives back 24
+        -- of the 40 pu-241 a craft onto a two-tile belt that holds 8 on its lane: with 51 in its output and 20 in its
+        -- input it took nothing more, the belt stayed full, and it stood from its sixth craft on in every run.)
+        if run.params.relief_own_jam then
+          local mult = relief_limit(e, sc.r)
+          for _, p in pairs(sc.r.products) do
+            for _, ing in pairs(sc.r.ingredients) do
+              if p.type == "item" and ing.type == "item" and ing.name == p.name then
+                local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
+                local limit = mult * amount * (p.probability or 1)
+                local n = sc.out and sc.out.get_item_count(p.name) or 0
+                local inside = e.get_item_count(p.name) - n
+                if n >= limit and inside < ing.amount then
+                  local removed = sc.out.remove { name = p.name, count = math.floor(n - limit) + 1 }
+                  if removed > 0 then record(p.name, removed); run.own_jam = (run.own_jam or 0) + removed end
+                end
+              end
+            end
+          end
+        end
+        if not sc.want then return end
         local tg = {}
         for _, n in pairs(run.params.targets or {}) do tg[n] = true end
         for _, b in pairs(sc.blocking) do
