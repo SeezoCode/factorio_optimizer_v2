@@ -822,6 +822,9 @@ def main():
     ap.add_argument("--seed-carrier-cut", action="store_true",
                     help="a loop's starter that is also a carrier is topped up to a craft's worth while its user stands "
                          "short (else carriers are never topped up after the first craft)")
+    ap.add_argument("--seed-own-wait", action="store_true",
+                    help="starters: a machine that gives back an item it takes is not topped up with it while its "
+                         "output holds some (script inserts pass the output limit and can lock a catalyst's loop)")
     ap.add_argument("--splitter-priority", action="store_true",
                     help="a splitter gives its output priority to the side where a user waits (a loop's own user "
                          "first); none while both or neither side waits")
@@ -1515,6 +1518,8 @@ def main():
             params["share_wait_on"] = True
         if args.splitter_priority:
             params["splitter_priority"] = True
+        if args.seed_own_wait:
+            params["seed_own_wait"] = True
         if args.cap_fill_max:
             params["cap_fill_max"] = args.cap_fill_max
         if args.reserve_gate_near:

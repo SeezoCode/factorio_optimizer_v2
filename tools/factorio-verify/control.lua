@@ -224,6 +224,19 @@ local function prime(run, e, r, crafted, rec)
         -- stands full for good (Py production's ulric corral, topped up to 5 bedding while it waited for raw fiber).
         if crafted and own[ing.name] then want = ing.amount end
         if crafted and cut then want = ing.amount end
+        -- (params.seed_own_wait: nor while its output holds some of it: that is on its way back. Put in by script, past
+        -- the limit a machine takes ingredients to, it crafted on: chemical science's pu-241 transmutation (40 pu-241
+        -- in, 24 back onto the two-tile belt it takes from) ended with 54 in its output, over the 48 at which a machine
+        -- stops taking ingredients, so it took none from its belt, the belt stayed full, the output stayed full, and it
+        -- made 6 of 73 planned crafts in five hours; the nuclear samples ran on their starting stock until hour 5.)
+        local own_wait = false
+        if run.params.seed_own_wait and own[ing.name] and ing.type == "item" then
+          pcall(function()
+            local out = e.get_inventory(defines.inventory.crafter_output)
+            if out and out.get_item_count(ing.name) > 0 then own_wait = true end
+          end)
+        end
+        if own_wait then want = 0 end
         -- (A catalyst the machine also gives to others, Py's moss farm's coarse, is topped up like a seed: the
         -- classifier took the first batch and the farm stood short of the 15 it needs.)
         pcall(function()
