@@ -16,6 +16,8 @@
 --           the loop (tags.flow.loop_in) stands short of it and took less than its plan over the last half hour;
 --   shares: where one machine puts an item onto several belt networks, holds the inserters of a network nobody waits
 --           on while another waits, and of one ahead of its planned share while one behind it is free.
+--   loop budget (setting loop-budget): users of an item that comes back round, other than its nearest users, take it
+--           only while its stock (made less taken) is not falling.
 --   splitters (setting splitter-priority): a splitter where a belt branches gives its output priority to the side where
 --           a machine waits (one inside the item's loop first), none while both sides or neither wait.
 -- Tested in game by tools/factorio-verify/verify.py --flow-mod (the same rules as its --flow).
@@ -1141,6 +1143,94 @@ local function control()
       end
     end
     for item in pairs(out_short) do if not loop_short[item] then behind[item] = true end end
+    -- Loop budget (setting): for every item or fluid that comes back round, a running balance of what its makers made
+    -- less what all its users took, in crafts finished. Its users at the fewest recipe steps back to a maker are its
+    -- loop; any other user takes it only while the balance holds a craft of its own, so a loop gives away what it has
+    -- to spare and no more, whatever margin it was planned with. The balance stays within two crafts of each outside
+    -- user either way. (Chemical science's fish loop has 4% to spare; a trit breeder outside took eggs at 174% of its
+    -- plan and the lard renderer fish at 142%, and the loop and the pack behind it stopped by hour 8.)
+    local lbm, lbal = nil, nil
+    if setting("loop-budget") then
+      local names, nn = {}, 0
+      for _, r in pairs(recipes) do if not names[r.name] then names[r.name] = r; nn = nn + 1 end end
+      if not T.lb or T.lb.n ~= nn then
+        local makers, users, adj = {}, {}, {}
+        for n, r in pairs(names) do
+          for _, pr in pairs(r.products) do makers[pr.name] = makers[pr.name] or {}; makers[pr.name][n] = true end
+          for _, ig in pairs(r.ingredients) do users[ig.name] = users[ig.name] or {}; users[ig.name][n] = true end
+        end
+        for n, r in pairs(names) do
+          adj[n] = {}
+          for _, pr in pairs(r.products) do for u in pairs(users[pr.name] or {}) do adj[n][u] = true end end
+        end
+        local function back(mks, start)
+          if mks[start] then return 0 end
+          local seen, q, head = { [start] = true }, { { start, 0 } }, 1
+          while head <= #q do
+            local v, d = q[head][1], q[head][2]
+            head = head + 1
+            if d >= 3 then break end
+            for w in pairs(adj[v]) do
+              if mks[w] then return d + 1 end
+              if not seen[w] then seen[w] = true; q[#q + 1] = { w, d + 1 } end
+            end
+          end
+          return nil
+        end
+        local outside, cap = {}, {}
+        for item, us in pairs(users) do
+          local mks = makers[item]
+          if mks then
+            local ds, near = {}, nil
+            for n in pairs(us) do
+              local d = back(mks, n)
+              ds[n] = d or false
+              if d and (not near or d < near) then near = d end
+            end
+            if near then
+              local o = {}
+              for n, d in pairs(ds) do if d ~= near then o[n] = true end end
+              if next(o) then outside[item] = o end
+            end
+          end
+        end
+        for unit, r in pairs(recipes) do
+          for _, ig in pairs(r.ingredients) do
+            if (outside[ig.name] or {})[r.name] then cap[ig.name] = (cap[ig.name] or 0) + 2 * ig.amount end
+          end
+        end
+        T.lb = { n = nn, outside = outside, cap = cap }
+      end
+      lbm = T.lb
+      storage.lb = storage.lb or { pf = {}, b = {} }
+      local made, took = {}, {}
+      for unit, m in pairs(storage.machines) do
+        local e, r = m.e, recipes[unit]
+        if e.valid and r then
+          local pf = e.products_finished
+          local last = storage.lb.pf[unit]
+          storage.lb.pf[unit] = pf
+          local d = (last and pf > last) and (pf - last) or 0
+          if d > 0 then
+            for _, pr in pairs(r.products) do
+              if lbm.outside[pr.name] then
+                local amt = pr.amount or ((pr.amount_min or 0) + (pr.amount_max or 0)) / 2
+                made[pr.name] = (made[pr.name] or 0) + d * amt * (pr.probability or 1)
+              end
+            end
+            for _, ig in pairs(r.ingredients) do
+              if lbm.outside[ig.name] then took[ig.name] = (took[ig.name] or 0) + d * ig.amount end
+            end
+          end
+        end
+      end
+      for item in pairs(lbm.outside) do
+        local c = lbm.cap[item] or 0
+        local b = (storage.lb.b[item] or 0) + (made[item] or 0) - (took[item] or 0)
+        storage.lb.b[item] = math.max(-c, math.min(c, b))
+      end
+      lbal = storage.lb.b
+    end
     capped_at = {}
     for unit, m in pairs(storage.machines) do
       local e, r, o = m.e, recipes[unit], over[unit]
@@ -1173,6 +1263,10 @@ local function control()
               end
               if reach then break end
             end
+          end
+          if lbm and (lbm.outside[ing.name] or {})[r.name] and (lbal[ing.name] or 0) < ing.amount and not pushed(unit, ing) then
+            if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+            stats.budget_held = (stats.budget_held or 0) + 1
           end
           if loop_short[ing.name] and reach and (loop_out[unit] or {})[ing.name] and not pushed(unit, ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end

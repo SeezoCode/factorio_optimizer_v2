@@ -828,6 +828,9 @@ def main():
     ap.add_argument("--relief-own-jam", action="store_true",
                     help="with --relief: a machine standing full on a product it also takes, with less than a craft "
                          "of it in its input, lets that product out until its output is under the limit")
+    ap.add_argument("--loop-budget", action="store_true",
+                    help="with --loop-first: for every item or fluid whose users' output comes back to its makers, users "
+                         "other than the nearest (fewest steps back) take it only while its stock is not falling")
     ap.add_argument("--splitter-priority", action="store_true",
                     help="a splitter gives its output priority to the side where a user waits (a loop's own user "
                          "first); none while both or neither side waits")
@@ -1385,6 +1388,7 @@ def main():
         ms["factory-flow-loop-fluid-strict"] = bool(args.loop_fluid_strict)
         ms["factory-flow-share-wait-on"] = bool(args.share_wait_on)
         ms["factory-flow-splitter-priority"] = bool(args.splitter_priority)
+        ms["factory-flow-loop-budget"] = bool(args.loop_budget)
         ms["factory-flow-shares"] = bool(args.out_share)
         ms["factory-flow-slow-machines"] = bool(args.cap_slow)
         ms["factory-flow-cap-fill"] = bool(args.cap_fill)
@@ -1486,6 +1490,37 @@ def main():
                     fluid_loops.append(f)
         both = {i for i in inside if i in outside}
         params["loop_first"] = {"window": args.loop_first, "inside": {i: inside[i] for i in both}, "outside": {i: outside[i] for i in both}}
+        # (--loop-budget: every item or fluid some user's output comes back to: its core users are those at the fewest
+        # recipe steps back to a maker, every other user is outside and takes only from a stock that is not falling;
+        # see control.lua. Fluids count whether or not --loop-fluids is on; raw inputs never.)
+        if args.loop_budget:
+            fin_all = defaultdict(set)
+            for m in json.load(open(lp)).get("machines", []):
+                fin_all[_b(m["recipe"])] |= {_b(k) for k in m.get("fluidDemand", {})}
+            if not args.loop_fluids:
+                for n, fs in fin_all.items():
+                    for f in fs:
+                        for mk in makers.get(f, ()):
+                            adj[mk].add(n)
+            raw = {i["item"].split("#")[0].split("@")[0] for i in (ports or {}).get("inputs", [])}
+            fluids_all = {f for fs in fin_all.values() for f in fs}
+            b_in, b_out, b_fl = {}, {}, []
+            for item, mks in makers.items():
+                if item in raw:
+                    continue
+                users = {n for n, r in recs.items() if item in r["in"]} | {n for n, fs in fin_all.items() if item in fs}
+                ds = {n: back(mks, n) for n in users}
+                near = min((d for d in ds.values() if d is not None and d <= 3), default=None)
+                if near is None:
+                    continue
+                ins_ = {n: True for n, d in ds.items() if d == near}
+                outs_ = {n: True for n in ds if n not in ins_}
+                if outs_:
+                    b_in[item], b_out[item] = ins_, outs_
+                    if item in fluids_all:
+                        b_fl.append(item)
+            params["loop_budget"] = {"inside": b_in, "outside": b_out, "fluid": {f: True for f in b_fl}}
+            print(f"loop-budget: {len(b_out)} loop items ({len(b_fl)} fluids), {sum(len(v) for v in b_out.values())} outside users held to a stock that is not falling")
         if fluid_loops:
             params["loop_first"]["fluids"] = True
             print(f"loop-fluids: {len(fluid_loops)} fluids of production loops go to the loop's own users first ({', '.join(sorted(fluid_loops))})")

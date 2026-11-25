@@ -20,6 +20,7 @@ data:extend({
   { type = "bool-setting", name = "factory-flow-loop-fluid-strict", setting_type = "runtime-global", default_value = false, order = "f2966" },
   { type = "bool-setting", name = "factory-flow-share-wait-on", setting_type = "runtime-global", default_value = false, order = "f2967" },
   { type = "bool-setting", name = "factory-flow-splitter-priority", setting_type = "runtime-global", default_value = false, order = "f2968" },
+  { type = "bool-setting", name = "factory-flow-loop-budget", setting_type = "runtime-global", default_value = false, order = "f2969" },
   { type = "bool-setting", name = "factory-flow-loop-dead-end", setting_type = "runtime-global", default_value = false, order = "f295" },
   { type = "bool-setting", name = "factory-flow-quota-catalyst", setting_type = "runtime-global", default_value = false, order = "f29" },
   { type = "bool-setting", name = "factory-flow-loop-fluids", setting_type = "runtime-global", default_value = false, order = "f28" },

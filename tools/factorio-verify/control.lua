@@ -4908,6 +4908,58 @@ script.on_event(defines.events.on_tick, function()
     for item, n in pairs(out_short) do
       if not loop_short[item] then behind_short[item] = (behind_short[item] or 0) + n end
     end
+    -- params.loop_budget: for every item or fluid that comes back round (verify.py: inside = its users at the fewest
+    -- steps back to a maker, outside = its other users), a running balance of what its makers made (and starters
+    -- brought) less what every user took, counted in crafts finished. A user outside takes it only while the balance
+    -- holds a craft of its own: only from a stock that is not falling, so a loop gives away what it has to spare and
+    -- no more, whatever margin its plan has. The balance is kept within two crafts of each outside user either way,
+    -- so neither an early glut nor an old debt lasts. Chemical science's fish loop is planned with 4% over (62.7 eggs
+    -- an hour made, 60.2 used); under the rate cap of twice the plan a trit breeder outside took eggs at 174% of its
+    -- plan and the lard renderer fish at 142%, and fish, fish food, filtration media and the pack stopped by hour 8.
+    local lbp = run.params.loop_budget
+    local lbud = nil
+    if lbp then
+      run.lb = run.lb or { pf = {}, b = {}, seeded = {}, cap = {} }
+      local lb = run.lb
+      local made, took = {}, {}
+      for _, mm in pairs(run.machines) do
+        local e2, r2 = mm.e, mm.fq and mm.fq.r
+        if e2.valid and r2 then
+          local pf = e2.products_finished
+          local last = lb.pf[e2.unit_number]
+          lb.pf[e2.unit_number] = pf
+          local d = (last and pf > last) and (pf - last) or 0
+          if d > 0 then
+            for _, p in pairs(r2.products) do
+              if lbp.outside[p.name] then
+                local amt = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
+                made[p.name] = (made[p.name] or 0) + d * amt * (p.probability or 1)
+              end
+            end
+            for _, ing in pairs(r2.ingredients) do
+              if lbp.outside[ing.name] then took[ing.name] = (took[ing.name] or 0) + d * ing.amount end
+            end
+          end
+          if not lb.capped_init then
+            for _, ing in pairs(r2.ingredients) do
+              if (lbp.outside[ing.name] or {})[r2.name] then lb.cap[ing.name] = (lb.cap[ing.name] or 0) + 2 * ing.amount end
+            end
+          end
+        end
+      end
+      lb.capped_init = true
+      for item in pairs(lbp.outside) do
+        local key = (lbp.fluid or {})[item] and ("[" .. item .. "]") or item
+        local sd = (run.seeded or {})[key] or 0
+        local ds = sd - (lb.seeded[item] or 0)
+        lb.seeded[item] = sd
+        if ds > 0 then made[item] = (made[item] or 0) + ds end
+        local cap = lb.cap[item] or 0
+        local b = (lb.b[item] or 0) + (made[item] or 0) - (took[item] or 0)
+        lb.b[item] = math.max(-cap, math.min(cap, b))
+      end
+      lbud = lb.b
+    end
     -- Pass 2: hold those ahead while someone behind waits.
     -- (run.capped_at: which machine is held from which item right now; such a user does not count as waiting for it
     -- where a maker shares out by demand, params.out_share_mode.)
@@ -4981,6 +5033,11 @@ script.on_event(defines.events.on_tick, function()
               end
               if reach then break end
             end
+          end
+          if lbud and (lbp.outside[ing.name] or {})[m.fq.r.name] and (lbud[ing.name] or 0) < ing.amount and not is_pushed(ing) then
+            if ing.type == "fluid" then stop = true else capped[ing.name] = true end
+            why[#why + 1] = "budget:" .. ing.name
+            run.lb_held = (run.lb_held or 0) + 1
           end
           if loop_short[ing.name] and reach and (loop_out[e.unit_number] or {})[ing.name] and not is_pushed(ing) then
             if ing.type == "fluid" then stop = true else capped[ing.name] = true end
