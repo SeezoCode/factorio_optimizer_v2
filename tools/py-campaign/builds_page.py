@@ -30,14 +30,17 @@ def category(name, ent):
     return 9
 
 
-def layout_dir(s):
-    want = os.environ.get("BUILDS_SUFFIX")
+def layout_dirs(s):
+    """Every solved layout of a science (solves/<science>_<suffix>), oldest first."""
     cands = [d for d in os.listdir(os.path.join(ROOT, "solves")) if d.startswith(s + "_")
              and os.path.exists(os.path.join(ROOT, "solves", d, "best_blueprint.json"))]
-    if want:
-        cands = [d for d in cands if d == f"{s}_{want}"]
     cands.sort(key=lambda d: os.path.getmtime(os.path.join(ROOT, "solves", d, "best_blueprint.json")))
-    return cands[-1] if cands else None
+    return cands
+
+
+def layout_dir(s):
+    c = layout_dirs(s)
+    return c[-1] if c else None
 
 
 def runs_for(layout):
@@ -72,9 +75,8 @@ def main():
     ents = data["entities"]
     status = []
     for s in SCI:
-        d = layout_dir(s)
-        row = {"science": s, "name": data["items"].get(s, {}).get("translated_name", s), "layout": d, "runs": {}}
-        if d:
+        row = {"science": s, "name": data["items"].get(s, {}).get("translated_name", s), "layouts": []}
+        for d in layout_dirs(s):
             p = os.path.join(ROOT, "solves", d)
             bp = json.load(open(os.path.join(p, "best_blueprint.json")))["blueprint"]
             names, recipes, rows = [], [], []
@@ -94,13 +96,24 @@ def main():
             bstr = open(os.path.join(p, "best_output_string.txt")).read().strip()
             xs = [r[1] for r in rows] + [r[1] + r[3] for r in rows]
             ys = [r[2] for r in rows] + [r[2] + r[4] for r in rows]
-            json.dump({"names": names, "recipes": recipes, "e": rows, "bp": bstr}, open(os.path.join(dst, "data", s + ".json"), "w"), separators=(",", ":"))
-            row.update(machines=len(plan["machines"]), entities=len(rows), w=round(max(xs) - min(xs)), h=round(max(ys) - min(ys)),
-                       margin=plan.get("margin"), runs=runs_for(d))
+            json.dump({"names": names, "recipes": recipes, "e": rows, "bp": bstr}, open(os.path.join(dst, "data", d + ".json"), "w"), separators=(",", ":"))
+            job = json.load(open(os.path.join(ROOT, "solves", "jobs", d + ".json"))) if os.path.exists(os.path.join(ROOT, "solves", "jobs", d + ".json")) else {}
+            kind = "belts, local sinks" if (job.get("blocks") or {}).get("local_sinks") else "belts"
+            row["layouts"].append({"layout": d, "kind": kind, "machines": len(plan["machines"]), "entities": len(rows),
+                                   "w": round(max(xs) - min(xs)), "h": round(max(ys) - min(ys)), "margin": plan.get("margin"), "runs": runs_for(d)})
+        # the board shows, per level, the best run over all layouts
+        rank = {"pass": 2, "running": 1, "fail": 0}
+        best = {}
+        for L in row["layouts"]:
+            for lvl, r in L["runs"].items():
+                r = dict(r, layout=L["layout"], kind=L["kind"])
+                if lvl not in best or (rank[r["verdict"]], r["hours"]) > (rank[best[lvl]["verdict"]], best[lvl]["hours"]):
+                    best[lvl] = r
+        row["runs"] = best
         status.append(row)
     json.dump({"levels": LEVELS, "sciences": status}, open(os.path.join(dst, "status.json"), "w"), indent=1)
     shutil.copy(os.path.join(os.path.dirname(__file__), "builds_page.html"), os.path.join(dst, "index.html"))
-    print("wrote", dst, [r["science"] for r in status if r["layout"]])
+    print("wrote", dst, [L["layout"] for r in status for L in r["layouts"]])
 
 
 if __name__ == "__main__":

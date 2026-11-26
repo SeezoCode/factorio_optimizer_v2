@@ -21,6 +21,8 @@ current; the log of what was tried is [CAMPAIGN_LOG.md](CAMPAIGN_LOG.md), the re
   into this session at :07, :27 and :47 (trig_01Ea9ZbET52dNvSMRFxCnHL7, trig_018cG15oJoz8fTM8NfK78W9W,
   trig_01Sx2onJBB9rXDpDoAhCujUu). Delete them at the end (2026-11-29 19:00 UTC report).
 - Use all the CPU. Let runs take as long as they need.
+- **Belts only, no robots** (user, 2026-11-26 23:26): layouts must be belt-built; **sinks are allowed**
+  (`blocks.local_sinks`: by-products end in a chest or Py's fluid void beside their block).
 - Push only to the branch `claude/practical-davinci-i6iqkj-6m4aie` (the user chose that; not main).
 - **Do not stop** unless (a) stuck and progress stalls, (b) a very important decision, (c) **2026-11-29 20:00 CET
   (19:00 UTC)**: then report progress. The user is in exam season and will not intervene much.
@@ -89,6 +91,8 @@ port over the measured window) over the level's full measured window.
   military, py-2, chemical, py-3, production, py-4, utility, space. Automation solved in 3 s (13 machines, 76x76).
   Py's planner spends minutes per job in its fixed-charge MIP (600 s limit per call).
 - Automation science L3 test run (10 + 10 game minutes): PASS. Full ladder (L5..L0) queued 23:20.
-- 23:25 UTC: second solve queue r2 (robot layouts, `tools/py-campaign/solve.sh`, JOB_PATCH with
-  `blocks.max_machines 2, size_by machines, bot_links 1.0, overflow_after_stacks 2, provider_until_stacks 2`),
-  log `solves/queue_r2.log`. (`solve_queue.sh` is the m2 queue's running copy: do not edit it while it runs.)
+- 23:25 UTC: a robot-layout queue (r2) was started and stopped a minute later: the user wants belts only.
+- 23:26 UTC: second solve queue **s2** = belts with local sinks (`tools/py-campaign/solve.sh`, JOB_PATCH
+  `{"blocks": {"local_sinks": 1000}}`, 2% margin, 2 threads), big sciences first: production, utility, py-4, space,
+  py-3, chemical, py-2. Log `solves/queue_s2.log`. The m2 queue (plain belts) works from the small end; when the
+  two meet, stop the duplicates. (`solve_queue.sh` is the m2 queue's running copy: do not edit it while it runs.)
