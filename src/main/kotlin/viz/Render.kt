@@ -76,6 +76,9 @@ private fun beltChains(layout: Layout): Map<Tile, Int> {
 
 /** Headless PNG render: machines as labelled boxes, belts as arrows coloured per net, inserters as small arrows. */
 fun renderLayout(layout: Layout, file: File, opt: RenderOptions = RenderOptions()) {
+    // FO_NO_IMAGES=1: no PNGs at all (best.png, renders/, stitch pictures). A big factory's picture is tens of MB
+    // and up to 200 million pixels of drawing; `--render=<dir>` draws one later when it is wanted.
+    if (System.getenv("FO_NO_IMAGES") == "1") return
     System.setProperty("java.awt.headless", "true")
     val b = layout.bounds()
     // Tiles get smaller on a big factory: Py science 4's 1043 x 1113 at 32 px a tile wanted a 4.7 GB image and the

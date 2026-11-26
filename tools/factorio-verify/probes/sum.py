@@ -14,7 +14,7 @@ else:
     tl = r.get('tl') or []; h = r['h']; phase = r['phase']; now = r['now']; rv = r.get('rv') or {}
     if isinstance(tl, dict): tl = [tl[k] for k in sorted(tl, key=int)]
     tl = tl + [{'h': h, 'pf': now['pf'], 'seeded': now.get('seeded') or {}, 'voided': now.get('voided') or {}, 'boot': now.get('boot') or {}}]
-plan = json.load(open(f'solves/{d}/plan_rebalanced.json'))
+plan = json.load(open(f'solves/{d}/plan_rebalanced.json' if os.path.exists(f'solves/{d}/plan_rebalanced.json') else f'solves/{d}/plan.json'))
 def base(n): return n.split('#')[0].split('@')[0]
 rate = collections.defaultdict(float)
 for m in plan['machines']: rate[base(m['recipe'])] += m['crafts']
