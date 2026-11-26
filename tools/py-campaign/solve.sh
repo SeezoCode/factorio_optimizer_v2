@@ -28,6 +28,6 @@ json.dump(j, open(job, "w"), indent=1)
 PY
   mkdir -p "$out"
   echo "$(date -u +%FT%TZ) start $out"
-  nice -n 5 build/install/factorio_optimizer_v2/bin/factorio_optimizer_v2 --config="$job" --out="$out" --plain > "$out/solve.log" 2>&1
+  nice -n 0 build/install/factorio_optimizer_v2/bin/factorio_optimizer_v2 --config="$job" --out="$out" --plain > "$out/solve.log" 2>&1
   echo "$(date -u +%FT%TZ) end $out exit $? $(tail -n 1 $out/solve.log)"
 done
