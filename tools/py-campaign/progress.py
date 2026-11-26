@@ -36,14 +36,19 @@ def table():
     data = json.load(open(os.path.join(ROOT, "data", "pyanodon.json")))
     rows = ["| Science | Machines | Fairest pass | " + " | ".join(f"{l} {NAMES[l]}" for l in bp.LEVELS) + " |",
             "|---|---:|---|" + "---|" * len(bp.LEVELS)]
+    rank = {"pass": 2, "running": 1, "fail": 0}
     for s in bp.SCI:
-        d = bp.layout_dir(s)
+        ds = bp.layout_dirs(s)
         name = data["items"].get(s, {}).get("translated_name", s)
-        if not d:
+        if not ds:
             rows.append(f"| {name} | solving | | " + " | ".join("·" for _ in bp.LEVELS) + " |")
             continue
-        runs = bp.runs_for(d)
-        m = len(json.load(open(os.path.join(ROOT, "solves", d, "plan.json")))["machines"])
+        runs = {}
+        for d in ds:
+            for l, r in bp.runs_for(d).items():
+                if l not in runs or (rank[r["verdict"]], r["hours"]) > (rank[runs[l]["verdict"]], runs[l]["hours"]):
+                    runs[l] = r
+        m = " / ".join(str(len(json.load(open(os.path.join(ROOT, "solves", d, "plan.json")))["machines"])) for d in ds)
         b = best(runs)
         rows.append(f"| {name} | {m} | {('**' + b + ' ' + NAMES[b] + '**') if b else '—'} | " + " | ".join(cell(runs.get(l)) for l in bp.LEVELS) + " |")
     stamp = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())

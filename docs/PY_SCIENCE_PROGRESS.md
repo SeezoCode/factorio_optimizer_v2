@@ -8,8 +8,8 @@ written by `tools/py-campaign/progress.py`; the sections below it are written by
 <!-- campaign:start -->
 | Science | Machines | Fairest pass | L5 fed | L4 ideal | L3 rules | L2 mod | L1 built | L0 plain |
 |---|---:|---|---|---|---|---|---|---|
-| Automation science pack | 13 | — | running, 2 h | running, 1.6 h | running, 0 h | · | · | · |
-| pY science pack 1 | solving | | · | · | · | · | · | · |
+| Automation science pack | 13 | — | running, 2.4 h | running, 1.6 h | running, 0 h | · | · | · |
+| pY science pack 1 | 50 | — | · | · | · | · | · | · |
 | Logistic science pack | solving | | · | · | · | · | · | · |
 | Military science pack | solving | | · | · | · | · | · | · |
 | pY science pack 2 | solving | | · | · | · | · | · | · |
@@ -20,7 +20,7 @@ written by `tools/py-campaign/progress.py`; the sections below it are written by
 | Utility science pack | solving | | · | · | · | · | · | · |
 | Space science pack | solving | | · | · | · | · | · | · |
 
-Updated 2026-11-26 23:25 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+Updated 2026-11-26 23:27 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
 <!-- campaign:end -->
 
 ## Conquered

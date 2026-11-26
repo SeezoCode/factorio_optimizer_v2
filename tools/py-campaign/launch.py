@@ -51,6 +51,17 @@ def games():
     return sum(1 for l in out.splitlines() if "/bin/x64/factorio" in l and "--start-server" in l)
 
 
+def solved(layout):
+    """A solve queue logged the layout's end (solves/queue_*.log), or it was copied in by hand (solves/<layout>/SOLVED)."""
+    d = os.path.join(ROOT, "solves")
+    if os.path.exists(os.path.join(d, layout, "SOLVED")):
+        return True
+    for f in os.listdir(d):
+        if f.startswith("queue_") and f.endswith(".log") and f"end solves/{layout} " in open(os.path.join(d, f)).read():
+            return os.path.exists(os.path.join(d, layout, "test_output_string.txt"))
+    return False
+
+
 def flags_for(level, extra):
     name, flags, warm, meas = LEVELS[level]
     f = list(flags)
@@ -102,8 +113,8 @@ def main():
             q = load()
             for item in q:
                 if item["started"] is None and games() < mx:
-                    if not os.path.exists(os.path.join(ROOT, "solves", item["layout"], "test_output_string.txt")):
-                        continue  # layout not solved yet
+                    if not solved(item["layout"]):
+                        continue  # layout not solved yet (a factory run writes previews before its final layout)
                     start(item)
                     q2 = load()  # runs may have been added meanwhile
                     for i in q2:

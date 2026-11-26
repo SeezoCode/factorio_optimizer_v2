@@ -62,7 +62,7 @@ button:active{transform:translateY(1px)}
     <p class="lede" id="lede">Each of the 11 Pyanodon sciences at 0.02 packs/s, laid out by the optimizer and run in Factorio 2.1.24 headless. Columns go from the most help the check gives (<b>L5</b>, every lack fed) to none (<b>L0</b>, the blueprint as built).</p>
   </div>
   <div class="scroll"><table>
-    <thead><tr><th>Science</th><th>Machines</th><th title="every lack fed, jams deleted">L5 fed</th><th title="ideal transport, metered">L4 ideal</th><th title="belts, the check's flow rules">L3 rules</th><th title="the same rules in the factory-flow mod">L2 mod</th><th title="real parts only">L1 built</th><th title="plain blueprint">L0 plain</th></tr></thead>
+    <thead><tr><th>Science</th><th title="per layout: plain belts / belts with local sinks">Machines</th><th title="every lack fed, jams deleted">L5 fed</th><th title="ideal transport, metered">L4 ideal</th><th title="belts, the check's flow rules">L3 rules</th><th title="the same rules in the factory-flow mod">L2 mod</th><th title="real parts only">L1 built</th><th title="plain blueprint">L0 plain</th></tr></thead>
     <tbody id="board"></tbody>
   </table></div>
 </div></div>
@@ -74,6 +74,7 @@ button:active{transform:translateY(1px)}
   </div>
   <aside class="legend">
     <h2 id="title">Loading…</h2>
+    <div id="vars" style="display:flex;gap:6px;flex-wrap:wrap"></div>
     <dl id="stats"></dl>
     <div class="key">
       <span class="sw" style="background:var(--mach);outline:1px solid var(--machE)"></span><span>Machine (hover for its recipe)</span>
@@ -103,24 +104,29 @@ const cellTxt = r => !r ? '<span class="cell none">·</span>' :
 
 function board() {
   $('board').innerHTML = status.sciences.map(s => `<tr class="sci${cur === s.science ? ' on' : ''}" data-s="${esc(s.science)}">
-    <td class="nm">${esc(s.name)}</td><td>${s.layout ? esc(s.machines) : '<span class="note">solving</span>'}</td>
+    <td class="nm">${esc(s.name)}</td><td>${s.layouts.length ? s.layouts.map(L => esc(L.machines)).join(' / ') : '<span class="note">solving</span>'}</td>
     ${LV.map(l => `<td>${cellTxt(s.runs && s.runs[l])}</td>`).join('')}</tr>`).join('');
   for (const tr of document.querySelectorAll('tr.sci')) tr.onclick = () => pick(tr.dataset.s);
 }
 
-async function pick(s) {
+let curL = null;
+async function pick(s, lay) {
   cur = s; board();
   try { localStorage.setItem('pyb-sci', s); } catch (e) {}
   const row = status.sciences.find(r => r.science === s);
   $('title').textContent = row.name;
-  $('runs').innerHTML = LV.filter(l => row.runs && row.runs[l]).map(l => { const r = row.runs[l];
+  if (!row.layouts.length) { data = null; $('stats').innerHTML = ''; $('vars').innerHTML = ''; $('runs').innerHTML = '<li class="note">none yet</li>'; draw(); return; }
+  const L = row.layouts.find(x => x.layout === lay) || row.layouts[row.layouts.length - 1];
+  curL = L.layout;
+  $('vars').innerHTML = row.layouts.length < 2 ? '' : row.layouts.map(x => `<button data-l="${esc(x.layout)}" aria-pressed="${x.layout === curL}"${x.layout === curL ? ' style="border-color:var(--ink);background:var(--sea)"' : ''}>${esc(x.kind)}</button>`).join(' ');
+  for (const b of document.querySelectorAll('#vars button')) b.onclick = () => pick(s, b.dataset.l);
+  $('runs').innerHTML = LV.filter(l => L.runs && L.runs[l]).map(l => { const r = L.runs[l];
     return `<li><b>${l}</b> ${esc(r.run)}: ${esc(r.verdict)}, ${esc(r.hours)} game h${r.pct != null ? ', pack at ' + esc(Math.round(r.pct)) + '% of plan' : ''}</li>`; }).join('') || '<li class="note">none yet</li>';
-  if (!row.layout) { data = null; $('stats').innerHTML = ''; draw(); return; }
-  $('stats').innerHTML = `<dt>Machines</dt><dd>${esc(row.machines)}</dd><dt>Entities</dt><dd>${esc(row.entities.toLocaleString())}</dd>
-    <dt>Size</dt><dd>${esc(row.w)} × ${esc(row.h)} tiles</dd><dt>Plan margin</dt><dd>${row.margin ? esc(Math.round(row.margin * 100)) + '%' : 'none'}</dd><dt>Layout</dt><dd style="overflow-wrap:anywhere">${esc(row.layout)}</dd>`;
+  $('stats').innerHTML = `<dt>Kind</dt><dd>${esc(L.kind)}</dd><dt>Machines</dt><dd>${esc(L.machines)}</dd><dt>Entities</dt><dd>${esc(L.entities.toLocaleString())}</dd>
+    <dt>Size</dt><dd>${esc(L.w)} × ${esc(L.h)} tiles</dd><dt>Plan margin</dt><dd>${L.margin ? esc(Math.round(L.margin * 100)) + '%' : 'none'}</dd><dt>Layout</dt><dd style="overflow-wrap:anywhere">${esc(L.layout)}</dd>`;
   data = null; draw();
-  const d = await (await fetch('data/' + encodeURIComponent(s) + '.json')).json();
-  if (cur !== s) return;
+  const d = await (await fetch('data/' + encodeURIComponent(L.layout) + '.json')).json();
+  if (cur !== s || curL !== L.layout) return;
   data = d; buildIndex(); fit();
 }
 
@@ -153,7 +159,7 @@ function draw() {
   if (!data) {
     const row = status && status.sciences.find(r => r.science === cur);
     g.fillStyle = col('--mute'); g.font = '15px Overpass, sans-serif'; g.textAlign = 'center';
-    g.fillText(row && !row.layout ? 'Not solved yet: the solve queue is still on it.' : 'Loading the layout…', W / 2, H / 2); return;
+    g.fillText(row && !row.layouts.length ? 'Not solved yet: the solve queue is still on it.' : 'Loading the layout…', W / 2, H / 2); return;
   }
   const s = view.s, X = x => view.x + x * s, Y = y => view.y + y * s;
   const fills = {1: col('--belt'), 2: col('--belt'), 3: col('--belt'), 4: col('--acc'), 5: col('--pipe'), 6: col('--machE'), 7: col('--machE'), 9: col('--machE')};
@@ -213,10 +219,10 @@ new MutationObserver(draw).observe(document.documentElement, {attributes: true, 
 
 fetch('status.json').then(r => r.json()).then(st => {
   status = st;
-  const done = st.sciences.filter(s => s.layout).length, passes = st.sciences.filter(s => s.runs && Object.values(s.runs).some(r => r.verdict === 'pass')).length;
+  const done = st.sciences.filter(s => s.layouts.length).length, passes = st.sciences.filter(s => s.runs && Object.values(s.runs).some(r => r.verdict === 'pass')).length;
   $('lede').insertAdjacentHTML('beforeend', ` <b>${done} of 11</b> laid out so far; <b>${passes}</b> passed at some level.`);
   let first = null; try { first = localStorage.getItem('pyb-sci'); } catch (e) {}
-  if (!st.sciences.some(s => s.science === first)) first = (st.sciences.find(s => s.layout) || st.sciences[0]).science;
+  if (!st.sciences.some(s => s.science === first)) first = (st.sciences.find(s => s.layouts.length) || st.sciences[0]).science;
   pick(first);
 }).catch(() => { $('title').textContent = 'Status file missing'; });
 }
