@@ -1,0 +1,127 @@
+{
+  "data": "data/krastorio2.json",
+  "targets": [
+    {
+      "name": "kr-singularity-tech-card",
+      "amount": 0.5
+    }
+  ],
+  "machines": [
+    "kr-quantum-computer",
+    "kr-stabilizer-charging-station",
+    "kr-advanced-assembling-machine",
+    "kr-advanced-furnace",
+    "kr-advanced-chemical-plant",
+    "kr-electrolysis-plant",
+    "kr-filtration-plant",
+    "kr-atmospheric-condenser",
+    "kr-crusher",
+    "oil-refinery"
+  ],
+  "belt_tier": "kr-advanced-transport-belt",
+  "weave_tier": "auto",
+  "lane_sharing": true,
+  "research": {
+    "inserter_capacity": 7
+  },
+  "inserters": {
+    "allowed": [
+      "inserter",
+      "long-handed-inserter",
+      "fast-inserter",
+      "bulk-inserter"
+    ],
+    "belt_pickup_derate": 0.7
+  },
+  "raw_resources": [
+    "iron-ore",
+    "copper-ore",
+    "stone",
+    "coal",
+    "wood",
+    "crude-oil",
+    "water",
+    "kr-rare-metal-ore",
+    "kr-imersite",
+    "kr-mineral-water"
+  ],
+  "sources": [
+    {
+      "name": "iron-ore",
+      "edge": "west"
+    },
+    {
+      "name": "copper-ore",
+      "edge": "west"
+    },
+    {
+      "name": "stone",
+      "edge": "west"
+    },
+    {
+      "name": "coal",
+      "edge": "west"
+    },
+    {
+      "name": "wood",
+      "edge": "west"
+    },
+    {
+      "name": "kr-rare-metal-ore",
+      "edge": "west"
+    },
+    {
+      "name": "kr-imersite",
+      "edge": "west"
+    },
+    {
+      "name": "crude-oil",
+      "edge": "south"
+    },
+    {
+      "name": "water",
+      "edge": "south"
+    },
+    {
+      "name": "kr-mineral-water",
+      "edge": "south"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "kr-singularity-tech-card",
+      "edge": "east"
+    }
+  ],
+  "box": {
+    "aspect": 1
+  },
+  "power": {
+    "pole": "substation"
+  },
+  "blocks": {
+    "max_machines": 20,
+    "size_by": "weight",
+    "lanes": 5,
+    "corridor": 4,
+    "compact": true,
+    "shape_variants": [
+      0.6,
+      1.7
+    ],
+    "split_at": [
+      "iron-plate",
+      "copper-plate",
+      "steel-plate",
+      "kr-rare-metals",
+      "kr-imersite-powder"
+    ]
+  },
+  "search": {
+    "time_budget_s": 14400,
+    "seeds_per_size": 3,
+    "threads": 10,
+    "seed": 1,
+    "verbose": false
+  }
+}

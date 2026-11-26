@@ -1,0 +1,12 @@
+{
+  "targets": [
+    {
+      "name": "automation-science-pack",
+      "amount": 1
+    }
+  ],
+  "machines": [
+    "assembling-machine-2"
+  ],
+  "belt_tier": "transport-belt"
+}

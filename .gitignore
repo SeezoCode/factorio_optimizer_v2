@@ -25,3 +25,6 @@ bin/
 
 # Local job files in the repo root (examples live in docs/ and src/test/resources/)
 /*.json
+
+# Stray run output folder
+/true/

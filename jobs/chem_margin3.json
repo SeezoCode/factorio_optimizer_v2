@@ -1,0 +1,162 @@
+{
+ "engine": "sa",
+ "data": "data/pyanodon.json",
+ "quality": "normal",
+ "targets": [
+  {
+   "name": "chemical-science-pack",
+   "amount": 0.02
+  }
+ ],
+ "forbidden_recipes": [],
+ "recipe_overrides": {},
+ "machine": "assembling-machine-3",
+ "machines": [
+  "auto"
+ ],
+ "machine_tier": "fastest",
+ "skip_recipes": [
+  "-turd",
+  "pyvoid"
+ ],
+ "raw_byproducts": "leave",
+ "byproduct_overflow": "all",
+ "split_output_tolerance": 0.08,
+ "fuel": "coal",
+ "belt_tier": "express",
+ "belt_stack_size": 1,
+ "spoilage": {
+  "mode": "off",
+  "chest": "steel-chest"
+ },
+ "weave_tier": "auto",
+ "lane_sharing": false,
+ "inserters": {
+  "allowed": [
+   "inserter",
+   "long-handed-inserter",
+   "fast-inserter",
+   "bulk-inserter"
+  ],
+  "belt_pickup_derate": 0.7,
+  "speed_factor": 1.0
+ },
+ "research": {
+  "inserter_capacity": 7,
+  "productivity": {}
+ },
+ "recycling": {
+  "mode": "off",
+  "void_items": []
+ },
+ "heat": {
+  "mode": "off",
+  "edge": "any",
+  "poles": false,
+  "ports": 4
+ },
+ "mixed_outputs": [],
+ "byproducts_mixed": true,
+ "tricks": {},
+ "box": {
+  "aspect": 1.0
+ },
+ "forbidden_tiles": [],
+ "forbidden_places": [],
+ "sources": [],
+ "outputs": [
+  {
+   "name": "chemical-science-pack",
+   "edge": "east",
+   "force": 1.0
+  }
+ ],
+ "sinks": {
+  "mode": "port",
+  "chest": "steel-chest",
+  "burn": []
+ },
+ "fluids": {
+  "mode": "pipes",
+  "surplus_only": {
+   "heavy-oil-cracking": "heavy-oil",
+   "light-oil-cracking": "light-oil"
+  },
+  "surplus_level": 0.5,
+  "pipe": "ht-pipes",
+  "pipe_to_ground": "ht-pipes-to-ground"
+ },
+ "power": {
+  "mode": "set-cover",
+  "pole": "substation",
+  "allow_outside_ring": true
+ },
+ "search": {
+  "time_budget_s": 1800.0,
+  "seeds_per_size": 3,
+  "threads": 5,
+  "seed": 1,
+  "verbose": false,
+  "stop_after": 1
+ },
+ "score": {
+  "belt": 0.3,
+  "underground": 1.0,
+  "inserter": 0.2
+ },
+ "test_mode": false,
+ "templates": true,
+ "blocks": {
+  "max_machines": 20,
+  "size_by": "weight",
+  "lanes": 5,
+  "park_after": 4,
+  "restitch_share": 0.03,
+  "overflow_cost": 1.0,
+  "hard_max": 1.5,
+  "split_at": [],
+  "corridor": 12,
+  "link_belt_share": 0.9,
+  "belt_weight": 0.0,
+  "fluid_weight": 0.75,
+  "local_sink_chest": "steel-chest",
+  "stitch": "router",
+  "bot_provider_chest": "passive-provider-chest",
+  "bot_provider_slots": 2,
+  "overflow_after_stacks": 2,
+  "bot_requester_chest": "requester-chest",
+  "split_at_weight": 0.1,
+  "link_cost": 1.0,
+  "fluid_link_cost": 3.0,
+  "block_cost": 4.0,
+  "aspect_weight": 0.5,
+  "wire_weight": 2.0,
+  "block_time_share": 0.9,
+  "pass_through": false,
+  "lane_pairs": false,
+  "wire_blocks": false,
+  "rotate": true,
+  "shape_variants": [],
+  "templates": true,
+  "template_ingredients": 4,
+  "template_min_machines": 4,
+  "template_columns": 1,
+  "shared_outputs": false,
+  "template_share": 0.25,
+  "floorplan_tries": 3,
+  "compact": false,
+  "repack": false,
+  "repack_share": 0.25,
+  "merge": false,
+  "merge_share": 0.3
+ },
+ "reserved": [],
+ "ports_on_ring": true,
+ "marker_tile": "hazard-concrete-left",
+ "tuning": {
+  "planner": {
+   "margin": 0.03
+  }
+ },
+ "debug_renders": false
+}
