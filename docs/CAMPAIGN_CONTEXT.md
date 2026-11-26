@@ -48,6 +48,7 @@ Set up as in [CLOUD_SETUP.md](CLOUD_SETUP.md); the container is lost when the se
   (`verify.out`, `cmd.txt`).
 - `launch.py add <run> <layout> <level> [flags]`, `launch.py sched --max N` (scheduler loop, keeps N games
   running, queue in `solves/campaign_queue.json`, log `solves/sched.log`), `launch.py status`.
+- `watch.sh`: the Monitor script (re-arm it every 30 min: Monitor command `tools/py-campaign/watch.sh`).
 - Probes in `tools/factorio-verify/probes` (README there): `sum.py <run>` packs by hour for a live or finished run.
 
 ## Help levels (most help first)
