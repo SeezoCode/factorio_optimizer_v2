@@ -86,6 +86,7 @@ def status():
 
 
 def main():
+    sys.stdout.reconfigure(line_buffering=True)
     cmd = sys.argv[1]
     if cmd == "add":
         run, layout, level, *extra = sys.argv[2:]

@@ -1,0 +1,223 @@
+<meta charset="utf-8">
+<title>Py science builds</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a lab notebook of factories for one reader checking in between exams
+   IDEA a survey map: each factory drawn as a map sheet with a legend panel in the margin
+   PICTURE the chosen science's layout drawn tile for tile on a canvas, pan and zoom, hover names machines
+   COLOUR land #fbfbf2 ground, ink #13242e, contour brown #a8551b for belts, sea #2f8fb5 for pipes, magenta #d6127e for what passed
+   TYPE Overpass 800 display + Overpass text
+   LAYOUT title and the help-level scoreboard across the top; the map sheet full width beneath with its legend on the right; phone: stacked */
+:root{color-scheme:light dark;--bg:light-dark(#fbfbf2,#0d1c24);--ink:light-dark(#13242e,#e6eef0);--mute:light-dark(#5b6b72,#93a5ad);--rule:light-dark(#d9dccf,#24384290);--belt:light-dark(#a8551b,#d9803f);--pipe:light-dark(#2f8fb5,#5fb6d8);--acc:light-dark(#d6127e,#ff4fa8);--mach:light-dark(#e8e2cf,#1d3440);--machE:light-dark(#8b8574,#5d7884);--panel:light-dark(#f3f2e6,#122630);--sea:light-dark(#bfe3ee,#123642)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Overpass,system-ui,sans-serif;overflow-x:clip}
+.band{padding-block:clamp(20px,3vw,40px);padding-left:max(5vw,16px,env(safe-area-inset-left,0px));padding-right:max(5vw,16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-weight:800;font-size:clamp(32px,4.6vw,48px);line-height:1.05;letter-spacing:-.02em;margin:0 0 .3em}
+h2{font-weight:800;font-size:22px;letter-spacing:-.01em;margin:0 0 .4em}
+.lede{max-width:68ch;color:var(--mute);margin:0}
+.lede b{color:var(--ink)}
+.top{display:grid;gap:28px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:980px){.top{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-weight:600;text-align:left;color:var(--mute);padding:4px 6px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:4px 6px;border-bottom:1px solid var(--rule);white-space:nowrap}
+tr.sci{cursor:pointer}
+tr.sci:hover td{background:var(--panel)}
+tr.sci.on td{background:var(--sea)}
+td.nm{white-space:normal;font-weight:600}
+.cell{display:inline-block;min-width:4.6em;text-align:center;border-radius:3px;padding:1px 4px;font-variant-numeric:tabular-nums}
+.pass{background:var(--acc);color:#fff;font-weight:600}
+.running{outline:1.5px solid var(--acc);color:var(--acc)}
+.fail{color:var(--belt);outline:1px dashed var(--belt)}
+.none{color:var(--rule)}
+.sheet{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:900px){.sheet{grid-template-columns:minmax(0,1fr) 300px}}
+.map{position:relative;height:min(78svh,760px);min-height:360px;border:1px solid var(--rule);background:var(--bg);touch-action:none;cursor:grab;overflow:hidden}
+.map canvas{position:absolute;inset:0;width:100%;height:100%}
+.tools{position:absolute;right:10px;top:10px;display:flex;gap:6px}
+button{font:600 14px Overpass,system-ui,sans-serif;color:var(--ink);background:var(--panel);border:1px solid var(--machE);border-radius:4px;min-height:36px;min-width:36px;padding:0 10px;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:active{transform:translateY(1px)}
+#tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:13px;padding:4px 8px;border-radius:3px;white-space:nowrap}
+.legend{background:var(--panel);border:1px solid var(--rule);padding:16px;align-self:start}
+.legend dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0 14px;font-size:14px}
+.legend dt{color:var(--mute)}
+.legend dd{margin:0;font-variant-numeric:tabular-nums}
+.key{display:grid;grid-template-columns:22px 1fr;gap:6px 10px;align-items:center;font-size:14px;margin:0 0 14px}
+.sw{width:22px;height:12px;border-radius:2px}
+.runs{font-size:14px;margin:0;padding:0;list-style:none}
+.runs li{padding:3px 0;border-top:1px solid var(--rule)}
+.note{font-size:13px;color:var(--mute)}
+.empty{display:grid;place-items:center;height:100%;color:var(--mute);text-align:center;padding:20px}
+</style>
+
+<div class="band"><div class="wrap top">
+  <div>
+    <h1>Py science builds</h1>
+    <p class="lede" id="lede">Each of the 11 Pyanodon sciences at 0.02 packs/s, laid out by the optimizer and run in Factorio 2.1.24 headless. Columns go from the most help the check gives (<b>L5</b>, every lack fed) to none (<b>L0</b>, the blueprint as built).</p>
+  </div>
+  <div class="scroll"><table>
+    <thead><tr><th>Science</th><th>Machines</th><th title="every lack fed, jams deleted">L5 fed</th><th title="ideal transport, metered">L4 ideal</th><th title="belts, the check's flow rules">L3 rules</th><th title="the same rules in the factory-flow mod">L2 mod</th><th title="real parts only">L1 built</th><th title="plain blueprint">L0 plain</th></tr></thead>
+    <tbody id="board"></tbody>
+  </table></div>
+</div></div>
+
+<div class="band" style="padding-top:0"><div class="wrap sheet">
+  <div class="map" id="map"><canvas id="cv"></canvas>
+    <div class="tools"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="fit">Fit</button></div>
+    <div id="tip" hidden></div><span id="probe" hidden></span>
+  </div>
+  <aside class="legend">
+    <h2 id="title">Loading…</h2>
+    <dl id="stats"></dl>
+    <div class="key">
+      <span class="sw" style="background:var(--mach);outline:1px solid var(--machE)"></span><span>Machine (hover for its recipe)</span>
+      <span class="sw" style="background:var(--belt)"></span><span>Belt, underground, splitter</span>
+      <span class="sw" style="background:var(--pipe)"></span><span>Pipe</span>
+      <span class="sw" style="background:var(--acc)"></span><span>Inserter</span>
+      <span class="sw" style="background:var(--machE)"></span><span>Pole, chest, combinator</span>
+    </div>
+    <button id="copy">Copy blueprint string</button>
+    <p class="note" id="copied">Paste it in Factorio with Import string (needs the Py mods).</p>
+    <h2 style="font-size:17px;margin-top:14px">Runs on this layout</h2>
+    <ul class="runs" id="runs"></ul>
+  </aside>
+</div></div>
+
+<script>
+{
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LV = ['L5','L4','L3','L2','L1','L0'];
+let status = null, cur = null, data = null, view = {s:1, x:0, y:0}, index = null;
+const cv = $('cv'), map = $('map');
+const cellTxt = r => !r ? '<span class="cell none">·</span>' :
+  r.verdict === 'pass' ? `<span class="cell pass">pass ${r.hours}h</span>` :
+  r.verdict === 'running' ? `<span class="cell running">${r.hours}h</span>` :
+  `<span class="cell fail">${r.pct != null ? Math.round(r.pct) + '%' : 'stopped'}</span>`;
+
+function board() {
+  $('board').innerHTML = status.sciences.map(s => `<tr class="sci${cur === s.science ? ' on' : ''}" data-s="${esc(s.science)}">
+    <td class="nm">${esc(s.name)}</td><td>${s.layout ? esc(s.machines) : '<span class="note">solving</span>'}</td>
+    ${LV.map(l => `<td>${cellTxt(s.runs && s.runs[l])}</td>`).join('')}</tr>`).join('');
+  for (const tr of document.querySelectorAll('tr.sci')) tr.onclick = () => pick(tr.dataset.s);
+}
+
+async function pick(s) {
+  cur = s; board();
+  try { localStorage.setItem('pyb-sci', s); } catch (e) {}
+  const row = status.sciences.find(r => r.science === s);
+  $('title').textContent = row.name;
+  $('runs').innerHTML = LV.filter(l => row.runs && row.runs[l]).map(l => { const r = row.runs[l];
+    return `<li><b>${l}</b> ${esc(r.run)}: ${esc(r.verdict)}, ${esc(r.hours)} game h${r.pct != null ? ', pack at ' + esc(Math.round(r.pct)) + '% of plan' : ''}</li>`; }).join('') || '<li class="note">none yet</li>';
+  if (!row.layout) { data = null; $('stats').innerHTML = ''; draw(); return; }
+  $('stats').innerHTML = `<dt>Machines</dt><dd>${esc(row.machines)}</dd><dt>Entities</dt><dd>${esc(row.entities.toLocaleString())}</dd>
+    <dt>Size</dt><dd>${esc(row.w)} × ${esc(row.h)} tiles</dd><dt>Plan margin</dt><dd>${row.margin ? esc(Math.round(row.margin * 100)) + '%' : 'none'}</dd><dt>Layout</dt><dd style="overflow-wrap:anywhere">${esc(row.layout)}</dd>`;
+  data = null; draw();
+  const d = await (await fetch('data/' + encodeURIComponent(s) + '.json')).json();
+  if (cur !== s) return;
+  data = d; buildIndex(); fit();
+}
+
+function buildIndex() {
+  index = new Map();
+  data.e.forEach((r, i) => { if (r[0] !== 8) return;
+    for (let x = Math.floor(r[1] / 8); x <= Math.floor((r[1] + r[3]) / 8); x++)
+      for (let y = Math.floor(r[2] / 8); y <= Math.floor((r[2] + r[4]) / 8); y++) {
+        const k = x + ',' + y; if (!index.has(k)) index.set(k, []); index.get(k).push(i); } });
+}
+
+function bounds() {
+  let a = 1e9, b = 1e9, c = -1e9, d = -1e9;
+  for (const r of data.e) { a = Math.min(a, r[1]); b = Math.min(b, r[2]); c = Math.max(c, r[1] + r[3]); d = Math.max(d, r[2] + r[4]); }
+  return [a, b, c, d];
+}
+function fit() {
+  if (!data) return;
+  const [a, b, c, d] = bounds(), W = map.clientWidth, H = map.clientHeight;
+  view.s = Math.min(W / (c - a + 4), H / (d - b + 4));
+  view.x = W / 2 - view.s * (a + c) / 2; view.y = H / 2 - view.s * (b + d) / 2; draw();
+}
+
+function draw() {
+  const W = map.clientWidth, H = map.clientHeight, dpr = devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const probe = $('probe'), col = n => { probe.style.color = `var(${n})`; return getComputedStyle(probe).color; };
+  g.fillStyle = getComputedStyle(map).backgroundColor; g.fillRect(0, 0, W, H);
+  if (!data) {
+    const row = status && status.sciences.find(r => r.science === cur);
+    g.fillStyle = col('--mute'); g.font = '15px Overpass, sans-serif'; g.textAlign = 'center';
+    g.fillText(row && !row.layout ? 'Not solved yet: the solve queue is still on it.' : 'Loading the layout…', W / 2, H / 2); return;
+  }
+  const s = view.s, X = x => view.x + x * s, Y = y => view.y + y * s;
+  const fills = {1: col('--belt'), 2: col('--belt'), 3: col('--belt'), 4: col('--acc'), 5: col('--pipe'), 6: col('--machE'), 7: col('--machE'), 9: col('--machE')};
+  const mach = col('--mach'), machE = col('--machE');
+  for (const r of data.e) {
+    const x = X(r[1]), y = Y(r[2]), w = r[3] * s, h = r[4] * s;
+    if (x > W || y > H || x + w < 0 || y + h < 0) continue;
+    if (r[0] === 8) { g.fillStyle = mach; g.fillRect(x, y, w, h); g.strokeStyle = machE; g.lineWidth = 1; g.strokeRect(x + .5, y + .5, w - 1, h - 1); continue; }
+    g.fillStyle = fills[r[0]] || machE;
+    if (r[0] === 1 || r[0] === 5) { // belts and pipes run the tile's full length so chains read as lines
+      const t = r[0] === 1 ? .42 : .34, vert = r[0] === 5 || r[5] % 2 === 0;
+      if (vert) g.fillRect(x + w * (1 - t) / 2, y, Math.max(w * t, .6), h); else g.fillRect(x, y + h * (1 - t) / 2, w, Math.max(h * t, .6));
+      if (r[0] === 5) g.fillRect(x, y + h * (1 - t) / 2, w, Math.max(h * t, .6));
+      continue;
+    }
+    const k = r[0] === 4 ? .5 : r[0] === 2 ? .7 : .8;
+    g.fillRect(x + w * (1 - k) / 2, y + h * (1 - k) / 2, Math.max(w * k, .6), Math.max(h * k, .6));
+  }
+  if (s > 14) {
+    g.fillStyle = col('--ink'); g.font = Math.min(13, s * .5) + 'px Overpass, sans-serif'; g.textAlign = 'center';
+    for (const r of data.e) if (r[0] === 8 && r[7] >= 0) {
+      const x = X(r[1] + r[3] / 2), y = Y(r[2] + r[4] / 2);
+      if (x > -50 && y > -20 && x < W + 50 && y < H + 20) g.fillText(data.recipes[r[7]].slice(0, Math.max(4, Math.floor(r[3] * s / 7))), x, y + 4);
+    }
+  }
+}
+
+let drag = null;
+map.addEventListener('pointerdown', e => { drag = {x: e.clientX, y: e.clientY, vx: view.x, vy: view.y}; map.setPointerCapture(e.pointerId); map.style.cursor = 'grabbing'; });
+map.addEventListener('pointerup', () => { drag = null; map.style.cursor = 'grab'; });
+map.addEventListener('pointermove', e => {
+  const rc = map.getBoundingClientRect();
+  if (drag) { view.x = drag.vx + e.clientX - drag.x; view.y = drag.vy + e.clientY - drag.y; draw(); return; }
+  if (!data || !index) return;
+  const tx = (e.clientX - rc.left - view.x) / view.s, ty = (e.clientY - rc.top - view.y) / view.s;
+  const hit = (index.get(Math.floor(tx / 8) + ',' + Math.floor(ty / 8)) || []).map(i => data.e[i]).find(r => tx >= r[1] && tx < r[1] + r[3] && ty >= r[2] && ty < r[2] + r[4]);
+  const tip = $('tip');
+  if (hit) { tip.hidden = false; tip.textContent = data.names[hit[6]] + (hit[7] >= 0 ? ': ' + data.recipes[hit[7]] : '');
+    tip.style.left = Math.min(e.clientX - rc.left + 12, rc.width - tip.offsetWidth - 4) + 'px'; tip.style.top = (e.clientY - rc.top + 14) + 'px'; }
+  else tip.hidden = true;
+});
+map.addEventListener('pointerleave', () => { $('tip').hidden = true; });
+function zoom(f, cx, cy) { view.x = cx - (cx - view.x) * f; view.y = cy - (cy - view.y) * f; view.s *= f; draw(); }
+map.addEventListener('wheel', e => { e.preventDefault(); const rc = map.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - rc.left, e.clientY - rc.top); }, {passive: false});
+$('zin').onclick = e => { e.stopPropagation(); zoom(1.4, map.clientWidth / 2, map.clientHeight / 2); };
+$('zout').onclick = e => { e.stopPropagation(); zoom(1 / 1.4, map.clientWidth / 2, map.clientHeight / 2); };
+$('fit').onclick = e => { e.stopPropagation(); fit(); };
+for (const b of document.querySelectorAll('.tools button')) b.addEventListener('pointerdown', e => e.stopPropagation());
+$('copy').onclick = async () => {
+  if (!data) return;
+  try { await navigator.clipboard.writeText(data.bp); $('copied').textContent = 'Copied (' + data.bp.length.toLocaleString() + ' characters). Paste it in Factorio with Import string.'; }
+  catch (e) { $('copied').textContent = 'The browser blocked copying here; the string is in the repo run folder as best_output_string.txt.'; }
+};
+const ro = new ResizeObserver(() => draw()); ro.observe(map);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+new MutationObserver(draw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+
+fetch('status.json').then(r => r.json()).then(st => {
+  status = st;
+  const done = st.sciences.filter(s => s.layout).length, passes = st.sciences.filter(s => s.runs && Object.values(s.runs).some(r => r.verdict === 'pass')).length;
+  $('lede').insertAdjacentHTML('beforeend', ` <b>${done} of 11</b> laid out so far; <b>${passes}</b> passed at some level.`);
+  let first = null; try { first = localStorage.getItem('pyb-sci'); } catch (e) {}
+  if (!st.sciences.some(s => s.science === first)) first = (st.sciences.find(s => s.layout) || st.sciences[0]).science;
+  pick(first);
+}).catch(() => { $('title').textContent = 'Status file missing'; });
+}
+</script>

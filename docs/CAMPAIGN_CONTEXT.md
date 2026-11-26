@@ -13,7 +13,13 @@ current; the log of what was tried is [CAMPAIGN_LOG.md](CAMPAIGN_LOG.md), the re
 - Progress table in the readme plus a detailed explanation; report each science that is conquered.
 - This file as persistent context; [CAMPAIGN_LOG.md](CAMPAIGN_LOG.md) for what was tried, what worked, what not.
 - Save storage: no images (`FO_NO_IMAGES=1`, see below).
-- Give the user a link to look at the builds (a claude.ai artifact page; its URL goes below once published).
+- Give the user a link to look at the builds: **https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk** (private to
+  the user). Rebuild with `python3 tools/py-campaign/builds_page.py <scratchpad>/builds` and republish that
+  folder's `index.html` with `root` = the folder and `files` = `status.json` plus every `data/<science>.json`
+  (same file path keeps the URL; from a new session pass the URL as `url`).
+- Keep-alive: the user worries the container stops after 30 idle minutes. Three hourly scheduled check-ins fire
+  into this session at :07, :27 and :47 (trig_01Ea9ZbET52dNvSMRFxCnHL7, trig_018cG15oJoz8fTM8NfK78W9W,
+  trig_01Sx2onJBB9rXDpDoAhCujUu). Delete them at the end (2026-11-29 19:00 UTC report).
 - Use all the CPU. Let runs take as long as they need.
 - Push only to the branch `claude/practical-davinci-i6iqkj-6m4aie` (the user chose that; not main).
 - **Do not stop** unless (a) stuck and progress stalls, (b) a very important decision, (c) **2026-11-29 20:00 CET
