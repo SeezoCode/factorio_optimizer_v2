@@ -28,3 +28,4 @@ bin/
 
 # Stray run output folder
 /true/
+__pycache__/
