@@ -21,6 +21,34 @@ every biochamber also needs a nutrient belt; spoilage can be drained ([spoilage]
 Machines, beacons and modules can be of any quality, and items of a better quality can be made with quality modules
 and recyclers ([quality production](#quality-production), opt-in).
 
+## Py science campaign
+
+Since 2026-11-26: every one of the 11 Pyanodon sciences (`jobs/py_sciences/`, 0.02 packs/s each) laid out and run
+in the game, first with a lot of help from the check and then with less and less, down to the blueprint alone. The
+levels: **L5 fed** (every lack fed, jams deleted), **L4 ideal** (ideal transport, every machine metered to its
+plan), **L3 rules** (belts as built, the check's flow rules by script), **L2 mod** (the same rules in the
+factory-flow mod a player installs), **L1 built** (real parts only: overflow exits, voids, pull from deciders),
+**L0 plain** (the blueprint, a warm start, loop starters in the warm-up). Detail per science:
+[docs/PY_SCIENCE_PROGRESS.md](docs/PY_SCIENCE_PROGRESS.md); what was tried: [docs/CAMPAIGN_LOG.md](docs/CAMPAIGN_LOG.md).
+
+<!-- campaign:start -->
+| Science | Machines | Fairest pass | L5 fed | L4 ideal | L3 rules | L2 mod | L1 built | L0 plain |
+|---|---:|---|---|---|---|---|---|---|
+| Automation science pack | 13 | — | running, 1.2 h | running, 0.8 h | running, 0 h | · | · | · |
+| pY science pack 1 | solving | | · | · | · | · | · | · |
+| Logistic science pack | solving | | · | · | · | · | · | · |
+| Military science pack | solving | | · | · | · | · | · | · |
+| pY science pack 2 | solving | | · | · | · | · | · | · |
+| Chemical science pack | solving | | · | · | · | · | · | · |
+| pY science pack 3 | solving | | · | · | · | · | · | · |
+| Production science pack | solving | | · | · | · | · | · | · |
+| pY science pack 4 | solving | | · | · | · | · | · | · |
+| Utility science pack | solving | | · | · | · | · | · | · |
+| Space science pack | solving | | · | · | · | · | · | · |
+
+Updated 2026-11-26 23:23 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+<!-- campaign:end -->
+
 ## Examples
 
 Each folder in [docs/examples](docs/examples) has the blueprint string (`best_output_string.txt`, paste it into

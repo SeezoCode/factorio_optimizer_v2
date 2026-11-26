@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""Writes the campaign's results table into readme.md and docs/PY_SCIENCE_PROGRESS.md (between the markers
+<!-- campaign:start --> and <!-- campaign:end -->), from the runs in solves/ (as builds_page.py reads them).
+
+    python3 tools/py-campaign/progress.py
+"""
+import importlib.util, json, os, re, time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+spec = importlib.util.spec_from_file_location("bp", os.path.join(HERE, "builds_page.py"))
+bp = importlib.util.module_from_spec(spec); spec.loader.exec_module(bp)
+ROOT = bp.ROOT
+NAMES = {"L5": "fed", "L4": "ideal", "L3": "rules", "L2": "mod", "L1": "built", "L0": "plain"}
+PAGE = "https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk"
+
+
+def cell(r):
+    if not r:
+        return "·"
+    if r["verdict"] == "pass":
+        return f"**pass** {r['hours']:g} h"
+    if r["verdict"] == "running":
+        return f"running, {r['hours']:g} h"
+    return f"stopped{', ' + str(round(r['pct'])) + '%' if r['pct'] is not None else ''}"
+
+
+def best(runs):
+    """The fairest level a science passed at (L0 fairest), or None."""
+    for l in reversed(bp.LEVELS):
+        if runs.get(l, {}).get("verdict") == "pass":
+            return l
+    return None
+
+
+def table():
+    data = json.load(open(os.path.join(ROOT, "data", "pyanodon.json")))
+    rows = ["| Science | Machines | Fairest pass | " + " | ".join(f"{l} {NAMES[l]}" for l in bp.LEVELS) + " |",
+            "|---|---:|---|" + "---|" * len(bp.LEVELS)]
+    for s in bp.SCI:
+        d = bp.layout_dir(s)
+        name = data["items"].get(s, {}).get("translated_name", s)
+        if not d:
+            rows.append(f"| {name} | solving | | " + " | ".join("·" for _ in bp.LEVELS) + " |")
+            continue
+        runs = bp.runs_for(d)
+        m = len(json.load(open(os.path.join(ROOT, "solves", d, "plan.json")))["machines"])
+        b = best(runs)
+        rows.append(f"| {name} | {m} | {('**' + b + ' ' + NAMES[b] + '**') if b else '—'} | " + " | ".join(cell(runs.get(l)) for l in bp.LEVELS) + " |")
+    stamp = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+    return "\n".join(rows) + f"\n\nUpdated {stamp}. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page]({PAGE}) (private link)."
+
+
+def put(path, text):
+    s = open(path).read()
+    new = re.sub(r"<!-- campaign:start -->.*?<!-- campaign:end -->", "<!-- campaign:start -->\n" + text + "\n<!-- campaign:end -->", s, flags=re.S)
+    if new != s:
+        open(path, "w").write(new)
+
+
+if __name__ == "__main__":
+    t = table()
+    put(os.path.join(ROOT, "readme.md"), t)
+    put(os.path.join(ROOT, "docs", "PY_SCIENCE_PROGRESS.md"), t)
+    print(t)
