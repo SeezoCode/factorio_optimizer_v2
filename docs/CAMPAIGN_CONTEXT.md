@@ -88,4 +88,7 @@ port over the measured window) over the level's full measured window.
 - 2026-11-26 23:20 UTC: solve queue m2 (2% margin, 4 threads) running in order automation, py-1, logistic,
   military, py-2, chemical, py-3, production, py-4, utility, space. Automation solved in 3 s (13 machines, 76x76).
   Py's planner spends minutes per job in its fixed-charge MIP (600 s limit per call).
-- Automation science L3 test run (10 + 10 game minutes): PASS.
+- Automation science L3 test run (10 + 10 game minutes): PASS. Full ladder (L5..L0) queued 23:20.
+- 23:25 UTC: second solve queue r2 (robot layouts, `tools/py-campaign/solve.sh`, JOB_PATCH with
+  `blocks.max_machines 2, size_by machines, bot_links 1.0, overflow_after_stacks 2, provider_until_stacks 2`),
+  log `solves/queue_r2.log`. (`solve_queue.sh` is the m2 queue's running copy: do not edit it while it runs.)
