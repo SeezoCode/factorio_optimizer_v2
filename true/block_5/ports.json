@@ -1,0 +1,74 @@
+{
+    "box": {
+        "w": 100,
+        "h": 41
+    },
+    "inputs": [
+        {
+            "item": "iron-plate",
+            "rate": 10.77999999999641,
+            "fluid": false,
+            "x": 93,
+            "y": 41,
+            "edge": "south"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 22.923227694564627,
+            "fluid": false,
+            "x": -1,
+            "y": 12,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 26.449878109113033,
+            "fluid": false,
+            "x": -1,
+            "y": 18,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "copper-cable",
+            "rate": 2.958484626332016,
+            "fluid": false,
+            "x": 100,
+            "y": 32,
+            "edge": "east"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 17.545562781070895,
+            "fluid": false,
+            "x": 100,
+            "y": 2,
+            "edge": "east"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 17.545562781070895,
+            "fluid": false,
+            "x": 100,
+            "y": 22,
+            "edge": "east"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 11.549999950826042,
+            "fluid": false,
+            "x": 100,
+            "y": 0,
+            "edge": "east"
+        },
+        {
+            "item": "electronic-circuit",
+            "rate": 15.092000064253979,
+            "fluid": false,
+            "x": 81,
+            "y": 41,
+            "edge": "south"
+        }
+    ]
+}

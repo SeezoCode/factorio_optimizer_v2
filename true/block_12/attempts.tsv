@@ -1,0 +1,5 @@
+elapsed_s	w	h	seed	stage	seconds	routing_runs	conflicts	unrouted	score	where
+2,0	117	47	12345111701	ok	2,0	1	0		5808,5	
+2,0	117	47	12345111702	ok	2,0	1	0		5767,9	
+4,1	117	47	12345111704	ok	2,1	1	0		5780,9	
+4,1	117	47	12345111703	ok	2,1	1	0		5853,3	

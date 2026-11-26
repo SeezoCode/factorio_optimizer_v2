@@ -1,0 +1,5 @@
+elapsed_s	w	h	seed	stage	seconds	routing_runs	conflicts	unrouted	score	where
+2,1	78	52	12345101611	beacons	2,1	1	0			BEACON_SHORT (75,0)
+2,3	78	52	12345101612	ok	2,3	1	0		4336,7	
+4,2	78	52	12345101614	beacons	1,8	1	0			BEACON_SHORT (75,0)
+11,0	78	52	12345101613	beacons	8,8	1	0			BEACON_SHORT (75,39); BEACON_SHORT (62,38)

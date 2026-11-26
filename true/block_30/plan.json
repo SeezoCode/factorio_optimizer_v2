@@ -1,0 +1,1507 @@
+{
+    "machines": [
+        {
+            "id": 0,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 1,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 2,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 3,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 4,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 5,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 6,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 7,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 8,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 9,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 10,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 11,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 12,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 13,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 14,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 15,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 16,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        },
+        {
+            "id": 17,
+            "recipe": "low-density-structure",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.2941540385527669,
+            "product": "low-density-structure",
+            "demand": {
+                "copper-plate": 4.202200532863005,
+                "steel-plate": 0.4202200532863004,
+                "plastic-bar": 1.0505501332157512
+            },
+            "products": {
+                "low-density-structure": 0.2941540385527669
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2101100266431502,
+            "maxCrafts": 0.21011002664315023,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.033333331346513326,
+                0.1583333313465133,
+                0.2101100266431502
+            ]
+        }
+    ],
+    "ports": [
+        {
+            "id": 0,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 1,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 2,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 3,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 4,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 5,
+            "item": "low-density-structure",
+            "specs": [
+                {
+                    "name": "low-density-structure",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 6,
+            "item": "plastic-bar",
+            "specs": [
+                {
+                    "name": "plastic-bar",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 7,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 8,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        }
+    ],
+    "terminals": [
+        {
+            "id": 0,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 8,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 9,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 10,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 11,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 12,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 13,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 14,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 15,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 16,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 17,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 4.202200532863005,
+            "k": 2,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 18,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 19,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 20,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 21,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 22,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 23,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 24,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 25,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 26,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 27,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 28,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 29,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 30,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 31,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 32,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 33,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 34,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 35,
+            "role": "PRODUCER",
+            "item": "low-density-structure",
+            "rate": 0.2941540385527669,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 36,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 37,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 38,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 39,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 40,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 41,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 42,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 43,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 44,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 45,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 46,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 47,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 48,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 49,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 50,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 51,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 52,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 53,
+            "role": "CONSUMER",
+            "item": "plastic-bar",
+            "rate": 1.0505501332157512,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 54,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 55,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 56,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 57,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 58,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 59,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 60,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 61,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 62,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 63,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 64,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 65,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 66,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 67,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 68,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 69,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 70,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 71,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.4202200532863004,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 72,
+            "role": "SOURCE",
+            "item": "copper-plate",
+            "rate": 2.460659457676776,
+            "k": 1,
+            "port": 0,
+            "fluid": false
+        },
+        {
+            "id": 73,
+            "role": "SOURCE",
+            "item": "copper-plate",
+            "rate": 17.545562781070895,
+            "k": 1,
+            "port": 1,
+            "fluid": false
+        },
+        {
+            "id": 74,
+            "role": "SOURCE",
+            "item": "copper-plate",
+            "rate": 17.545562781070895,
+            "k": 1,
+            "port": 2,
+            "fluid": false
+        },
+        {
+            "id": 75,
+            "role": "SOURCE",
+            "item": "copper-plate",
+            "rate": 19.04391228585756,
+            "k": 1,
+            "port": 3,
+            "fluid": false
+        },
+        {
+            "id": 76,
+            "role": "SOURCE",
+            "item": "copper-plate",
+            "rate": 19.04391228585756,
+            "k": 1,
+            "port": 4,
+            "fluid": false
+        },
+        {
+            "id": 77,
+            "role": "OUTPUT",
+            "item": "low-density-structure",
+            "rate": 5.294772693949805,
+            "k": 1,
+            "port": 5,
+            "fluid": false
+        },
+        {
+            "id": 78,
+            "role": "SOURCE",
+            "item": "plastic-bar",
+            "rate": 18.909902397883517,
+            "k": 1,
+            "port": 6,
+            "fluid": false
+        },
+        {
+            "id": 79,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 4.231980507968349,
+            "k": 1,
+            "port": 7,
+            "fluid": false
+        },
+        {
+            "id": 80,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 3.331980451185057,
+            "k": 1,
+            "port": 8,
+            "fluid": false
+        }
+    ],
+    "nets": [
+        {
+            "id": 0,
+            "item": "copper-plate",
+            "flow": 75.63960959153407,
+            "terminals": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                72,
+                73,
+                74,
+                75,
+                76
+            ],
+            "beltCount": 3,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "item": "low-density-structure",
+            "flow": 5.294772693949805,
+            "terminals": [
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                77
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "item": "plastic-bar",
+            "flow": 18.909902397883517,
+            "terminals": [
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                78
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "item": "steel-plate",
+            "flow": 7.563960959153406,
+            "terminals": [
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                79,
+                80
+            ],
+            "beltCount": 1,
+            "fluid": false
+        }
+    ],
+    "rawRates": {
+        "copper-plate": 75.63960959153368,
+        "plastic-bar": 18.909902397883517,
+        "steel-plate": 7.563960959153406
+    },
+    "fluidRates": {},
+    "recipeRates": {},
+    "beltTier": "fast",
+    "warnings": [],
+    "outputs": {
+        "low-density-structure": 5.294772693949805
+    }
+}

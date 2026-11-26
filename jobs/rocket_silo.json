@@ -1,0 +1,145 @@
+{
+  "targets": [
+    {
+      "name": "rocket-part",
+      "amount": 1
+    }
+  ],
+  "machines": [
+    "assembling-machine-3",
+    "electric-furnace",
+    "chemical-plant",
+    "oil-refinery",
+    "centrifuge",
+    "foundry",
+    "electromagnetic-plant",
+    "rocket-silo"
+  ],
+  "belt_tier": "turbo",
+  "weave_tier": "express",
+  "lane_sharing": true,
+  "research": {
+    "inserter_capacity": 4
+  },
+  "inserters": {
+    "allowed": [
+      "inserter",
+      "long-handed-inserter",
+      "fast-inserter",
+      "bulk-inserter"
+    ],
+    "belt_pickup_derate": 0.7
+  },
+  "sources": [
+    {
+      "name": "iron-ore",
+      "edge": "west"
+    },
+    {
+      "name": "copper-ore",
+      "edge": "west"
+    },
+    {
+      "name": "stone",
+      "edge": "west"
+    },
+    {
+      "name": "coal",
+      "edge": "west"
+    },
+    {
+      "name": "crude-oil",
+      "edge": "west"
+    },
+    {
+      "name": "water",
+      "edge": "west"
+    },
+    {
+      "name": "calcite",
+      "edge": "west"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "automation-science-pack",
+      "edge": "east"
+    },
+    {
+      "name": "logistic-science-pack",
+      "edge": "east"
+    },
+    {
+      "name": "military-science-pack",
+      "edge": "east"
+    },
+    {
+      "name": "chemical-science-pack",
+      "edge": "east"
+    },
+    {
+      "name": "production-science-pack",
+      "edge": "east"
+    },
+    {
+      "name": "utility-science-pack",
+      "edge": "east"
+    }
+  ],
+  "search": {
+    "time_budget_s": 26000,
+    "seeds_per_size": 10,
+    "threads": 10,
+    "verbose": true
+  },
+  "blocks": {
+    "max_machines": 500,
+    "overflow_cost": 0.85,
+    "hard_max": 2.2,
+    "split_at": [
+      "iron-plate",
+      "copper-plate",
+      "steel-plate"
+    ],
+    "corridor": 4,
+    "block_time_share": 0.59,
+    "lane_pairs": true,
+    "rotate": true,
+    "floorplan_tries": 10,
+    "shape_variants": [
+      2,
+      1.8,
+      1.4,
+      1.2
+    ],
+    "shape_variant_s": 60,
+    "compact_s": 9400,
+    "lanes": 10
+  },
+  "tuning": {
+    "route": {
+      "max_chain_visits": 24,
+      "chain_belt_share": 0.95,
+      "weave_penalty": 0.02
+    }
+  },
+  "beacons": {
+    "mode": "lattice",
+    "beacon": "beacon",
+    "modules": [
+      "speed-module-3",
+      "speed-module-3"
+    ],
+    "per_machine": 2,
+    "machine_modules": [
+      "productivity-module-3",
+      "productivity-module-3",
+      "productivity-module-3",
+      "productivity-module-3"
+    ],
+    "fallback_module": "speed-module-3",
+    "recipes": null,
+    "pitch": null
+  },
+  "belt_stack_size": 4
+}

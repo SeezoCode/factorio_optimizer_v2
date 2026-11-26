@@ -1,0 +1,66 @@
+{
+    "box": {
+        "w": 61,
+        "h": 89
+    },
+    "inputs": [
+        {
+            "item": "copper-ore",
+            "rate": 24.83240022642333,
+            "fluid": false,
+            "x": -1,
+            "y": 24,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 24.83240022642333,
+            "fluid": false,
+            "x": -1,
+            "y": 4,
+            "edge": "west"
+        },
+        {
+            "item": "copper-ore",
+            "rate": 24.83240022642333,
+            "fluid": false,
+            "x": -1,
+            "y": 8,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "copper-plate",
+            "rate": 24.941990411783557,
+            "fluid": false,
+            "x": 30,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 26.052759510330045,
+            "fluid": false,
+            "x": 61,
+            "y": 18,
+            "edge": "east"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 15.180832432017176,
+            "fluid": false,
+            "x": 61,
+            "y": 81,
+            "edge": "east"
+        },
+        {
+            "item": "copper-plate",
+            "rate": 23.221058683012778,
+            "fluid": false,
+            "x": 3,
+            "y": 89,
+            "edge": "south"
+        }
+    ]
+}

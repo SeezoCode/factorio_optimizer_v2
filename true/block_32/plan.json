@@ -1,0 +1,1616 @@
+{
+    "machines": [
+        {
+            "id": 0,
+            "recipe": "battery",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.7968231887625712,
+            "product": "battery",
+            "demand": {
+                "iron-plate": 0.6129409123250036,
+                "copper-plate": 0.6129409123250036
+            },
+            "products": {
+                "battery": 0.7968231887625712
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 12.258818246500072
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.6129409123250036,
+            "maxCrafts": 0.6678300814195657,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.137499995529655,
+                0.512499995529655,
+                0.6678300814195657
+            ]
+        },
+        {
+            "id": 1,
+            "recipe": "battery",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.8681791088308762,
+            "product": "battery",
+            "demand": {
+                "iron-plate": 0.6678300814195657,
+                "copper-plate": 0.6678300814195657
+            },
+            "products": {
+                "battery": 0.8681791088308762
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 13.356601628391314
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.6678300814195657,
+            "maxCrafts": 0.6678300814195657,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.137499995529655,
+                0.512499995529655,
+                0.6678300814195657
+            ]
+        },
+        {
+            "id": 2,
+            "recipe": "battery",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.8681791088308762,
+            "product": "battery",
+            "demand": {
+                "iron-plate": 0.6678300814195657,
+                "copper-plate": 0.6678300814195657
+            },
+            "products": {
+                "battery": 0.8681791088308762
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 13.356601628391314
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.6678300814195657,
+            "maxCrafts": 0.6678300814195657,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.137499995529655,
+                0.512499995529655,
+                0.6678300814195657
+            ]
+        },
+        {
+            "id": 3,
+            "recipe": "battery",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.8681791088308762,
+            "product": "battery",
+            "demand": {
+                "iron-plate": 0.6678300814195657,
+                "copper-plate": 0.6678300814195657
+            },
+            "products": {
+                "battery": 0.8681791088308762
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 13.356601628391314
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.6678300814195657,
+            "maxCrafts": 0.6678300814195657,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.137499995529655,
+                0.512499995529655,
+                0.6678300814195657
+            ]
+        },
+        {
+            "id": 4,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.3495941633395176,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 4.994202312158935,
+                "advanced-circuit": 0.4994202312158935
+            },
+            "products": {
+                "processing-unit": 0.3495941633395176
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.2485505780397337
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.24971011560794676,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 5,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 6,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 7,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 8,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 9,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 10,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 11,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 12,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 13,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 14,
+            "recipe": "processing-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "sulfuric-acid",
+            "outputRate": 0.44123105782915034,
+            "product": "processing-unit",
+            "demand": {
+                "electronic-circuit": 6.303300799294506,
+                "advanced-circuit": 0.6303300799294506
+            },
+            "products": {
+                "processing-unit": 0.44123105782915034
+            },
+            "fluidDemand": {
+                "sulfuric-acid": 1.5758251998236266
+            },
+            "fluidIn": {
+                "sulfuric-acid": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.3151650399647253,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 15,
+            "recipe": "sulfuric-acid",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 69.33542570795,
+            "product": "sulfuric-acid",
+            "demand": {
+                "iron-plate": 1.066698853377286,
+                "sulfur": 5.33349426688643
+            },
+            "products": {
+                "sulfuric-acid": 69.33542570795
+            },
+            "fluidDemand": {
+                "water": 106.66988533772862
+            },
+            "fluidIn": {
+                "water": 1
+            },
+            "fluidOut": {
+                "sulfuric-acid": 1
+            },
+            "crafts": 1.066698853377286,
+            "maxCrafts": 1.2936,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        }
+    ],
+    "ports": [
+        {
+            "id": 0,
+            "item": "advanced-circuit",
+            "specs": [
+                {
+                    "name": "advanced-circuit",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 1,
+            "item": "battery",
+            "specs": [
+                {
+                    "name": "battery",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 2,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 3,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 4,
+            "item": "electronic-circuit",
+            "specs": [
+                {
+                    "name": "electronic-circuit",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 5,
+            "item": "electronic-circuit",
+            "specs": [
+                {
+                    "name": "electronic-circuit",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 6,
+            "item": "electronic-circuit",
+            "specs": [
+                {
+                    "name": "electronic-circuit",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 7,
+            "item": "electronic-circuit",
+            "specs": [
+                {
+                    "name": "electronic-circuit",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 8,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 9,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 10,
+            "item": "processing-unit",
+            "specs": [
+                {
+                    "name": "processing-unit",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 11,
+            "item": "sulfur",
+            "specs": [
+                {
+                    "name": "sulfur",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 12,
+            "item": "sulfur",
+            "specs": [
+                {
+                    "name": "sulfur",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 13,
+            "item": "water",
+            "specs": [
+                {
+                    "name": "water",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": true,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        }
+    ],
+    "terminals": [
+        {
+            "id": 0,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.4994202312158935,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 8,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 9,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 10,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 0.6303300799294506,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 11,
+            "role": "PRODUCER",
+            "item": "battery",
+            "rate": 0.7968231887625712,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 12,
+            "role": "PRODUCER",
+            "item": "battery",
+            "rate": 0.8681791088308762,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 13,
+            "role": "PRODUCER",
+            "item": "battery",
+            "rate": 0.8681791088308762,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 14,
+            "role": "PRODUCER",
+            "item": "battery",
+            "rate": 0.8681791088308762,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 15,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 0.6129409123250036,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 16,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 0.6678300814195657,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 17,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 0.6678300814195657,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 18,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 0.6678300814195657,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 19,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 4.994202312158935,
+            "k": 2,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 20,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 21,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 22,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 23,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 24,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 25,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 26,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 27,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 28,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 29,
+            "role": "CONSUMER",
+            "item": "electronic-circuit",
+            "rate": 6.303300799294506,
+            "k": 2,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 30,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 0.6129409123250036,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 31,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 0.6678300814195657,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 32,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 0.6678300814195657,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 33,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 0.6678300814195657,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 34,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.066698853377286,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 35,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.3495941633395176,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 36,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 37,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 38,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 39,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 40,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 41,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 42,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 43,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 44,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 45,
+            "role": "PRODUCER",
+            "item": "processing-unit",
+            "rate": 0.44123105782915034,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 46,
+            "role": "CONSUMER",
+            "item": "sulfur",
+            "rate": 5.33349426688643,
+            "k": 2,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 47,
+            "role": "PRODUCER",
+            "item": "sulfuric-acid",
+            "rate": 69.33542570795,
+            "k": 1,
+            "machine": 15,
+            "fluid": true
+        },
+        {
+            "id": 48,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 12.258818246500072,
+            "k": 1,
+            "machine": 0,
+            "fluid": true
+        },
+        {
+            "id": 49,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 13.356601628391314,
+            "k": 1,
+            "machine": 1,
+            "fluid": true
+        },
+        {
+            "id": 50,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 13.356601628391314,
+            "k": 1,
+            "machine": 2,
+            "fluid": true
+        },
+        {
+            "id": 51,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 13.356601628391314,
+            "k": 1,
+            "machine": 3,
+            "fluid": true
+        },
+        {
+            "id": 52,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.2485505780397337,
+            "k": 1,
+            "machine": 4,
+            "fluid": true
+        },
+        {
+            "id": 53,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 5,
+            "fluid": true
+        },
+        {
+            "id": 54,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 6,
+            "fluid": true
+        },
+        {
+            "id": 55,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 7,
+            "fluid": true
+        },
+        {
+            "id": 56,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 8,
+            "fluid": true
+        },
+        {
+            "id": 57,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 9,
+            "fluid": true
+        },
+        {
+            "id": 58,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 10,
+            "fluid": true
+        },
+        {
+            "id": 59,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 11,
+            "fluid": true
+        },
+        {
+            "id": 60,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 12,
+            "fluid": true
+        },
+        {
+            "id": 61,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 13,
+            "fluid": true
+        },
+        {
+            "id": 62,
+            "role": "CONSUMER",
+            "item": "sulfuric-acid",
+            "rate": 1.5758251998236266,
+            "k": 1,
+            "machine": 14,
+            "fluid": true
+        },
+        {
+            "id": 63,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 106.66988533772862,
+            "k": 1,
+            "machine": 15,
+            "fluid": true
+        },
+        {
+            "id": 64,
+            "role": "SOURCE",
+            "item": "advanced-circuit",
+            "rate": 6.802721030510399,
+            "k": 1,
+            "port": 0,
+            "fluid": false
+        },
+        {
+            "id": 65,
+            "role": "OUTPUT",
+            "item": "battery",
+            "rate": 3.401360515255199,
+            "k": 1,
+            "port": 1,
+            "fluid": false
+        },
+        {
+            "id": 66,
+            "role": "SOURCE",
+            "item": "copper-plate",
+            "rate": 26.132258840921992,
+            "k": 1,
+            "port": 2,
+            "fluid": false
+        },
+        {
+            "id": 67,
+            "role": "OUTPUT",
+            "item": "copper-plate",
+            "rate": 23.51582768433829,
+            "k": 1,
+            "port": 3,
+            "fluid": false
+        },
+        {
+            "id": 68,
+            "role": "SOURCE",
+            "item": "electronic-circuit",
+            "rate": 22.65241614078662,
+            "k": 1,
+            "port": 4,
+            "fluid": false
+        },
+        {
+            "id": 69,
+            "role": "SOURCE",
+            "item": "electronic-circuit",
+            "rate": 7.241651084001901,
+            "k": 1,
+            "port": 5,
+            "fluid": false
+        },
+        {
+            "id": 70,
+            "role": "SOURCE",
+            "item": "electronic-circuit",
+            "rate": 23.041143016061426,
+            "k": 1,
+            "port": 6,
+            "fluid": false
+        },
+        {
+            "id": 71,
+            "role": "SOURCE",
+            "item": "electronic-circuit",
+            "rate": 15.092000064253979,
+            "k": 1,
+            "port": 7,
+            "fluid": false
+        },
+        {
+            "id": 72,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 20.68314179096172,
+            "k": 1,
+            "port": 8,
+            "fluid": false
+        },
+        {
+            "id": 73,
+            "role": "OUTPUT",
+            "item": "iron-plate",
+            "rate": 17.000011781000733,
+            "k": 1,
+            "port": 9,
+            "fluid": false
+        },
+        {
+            "id": 74,
+            "role": "OUTPUT",
+            "item": "processing-unit",
+            "rate": 4.761904741631022,
+            "k": 1,
+            "port": 10,
+            "fluid": false
+        },
+        {
+            "id": 75,
+            "role": "SOURCE",
+            "item": "sulfur",
+            "rate": 8.904922823109686,
+            "k": 1,
+            "port": 11,
+            "fluid": false
+        },
+        {
+            "id": 76,
+            "role": "OUTPUT",
+            "item": "sulfur",
+            "rate": 3.571428556223256,
+            "k": 1,
+            "port": 12,
+            "fluid": false
+        },
+        {
+            "id": 77,
+            "role": "SOURCE",
+            "item": "water",
+            "rate": 106.66988533772862,
+            "k": 1,
+            "port": 13,
+            "fluid": true
+        }
+    ],
+    "nets": [
+        {
+            "id": 0,
+            "item": "advanced-circuit",
+            "flow": 6.802721030510399,
+            "terminals": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                64
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "item": "battery",
+            "flow": 3.401360515255199,
+            "terminals": [
+                11,
+                12,
+                13,
+                14,
+                65
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "item": "copper-plate",
+            "flow": 26.132258840921992,
+            "terminals": [
+                15,
+                16,
+                17,
+                18,
+                66,
+                67
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "item": "electronic-circuit",
+            "flow": 68.02721030510399,
+            "terminals": [
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                68,
+                69,
+                70,
+                71
+            ],
+            "beltCount": 3,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "item": "iron-plate",
+            "flow": 20.68314179096172,
+            "terminals": [
+                30,
+                31,
+                32,
+                33,
+                34,
+                72,
+                73
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "item": "processing-unit",
+            "flow": 4.761904741631022,
+            "terminals": [
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                74
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "item": "sulfur",
+            "flow": 8.904922823109686,
+            "terminals": [
+                46,
+                75,
+                76
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "item": "sulfuric-acid",
+            "flow": 69.33542570795002,
+            "terminals": [
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62
+            ],
+            "beltCount": 1,
+            "fluid": true
+        },
+        {
+            "id": 8,
+            "item": "water",
+            "flow": 106.66988533772862,
+            "terminals": [
+                63,
+                77
+            ],
+            "beltCount": 1,
+            "fluid": true
+        }
+    ],
+    "rawRates": {
+        "advanced-circuit": 6.802721030510399,
+        "copper-plate": 26.132258840921992,
+        "electronic-circuit": 68.02721030510392,
+        "iron-plate": 20.68314179096172,
+        "sulfur": 8.904922823109686,
+        "water": 106.66988533772862
+    },
+    "fluidRates": {
+        "water": 106.66988533772862
+    },
+    "recipeRates": {},
+    "beltTier": "fast",
+    "warnings": [],
+    "outputs": {
+        "battery": 3.401360515255199,
+        "copper-plate": 23.51582768433829,
+        "iron-plate": 17.000011781000733,
+        "processing-unit": 4.761904741631022,
+        "sulfur": 3.571428556223256
+    }
+}

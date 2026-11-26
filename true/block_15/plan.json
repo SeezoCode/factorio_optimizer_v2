@@ -1,0 +1,1712 @@
+{
+    "machines": [
+        {
+            "id": 0,
+            "recipe": "electric-furnace",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.440552370815511,
+            "product": "electric-furnace",
+            "demand": {
+                "steel-plate": 4.40552370815511,
+                "advanced-circuit": 2.202761854077555,
+                "stone-brick": 4.40552370815511
+            },
+            "products": {
+                "electric-furnace": 0.440552370815511
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.440552370815511,
+            "maxCrafts": 0.9702,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.75,
+                1.125,
+                1.2803300858899107
+            ]
+        },
+        {
+            "id": 1,
+            "recipe": "electric-furnace",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.9702,
+            "product": "electric-furnace",
+            "demand": {
+                "steel-plate": 9.702,
+                "advanced-circuit": 4.851,
+                "stone-brick": 9.702
+            },
+            "products": {
+                "electric-furnace": 0.9702
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.9702,
+            "maxCrafts": 0.9702,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.75,
+                1.125,
+                1.2803300858899107
+            ]
+        },
+        {
+            "id": 2,
+            "recipe": "electric-furnace",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.9702,
+            "product": "electric-furnace",
+            "demand": {
+                "steel-plate": 9.702,
+                "advanced-circuit": 4.851,
+                "stone-brick": 9.702
+            },
+            "products": {
+                "electric-furnace": 0.9702
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.9702,
+            "maxCrafts": 0.9702,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.75,
+                1.125,
+                1.2803300858899107
+            ]
+        },
+        {
+            "id": 3,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 4,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 5,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 6,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 7,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 8,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 9,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 10,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 11,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 12,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 13,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 14,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 15,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 16,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 17,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 18,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 19,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 20,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 21,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 22,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 23,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 24,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 25,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        },
+        {
+            "id": 26,
+            "recipe": "stone-brick",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1159902539841746,
+            "product": "stone-brick",
+            "demand": {
+                "stone": 3.5266504145484037
+            },
+            "products": {
+                "stone-brick": 2.1159902539841746
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.7633252072742018,
+            "maxCrafts": 1.7633252072742016,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.43749999254942495,
+                1.374999992549425,
+                1.7633252072742016
+            ]
+        }
+    ],
+    "ports": [
+        {
+            "id": 0,
+            "item": "advanced-circuit",
+            "specs": [
+                {
+                    "name": "advanced-circuit",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 1,
+            "item": "advanced-circuit",
+            "specs": [
+                {
+                    "name": "advanced-circuit",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 2,
+            "item": "electric-furnace",
+            "specs": [
+                {
+                    "name": "electric-furnace",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 3,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 4,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 5,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 6,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 7,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 8,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 9,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 10,
+            "item": "stone-brick",
+            "specs": [
+                {
+                    "name": "stone-brick",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 11,
+            "item": "stone",
+            "specs": [
+                {
+                    "name": "stone",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 12,
+            "item": "stone",
+            "specs": [
+                {
+                    "name": "stone",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        }
+    ],
+    "terminals": [
+        {
+            "id": 0,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 2.202761854077555,
+            "k": 2,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 4.851,
+            "k": 2,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "role": "CONSUMER",
+            "item": "advanced-circuit",
+            "rate": 4.851,
+            "k": 2,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "role": "PRODUCER",
+            "item": "electric-furnace",
+            "rate": 0.440552370815511,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "role": "PRODUCER",
+            "item": "electric-furnace",
+            "rate": 0.9702,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "role": "PRODUCER",
+            "item": "electric-furnace",
+            "rate": 0.9702,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 8,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 9,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 10,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 11,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 12,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 13,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 14,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 15,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 16,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 17,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 18,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 19,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 20,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 21,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 22,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 23,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 24,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 25,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 26,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 27,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 28,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 29,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 30,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 31,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 32,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 4.40552370815511,
+            "k": 3,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 33,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 9.702,
+            "k": 3,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 34,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 9.702,
+            "k": 3,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 35,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 36,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 37,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 38,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 39,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 20,
+            "fluid": false
+        },
+        {
+            "id": 40,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 21,
+            "fluid": false
+        },
+        {
+            "id": 41,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 22,
+            "fluid": false
+        },
+        {
+            "id": 42,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 23,
+            "fluid": false
+        },
+        {
+            "id": 43,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 24,
+            "fluid": false
+        },
+        {
+            "id": 44,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 25,
+            "fluid": false
+        },
+        {
+            "id": 45,
+            "role": "PRODUCER",
+            "item": "stone-brick",
+            "rate": 2.1159902539841746,
+            "k": 1,
+            "machine": 26,
+            "fluid": false
+        },
+        {
+            "id": 46,
+            "role": "CONSUMER",
+            "item": "stone-brick",
+            "rate": 4.40552370815511,
+            "k": 3,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 47,
+            "role": "CONSUMER",
+            "item": "stone-brick",
+            "rate": 9.702,
+            "k": 3,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 48,
+            "role": "CONSUMER",
+            "item": "stone-brick",
+            "rate": 9.702,
+            "k": 3,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 49,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 50,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 51,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 52,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 53,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 20,
+            "fluid": false
+        },
+        {
+            "id": 54,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 21,
+            "fluid": false
+        },
+        {
+            "id": 55,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 22,
+            "fluid": false
+        },
+        {
+            "id": 56,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 23,
+            "fluid": false
+        },
+        {
+            "id": 57,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 24,
+            "fluid": false
+        },
+        {
+            "id": 58,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 25,
+            "fluid": false
+        },
+        {
+            "id": 59,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.5266504145484037,
+            "k": 2,
+            "machine": 26,
+            "fluid": false
+        },
+        {
+            "id": 60,
+            "role": "SOURCE",
+            "item": "advanced-circuit",
+            "rate": 2.344755601112631,
+            "k": 1,
+            "port": 0,
+            "fluid": false
+        },
+        {
+            "id": 61,
+            "role": "SOURCE",
+            "item": "advanced-circuit",
+            "rate": 9.560006252964925,
+            "k": 1,
+            "port": 1,
+            "fluid": false
+        },
+        {
+            "id": 62,
+            "role": "OUTPUT",
+            "item": "electric-furnace",
+            "rate": 2.380952370815511,
+            "k": 1,
+            "port": 2,
+            "fluid": false
+        },
+        {
+            "id": 63,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 7.678095083161523,
+            "k": 1,
+            "port": 3,
+            "fluid": false
+        },
+        {
+            "id": 64,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 16.734696894276198,
+            "k": 1,
+            "port": 4,
+            "fluid": false
+        },
+        {
+            "id": 65,
+            "role": "OUTPUT",
+            "item": "iron-plate",
+            "rate": 1.4895642828730935,
+            "k": 1,
+            "port": 5,
+            "fluid": false
+        },
+        {
+            "id": 66,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 3.3855844063746794,
+            "k": 1,
+            "port": 6,
+            "fluid": false
+        },
+        {
+            "id": 67,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 5.924772711155688,
+            "k": 1,
+            "port": 7,
+            "fluid": false
+        },
+        {
+            "id": 68,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 4.139058433044055,
+            "k": 1,
+            "port": 8,
+            "fluid": false
+        },
+        {
+            "id": 69,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 4.85853349722162,
+            "k": 1,
+            "port": 9,
+            "fluid": false
+        },
+        {
+            "id": 70,
+            "role": "SOURCE",
+            "item": "stone-brick",
+            "rate": 0.533630914329148,
+            "k": 1,
+            "port": 10,
+            "fluid": false
+        },
+        {
+            "id": 71,
+            "role": "SOURCE",
+            "item": "stone",
+            "rate": 19.39657728001622,
+            "k": 1,
+            "port": 11,
+            "fluid": false
+        },
+        {
+            "id": 72,
+            "role": "SOURCE",
+            "item": "stone",
+            "rate": 19.39657728001622,
+            "k": 1,
+            "port": 12,
+            "fluid": false
+        }
+    ],
+    "nets": [
+        {
+            "id": 0,
+            "item": "advanced-circuit",
+            "flow": 11.904761854077556,
+            "terminals": [
+                0,
+                1,
+                2,
+                60,
+                61
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "item": "electric-furnace",
+            "flow": 2.380952370815511,
+            "terminals": [
+                3,
+                4,
+                5,
+                62
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "item": "iron-plate",
+            "flow": 24.41279197743772,
+            "terminals": [
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                63,
+                64,
+                65
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "item": "steel-plate",
+            "flow": 23.809523708155112,
+            "terminals": [
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                66,
+                67,
+                68,
+                69
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "item": "stone-brick",
+            "flow": 23.809523708155112,
+            "terminals": [
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                70
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "item": "stone",
+            "flow": 38.79315456003244,
+            "terminals": [
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                71,
+                72
+            ],
+            "beltCount": 2,
+            "fluid": false
+        }
+    ],
+    "rawRates": {
+        "advanced-circuit": 11.904761854077556,
+        "iron-plate": 24.41279197743772,
+        "steel-plate": 18.307949047796043,
+        "stone-brick": 0.533630914329148,
+        "stone": 38.79315456003244
+    },
+    "fluidRates": {},
+    "recipeRates": {},
+    "beltTier": "fast",
+    "warnings": [],
+    "outputs": {
+        "electric-furnace": 2.380952370815511,
+        "iron-plate": 1.4895642828730935
+    }
+}

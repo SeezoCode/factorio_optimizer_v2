@@ -1,0 +1,50 @@
+{
+    "box": {
+        "w": 62,
+        "h": 40
+    },
+    "inputs": [
+        {
+            "item": "stone",
+            "rate": 20.13773132585495,
+            "fluid": false,
+            "x": -1,
+            "y": 30,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 20.13773132585495,
+            "fluid": false,
+            "x": -1,
+            "y": 32,
+            "edge": "west"
+        },
+        {
+            "item": "stone",
+            "rate": 20.137731325854926,
+            "fluid": false,
+            "x": -1,
+            "y": 8,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "stone-brick",
+            "rate": 0.533630914329148,
+            "fluid": false,
+            "x": 39,
+            "y": -1,
+            "edge": "north"
+        },
+        {
+            "item": "stone-wall",
+            "rate": 7.142857112446529,
+            "fluid": false,
+            "x": -1,
+            "y": 28,
+            "edge": "west"
+        }
+    ]
+}

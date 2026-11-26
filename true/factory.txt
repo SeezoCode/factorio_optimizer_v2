@@ -1,0 +1,191 @@
+[    0,0s] resume: nothing saved in true; starting afresh
+[    3,0s] 959 machines in 34 blocks: block 1: 43, block 2: 43, block 3: 43, block 4: 20, block 5: 32, block 6: 43, block 7: 43, block 8: 43, block 9: 43, block 10: 43, block 11: 43, block 12: 43, block 13: 32, block 14: 17, block 15: 27, block 16: 21, block 17: 20, block 18: 34, block 19: 17, block 20: 21, block 21: 20, block 22: 23, block 23: 27, block 24: 18, block 25: 18, block 26: 18, block 27: 19, block 28: 20, block 29: 21, block 30: 18, block 31: 26, block 32: 16, block 33: 28, block 34: 16; 169 ports between blocks and edges (greedy split: 134; 156 with machine rates rebalanced), cost 370,7 (greedy 383,6)
+[    3,0s]   block 1: 43x copper-plate; planned at (42,53) 35 x 51
+[    3,0s]   block 2: 22x iron-plate, 21x copper-plate; planned at (81,58) 27 x 67
+[    3,0s]   block 3: 22x iron-plate, 21x copper-plate; planned at (2,101) 30 x 60
+[    3,0s]   block 4: 18x stone-brick, 2x stone-wall; planned at (81,34) 31 x 20
+[    3,0s]   block 5: 28x copper-plate, 2x copper-cable, 2x electronic-circuit; planned at (2,2) 54 x 22
+[    3,0s]   block 6: 18x copper-plate, 15x iron-plate, 10x steel-plate; planned at (2,28) 35 x 51
+[    3,0s]   block 7: 32x iron-plate, 11x steel-plate; planned at (117,157) 52 x 35
+[    3,0s]   block 8: 31x iron-plate, 12x steel-plate; planned at (174,172) 35 x 51
+[    3,0s]   block 9: 31x iron-plate, 12x steel-plate; planned at (36,108) 35 x 51
+[    3,0s]   block 10: 29x iron-plate, 14x steel-plate; planned at (139,36) 67 x 27
+[    3,0s]   block 11: 29x iron-plate, 14x steel-plate; planned at (147,2) 60 x 30
+[    3,0s]   block 12: 27x iron-plate, 16x steel-plate; planned at (32,196) 67 x 27
+[    3,0s]   block 13: 20x iron-plate, 8x steel-plate, 2x copper-cable, 2x electronic-circuit; planned at (101,2) 42 x 28
+[    3,0s]   block 14: 10x advanced-oil-processing, 3x heavy-oil-cracking, 2x light-oil-cracking, 2x sulfur; planned at (2,165) 40 x 26
+[    3,0s]   block 15: 13x steel-plate, 11x stone-brick, 3x electric-furnace; planned at (60,2) 37 x 25
+[    3,0s]   block 16: 13x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (2,195) 26 x 26
+[    3,0s]   block 17: 12x steel-plate, 4x copper-cable, 4x electronic-circuit; planned at (97,150) 16 x 39
+[    3,0s]   block 18: 21x steel-plate, 12x automation-science-pack, 1x iron-gear-wheel; planned at (171,67) 36 x 36
+[    3,0s]   block 19: 8x steel-plate, 6x rail, 3x iron-stick; planned at (2,83) 36 x 14
+[    3,0s]   block 20: 19x engine-unit, 1x iron-gear-wheel, 1x pipe; planned at (103,196) 26 x 26
+[    3,0s]   block 21: 12x military-science-pack, 5x grenade, 2x piercing-rounds-magazine, 1x firearm-magazine; planned at (42,31) 35 x 18
+[    3,0s]   block 22: 13x plastic-bar, 10x light-oil-cracking; planned at (46,163) 27 x 28
+[    3,0s]   block 23: 14x logistic-science-pack, 9x steel-plate, 2x inserter, 1x iron-gear-wheel, 1x transport-belt; planned at (133,196) 37 x 25
+[    3,0s]   block 24: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (116,36) 19 x 29
+[    3,0s]   block 25: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (152,67) 15 x 37
+[    3,0s]   block 26: 13x advanced-circuit, 3x copper-cable, 2x electronic-circuit; planned at (117,129) 23 x 24
+[    3,0s]   block 27: 9x advanced-circuit, 7x low-density-structure, 2x copper-cable, 1x electronic-circuit; planned at (112,108) 34 x 17
+[    3,0s]   block 28: 9x advanced-circuit, 6x productivity-module, 3x copper-cable, 2x electronic-circuit; planned at (130,69) 18 x 35
+[    3,0s]   block 29: 11x flying-robot-frame, 5x steel-plate, 4x electric-engine-unit, 1x lubricant; planned at (77,150) 16 x 42
+[    3,0s]   block 30: 18x low-density-structure; planned at (175,108) 23 x 24
+[    3,0s]   block 31: 16x utility-science-pack, 10x steel-plate; planned at (150,108) 21 x 42
+[    3,0s]   block 32: 11x processing-unit, 4x battery, 1x sulfuric-acid; planned at (76,130) 31 x 15
+[    3,0s]   block 33: 28x chemical-science-pack; planned at (175,136) 31 x 32
+[    3,0s]   block 34: 16x production-science-pack; planned at (112,69) 14 x 34
+[    3,0s]   block 25 -> block 28: advanced-circuit 7,63/s (1 belt(s))
+[    3,0s]   block 28 -> block 15: advanced-circuit 2,34/s (1 belt(s))
+[    3,0s]   block 25 -> block 33: advanced-circuit 1,57/s (1 belt(s))
+[    3,0s]   block 26 -> block 32: advanced-circuit 6,80/s (1 belt(s))
+[    3,0s]   block 26 -> block 33: advanced-circuit 2,76/s (1 belt(s))
+[    3,0s]   block 24 -> block 15: advanced-circuit 9,56/s (1 belt(s))
+[    3,0s]   block 27 -> block 33: advanced-circuit 6,39/s (1 belt(s))
+[    3,0s]   block 32 -> block 29: battery 3,40/s (1 belt(s)), iron-plate 17,00/s (1 belt(s))
+[    3,0s]   block 17 -> block 26: copper-cable 5,79/s (1 belt(s))
+[    3,0s]   block 26 -> block 25: copper-cable 2,16/s (1 belt(s))
+[    3,0s]   block 25 -> block 24: copper-cable 0,67/s (1 belt(s)), plastic-bar 13,66/s (1 belt(s))
+[    3,0s]   block 5 -> block 24: copper-cable 2,96/s (1 belt(s))
+[    3,0s]   block 1 -> block 21: copper-plate 24,94/s (1 belt(s))
+[    3,0s]   block 21 -> block 24: copper-plate 21,37/s (1 belt(s))
+[    3,0s]   block 24 -> block 30: copper-plate 2,46/s (1 belt(s))
+[    3,0s]   block 1 -> block 25: copper-plate 26,05/s (1 belt(s))
+[    3,0s]   block 25 -> block 18: copper-plate 7,14/s (1 belt(s))
+[    3,0s]   block 1 -> block 27: copper-plate 15,18/s (1 belt(s))
+[    3,0s]   block 1 -> block 17: copper-plate 23,22/s (1 belt(s))
+[    3,0s]   block 2 -> block 32: copper-plate 26,13/s (1 belt(s))
+[    3,0s]   block 32 -> block 27: copper-plate 23,52/s (1 belt(s))
+[    3,0s]   block 2 -> block 28: copper-plate 18,30/s (1 belt(s)), iron-plate 16,17/s (1 belt(s))
+[    3,0s]   block 3 -> block 16: copper-plate 23,10/s (1 belt(s)), iron-plate 33,80/s (2 belt(s))
+[    3,0s]   block 3 -> block 26: copper-plate 20,86/s (1 belt(s))
+[    3,0s]   block 26 -> block 17: copper-plate 1,95/s (1 belt(s))
+[    3,0s]   block 5 -> block 30: copper-plate 35,09/s (2 belt(s))
+[    3,0s]   block 5 -> block 13: copper-plate 11,55/s (1 belt(s))
+[    3,0s]   block 6 -> block 30: copper-plate 38,09/s (2 belt(s))
+[    3,0s]   block 15 -> block 34: electric-furnace 2,38/s (1 belt(s))
+[    3,0s]   block 17 -> block 29: electronic-circuit 7,53/s (1 belt(s))
+[    3,0s]   block 17 -> block 32: electronic-circuit 22,65/s (1 belt(s))
+[    3,0s]   block 13 -> block 28: electronic-circuit 15,09/s (1 belt(s))
+[    3,0s]   block 28 -> block 27: electronic-circuit 8,82/s (1 belt(s)), iron-plate 5,39/s (1 belt(s))
+[    3,0s]   block 27 -> block 32: electronic-circuit 7,24/s (1 belt(s))
+[    3,0s]   block 16 -> block 23: electronic-circuit 7,14/s (1 belt(s))
+[    3,0s]   block 16 -> block 32: electronic-circuit 23,04/s (1 belt(s))
+[    3,0s]   block 5 -> block 32: electronic-circuit 15,09/s (1 belt(s))
+[    3,0s]   block 20 -> block 29: engine-unit 8,36/s (1 belt(s))
+[    3,0s]   block 29 -> block 33: engine-unit 7,14/s (1 belt(s))
+[    3,0s]   block 29 -> block 31: flying-robot-frame 2,38/s (1 belt(s))
+[    3,0s]   block 20 -> block 23: iron-gear-wheel 1,89/s (1 belt(s))
+[    3,0s]   block 6 -> block 19: iron-plate 14,11/s (1 belt(s)), steel-plate 4,23/s (1 belt(s))
+[    3,0s]   block 13 -> block 24: iron-plate 9,76/s (1 belt(s))
+[    3,0s]   block 13 -> block 15: iron-plate 7,68/s (1 belt(s)), steel-plate 3,39/s (1 belt(s))
+[    3,0s]   block 9 -> block 32: iron-plate 20,68/s (1 belt(s))
+[    3,0s]   block 29 -> block 26: iron-plate 9,76/s (1 belt(s))
+[    3,0s]   block 9 -> block 17: iron-plate 23,75/s (1 belt(s))
+[    3,0s]   block 7 -> block 23: iron-plate 39,19/s (2 belt(s))
+[    3,0s]   block 7 -> block 17: iron-plate 8,15/s (1 belt(s))
+[    3,0s]   block 3 -> block 19: iron-plate 12,76/s (1 belt(s))
+[    3,0s]   block 10 -> block 18: iron-plate 27,29/s (2 belt(s))
+[    3,0s]   block 10 -> block 25: iron-plate 9,39/s (1 belt(s))
+[    3,0s]   block 2 -> block 21: iron-plate 30,38/s (2 belt(s))
+[    3,0s]   block 12 -> block 20: iron-plate 23,17/s (1 belt(s))
+[    3,0s]   block 12 -> block 16: iron-plate 5,75/s (1 belt(s))
+[    3,0s]   block 11 -> block 18: iron-plate 19,94/s (1 belt(s))
+[    3,0s]   block 11 -> block 15: iron-plate 16,73/s (1 belt(s)), steel-plate 5,92/s (1 belt(s))
+[    3,0s]   block 15 -> block 21: iron-plate 1,49/s (1 belt(s))
+[    3,0s]   block 8 -> block 31: iron-plate 17,90/s (1 belt(s))
+[    3,0s]   block 31 -> block 21: iron-plate 0,27/s (1 belt(s))
+[    3,0s]   block 8 -> block 17: iron-plate 26,53/s (1 belt(s))
+[    3,0s]   block 17 -> block 16: iron-plate 15,72/s (1 belt(s))
+[    3,0s]   block 16 -> block 5: iron-plate 10,78/s (1 belt(s))
+[    3,0s]   block 30 -> block 31: low-density-structure 5,29/s (1 belt(s))
+[    3,0s]   block 27 -> block 31: low-density-structure 1,85/s (1 belt(s))
+[    3,0s]   block 22 -> block 26: plastic-bar 23,11/s (1 belt(s))
+[    3,0s]   block 26 -> block 28: plastic-bar 9,45/s (1 belt(s))
+[    3,0s]   block 22 -> block 27: plastic-bar 15,73/s (1 belt(s))
+[    3,0s]   block 22 -> block 30: plastic-bar 18,91/s (1 belt(s))
+[    3,0s]   block 22 -> block 25: plastic-bar 26,80/s (1 belt(s))
+[    3,0s]   block 32 -> block 31: processing-unit 4,76/s (1 belt(s))
+[    3,0s]   block 28 -> block 34: productivity-module 2,38/s (1 belt(s))
+[    3,0s]   block 19 -> block 34: rail 71,43/s (3 belt(s))
+[    3,0s]   block 31 -> block 30: steel-plate 4,23/s (1 belt(s))
+[    3,0s]   block 23 -> block 20: steel-plate 3,81/s (1 belt(s))
+[    3,0s]   block 18 -> block 30: steel-plate 3,33/s (1 belt(s))
+[    3,0s]   block 18 -> block 19: steel-plate 5,56/s (1 belt(s))
+[    3,0s]   block 17 -> block 20: steel-plate 2,16/s (1 belt(s))
+[    3,0s]   block 17 -> block 19: steel-plate 2,92/s (1 belt(s))
+[    3,0s]   block 7 -> block 27: steel-plate 4,66/s (1 belt(s))
+[    3,0s]   block 27 -> block 19: steel-plate 2,02/s (1 belt(s))
+[    3,0s]   block 9 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    3,0s]   block 10 -> block 21: steel-plate 5,92/s (1 belt(s))
+[    3,0s]   block 21 -> block 15: steel-plate 4,14/s (1 belt(s))
+[    3,0s]   block 16 -> block 19: steel-plate 5,50/s (1 belt(s))
+[    3,0s]   block 29 -> block 19: steel-plate 0,04/s (1 belt(s))
+[    3,0s]   block 12 -> block 19: steel-plate 6,77/s (1 belt(s))
+[    3,0s]   block 8 -> block 19: steel-plate 5,08/s (1 belt(s))
+[    3,0s]   block 19 -> block 15: steel-plate 4,86/s (1 belt(s))
+[    3,0s]   block 4 -> block 15: stone-brick 0,53/s (1 belt(s))
+[    3,0s]   block 4 -> block 21: stone-wall 7,14/s (1 belt(s))
+[    3,0s]   block 14 -> block 32: sulfur 8,90/s (1 belt(s))
+[    3,0s]   block 32 -> block 33: sulfur 3,57/s (1 belt(s))
+[    3,0s]   heavy-oil pipes: block 14 gives 14,0/s, block 29 takes 14,0/s
+[    3,0s]   light-oil pipes: block 14 gives 367,2/s, block 22 takes 367,2/s
+[    3,0s]   petroleum-gas pipes: block 14 gives 332,2/s, block 22 takes 332,2/s
+[    3,0s]   water pipes: block 14 takes 552,5/s, block 22 takes 367,2/s, block 32 takes 106,7/s, edge gives 1026,4/s
+[    3,0s]   9 inputs and outputs leave their block straight out of the factory, 37 run through the corridors to its edge
+[    3,0s] block 1: 43 machines (weight 43,0 of 39,7), 7 ports
+[    3,0s] block 2: 43 machines (weight 43,0 of 39,7), 9 ports
+[    3,0s] block 3: 43 machines (weight 43,0 of 39,7), 7 ports
+[    3,0s] block 4: 20 machines (weight 34,0 of 39,7), 5 ports
+[    3,0s] block 5: 32 machines (weight 43,0 of 39,7), 7 ports
+[    3,0s] block 6: 43 machines (weight 43,0 of 39,7), 6 ports
+[    3,0s] block 7: 43 machines (weight 43,0 of 39,7), 7 ports
+[    3,0s] block 8: 43 machines (weight 43,0 of 39,7), 6 ports
+[    3,0s] block 9: 43 machines (weight 43,0 of 39,7), 6 ports
+[    3,0s] block 10: 43 machines (weight 43,0 of 39,7), 6 ports
+[    3,0s] block 11: 43 machines (weight 43,0 of 39,7), 5 ports
+[    3,0s] block 12: 43 machines (weight 43,0 of 39,7), 5 ports
+[    3,0s] block 13: 32 machines (weight 43,0 of 39,7), 7 ports
+[    3,0s] block 14: 17 machines (weight 52,8 of 39,7), 6 ports
+[    3,0s] block 15: 27 machines (weight 43,0 of 39,7), 13 ports
+[    3,0s] block 16: 21 machines (weight 43,0 of 39,7), 9 ports
+[    3,0s] block 17: 20 machines (weight 42,0 of 39,7), 11 ports
+[    3,0s] block 18: 34 machines (weight 42,0 of 39,7), 7 ports
+[    3,0s] block 19: 17 machines (weight 42,5 of 39,7), 16 ports
+[    3,0s] block 20: 21 machines (weight 44,5 of 39,7), 5 ports
+[    3,0s] block 21: 20 machines (weight 46,0 of 39,7), 12 ports
+[    3,0s] block 22: 23 machines (weight 51,8 of 39,7), 9 ports
+[    3,0s] block 23: 27 machines (weight 43,0 of 39,7), 6 ports
+[    3,0s] block 24: 18 machines (weight 44,0 of 39,7), 7 ports
+[    3,0s] block 25: 18 machines (weight 44,0 of 39,7), 9 ports
+[    3,0s] block 26: 18 machines (weight 44,0 of 39,7), 9 ports
+[    3,0s] block 27: 19 machines (weight 46,0 of 39,7), 10 ports
+[    3,0s] block 28: 20 machines (weight 45,0 of 39,7), 9 ports
+[    3,0s] block 29: 21 machines (weight 43,0 of 39,7), 9 ports
+[    3,0s] block 30: 18 machines (weight 45,0 of 39,7), 9 ports
+[    3,0s] block 31: 26 machines (weight 42,0 of 39,7), 8 ports
+[    3,0s] block 32: 16 machines (weight 42,3 of 39,7), 14 ports
+[    3,0s] block 33: 28 machines (weight 56,0 of 39,7), 6 ports
+[    3,0s] block 34: 16 machines (weight 40,0 of 39,7), 6 ports
+[    7,9s] block 5: first layout 100 x 41
+[    8,1s] block 1: first layout 61 x 89
+[    8,3s] block 3: first layout 52 x 105
+[    8,5s] block 2: first layout 47 x 117
+[   13,1s] block 6: first layout 61 x 89
+[   13,1s] block 9: first layout 61 x 89
+[   13,4s] block 8: first layout 61 x 89
+[   14,4s] block 7: first layout 90 x 61
+[   16,9s] stop: finishing the current turns, then the final factory
+[   17,6s] block 10: first layout 117 x 47
+[   17,7s] block 11: first layout 105 x 52
+[   18,1s] block 12: first layout 117 x 47
+[   25,6s] block 13: first layout 78 x 52
+[   33,2s] stopping now
+[   33,6s] stopping now
+[   34,0s] stopping now
+[   34,2s] stopping now
+[   34,7s] stopping now
+[   34,9s] stopping now
+[   35,2s] stopping now
+[   35,7s] stopping now
+[   37,9s] block 4: first layout 62 x 40
+[   37,9s] stopped; the best factory so far is saved

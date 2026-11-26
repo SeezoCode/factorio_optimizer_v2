@@ -1,0 +1,17 @@
+[    0,0s] machines 32, machine area 416, s_lo 32, start 64, budget 1.0E7s, 10 seeds x 10 threads
+[    0,0s] plan: 32 machines: 20x iron-plate (electric-furnace), 8x steel-plate (electric-furnace), 2x copper-cable (assembling-machine-3), 2x electronic-circuit (assembling-machine-3)
+[    0,0s]   item                         rate/s inserters belts  port
+[    0,0s]   iron-plate                    42,32        32     2  out south, 78 tiles; out west, 52 tiles
+[    0,0s]   iron-ore                      35,27        20     2  in west, 52 tiles; in west, 52 tiles
+[    0,0s]   copper-cable                  32,34        18     2  
+[    0,0s]   steel-plate                    3,39         8     1  out west, 52 tiles
+[    0,0s]   copper-plate                  11,55         4     1  in west, 52 tiles
+[    0,0s]   electronic-circuit            15,09         4     1  out south, 78 tiles
+[    2,1s]   78x52 try 1: routed in 2,1s but beacons failed: BEACON_SHORT at (75,0) iron-plate has 1 beacon(s) in range, its rate needs 2
+[    2,3s]   78x52 try 2: ok in 2,3s, 1 routing run, score 4336,7
+[    4,2s]   78x52 try 4: routed in 1,8s but beacons failed: BEACON_SHORT at (75,0) iron-plate has 1 beacon(s) in range, its rate needs 2
+[   11,0s]   78x52 try 3: routed in 8,8s but beacons failed: BEACON_SHORT at (75,39) electronic-circuit has 1 beacon(s) in range, its rate needs 2; BEACON_SHORT at (62,38) electronic-circuit has 1 beacon(s) in range, its rate needs 2
+[   11,1s] improvement #1: 78x52 score 4336,7 (belts 283, undergrounds 178, inserters 89, seed 12345101612)
+[   11,1s] size 64 (78x52): 1/4 seeds succeeded, failures {beacons=3}
+[   11,1s] history (box: tries, successes, best or closest):
+[   11,1s]   78x52: 4 tries, 1 ok, best score 4336,7

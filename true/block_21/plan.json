@@ -1,0 +1,1690 @@
+{
+    "machines": [
+        {
+            "id": 0,
+            "recipe": "firearm-magazine",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 3.5714285562232653,
+            "product": "firearm-magazine",
+            "demand": {
+                "iron-plate": 14.285714224893061
+            },
+            "products": {
+                "firearm-magazine": 3.5714285562232653
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 3.5714285562232653,
+            "maxCrafts": 4.0425,
+            "beacons": 2,
+            "beaconCrafts": [
+                3.75,
+                5.625,
+                6.401650429449553
+            ]
+        },
+        {
+            "id": 1,
+            "recipe": "grenade",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.3706033414984882,
+            "product": "grenade",
+            "demand": {
+                "coal": 3.706033414984882,
+                "iron-plate": 1.853016707492441
+            },
+            "products": {
+                "grenade": 0.3706033414984882
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3706033414984882,
+            "maxCrafts": 0.8002063036811942,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.46875,
+                0.703125,
+                0.8002063036811942
+            ]
+        },
+        {
+            "id": 2,
+            "recipe": "grenade",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8002063036811942,
+            "product": "grenade",
+            "demand": {
+                "coal": 8.002063036811942,
+                "iron-plate": 4.001031518405971
+            },
+            "products": {
+                "grenade": 0.8002063036811942
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.8002063036811942,
+            "maxCrafts": 0.8002063036811942,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.46875,
+                0.703125,
+                0.8002063036811942
+            ]
+        },
+        {
+            "id": 3,
+            "recipe": "grenade",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8002063036811942,
+            "product": "grenade",
+            "demand": {
+                "coal": 8.002063036811942,
+                "iron-plate": 4.001031518405971
+            },
+            "products": {
+                "grenade": 0.8002063036811942
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.8002063036811942,
+            "maxCrafts": 0.8002063036811942,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.46875,
+                0.703125,
+                0.8002063036811942
+            ]
+        },
+        {
+            "id": 4,
+            "recipe": "grenade",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8002063036811942,
+            "product": "grenade",
+            "demand": {
+                "coal": 8.002063036811942,
+                "iron-plate": 4.001031518405971
+            },
+            "products": {
+                "grenade": 0.8002063036811942
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.8002063036811942,
+            "maxCrafts": 0.8002063036811942,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.46875,
+                0.703125,
+                0.8002063036811942
+            ]
+        },
+        {
+            "id": 5,
+            "recipe": "grenade",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8002063036811942,
+            "product": "grenade",
+            "demand": {
+                "coal": 8.002063036811942,
+                "iron-plate": 4.001031518405971
+            },
+            "products": {
+                "grenade": 0.8002063036811942
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.8002063036811942,
+            "maxCrafts": 0.8002063036811942,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.46875,
+                0.703125,
+                0.8002063036811942
+            ]
+        },
+        {
+            "id": 6,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.29291672775869115,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.10461311661128657,
+                "grenade": 0.10461311661128657,
+                "stone-wall": 0.20922623322257314
+            },
+            "products": {
+                "military-science-pack": 0.29291672775869115
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.10461311661128657,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 7,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 8,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 9,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 10,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 11,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 12,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 13,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 14,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 15,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 16,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 17,
+            "recipe": "military-science-pack",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.8824621156583008,
+            "product": "military-science-pack",
+            "demand": {
+                "piercing-rounds-magazine": 0.31516503996472534,
+                "grenade": 0.31516503996472534,
+                "stone-wall": 0.6303300799294507
+            },
+            "products": {
+                "military-science-pack": 0.8824621156583008
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 18,
+            "recipe": "piercing-rounds-magazine",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 1.4375450797400808,
+            "product": "piercing-rounds-magazine",
+            "demand": {
+                "copper-plate": 1.4375450797400808,
+                "steel-plate": 0.7187725398700404,
+                "firearm-magazine": 1.4375450797400808
+            },
+            "products": {
+                "piercing-rounds-magazine": 1.4375450797400808
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.7187725398700404,
+            "maxCrafts": 1.0669417382415922,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.625,
+                0.9375,
+                1.0669417382415922
+            ]
+        },
+        {
+            "id": 19,
+            "recipe": "piercing-rounds-magazine",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 2.1338834764831844,
+            "product": "piercing-rounds-magazine",
+            "demand": {
+                "copper-plate": 2.1338834764831844,
+                "steel-plate": 1.0669417382415922,
+                "firearm-magazine": 2.1338834764831844
+            },
+            "products": {
+                "piercing-rounds-magazine": 2.1338834764831844
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 1.0669417382415922,
+            "maxCrafts": 1.0669417382415922,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.625,
+                0.9375,
+                1.0669417382415922
+            ]
+        }
+    ],
+    "ports": [
+        {
+            "id": 0,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 1,
+            "item": "copper-plate",
+            "specs": [
+                {
+                    "name": "copper-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 2,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 3,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 4,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 5,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 6,
+            "item": "military-science-pack",
+            "specs": [
+                {
+                    "name": "military-science-pack",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 7,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 8,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 9,
+            "item": "stone-wall",
+            "specs": [
+                {
+                    "name": "stone-wall",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 10,
+            "item": "coal",
+            "specs": [
+                {
+                    "name": "coal",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 11,
+            "item": "coal",
+            "specs": [
+                {
+                    "name": "coal",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        }
+    ],
+    "terminals": [
+        {
+            "id": 0,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 1.4375450797400808,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "role": "CONSUMER",
+            "item": "copper-plate",
+            "rate": 2.1338834764831844,
+            "k": 1,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "role": "PRODUCER",
+            "item": "firearm-magazine",
+            "rate": 3.5714285562232653,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "role": "CONSUMER",
+            "item": "firearm-magazine",
+            "rate": 1.4375450797400808,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "role": "CONSUMER",
+            "item": "firearm-magazine",
+            "rate": 2.1338834764831844,
+            "k": 1,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "role": "PRODUCER",
+            "item": "grenade",
+            "rate": 0.3706033414984882,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "role": "PRODUCER",
+            "item": "grenade",
+            "rate": 0.8002063036811942,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "role": "PRODUCER",
+            "item": "grenade",
+            "rate": 0.8002063036811942,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 8,
+            "role": "PRODUCER",
+            "item": "grenade",
+            "rate": 0.8002063036811942,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 9,
+            "role": "PRODUCER",
+            "item": "grenade",
+            "rate": 0.8002063036811942,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 10,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.10461311661128657,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 11,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 12,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 13,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 14,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 15,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 16,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 17,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 18,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 19,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 20,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 21,
+            "role": "CONSUMER",
+            "item": "grenade",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 22,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 14.285714224893061,
+            "k": 5,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 23,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.853016707492441,
+            "k": 2,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 24,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 4.001031518405971,
+            "k": 2,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 25,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 4.001031518405971,
+            "k": 2,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 26,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 4.001031518405971,
+            "k": 2,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 27,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 4.001031518405971,
+            "k": 2,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 28,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.29291672775869115,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 29,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 30,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 31,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 32,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 33,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 34,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 35,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 36,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 37,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 38,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 39,
+            "role": "PRODUCER",
+            "item": "military-science-pack",
+            "rate": 0.8824621156583008,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 40,
+            "role": "PRODUCER",
+            "item": "piercing-rounds-magazine",
+            "rate": 1.4375450797400808,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 41,
+            "role": "PRODUCER",
+            "item": "piercing-rounds-magazine",
+            "rate": 2.1338834764831844,
+            "k": 1,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 42,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.10461311661128657,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 43,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 44,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 45,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 46,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 47,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 48,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 49,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 50,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 51,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 52,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 53,
+            "role": "CONSUMER",
+            "item": "piercing-rounds-magazine",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 54,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.7187725398700404,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 55,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 1.0669417382415922,
+            "k": 1,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 56,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.20922623322257314,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 57,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 58,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 59,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 60,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 61,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 62,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 63,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 64,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 65,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 66,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 67,
+            "role": "CONSUMER",
+            "item": "stone-wall",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 68,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 3.706033414984882,
+            "k": 3,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 69,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 8.002063036811942,
+            "k": 3,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 70,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 8.002063036811942,
+            "k": 3,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 71,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 8.002063036811942,
+            "k": 3,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 72,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 8.002063036811942,
+            "k": 3,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 73,
+            "role": "SOURCE",
+            "item": "copper-plate",
+            "rate": 24.941990411783557,
+            "k": 1,
+            "port": 0,
+            "fluid": false
+        },
+        {
+            "id": 74,
+            "role": "OUTPUT",
+            "item": "copper-plate",
+            "rate": 21.370561855560293,
+            "k": 1,
+            "port": 1,
+            "fluid": false
+        },
+        {
+            "id": 75,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 15.190892793825903,
+            "k": 1,
+            "port": 2,
+            "fluid": false
+        },
+        {
+            "id": 76,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 15.190892793825903,
+            "k": 1,
+            "port": 3,
+            "fluid": false
+        },
+        {
+            "id": 77,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 1.4895642828730935,
+            "k": 1,
+            "port": 4,
+            "fluid": false
+        },
+        {
+            "id": 78,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 0.27150713548448735,
+            "k": 1,
+            "port": 5,
+            "fluid": false
+        },
+        {
+            "id": 79,
+            "role": "OUTPUT",
+            "item": "military-science-pack",
+            "rate": 10.0,
+            "k": 1,
+            "port": 6,
+            "fluid": false
+        },
+        {
+            "id": 80,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 5.924772711155688,
+            "k": 1,
+            "port": 7,
+            "fluid": false
+        },
+        {
+            "id": 81,
+            "role": "OUTPUT",
+            "item": "steel-plate",
+            "rate": 4.139058433044055,
+            "k": 1,
+            "port": 8,
+            "fluid": false
+        },
+        {
+            "id": 82,
+            "role": "SOURCE",
+            "item": "stone-wall",
+            "rate": 7.142857112446529,
+            "k": 1,
+            "port": 9,
+            "fluid": false
+        },
+        {
+            "id": 83,
+            "role": "SOURCE",
+            "item": "coal",
+            "rate": 17.857142781116323,
+            "k": 1,
+            "port": 10,
+            "fluid": false
+        },
+        {
+            "id": 84,
+            "role": "SOURCE",
+            "item": "coal",
+            "rate": 17.857142781116323,
+            "k": 1,
+            "port": 11,
+            "fluid": false
+        }
+    ],
+    "nets": [
+        {
+            "id": 0,
+            "item": "copper-plate",
+            "flow": 24.941990411783557,
+            "terminals": [
+                0,
+                1,
+                73,
+                74
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "item": "firearm-magazine",
+            "flow": 3.5714285562232653,
+            "terminals": [
+                2,
+                3,
+                4
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "item": "grenade",
+            "flow": 3.5714285562232644,
+            "terminals": [
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "item": "iron-plate",
+            "flow": 32.142857006009386,
+            "terminals": [
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                75,
+                76,
+                77,
+                78
+            ],
+            "beltCount": 2,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "item": "military-science-pack",
+            "flow": 10.0,
+            "terminals": [
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                79
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "item": "piercing-rounds-magazine",
+            "flow": 3.5714285562232644,
+            "terminals": [
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "item": "steel-plate",
+            "flow": 5.924772711155688,
+            "terminals": [
+                54,
+                55,
+                80,
+                81
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "item": "stone-wall",
+            "flow": 7.142857112446529,
+            "terminals": [
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                82
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 8,
+            "item": "coal",
+            "flow": 35.71428556223265,
+            "terminals": [
+                68,
+                69,
+                70,
+                71,
+                72,
+                83,
+                84
+            ],
+            "beltCount": 2,
+            "fluid": false
+        }
+    ],
+    "rawRates": {
+        "copper-plate": 24.941990411783557,
+        "iron-plate": 32.142857006009386,
+        "steel-plate": 5.924772711155688,
+        "stone-wall": 7.142857112446529,
+        "coal": 35.71428556223265
+    },
+    "fluidRates": {},
+    "recipeRates": {},
+    "beltTier": "fast",
+    "warnings": [],
+    "outputs": {
+        "copper-plate": 21.370561855560293,
+        "military-science-pack": 10.0,
+        "steel-plate": 4.139058433044055
+    }
+}

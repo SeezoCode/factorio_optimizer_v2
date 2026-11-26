@@ -1,0 +1,66 @@
+{
+    "box": {
+        "w": 90,
+        "h": 61
+    },
+    "inputs": [
+        {
+            "item": "iron-ore",
+            "rate": 18.53855476329145,
+            "fluid": false,
+            "x": -1,
+            "y": 9,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.538554763291454,
+            "fluid": false,
+            "x": -1,
+            "y": 59,
+            "edge": "west"
+        },
+        {
+            "item": "iron-ore",
+            "rate": 18.538554763291458,
+            "fluid": false,
+            "x": -1,
+            "y": 0,
+            "edge": "west"
+        }
+    ],
+    "outputs": [
+        {
+            "item": "iron-plate",
+            "rate": 19.59540706636331,
+            "fluid": false,
+            "x": 12,
+            "y": 61,
+            "edge": "south"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 19.59540706636331,
+            "fluid": false,
+            "x": 45,
+            "y": 61,
+            "edge": "south"
+        },
+        {
+            "item": "iron-plate",
+            "rate": 8.15140590085445,
+            "fluid": false,
+            "x": -1,
+            "y": 16,
+            "edge": "west"
+        },
+        {
+            "item": "steel-plate",
+            "rate": 4.655178558765185,
+            "fluid": false,
+            "x": 83,
+            "y": -1,
+            "edge": "north"
+        }
+    ]
+}

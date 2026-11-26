@@ -1,0 +1,16 @@
+[    0,0s] machines 43, machine area 559, s_lo 37, start 74, budget 1.0E7s, 10 seeds x 10 threads
+[    0,0s] plan: 43 machines: 31x iron-plate (electric-furnace), 12x steel-plate (electric-furnace)
+[    0,0s]   item                         rate/s inserters belts  port
+[    0,0s]   iron-plate                    65,60        43     3  out north, 61 tiles; out west, 89 tiles
+[    0,0s]   iron-ore                      54,66        31     3  in west, 89 tiles; in west, 89 tiles; in west, 89 tiles
+[    0,0s]   steel-plate                    5,08        12     1  out west, 89 tiles
+[    1,9s]   61x89 try 1: ok in 1,9s, 1 routing run, score 5782,8
+[    2,0s]   61x89 try 2: ok in 2,0s, 1 routing run, score 5762,0
+[    4,1s]   61x89 try 3: ok in 2,2s, 1 routing run, score 5736,5
+[    4,1s]   61x89 try 4: ok in 2,1s, 1 routing run, score 5776,4
+[    4,5s] improvement #1: 61x89 score 5782,8 (belts 326, undergrounds 238, inserters 90, seed 12345111701)
+[    4,7s] improvement #2: 61x89 score 5762,0 (belts 310, undergrounds 222, inserters 90, seed 12345111702)
+[    5,0s] improvement #3: 61x89 score 5736,5 (belts 325, undergrounds 192, inserters 90, seed 12345111703)
+[    5,0s] size 74 (61x89): 4/4 seeds succeeded
+[    5,0s] history (box: tries, successes, best or closest):
+[    5,0s]   61x89: 4 tries, 4 ok, best score 5736,5

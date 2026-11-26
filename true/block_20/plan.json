@@ -1,0 +1,1576 @@
+{
+    "machines": [
+        {
+            "id": 0,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4154696789410936,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.2967640551230267,
+                "iron-gear-wheel": 0.2967640551230267,
+                "pipe": 0.5935281102460535
+            },
+            "products": {
+                "engine-unit": 0.4154696789410936
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.2967640551230267,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 1,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 2,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 3,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 4,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 5,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 6,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 7,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 8,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 9,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 10,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 11,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 12,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 13,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 14,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 15,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 16,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 17,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 18,
+            "recipe": "engine-unit",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4412310578291504,
+            "product": "engine-unit",
+            "demand": {
+                "steel-plate": 0.31516503996472534,
+                "iron-gear-wheel": 0.31516503996472534,
+                "pipe": 0.6303300799294507
+            },
+            "products": {
+                "engine-unit": 0.4412310578291504
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.31516503996472534,
+            "maxCrafts": 0.31516503996472534,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.049999997019769996,
+                0.23749999701976998,
+                0.31516503996472534
+            ]
+        },
+        {
+            "id": 19,
+            "recipe": "iron-gear-wheel",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 7.8593992865748765,
+            "product": "iron-gear-wheel",
+            "demand": {
+                "iron-plate": 11.22771321873371
+            },
+            "products": {
+                "iron-gear-wheel": 7.8593992865748765
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 5.613856609366855,
+            "maxCrafts": 6.303300799294505,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.9999999403953999,
+                4.7499999403954,
+                6.303300799294506
+            ]
+        },
+        {
+            "id": 20,
+            "recipe": "pipe",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 11.939469548976223,
+            "product": "pipe",
+            "demand": {
+                "iron-plate": 11.939469548976223
+            },
+            "products": {
+                "pipe": 11.939469548976223
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 11.939469548976223,
+            "maxCrafts": 12.803300858899107,
+            "beacons": 2,
+            "beaconCrafts": [
+                7.5,
+                11.25,
+                12.803300858899107
+            ]
+        }
+    ],
+    "ports": [
+        {
+            "id": 0,
+            "item": "engine-unit",
+            "specs": [
+                {
+                    "name": "engine-unit",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 1,
+            "item": "iron-gear-wheel",
+            "specs": [
+                {
+                    "name": "iron-gear-wheel",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 2,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 3,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 4,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        }
+    ],
+    "terminals": [
+        {
+            "id": 0,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4154696789410936,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 8,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 9,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 10,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 11,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 12,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 13,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 14,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 15,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 16,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 17,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 18,
+            "role": "PRODUCER",
+            "item": "engine-unit",
+            "rate": 0.4412310578291504,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 19,
+            "role": "PRODUCER",
+            "item": "iron-gear-wheel",
+            "rate": 7.8593992865748765,
+            "k": 2,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 20,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.2967640551230267,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 21,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 22,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 23,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 24,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 25,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 26,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 27,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 28,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 29,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 30,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 31,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 32,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 33,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 34,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 35,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 36,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 37,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 38,
+            "role": "CONSUMER",
+            "item": "iron-gear-wheel",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 39,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 11.22771321873371,
+            "k": 4,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 40,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 11.939469548976223,
+            "k": 4,
+            "machine": 20,
+            "fluid": false
+        },
+        {
+            "id": 41,
+            "role": "PRODUCER",
+            "item": "pipe",
+            "rate": 11.939469548976223,
+            "k": 3,
+            "machine": 20,
+            "fluid": false
+        },
+        {
+            "id": 42,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.5935281102460535,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 43,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 44,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 45,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 46,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 47,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 48,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 49,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 50,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 51,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 52,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 53,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 54,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 55,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 56,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 57,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 58,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 59,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 60,
+            "role": "CONSUMER",
+            "item": "pipe",
+            "rate": 0.6303300799294507,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 61,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.2967640551230267,
+            "k": 1,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 62,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 63,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 64,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 65,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 66,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 67,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 68,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 69,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 70,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 71,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 72,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 73,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 74,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 75,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 76,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 77,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 78,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 79,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 0.31516503996472534,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 80,
+            "role": "OUTPUT",
+            "item": "engine-unit",
+            "rate": 8.357628719865797,
+            "k": 1,
+            "port": 0,
+            "fluid": false
+        },
+        {
+            "id": 81,
+            "role": "OUTPUT",
+            "item": "iron-gear-wheel",
+            "rate": 1.889664512086787,
+            "k": 1,
+            "port": 1,
+            "fluid": false
+        },
+        {
+            "id": 82,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 23.16718276770993,
+            "k": 1,
+            "port": 2,
+            "fluid": false
+        },
+        {
+            "id": 83,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 3.8087824571715143,
+            "k": 1,
+            "port": 3,
+            "fluid": false
+        },
+        {
+            "id": 84,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 2.1609523173165672,
+            "k": 1,
+            "port": 4,
+            "fluid": false
+        }
+    ],
+    "nets": [
+        {
+            "id": 0,
+            "item": "engine-unit",
+            "flow": 8.357628719865797,
+            "terminals": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                80
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "item": "iron-gear-wheel",
+            "flow": 7.8593992865748685,
+            "terminals": [
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                81
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "item": "iron-plate",
+            "flow": 23.16718276770993,
+            "terminals": [
+                39,
+                40,
+                82
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "item": "pipe",
+            "flow": 11.939469548976163,
+            "terminals": [
+                41,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "item": "steel-plate",
+            "flow": 5.9697347744880815,
+            "terminals": [
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72,
+                73,
+                74,
+                75,
+                76,
+                77,
+                78,
+                79,
+                83,
+                84
+            ],
+            "beltCount": 1,
+            "fluid": false
+        }
+    ],
+    "rawRates": {
+        "iron-plate": 23.16718276770993,
+        "steel-plate": 5.9697347744880815
+    },
+    "fluidRates": {},
+    "recipeRates": {},
+    "beltTier": "fast",
+    "warnings": [],
+    "outputs": {
+        "engine-unit": 8.357628719865797,
+        "iron-gear-wheel": 1.889664512086787
+    }
+}

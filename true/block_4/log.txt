@@ -1,0 +1,15 @@
+[    0,0s] machines 20, machine area 248, s_lo 25, start 50, budget 1.0E7s, 10 seeds x 10 threads
+[    0,0s] plan: 20 machines: 18x stone-brick (electric-furnace), 2x stone-wall (assembling-machine-3)
+[    0,0s]   item                         rate/s inserters belts  port
+[    0,0s]   stone                         60,41        36     3  in west, 40 tiles; in west, 40 tiles; in west, 40 tiles
+[    0,0s]   stone-brick                   36,25        30     2  out north, 62 tiles
+[    0,0s]   stone-wall                     7,14         2     1  out west, 40 tiles
+[    1,0s]   62x40 try 2: ok in 1,0s, 1 routing run, score 2614,3
+[    1,3s]   62x40 try 1: ok in 1,3s, 1 routing run, score 2664,8
+[    3,5s]   62x40 try 4: ok in 2,3s, 2 routing runs, score 2637,9
+[   34,7s]   62x40 try 3: ok in 33,7s, 2 routing runs, score 2643,5
+[   34,8s] improvement #1: 62x40 score 2664,8 (belts 184, undergrounds 116, inserters 68, seed 12345087485)
+[   34,9s] improvement #2: 62x40 score 2614,3 (belts 169, undergrounds 70, inserters 68, seed 12345087486)
+[   34,9s] size 50 (62x40): 4/4 seeds succeeded
+[   34,9s] history (box: tries, successes, best or closest):
+[   34,9s]   62x40: 4 tries, 4 ok, best score 2614,3

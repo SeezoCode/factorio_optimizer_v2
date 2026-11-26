@@ -1,0 +1,16 @@
+[    0,0s] machines 43, machine area 559, s_lo 37, start 74, budget 1.0E7s, 10 seeds x 10 threads
+[    0,0s] plan: 43 machines: 22x iron-plate (electric-furnace), 21x copper-plate (electric-furnace)
+[    0,0s]   item                         rate/s inserters belts  port
+[    0,0s]   iron-plate                    46,55        22     2  out north, 47 tiles; out north, 47 tiles; out east, 117 tiles
+[    0,0s]   iron-ore                      38,79        22     2  in west, 117 tiles; in west, 117 tiles
+[    0,0s]   copper-plate                  44,44        21     2  out south, 47 tiles; out east, 117 tiles
+[    0,0s]   copper-ore                    37,03        21     2  in west, 117 tiles; in west, 117 tiles
+[    2,4s]   47x117 try 2: ok in 2,4s, 1 routing run, score 5824,1
+[    2,7s]   47x117 try 1: ok in 2,7s, 1 routing run, score 5797,6
+[    4,4s]   47x117 try 3: routed in 2,0s but beacons failed: BEACON_SHORT at (0,114) copper-plate has 1 beacon(s) in range, its rate needs 2
+[    4,7s]   47x117 try 4: ok in 2,0s, 1 routing run, score 5790,2
+[    5,1s] improvement #1: 47x117 score 5797,6 (belts 322, undergrounds 184, inserters 90, seed 12345111701)
+[    5,4s] improvement #2: 47x117 score 5790,2 (belts 304, undergrounds 182, inserters 90, seed 12345111704)
+[    5,4s] size 74 (47x117): 3/4 seeds succeeded, failures {beacons=1}
+[    5,4s] history (box: tries, successes, best or closest):
+[    5,4s]   47x117: 4 tries, 3 ok, best score 5790,2

@@ -1,0 +1,1382 @@
+{
+    "machines": [
+        {
+            "id": 0,
+            "recipe": "iron-stick",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 7.994285562232659,
+            "product": "iron-stick",
+            "demand": {
+                "iron-plate": 2.855101974356108
+            },
+            "products": {
+                "iron-stick": 7.994285562232659
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 2.855101974356108,
+            "maxCrafts": 4.949999978925446,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.9999999403953999,
+                4.7499999403954,
+                6.303300799294506
+            ]
+        },
+        {
+            "id": 1,
+            "recipe": "iron-stick",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 13.86,
+            "product": "iron-stick",
+            "demand": {
+                "iron-plate": 4.949999978925446
+            },
+            "products": {
+                "iron-stick": 13.86
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 4.949999978925446,
+            "maxCrafts": 4.949999978925446,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.9999999403953999,
+                4.7499999403954,
+                6.303300799294506
+            ]
+        },
+        {
+            "id": 2,
+            "recipe": "iron-stick",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 13.86,
+            "product": "iron-stick",
+            "demand": {
+                "iron-plate": 4.949999978925446
+            },
+            "products": {
+                "iron-stick": 13.86
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 4.949999978925446,
+            "maxCrafts": 4.949999978925446,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.9999999403953999,
+                4.7499999403954,
+                6.303300799294506
+            ]
+        },
+        {
+            "id": 3,
+            "recipe": "rail",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 6.748571124465322,
+            "product": "rail",
+            "demand": {
+                "stone": 3.374285562232661,
+                "steel-plate": 3.374285562232661,
+                "iron-stick": 3.374285562232661
+            },
+            "products": {
+                "rail": 6.748571124465322
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 3.374285562232661,
+            "maxCrafts": 6.468,
+            "beacons": 2,
+            "beaconCrafts": [
+                7.5,
+                11.25,
+                12.803300858899107
+            ]
+        },
+        {
+            "id": 4,
+            "recipe": "rail",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 12.936,
+            "product": "rail",
+            "demand": {
+                "stone": 6.468,
+                "steel-plate": 6.468,
+                "iron-stick": 6.468
+            },
+            "products": {
+                "rail": 12.936
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 6.468,
+            "maxCrafts": 6.468,
+            "beacons": 2,
+            "beaconCrafts": [
+                7.5,
+                11.25,
+                12.803300858899107
+            ]
+        },
+        {
+            "id": 5,
+            "recipe": "rail",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 12.936,
+            "product": "rail",
+            "demand": {
+                "stone": 6.468,
+                "steel-plate": 6.468,
+                "iron-stick": 6.468
+            },
+            "products": {
+                "rail": 12.936
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 6.468,
+            "maxCrafts": 6.468,
+            "beacons": 2,
+            "beaconCrafts": [
+                7.5,
+                11.25,
+                12.803300858899107
+            ]
+        },
+        {
+            "id": 6,
+            "recipe": "rail",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 12.936,
+            "product": "rail",
+            "demand": {
+                "stone": 6.468,
+                "steel-plate": 6.468,
+                "iron-stick": 6.468
+            },
+            "products": {
+                "rail": 12.936
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 6.468,
+            "maxCrafts": 6.468,
+            "beacons": 2,
+            "beaconCrafts": [
+                7.5,
+                11.25,
+                12.803300858899107
+            ]
+        },
+        {
+            "id": 7,
+            "recipe": "rail",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 12.936,
+            "product": "rail",
+            "demand": {
+                "stone": 6.468,
+                "steel-plate": 6.468,
+                "iron-stick": 6.468
+            },
+            "products": {
+                "rail": 12.936
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 6.468,
+            "maxCrafts": 6.468,
+            "beacons": 2,
+            "beaconCrafts": [
+                7.5,
+                11.25,
+                12.803300858899107
+            ]
+        },
+        {
+            "id": 8,
+            "recipe": "rail",
+            "machine": "assembling-machine-3",
+            "w": 3,
+            "h": 3,
+            "outputRate": 12.936,
+            "product": "rail",
+            "demand": {
+                "stone": 6.468,
+                "steel-plate": 6.468,
+                "iron-stick": 6.468
+            },
+            "products": {
+                "rail": 12.936
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 6.468,
+            "maxCrafts": 6.468,
+            "beacons": 2,
+            "beaconCrafts": [
+                7.5,
+                11.25,
+                12.803300858899107
+            ]
+        },
+        {
+            "id": 9,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 10,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 11,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 12,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 13,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 14,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 15,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        },
+        {
+            "id": 16,
+            "recipe": "steel-plate",
+            "machine": "electric-furnace",
+            "w": 3,
+            "h": 3,
+            "outputRate": 0.4231980507968349,
+            "product": "steel-plate",
+            "demand": {
+                "iron-plate": 1.7633252072742018
+            },
+            "products": {
+                "steel-plate": 0.4231980507968349
+            },
+            "fluidDemand": {},
+            "fluidIn": {},
+            "fluidOut": {},
+            "crafts": 0.3526650414548404,
+            "maxCrafts": 0.35266504145484034,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.08749999850988499,
+                0.274999998509885,
+                0.35266504145484034
+            ]
+        }
+    ],
+    "ports": [
+        {
+            "id": 0,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 1,
+            "item": "iron-plate",
+            "specs": [
+                {
+                    "name": "iron-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 2,
+            "item": "rail",
+            "specs": [
+                {
+                    "name": "rail",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 3,
+            "item": "rail",
+            "specs": [
+                {
+                    "name": "rail",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 4,
+            "item": "rail",
+            "specs": [
+                {
+                    "name": "rail",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 5,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 6,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 7,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 8,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 9,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 10,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 11,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 12,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "south",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 13,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 14,
+            "item": "steel-plate",
+            "specs": [
+                {
+                    "name": "steel-plate",
+                    "edge": "north",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 15,
+            "item": "stone",
+            "specs": [
+                {
+                    "name": "stone",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": false,
+            "pairWith": -1
+        }
+    ],
+    "terminals": [
+        {
+            "id": 0,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 2.855101974356108,
+            "k": 2,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 4.949999978925446,
+            "k": 2,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 4.949999978925446,
+            "k": 2,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 5,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 6,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 7,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 8,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 9,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 10,
+            "role": "CONSUMER",
+            "item": "iron-plate",
+            "rate": 1.7633252072742018,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 11,
+            "role": "PRODUCER",
+            "item": "iron-stick",
+            "rate": 7.994285562232659,
+            "k": 3,
+            "machine": 0,
+            "fluid": false
+        },
+        {
+            "id": 12,
+            "role": "PRODUCER",
+            "item": "iron-stick",
+            "rate": 13.86,
+            "k": 3,
+            "machine": 1,
+            "fluid": false
+        },
+        {
+            "id": 13,
+            "role": "PRODUCER",
+            "item": "iron-stick",
+            "rate": 13.86,
+            "k": 3,
+            "machine": 2,
+            "fluid": false
+        },
+        {
+            "id": 14,
+            "role": "CONSUMER",
+            "item": "iron-stick",
+            "rate": 3.374285562232661,
+            "k": 2,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 15,
+            "role": "CONSUMER",
+            "item": "iron-stick",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 16,
+            "role": "CONSUMER",
+            "item": "iron-stick",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 17,
+            "role": "CONSUMER",
+            "item": "iron-stick",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 18,
+            "role": "CONSUMER",
+            "item": "iron-stick",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 19,
+            "role": "CONSUMER",
+            "item": "iron-stick",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 20,
+            "role": "PRODUCER",
+            "item": "rail",
+            "rate": 6.748571124465322,
+            "k": 3,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 21,
+            "role": "PRODUCER",
+            "item": "rail",
+            "rate": 12.936,
+            "k": 3,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 22,
+            "role": "PRODUCER",
+            "item": "rail",
+            "rate": 12.936,
+            "k": 3,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 23,
+            "role": "PRODUCER",
+            "item": "rail",
+            "rate": 12.936,
+            "k": 3,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 24,
+            "role": "PRODUCER",
+            "item": "rail",
+            "rate": 12.936,
+            "k": 3,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 25,
+            "role": "PRODUCER",
+            "item": "rail",
+            "rate": 12.936,
+            "k": 3,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 26,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 9,
+            "fluid": false
+        },
+        {
+            "id": 27,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 28,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 29,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 30,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 31,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 32,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 33,
+            "role": "PRODUCER",
+            "item": "steel-plate",
+            "rate": 0.4231980507968349,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 34,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 3.374285562232661,
+            "k": 2,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 35,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 36,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 37,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 38,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 39,
+            "role": "CONSUMER",
+            "item": "steel-plate",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 40,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 3.374285562232661,
+            "k": 2,
+            "machine": 3,
+            "fluid": false
+        },
+        {
+            "id": 41,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 4,
+            "fluid": false
+        },
+        {
+            "id": 42,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 5,
+            "fluid": false
+        },
+        {
+            "id": 43,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 6,
+            "fluid": false
+        },
+        {
+            "id": 44,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 7,
+            "fluid": false
+        },
+        {
+            "id": 45,
+            "role": "CONSUMER",
+            "item": "stone",
+            "rate": 6.468,
+            "k": 2,
+            "machine": 8,
+            "fluid": false
+        },
+        {
+            "id": 46,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 14.106601737020572,
+            "k": 1,
+            "port": 0,
+            "fluid": false
+        },
+        {
+            "id": 47,
+            "role": "SOURCE",
+            "item": "iron-plate",
+            "rate": 12.75510185338005,
+            "k": 1,
+            "port": 1,
+            "fluid": false
+        },
+        {
+            "id": 48,
+            "role": "OUTPUT",
+            "item": "rail",
+            "rate": 23.80952370815511,
+            "k": 1,
+            "port": 2,
+            "fluid": false
+        },
+        {
+            "id": 49,
+            "role": "OUTPUT",
+            "item": "rail",
+            "rate": 23.80952370815511,
+            "k": 1,
+            "port": 3,
+            "fluid": false
+        },
+        {
+            "id": 50,
+            "role": "OUTPUT",
+            "item": "rail",
+            "rate": 23.80952370815511,
+            "k": 1,
+            "port": 4,
+            "fluid": false
+        },
+        {
+            "id": 51,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 4.231980507968349,
+            "k": 1,
+            "port": 5,
+            "fluid": false
+        },
+        {
+            "id": 52,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 5.555178615548472,
+            "k": 1,
+            "port": 6,
+            "fluid": false
+        },
+        {
+            "id": 53,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 2.917424292245452,
+            "k": 1,
+            "port": 7,
+            "fluid": false
+        },
+        {
+            "id": 54,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 2.0150579721529898,
+            "k": 1,
+            "port": 8,
+            "fluid": false
+        },
+        {
+            "id": 55,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 5.078376609562019,
+            "k": 1,
+            "port": 9,
+            "fluid": false
+        },
+        {
+            "id": 56,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 5.501574660358854,
+            "k": 1,
+            "port": 10,
+            "fluid": false
+        },
+        {
+            "id": 57,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 0.03809657293209251,
+            "k": 1,
+            "port": 11,
+            "fluid": false
+        },
+        {
+            "id": 58,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 6.771168812749357,
+            "k": 1,
+            "port": 12,
+            "fluid": false
+        },
+        {
+            "id": 59,
+            "role": "SOURCE",
+            "item": "steel-plate",
+            "rate": 5.078376609562019,
+            "k": 1,
+            "port": 13,
+            "fluid": false
+        },
+        {
+            "id": 60,
+            "role": "OUTPUT",
+            "item": "steel-plate",
+            "rate": 4.85853349722162,
+            "k": 1,
+            "port": 14,
+            "fluid": false
+        },
+        {
+            "id": 61,
+            "role": "SOURCE",
+            "item": "stone",
+            "rate": 35.71428556223266,
+            "k": 1,
+            "port": 15,
+            "fluid": false
+        }
+    ],
+    "nets": [
+        {
+            "id": 0,
+            "item": "iron-plate",
+            "flow": 26.861703590400623,
+            "terminals": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                46,
+                47
+            ],
+            "beltCount": 1,
+            "fluid": false
+        },
+        {
+            "id": 1,
+            "item": "iron-stick",
+            "flow": 35.71428556223266,
+            "terminals": [
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19
+            ],
+            "beltCount": 2,
+            "fluid": false
+        },
+        {
+            "id": 2,
+            "item": "rail",
+            "flow": 71.42857112446532,
+            "terminals": [
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                48,
+                49,
+                50
+            ],
+            "beltCount": 3,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "item": "steel-plate",
+            "flow": 40.57281905945428,
+            "terminals": [
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60
+            ],
+            "beltCount": 2,
+            "fluid": false
+        },
+        {
+            "id": 4,
+            "item": "stone",
+            "flow": 35.71428556223266,
+            "terminals": [
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                61
+            ],
+            "beltCount": 2,
+            "fluid": false
+        }
+    ],
+    "rawRates": {
+        "iron-plate": 26.861703590400623,
+        "steel-plate": 37.18723465307961,
+        "stone": 35.71428556223266
+    },
+    "fluidRates": {},
+    "recipeRates": {},
+    "beltTier": "fast",
+    "warnings": [],
+    "outputs": {
+        "rail": 71.42857112446532,
+        "steel-plate": 4.85853349722162
+    }
+}

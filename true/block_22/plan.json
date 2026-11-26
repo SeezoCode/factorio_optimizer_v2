@@ -1,0 +1,1720 @@
+{
+    "machines": [
+        {
+            "id": 0,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 8.07634221288152,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 8.07634221288152
+            },
+            "fluidDemand": {
+                "water": 9.318856367433566,
+                "light-oil": 9.318856367433566
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 0.3106285455811189,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 1,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 32.31644047308101,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 32.31644047308101
+            },
+            "fluidDemand": {
+                "water": 37.28820041763833,
+                "light-oil": 37.28820041763833
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.2429400139212778,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 2,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 3,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 4,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 5,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 6,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 7,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 8,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 9,
+            "recipe": "light-oil-cracking",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "water",
+            "outputRate": 34.727164353235054,
+            "product": "petroleum-gas",
+            "demand": {},
+            "products": {
+                "petroleum-gas": 34.727164353235054
+            },
+            "fluidDemand": {
+                "water": 40.06980488517394,
+                "light-oil": 40.06980488517394
+            },
+            "fluidIn": {
+                "water": 1,
+                "light-oil": 2
+            },
+            "fluidOut": {
+                "petroleum-gas": 1
+            },
+            "crafts": 1.3356601628391314,
+            "maxCrafts": 1.3356601628391314,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.27499999105931,
+                1.02499999105931,
+                1.3356601628391314
+            ]
+        },
+        {
+            "id": 10,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 1.6259250806724719,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 0.6253557981082081
+            },
+            "products": {
+                "plastic-bar": 1.6259250806724719
+            },
+            "fluidDemand": {
+                "petroleum-gas": 12.50711596216416
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 0.6253557981082081,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 11,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.522417537178926,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.5086221210577073
+            },
+            "products": {
+                "plastic-bar": 6.522417537178926
+            },
+            "fluidDemand": {
+                "petroleum-gas": 50.17244242115414
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.5086221210577073,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 12,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 13,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 14,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 15,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 16,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 17,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 18,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 19,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 20,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 21,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        },
+        {
+            "id": 22,
+            "recipe": "plastic-bar",
+            "machine": "chemical-plant",
+            "w": 3,
+            "h": 3,
+            "needsFluid": "petroleum-gas",
+            "outputRate": 6.94543287064701,
+            "product": "plastic-bar",
+            "demand": {
+                "coal": 2.671320325678263
+            },
+            "products": {
+                "plastic-bar": 6.94543287064701
+            },
+            "fluidDemand": {
+                "petroleum-gas": 53.426406513565254
+            },
+            "fluidIn": {
+                "petroleum-gas": 1
+            },
+            "fluidOut": {},
+            "crafts": 2.671320325678263,
+            "maxCrafts": 2.6713203256782627,
+            "beacons": 2,
+            "beaconCrafts": [
+                0.54999998211862,
+                2.04999998211862,
+                2.6713203256782627
+            ]
+        }
+    ],
+    "ports": [
+        {
+            "id": 0,
+            "item": "light-oil",
+            "specs": [
+                {
+                    "name": "light-oil",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": true,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 1,
+            "item": "petroleum-gas",
+            "specs": [
+                {
+                    "name": "petroleum-gas",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": true,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 2,
+            "item": "plastic-bar",
+            "specs": [
+                {
+                    "name": "plastic-bar",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 3,
+            "item": "plastic-bar",
+            "specs": [
+                {
+                    "name": "plastic-bar",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 4,
+            "item": "plastic-bar",
+            "specs": [
+                {
+                    "name": "plastic-bar",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 5,
+            "item": "plastic-bar",
+            "specs": [
+                {
+                    "name": "plastic-bar",
+                    "edge": "east",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": true,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 6,
+            "item": "water",
+            "specs": [
+                {
+                    "name": "water",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": true,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 7,
+            "item": "coal",
+            "specs": [
+                {
+                    "name": "coal",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        },
+        {
+            "id": 8,
+            "item": "coal",
+            "specs": [
+                {
+                    "name": "coal",
+                    "edge": "west",
+                    "force": 1.0
+                }
+            ],
+            "fluid": false,
+            "output": false,
+            "single": true,
+            "pairWith": -1
+        }
+    ],
+    "terminals": [
+        {
+            "id": 0,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 9.318856367433566,
+            "k": 1,
+            "machine": 0,
+            "fluid": true
+        },
+        {
+            "id": 1,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 37.28820041763833,
+            "k": 1,
+            "machine": 1,
+            "fluid": true
+        },
+        {
+            "id": 2,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 2,
+            "fluid": true
+        },
+        {
+            "id": 3,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 3,
+            "fluid": true
+        },
+        {
+            "id": 4,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 4,
+            "fluid": true
+        },
+        {
+            "id": 5,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 5,
+            "fluid": true
+        },
+        {
+            "id": 6,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 6,
+            "fluid": true
+        },
+        {
+            "id": 7,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 7,
+            "fluid": true
+        },
+        {
+            "id": 8,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 8,
+            "fluid": true
+        },
+        {
+            "id": 9,
+            "role": "CONSUMER",
+            "item": "light-oil",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 9,
+            "fluid": true
+        },
+        {
+            "id": 10,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 8.07634221288152,
+            "k": 1,
+            "machine": 0,
+            "fluid": true
+        },
+        {
+            "id": 11,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 32.31644047308101,
+            "k": 1,
+            "machine": 1,
+            "fluid": true
+        },
+        {
+            "id": 12,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 2,
+            "fluid": true
+        },
+        {
+            "id": 13,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 3,
+            "fluid": true
+        },
+        {
+            "id": 14,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 4,
+            "fluid": true
+        },
+        {
+            "id": 15,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 5,
+            "fluid": true
+        },
+        {
+            "id": 16,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 6,
+            "fluid": true
+        },
+        {
+            "id": 17,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 7,
+            "fluid": true
+        },
+        {
+            "id": 18,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 8,
+            "fluid": true
+        },
+        {
+            "id": 19,
+            "role": "PRODUCER",
+            "item": "petroleum-gas",
+            "rate": 34.727164353235054,
+            "k": 1,
+            "machine": 9,
+            "fluid": true
+        },
+        {
+            "id": 20,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 12.50711596216416,
+            "k": 1,
+            "machine": 10,
+            "fluid": true
+        },
+        {
+            "id": 21,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 50.17244242115414,
+            "k": 1,
+            "machine": 11,
+            "fluid": true
+        },
+        {
+            "id": 22,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 12,
+            "fluid": true
+        },
+        {
+            "id": 23,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 13,
+            "fluid": true
+        },
+        {
+            "id": 24,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 14,
+            "fluid": true
+        },
+        {
+            "id": 25,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 15,
+            "fluid": true
+        },
+        {
+            "id": 26,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 16,
+            "fluid": true
+        },
+        {
+            "id": 27,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 17,
+            "fluid": true
+        },
+        {
+            "id": 28,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 18,
+            "fluid": true
+        },
+        {
+            "id": 29,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 19,
+            "fluid": true
+        },
+        {
+            "id": 30,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 20,
+            "fluid": true
+        },
+        {
+            "id": 31,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 21,
+            "fluid": true
+        },
+        {
+            "id": 32,
+            "role": "CONSUMER",
+            "item": "petroleum-gas",
+            "rate": 53.426406513565254,
+            "k": 1,
+            "machine": 22,
+            "fluid": true
+        },
+        {
+            "id": 33,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 1.6259250806724719,
+            "k": 2,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 34,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.522417537178926,
+            "k": 2,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 35,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 36,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 37,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 38,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 39,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 40,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 41,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 42,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 43,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 20,
+            "fluid": false
+        },
+        {
+            "id": 44,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 21,
+            "fluid": false
+        },
+        {
+            "id": 45,
+            "role": "PRODUCER",
+            "item": "plastic-bar",
+            "rate": 6.94543287064701,
+            "k": 2,
+            "machine": 22,
+            "fluid": false
+        },
+        {
+            "id": 46,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 9.318856367433566,
+            "k": 1,
+            "machine": 0,
+            "fluid": true
+        },
+        {
+            "id": 47,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 37.28820041763833,
+            "k": 1,
+            "machine": 1,
+            "fluid": true
+        },
+        {
+            "id": 48,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 2,
+            "fluid": true
+        },
+        {
+            "id": 49,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 3,
+            "fluid": true
+        },
+        {
+            "id": 50,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 4,
+            "fluid": true
+        },
+        {
+            "id": 51,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 5,
+            "fluid": true
+        },
+        {
+            "id": 52,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 6,
+            "fluid": true
+        },
+        {
+            "id": 53,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 7,
+            "fluid": true
+        },
+        {
+            "id": 54,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 8,
+            "fluid": true
+        },
+        {
+            "id": 55,
+            "role": "CONSUMER",
+            "item": "water",
+            "rate": 40.06980488517394,
+            "k": 1,
+            "machine": 9,
+            "fluid": true
+        },
+        {
+            "id": 56,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 0.6253557981082081,
+            "k": 1,
+            "machine": 10,
+            "fluid": false
+        },
+        {
+            "id": 57,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.5086221210577073,
+            "k": 1,
+            "machine": 11,
+            "fluid": false
+        },
+        {
+            "id": 58,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 12,
+            "fluid": false
+        },
+        {
+            "id": 59,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 13,
+            "fluid": false
+        },
+        {
+            "id": 60,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 14,
+            "fluid": false
+        },
+        {
+            "id": 61,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 15,
+            "fluid": false
+        },
+        {
+            "id": 62,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 16,
+            "fluid": false
+        },
+        {
+            "id": 63,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 17,
+            "fluid": false
+        },
+        {
+            "id": 64,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 18,
+            "fluid": false
+        },
+        {
+            "id": 65,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 19,
+            "fluid": false
+        },
+        {
+            "id": 66,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 20,
+            "fluid": false
+        },
+        {
+            "id": 67,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 21,
+            "fluid": false
+        },
+        {
+            "id": 68,
+            "role": "CONSUMER",
+            "item": "coal",
+            "rate": 2.671320325678263,
+            "k": 1,
+            "machine": 22,
+            "fluid": false
+        },
+        {
+            "id": 69,
+            "role": "SOURCE",
+            "item": "light-oil",
+            "rate": 367.1654958664634,
+            "k": 1,
+            "port": 0,
+            "fluid": true
+        },
+        {
+            "id": 70,
+            "role": "SOURCE",
+            "item": "petroleum-gas",
+            "rate": 332.1599325206932,
+            "k": 1,
+            "port": 1,
+            "fluid": true
+        },
+        {
+            "id": 71,
+            "role": "OUTPUT",
+            "item": "plastic-bar",
+            "rate": 23.11210293074652,
+            "k": 1,
+            "port": 2,
+            "fluid": false
+        },
+        {
+            "id": 72,
+            "role": "OUTPUT",
+            "item": "plastic-bar",
+            "rate": 15.728937490144222,
+            "k": 1,
+            "port": 3,
+            "fluid": false
+        },
+        {
+            "id": 73,
+            "role": "OUTPUT",
+            "item": "plastic-bar",
+            "rate": 18.909902397883517,
+            "k": 1,
+            "port": 4,
+            "fluid": false
+        },
+        {
+            "id": 74,
+            "role": "OUTPUT",
+            "item": "plastic-bar",
+            "rate": 26.797161376194264,
+            "k": 1,
+            "port": 5,
+            "fluid": false
+        },
+        {
+            "id": 75,
+            "role": "SOURCE",
+            "item": "water",
+            "rate": 367.1654958664634,
+            "k": 1,
+            "port": 6,
+            "fluid": true
+        },
+        {
+            "id": 76,
+            "role": "SOURCE",
+            "item": "coal",
+            "rate": 16.259250750813404,
+            "k": 1,
+            "port": 7,
+            "fluid": false
+        },
+        {
+            "id": 77,
+            "role": "SOURCE",
+            "item": "coal",
+            "rate": 16.259250750813404,
+            "k": 1,
+            "port": 8,
+            "fluid": false
+        }
+    ],
+    "nets": [
+        {
+            "id": 0,
+            "item": "light-oil",
+            "flow": 367.1654958664634,
+            "terminals": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                69
+            ],
+            "beltCount": 1,
+            "fluid": true
+        },
+        {
+            "id": 1,
+            "item": "petroleum-gas",
+            "flow": 650.3700300325361,
+            "terminals": [
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                29,
+                30,
+                31,
+                32,
+                70
+            ],
+            "beltCount": 1,
+            "fluid": true
+        },
+        {
+            "id": 2,
+            "item": "plastic-bar",
+            "flow": 84.54810419496853,
+            "terminals": [
+                33,
+                34,
+                35,
+                36,
+                37,
+                38,
+                39,
+                40,
+                41,
+                42,
+                43,
+                44,
+                45,
+                71,
+                72,
+                73,
+                74
+            ],
+            "beltCount": 4,
+            "fluid": false
+        },
+        {
+            "id": 3,
+            "item": "water",
+            "flow": 367.1654958664634,
+            "terminals": [
+                46,
+                47,
+                48,
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                75
+            ],
+            "beltCount": 1,
+            "fluid": true
+        },
+        {
+            "id": 4,
+            "item": "coal",
+            "flow": 32.51850150162681,
+            "terminals": [
+                56,
+                57,
+                58,
+                59,
+                60,
+                61,
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                76,
+                77
+            ],
+            "beltCount": 2,
+            "fluid": false
+        }
+    ],
+    "rawRates": {
+        "light-oil": 367.1654958664634,
+        "petroleum-gas": 332.1599325206932,
+        "water": 367.1654958664634,
+        "coal": 32.51850150162681
+    },
+    "fluidRates": {
+        "light-oil": 367.1654958664634,
+        "petroleum-gas": 332.1599325206932,
+        "water": 367.1654958664634
+    },
+    "recipeRates": {},
+    "beltTier": "fast",
+    "warnings": [],
+    "outputs": {
+        "plastic-bar": 84.54810419496853
+    }
+}
