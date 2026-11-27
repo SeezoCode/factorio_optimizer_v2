@@ -151,3 +151,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   as the sanity check (does the layout run at all), then **L1 straight away** (the goal: real parts only), with a
   12-hour window (2 h warm-up, 10 h measured), then L4, L3, L2 only to find where a failing L1 breaks. Military
   (13 machines, about 20x) keeps the full ladder.
+- **Military science L4 (ideal)**: PASS, 100.0% of plan over 6 measured hours.
