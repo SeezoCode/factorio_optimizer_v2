@@ -119,7 +119,9 @@ def main():
         while True:
             q = load()
             for item in q:
-                if item["started"] is None and games() < mx:
+                if item["started"] is None:
+                    if games() >= mx:
+                        break  # keep the queue's order: wait for a free slot rather than start a later run
                     if not solved(item["layout"]):
                         continue  # layout not solved yet (a factory run writes previews before its final layout)
                     start(item)
