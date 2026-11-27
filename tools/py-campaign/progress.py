@@ -10,7 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location("bp", os.path.join(HERE, "builds_page.py"))
 bp = importlib.util.module_from_spec(spec); spec.loader.exec_module(bp)
 ROOT = bp.ROOT
-NAMES = {"L5": "fed", "L4": "ideal", "L3s": "rules+starters", "L3": "rules", "L2": "mod", "L1": "built", "L0": "plain"}
+NAMES = {"L5": "fed", "L4": "ideal", "L3s": "rules+starters", "L2s": "mod+starters", "L3": "rules", "L2": "mod", "L1": "built", "L0": "plain"}
 PAGE = "https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk"
 
 

@@ -35,6 +35,11 @@ LEVELS = {
     # L3 with the loop starters topped up all along (--seed-through, no --seed-stop): whether a science's only gap
     # under the rules is starting its loops.
     "L3s": ("rules+starters", [f for f in FAIR if f not in ("--seed-stop", "7200")] + RULES + ["--seed-through"], 7200, 10 * 3600),
+    # The mod with starters all along (from 2026-11-27 21:40): logistic under the mod (logi_L2d) ran ahead of plan
+    # until its starters stopped at hour 2, then its mukmoux bones loop drained by hour 3.5: what passed the loop's own
+    # users while they stood full (250 saps, 148 bones, 46 mukmoux) lay backed up in dead-end stretches before outside
+    # users the mod had switched off, out of the loop's reach, and nothing outside the loop restarts it.
+    "L2s": ("mod+starters", [f for f in FAIR if f not in ("--seed-stop", "7200")] + ["--flow-mod"] + RULES[1:] + ["--seed-through"], 7200, 10 * 3600),
     "L3": ("rules", FAIR + RULES, 7200, 22 * 3600),
     "L2": ("mod", FAIR + ["--flow-mod"] + RULES[1:], 7200, 22 * 3600),
     # Real parts only: overflow exits, voids and pull built from deciders and enable conditions; no script flow rules.

@@ -257,3 +257,21 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   with the exit-catalyst), queued **logi_L1b, chem_L1b, py2_L1b** (built parts with the self-exit and reserve
   fixes that passed py-1), then logi_L0, and L3d variants (`--rate-cap 4 --quota-fluid-net`) after them.
 - Stopped py2_L3s too (7 crafts in hour 1, none in hour 2; the L3 governors are the known brake) for logi_L1b.
+- **logi_L2d (the mod) stalled at hour 3.5 (28 crafts, then none): its mukmoux bones loop drained.** Not the loop's
+  gain (a sap tree, 20 bones, gives about 85 saps, 17 mukmoux food crafts): the stock lay where the loop cannot reach
+  it. Live trace: 250 saps backed up on one lane through two undergrounds (30 and 32 tiles) past the mukmoux food
+  maker's pickup, toward a dead end at the arqad comb that the mod had switched off; 148 bones the same way past the
+  bonemeal maker toward switched-off fungal substrate and cottongut food; 46 mukmoux past caged-mukmoux toward the
+  arqad honeycomb. Each lacking machine took from the very network holding the stock.
+- **Why no reserve gate held them:** the loop rules count a user as inside an item's loop only if it gets back to
+  one of the item's makers within three recipe steps (Py logistic is one 53-recipe loop by way of ash, biomass and
+  barrels). The bonemeal maker is four steps back, the food makers six: none of bones, saps or mukmoux was a loop
+  item, so no reserve gate (and under the mod, whose flow the check does not record, no script reserve at all) stood
+  past their users. logi_L1b (built parts) had 5 reserve gates, none for them.
+- **New `--loop-deep D` (verify.py):** an item with no user within three steps but one within D is a loop item, its
+  loop the users within a step of the nearest; only where those take at least half of the plan's use of the item and
+  no target maker is among the others (at eight steps coke, sand, lime and iron ore turned into loop items of one small
+  user each, and the logistic pack an outside user of its own batteries). With D = 7: logistic gains bones, saps,
+  mukmoux, meat, moss, starch, gravel, worm (27 loop items, was 19); chemical 5, py-2 4 more.
+- **New level L2s (mod + starters all along)**, ranked with L3s on the help side: logi_L2s started. **logi_L1b
+  restarted as logi_L1c with `--loop-deep 7`**; chem_L1b and py2_L1b queued with it.
