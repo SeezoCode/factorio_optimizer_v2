@@ -36,7 +36,7 @@ LEVELS = {
     # (Until 2026-11-27 04:30 L1 was FAIR + --flow --no-pull --pull-built, whose quotas and gates are the check's script:
     # those runs are kept as level L1f.)
     # From 2026-11-27 05:50 also reserve gates from real parts past the last user of a loop's items and of items a
-    # machine gives back; gates on every item (--reserve-items) locked py-1 from the start (py1_L1b). From 06:50 also
+    # machine gives back; gates on every item (--reserve-items) locked py-1 from the start (py1_L1b). From 06:34 also
     # --self-exit-built: an exit carrying an item a machine gives back works only while it holds two crafts' worth
     # (py-1's moss farm lost half its coarse to the port belt until that backed up).
     "L1": ("built", FAIR + ["--pull-built", "--self-exit-built", "--reserve-built", "--reserve-self"], 7200, 22 * 3600),

@@ -122,4 +122,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   carrying that item onto a belt the machine does not take it back from gets a green wire from the machine (read
   contents, craft in hand excluded) and works only while the machine holds two crafts' worth (coarse >= 30). Found by
   positions (inserter targets are not set right after the build). Py-1: one such exit (coarse). **L1 is now** the
-  fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`; py1_L1d started 06:52 UTC.
+  fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`; py1_L1d started 06:34 UTC.
