@@ -105,3 +105,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   gate. Py science 1: 32 gates, 12 of them at pickup tiles, coarse included (without `--reserve-items` only seaweed
   counts as a loop item, and all its candidates were belt ends: no gate). **L1 is now** the fair set +
   `--pull-built --reserve-built --reserve-items`. py1_L1b (24 h) queued to test it.
+- 05:25 UTC: production s2 in its stitch; py-4's solve (blocks, 14 of 26 laid out) paused with SIGSTOP (pid 30458) so the stitch has the cores. Continue it with kill -CONT when production's stitch ends.
