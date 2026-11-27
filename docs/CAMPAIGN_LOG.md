@@ -77,3 +77,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   shared by three solves and two games each attempt does a fraction of the work. Py-3's solve paused (SIGSTOP) and
   games cut to one so chemical's stitch has the cores; py-3 continues after (kill -CONT).
 - **Py science 1 L3 (rules)**: PASS over 24 game hours, 100.0% of plan.
+- **Py science 1 L2 (mod)**: PASS over 24 game hours, 100.0% of plan.
