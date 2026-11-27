@@ -240,3 +240,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   no `--seed-stop`), 2 h warm-up and 10 h measured. A pass there and a fail at L3 says the only gap under the rules is
   starting the loops. Queued for chemical and py-2; logistic runs logi_L3c (six hours of starters) meanwhile.
 - logi_L3b stopped at about hour 4 (27 pack crafts by hour 3, none after): logistic fails L3 with two hours of starters on this layout; logi_L3c tests six.
+- chem_L3b stopped at hour 4.1: 14 pack crafts (3, 8, 2, 1, 0 by hour), faded after the starters; chemical fails L3 with two hours of starters. chem_L3s (starters all along) running.
