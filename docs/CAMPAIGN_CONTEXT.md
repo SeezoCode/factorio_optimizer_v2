@@ -109,6 +109,8 @@ As of 2026-11-27 02:25 UTC:
 - **One stitch at a time, with the cores**: a factory's stitch works to wall-clock deadlines; under contention it does
   not converge. Pause other solves (`kill -STOP <pid>`, later `kill -CONT`) and run few games while one stitches.
   py-3's solve (pid in `pgrep -f out=solves/py-science-pack-3_m2`) was paused at 03:30 for chemical's stitch.
+- **Waiters**: do not wait with `bash -c 'while pgrep -f PATTERN'`: the waiter's own command line matches. Wait on a
+  pid (`while kill -0 PID`) instead.
 - **Memory**: the container is held to 16 GB, no swap (an OOM kill ends a solve silently). At most two solver JVMs
   at once (about 4 GB each; `JAVA_OPTS=-Xmx6g` for a big stitch), and no Gradle daemon left running (build with
   `--no-daemon`, or `./gradlew --stop` after).
