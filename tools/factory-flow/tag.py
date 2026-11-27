@@ -123,17 +123,17 @@ def loops(plan, ports=None, deep=None, targets=()):
     for item, mks in makers.items():
         ds = {n: back(mks, n) for n, r in recs.items() if item in r["in"]}
         # (deep D, as the check's --loop-deep: an item none of whose users is within three steps, but one is within D,
-        # has as its loop the users within a step of the nearest, where those take at least half of the plan's use of
+        # has as its loop the users at the nearest distance, where those take at least half of the plan's use of
         # it and no maker of a target is among the others. Logistic science's mukmoux loop (bones, bonemeal, sap
         # trees, saps, mukmoux food, calves, mukmoux, the renderer) is four to six steps round.)
         lim = 3
         if deep and not any(d is not None and d <= 3 for d in ds.values()):
             dd = min((d for d in ds.values() if d is not None and d <= deep), default=None)
             if dd is not None:
-                ins_ = [n for n, d in ds.items() if d is not None and d <= dd + 1]
+                ins_ = [n for n, d in ds.items() if d is not None and d <= dd]
                 tot = sum(use[item].values()) or 1
                 if sum(use[item][n] for n in ins_) / tot >= 0.5 and not any(recs[n]["out"] & set(targets) for n in ds if n not in ins_):
-                    lim = dd + 1
+                    lim = dd
         for n, d in ds.items():
             (inside if d is not None and d <= lim else outside)[item].add(n)
     # (Fluid loops too, found over the graph with fluid inputs counted as well; items keep the classification above.

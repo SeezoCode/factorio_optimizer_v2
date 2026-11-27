@@ -819,7 +819,7 @@ def main():
                          "of the loop's own users stands short of the fluid and behind its plan")
     ap.add_argument("--loop-deep", type=int, default=None, metavar="D",
                     help="with --loop-first: an item with no user within three recipe steps of a maker, but one within "
-                         "D, is a loop item too: its loop is the users within a step of the nearest")
+                         "D, is a loop item too: its loop is the users at the nearest distance")
     ap.add_argument("--loop-keep", type=float, default=None, metavar="K",
                     help="with --loop-first: a loop's own user waits for the loop's item while it holds less than K "
                          "crafts' worth, switched off by pull or not, so pull and the share rule keep it stocked")
@@ -1486,11 +1486,13 @@ def main():
             # without fish, and fish, eggs and the filtration media behind them all stopped by hour 4.)
             near = min((d for d in ds.values() if d is not None and d <= 3), default=None)
             # (--loop-deep D: an item none of whose users is within three steps, but one is within D, has as its loop
-            # the users within a step of the nearest. Logistic science's mukmoux loop goes bones, bonemeal, sap trees,
+            # the users at the nearest distance. Logistic science's mukmoux loop goes bones, bonemeal, sap trees,
             # saps, mukmoux food, calves, mukmoux, caged mukmoux, the renderer and bones again: the bonemeal maker is
             # four steps back, the food makers six, so none of it was a loop item, no reserve stood past its users,
             # and by hour 3.5 the 250 saps, 148 bones and 46 mukmoux that had passed them while they stood full lay
-            # in dead-end stretches before outside users that were switched off, and the loop stood.)
+            # in dead-end stretches before outside users that were switched off, and the loop stood. The users at the
+            # nearest distance only: with a step more, bones' loop took in the cottongut food and fungal substrate at the
+            # belt's dead end, its last user stood at the end, and no gate went past the bonemeal maker.)
             # (Only where those users take at least half of what the plan uses of the item, and no maker of a target
             # is among the others: at eight steps coke, sand, lime and iron ore came to be loop items of one small
             # user each, and the logistic pack itself an outside user of its batteries.)
@@ -1499,13 +1501,13 @@ def main():
                 deep = min((d for d in ds.values() if d is not None and d <= args.loop_deep), default=None)
                 if deep is not None:
                     tgt = {t["name"] for t in (job or {}).get("targets", [])}
-                    ins_ = [n for n, d in ds.items() if d is not None and d <= deep + 1]
+                    ins_ = [n for n, d in ds.items() if d is not None and d <= deep]
                     tot = sum(use[item].values()) or 1
                     if sum(use[item][n] for n in ins_) / tot < 0.5 or any(recs[n]["out"] & tgt for n in ds if n not in ins_):
                         deep = None
             for n, d in ds.items():
                 if deep is not None:
-                    ok = d is not None and d <= deep + 1
+                    ok = d is not None and d <= deep
                 else:
                     ok = d is not None and d <= 3 and not (args.loop_tight and d > near)
                 (inside if ok else outside)[item][n] = True

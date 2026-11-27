@@ -280,3 +280,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   items, 55 with D = 7 (bones, gravel, meat, moss, mukmoux, saps, starch, worm). Under the mod the check's script
   reserve never acted (it learns the networks from --flow's records); the built reserve gates work from the layout.
   Queued **logi_L2e: L2 + `--loop-deep 7 --reserve-built`**.
+- logi_L1c (`--loop-deep 7`, users within a step of the nearest) built 8 reserve gates, now mukmoux and meat too, but
+  none for bones or saps ("belt ends"): the extra step took the cottongut food and fungal substrate (bones) and the
+  arqad comb (saps) into the loop, the last loop user stood at the belt's dead end, and a belt ending at its last user
+  gets no gate. **The deep rule now takes the users at the nearest distance only** (bones: the bonemeal maker; saps:
+  the two mukmoux food makers), in verify.py and tag.py alike. logi_L1c stopped at hour 0.8 for **logi_L1d**.
