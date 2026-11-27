@@ -84,7 +84,9 @@ button:active{transform:translateY(1px)}
       <span class="sw" style="background:var(--machE)"></span><span>Pole, chest, combinator</span>
     </div>
     <button id="copy">Copy blueprint string</button>
+    <button id="copy1" hidden>Copy with L1 parts</button>
     <p class="note" id="copied">Paste it in Factorio with Import string (needs the Py mods).</p>
+    <p class="note" id="l1note" hidden>"With L1 parts" adds what passed L1: pull deciders on wires, self-exits, overflow exits into chests (empty them, or give them a sink) and Py's fluid voids.</p>
     <h2 style="font-size:17px;margin-top:14px">Runs on this layout</h2>
     <ul class="runs" id="runs"></ul>
   </aside>
@@ -128,6 +130,7 @@ async function pick(s, lay) {
   const d = await (await fetch('data/' + encodeURIComponent(L.layout) + '.json')).json();
   if (cur !== s || curL !== L.layout) return;
   data = d; buildIndex(); fit();
+  $('copy1').hidden = !d.bp_l1; $('l1note').hidden = !d.bp_l1;
 }
 
 function buildIndex() {
@@ -208,6 +211,11 @@ $('zin').onclick = e => { e.stopPropagation(); zoom(1.4, map.clientWidth / 2, ma
 $('zout').onclick = e => { e.stopPropagation(); zoom(1 / 1.4, map.clientWidth / 2, map.clientHeight / 2); };
 $('fit').onclick = e => { e.stopPropagation(); fit(); };
 for (const b of document.querySelectorAll('.tools button')) b.addEventListener('pointerdown', e => e.stopPropagation());
+$('copy1').onclick = async () => {
+  if (!data || !data.bp_l1) return;
+  try { await navigator.clipboard.writeText(data.bp_l1); $('copied').textContent = 'Copied the blueprint with its L1 parts (' + data.bp_l1.length.toLocaleString() + ' characters).'; }
+  catch (e) { $('copied').textContent = 'The browser blocked copying here; the string is player_L1_blueprint.txt in the run folder.'; }
+};
 $('copy').onclick = async () => {
   if (!data) return;
   try { await navigator.clipboard.writeText(data.bp); $('copied').textContent = 'Copied (' + data.bp.length.toLocaleString() + ' characters). Paste it in Factorio with Import string.'; }

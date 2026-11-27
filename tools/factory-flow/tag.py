@@ -279,12 +279,17 @@ def merge_built(bp_obj, built_obj, pipes=()):
             nxt += 1
             extras.append(c)
             counts[e["name"]] += 1
+    # Every circuit wire the check built (also between entities the blueprint has: an exit or self-exit inserter
+    # wired to its machine, the pull network's wire hopping over the poles), each once.
+    have = {tuple(w) for w in bp.get("wires", [])} | {(w[2], w[3], w[0], w[1]) for w in bp.get("wires", [])}
     wires, wired = [], set()
     for a, ca, b, cb in built.get("wires", []):
-        if a in num and b in num and (num[a] > last or num[b] > last):
+        if a in num and b in num and (num[a], ca, num[b], cb) not in have:
             wires.append([num[a], ca, num[b], cb])
+            have.add((num[a], ca, num[b], cb)); have.add((num[b], cb, num[a], ca))
             wired.update((num[a], num[b]))
-    # (A machine an exit reads: its "read contents" setting.)
+    # (The circuit settings of wired entities the blueprint has: a machine's "read contents", a pull or self-exit
+    # inserter's enable condition, a machine's enable condition, a gate belt's condition and a sensor's read mode.)
     for e in bp["entities"]:
         m = matched.get(e["entity_number"])
         if e["entity_number"] in wired and m is not None and m.get("control_behavior") and "control_behavior" not in e:

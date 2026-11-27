@@ -96,11 +96,14 @@ def main():
             bstr = open(os.path.join(p, "best_output_string.txt")).read().strip()
             xs = [r[1] for r in rows] + [r[1] + r[3] for r in rows]
             ys = [r[2] for r in rows] + [r[2] + r[4] for r in rows]
-            json.dump({"names": names, "recipes": recipes, "e": rows, "bp": bstr}, open(os.path.join(dst, "data", d + ".json"), "w"), separators=(",", ":"))
+            pl = os.path.join(p, "player_L1_blueprint.txt")
+            bl1 = open(pl).read().strip() if os.path.exists(pl) else None
+            json.dump({"names": names, "recipes": recipes, "e": rows, "bp": bstr, "bp_l1": bl1}, open(os.path.join(dst, "data", d + ".json"), "w"), separators=(",", ":"))
             job = json.load(open(os.path.join(ROOT, "solves", "jobs", d + ".json"))) if os.path.exists(os.path.join(ROOT, "solves", "jobs", d + ".json")) else {}
             kind = "belts, local sinks" if (job.get("blocks") or {}).get("local_sinks") else "belts"
             row["layouts"].append({"layout": d, "kind": kind, "machines": len(plan["machines"]), "entities": len(rows),
-                                   "w": round(max(xs) - min(xs)), "h": round(max(ys) - min(ys)), "margin": plan.get("margin"), "runs": runs_for(d)})
+                                   "w": round(max(xs) - min(xs)), "h": round(max(ys) - min(ys)), "margin": plan.get("margin"), "runs": runs_for(d),
+                                   "l1": os.path.exists(os.path.join(p, "player_L1_blueprint.txt"))})
         # the board shows, per level, the best run over all layouts
         rank = {"pass": 2, "running": 1, "fail": 0}
         best = {}

@@ -140,3 +140,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   sink there) and Py's fluid voids. No reserve gate was placed (all 609 candidates were belt ends, which queue by
   themselves). **Py science 1 conquered at L1.**
 - TODO (deliverable): a player's blueprint with the L1 parts. `--export-built` already blueprints the whole test surface after set-up (pull deciders, self-exit wires, overflow exits, voids), but as the test copy (infinity chests at the ports); `tools/factory-flow/tag.py --built` merges only exits and voids into the run's own blueprint so far.
+- **Player's blueprint with the L1 parts** for py-1: a short check with the L1 flags and `--export-built`, then
+  `tag.py --built` (now merging every wire the check built, also between entities the blueprint already has, and
+  the circuit settings of every wired entity: self-exit and pull conditions, read modes). Py-1: 156 deciders, 6
+  overflow exits (fast inserter, steel chest), 32 valves with 19 exhaust vents and 13 sinkholes, 442 wires. In
+  `solves/py-science-pack-1_m2/player_L1_blueprint.txt`; the builds page has a second copy button for it.
