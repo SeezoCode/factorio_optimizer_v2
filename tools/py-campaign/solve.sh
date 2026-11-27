@@ -2,6 +2,7 @@
 # solve.sh <suffix> <margin> <threads> <science...>
 # Solves jobs/py_sciences/<science>.json one after another into solves/<science>_<suffix>, with the planner margin
 # and thread count given, no PNGs (FO_NO_IMAGES=1). Each run's log: solves/<science>_<suffix>/solve.log.
+# Runs the snapshot /opt/fo/current (see docs/CAMPAIGN_CONTEXT.md: never rebuild build/install under a running solve).
 # JOB_PATCH='{"blocks": {...}}' (environment) is merged into each job, dicts key by key.
 cd "$(dirname "$0")/../.."
 suffix=$1; margin=$2; threads=$3; shift 3
@@ -28,6 +29,6 @@ json.dump(j, open(job, "w"), indent=1)
 PY
   mkdir -p "$out"
   echo "$(date -u +%FT%TZ) start $out"
-  nice -n 0 build/install/factorio_optimizer_v2/bin/factorio_optimizer_v2 --config="$job" --out="$out" --plain > "$out/solve.log" 2>&1
+  nice -n 0 /opt/fo/current/bin/factorio_optimizer_v2 --config="$job" --out="$out" --plain > "$out/solve.log" 2>&1
   echo "$(date -u +%FT%TZ) end $out exit $? $(tail -n 1 $out/solve.log)"
 done

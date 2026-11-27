@@ -41,6 +41,12 @@ data class PlacedEntity(
     val modules: List<String>? = null,
     /** Inserters: a blacklist filter, takes everything but these (null: none; [item] is a whitelist of one). */
     val blacklist: List<String>? = null,
+    /**
+     * Inserters: a whitelist of several items (null: none; one item is [item]). Out of a machine whose products going
+     * elsewhere outnumber the inserter's filter slots, the few that go onto a mixed belt (Py's slaughterhouses: eight
+     * products, a long-handed inserter with three slots).
+     */
+    val whitelist: List<String>? = null,
     /** Crafting machines: items for construction bots to bring into input slots once (production loop seeds): item, slot, count. */
     val seeds: List<Triple<String, Int, Int>>? = null,
     /** Infinity pipes (test copies): hold the pipe at most this full (0..1), [drain] or not. */

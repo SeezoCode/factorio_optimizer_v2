@@ -215,9 +215,9 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             }
         }
         // The game drops an inserter given more filters than it has slots (Py's long-handed inserter has 3).
-        ents.filter { it.kind == Kind.INSERTER && (it.item != null || it.blacklist != null) }.forEach { ins ->
+        ents.filter { it.kind == Kind.INSERTER && (it.item != null || it.blacklist != null || it.whitelist != null) }.forEach { ins ->
             val slots = GameConstants.INSERTERS[ins.name]?.filterSlots ?: return@forEach
-            val filters = ins.blacklist?.size ?: 1
+            val filters = ins.blacklist?.size ?: ins.whitelist?.size ?: 1
             if (filters > slots) err(ErrorType.UNSUPPORTED, ins.tile, "${ins.name} has $filters filters but $slots filter slots: the game leaves it out")
         }
     }
@@ -420,7 +420,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
      * (a group of items leaving on a mixed belt counts as one); else the machine's product.
      */
     private fun takes(ins: PlacedEntity, mi: MachineSpec): String =
-        ins.item?.let { mi.filterAliases[it] ?: it } ?: ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl }.singleOrNull() } ?: mi.product
+        ins.item?.let { mi.filterAliases[it] ?: it } ?: ins.whitelist?.let { wl -> wl.map { mi.filterAliases[it] ?: it }.distinct().singleOrNull() }
+            ?: ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl }.singleOrNull() } ?: mi.product
 
     // ---- 5. inserter ends ----
     private fun checkInserterEnds() {
@@ -435,7 +436,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             if (!okDrop) err(ErrorType.INSERTER_BAD_DROP, ins.tile, "${ins.name} drops into ${drop?.name ?: "nothing"} at ${ins.dropTile}")
             // Out of a machine with several products, an unfiltered inserter takes all of them.
             if (pick?.kind == Kind.MACHINE) machineInfo(pick)?.let { mi ->
-                val left = ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl } }
+                val left = ins.whitelist?.let { wl -> wl.map { mi.filterAliases[it] ?: it }.distinct().filter { it in mi.outputs } }
+                    ?: ins.blacklist?.let { bl -> mi.outputs.keys.filter { it !in bl } }
                 if (ins.item == null && mi.multiProduct && (left == null || left.size != 1)) {
                     err(ErrorType.INSERTER_WRONG_ITEM, ins.tile, "${ins.name} takes ${(left ?: mi.outputs.keys).sorted()} out of ${pick.recipe}; it needs a filter that leaves one")
                 }
@@ -1235,7 +1237,7 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
 
     /** Whether [ins] takes [item] (no filter, a whitelist of it, or a blacklist without it). */
     private fun lets(ins: PlacedEntity, item: String): Boolean =
-        if (ins.item != null) ins.item == item else ins.blacklist?.contains(item) != true
+        if (ins.item != null) ins.item == item else ins.whitelist?.contains(item) ?: (ins.blacklist?.contains(item) != true)
 
     /** A spoilage drain: from a belt into a chest, filtered to a spoil result or leaving listed items behind. */
     private fun isDrain(ins: PlacedEntity): Boolean {

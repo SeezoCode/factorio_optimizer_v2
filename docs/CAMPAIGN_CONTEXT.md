@@ -32,7 +32,10 @@ current; the log of what was tried is [CAMPAIGN_LOG.md](CAMPAIGN_LOG.md), the re
 Set up as in [CLOUD_SETUP.md](CLOUD_SETUP.md); the container is lost when the session ends, so redo it there.
 
 - Java 25: `/opt/jdk/jdk-25*` (the container's own JAVA_HOME is Java 21: always set JAVA_HOME explicitly).
-- Build: `JAVA_HOME=/opt/jdk/jdk-25.0.5.1+2 ./gradlew -q installDist -Porg.gradle.java.installations.paths=$JAVA_HOME`
+- Build: `JAVA_HOME=/opt/jdk/jdk-25.0.5.1+2 ./gradlew -q jar -Porg.gradle.java.installations.paths=$JAVA_HOME`, then
+  snapshot: `V=/opt/fo/$(date +%m%d-%H%M); cp -r build/install/factorio_optimizer_v2 $V; cp build/libs/*.jar $V/lib/;
+  ln -sfn $V /opt/fo/current`. **Never run installDist while a solve runs** (it overwrites the jars under the JVM);
+  solve.sh and resume.sh run `/opt/fo/current`. (The m2 queue's `solve_queue.sh` still runs build/install.)
 - Factorio 2.1.24 headless `/opt/factorio`, mods `/opt/factorio-user/mods` (23 Py mods; graphics mods without
   images from branch `mods-upload`), `/usr/share/factorio -> /opt/factorio/data`.
 - `FACTORIO=/opt/factorio/bin/x64/factorio FACTORIO_USER_DIR=/opt/factorio-user` for verify.py (go.sh sets them).
@@ -44,6 +47,9 @@ Set up as in [CLOUD_SETUP.md](CLOUD_SETUP.md); the container is lost when the se
 
 - `solve_queue.sh <suffix> <margin> <threads> <science...>`: solves `jobs/py_sciences/<science>.json` into
   `solves/<science>_<suffix>` one after another (job written to `solves/jobs/<science>_<suffix>.json`).
+- `resume.sh <layout>`: continue a failed factory solve with the current snapshot (keeps finished blocks); logs to
+  `solves/queue_resume.log`. Delete a failed run's old `end` line from its queue log first, or launch.py may take a
+  preview for the finished layout.
 - `go.sh <run> <layout> <verify flags>`: copies a layout into `solves/<run>` and starts verify.py in the background
   (`verify.out`, `cmd.txt`).
 - `launch.py add <run> <layout> <level> [flags]`, `launch.py sched --max N` (scheduler loop, keeps N games

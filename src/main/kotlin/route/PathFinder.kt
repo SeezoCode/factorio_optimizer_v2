@@ -1875,7 +1875,12 @@ class PathFinder(internal val p: RouteProblem) {
                 val item = if (v.role == Role.CONSUMER) v.base.item.takeIf { v.machine != null && plan.machines[v.machine!!].machine == "recycler" }
                     // (By the game's name: a raw by-product is "stone#byproduct" here, "stone" to the machine and the game.)
                     else if (mixedOut) toMixed.singleOrNull()?.takeIf { products.size > 1 }?.let { data.gameName(it) } else filterFor(v.machine, v.base.item)
-                val blacklist = if (!mixedOut || toMixed.size == 1) null else products.filter { plan.mixed[it] != v.base.item }.map { data.gameName(it) }.distinct().sorted().ifEmpty { null }
+                val blacklist0 = if (!mixedOut || toMixed.size == 1) null else products.filter { plan.mixed[it] != v.base.item }.map { data.gameName(it) }.distinct().sorted().ifEmpty { null }
+                // A blacklist longer than any allowed inserter of this reach has slots: the products that do go onto
+                // the mixed belt as a whitelist, when that is shorter (the game drops an inserter given too many).
+                val whitelist = blacklist0?.takeIf { bl -> GameConstants.inserter(withFilterSlots(name, bl.size)).filterSlots < bl.size }
+                    ?.let { bl -> toMixed.map { data.gameName(it) }.distinct().sorted().takeIf { it.size < bl.size } }
+                val blacklist = blacklist0.takeIf { whitelist == null }
                 // Spoilage: out of a machine of several products that holds something spoiling, an inserter leaves the
                 // other products in (a blacklist) and so takes its own and the spoilage.
                 val spoilOut = blacklist == null && item != null && v.role == Role.PRODUCER && config.spoilage.mode == "drain" &&
@@ -1885,8 +1890,8 @@ class PathFinder(internal val p: RouteProblem) {
                     out += PlacedEntity(withFilterSlots(name, others.size), Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, net = n.planId, blacklist = others)
                     return@forEach
                 }
-                val filters = if (item != null) 1 else blacklist?.size ?: 0
-                out += PlacedEntity(withFilterSlots(name, filters), Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId, blacklist = blacklist)
+                val filters = if (item != null) 1 else blacklist?.size ?: whitelist?.size ?: 0
+                out += PlacedEntity(withFilterSlots(name, filters), Kind.INSERTER, opt.insTile.x, opt.insTile.y, opt.insDir, item = item, net = n.planId, blacklist = blacklist, whitelist = whitelist)
             }
         }
         pipes?.let { out += it.entities() }

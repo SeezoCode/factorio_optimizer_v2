@@ -71,7 +71,7 @@ private class Exits(val ents: ArrayList<PlacedEntity>) {
     }
 
     /** Whether inserter [i] may carry [item]: its filter is that item, or it has none and does not refuse it. */
-    fun carries(i: Int, item: String) = ents[i].item?.let { it == item } ?: (ents[i].blacklist?.contains(item) != true)
+    fun carries(i: Int, item: String) = ents[i].item?.let { it == item } ?: ents[i].whitelist?.contains(item) ?: (ents[i].blacklist?.contains(item) != true)
 
     /** The inserters that put a machine's output onto [chain]. */
     fun makersOnto(chain: Set<Tile>): List<Int> = chain.flatMap { drops[it] ?: emptyList() }.filter { ents[it].pickupTile in machineAt }

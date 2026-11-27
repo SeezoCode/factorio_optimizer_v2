@@ -156,10 +156,11 @@ fun Layout.toBlueprint(q: BuildQuality = BuildQuality()): Blueprint {
                 else -> null
             },
             // Filters leave out the quality, so they match an item of any quality.
-            useFilters = if (e.kind == Kind.INSERTER && (e.item != null || e.blacklist != null)) true else null,
+            useFilters = if (e.kind == Kind.INSERTER && (e.item != null || e.blacklist != null || e.whitelist != null)) true else null,
             filters = when {
                 (e.kind == Kind.CHEST && e.request == null || e.kind == Kind.INSERTER) && e.item != null -> listOf(filter(1, e.item))
                 e.kind == Kind.INSERTER && e.blacklist != null -> e.blacklist.mapIndexed { i, it -> filter(i + 1, it) }
+                e.kind == Kind.INSERTER && e.whitelist != null -> e.whitelist.mapIndexed { i, it -> filter(i + 1, it) }
                 else -> null
             },
             bar = e.bar.takeIf { e.kind == Kind.CHEST },
@@ -269,13 +270,14 @@ fun Blueprint.toLayout(w: Int, h: Int): Layout {
                 Kind.INFINITY_CHEST -> b.infinitySettings?.get("filters")?.jsonArray?.firstOrNull()
                     ?.jsonObject?.get("name")?.jsonPrimitive?.content
                 Kind.CHEST -> b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) } ?: requestOf(b)?.first
-                Kind.INSERTER -> if (b.useFilters == true && b.filterMode != "blacklist") b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) } else null
+                Kind.INSERTER -> if (b.useFilters == true && b.filterMode != "blacklist" && (b.filters?.size ?: 0) <= 1) b.filters?.firstOrNull()?.let { withQuality(it.name, it.quality) } else null
                 else -> null
             },
             fluid = if (kind == Kind.INFINITY_PIPE) b.infinitySettings?.get("name")?.jsonPrimitive?.content else null,
             drain = kind == Kind.INFINITY_PIPE && b.infinitySettings?.get("mode")?.jsonPrimitive?.content == "exactly" &&
                 b.infinitySettings["percentage"]?.jsonPrimitive?.content?.toDoubleOrNull() == 0.0,
             blacklist = if (kind == Kind.INSERTER && b.useFilters == true && b.filterMode == "blacklist") b.filters?.map { withQuality(it.name, it.quality) } else null,
+            whitelist = if (kind == Kind.INSERTER && b.useFilters == true && b.filterMode != "blacklist" && (b.filters?.size ?: 0) > 1) b.filters?.map { withQuality(it.name, it.quality) } else null,
             mirror = b.mirror == true,
             w = ew,
             h = eh,

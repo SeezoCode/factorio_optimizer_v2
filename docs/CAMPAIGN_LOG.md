@@ -42,3 +42,13 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - Games cut from 3 to 2 at a time while three solves run (4 cores): the solves gate everything after them.
 - **Py science 1 L5 (fed)**: PASS, 99.8% of plan over 3 measured hours.
 - **Py science 1 L4 (ideal)**: PASS, 100.0% of plan over 6 measured hours.
+- **Py science 2 m2b (blocks of up to 12): did not lay out either**, 37 minutes: 26 of 27 blocks laid out, block 7
+  (three slaughterhouses among 16 machines) never: water unrouted on some tries, and on most the validator's
+  "long-handed-inserter has 6 filters but 3 filter slots". A machine with many products puts the ones that go onto
+  a mixed by-product belt there through one inserter with a blacklist of its other products; Py's simik render has
+  eight, six going elsewhere, and no long-handed inserter has six slots.
+- **Planner fix: whitelists of several items.** Where the blacklist does not fit any allowed inserter of the reach
+  and the products going onto the mixed belt are fewer, the inserter gets those as a whitelist instead
+  (`PlacedEntity.whitelist`; blueprint writer and reader, validator, overflow rule and resume files know it).
+  Built into a snapshot `/opt/fo/current` (solves now run from there: a rebuild of `build/install` under a running
+  solve can crash it; one was stopped seconds before its copy step). `resume.sh` continues m2b with it (01:53 UTC).
