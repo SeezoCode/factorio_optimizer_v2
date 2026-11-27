@@ -191,3 +191,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   come after. Production (1,020 machines, 24 blocks) has not stitched in 8 hours of attempts on this machine, and
   space is bigger than utility. With 4 cores and about 51 hours left, the CPU goes to production's and py-4's
   stitches and to the medium sciences' runs. Utility and space stay unsolved on belts here; see the report.
+- **User (16:00 UTC): make sure the sciences at chemical and below work before continuing.** Production's stitch paused (SIGSTOP), py-3 runs moved to the end of the queue, 4 games at once: logistic, py-2 and chemical get the machine (L4 running, then L3 with 12 h windows, L2; L1 again once it has the parts these factories need).

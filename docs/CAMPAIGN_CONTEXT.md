@@ -23,6 +23,9 @@ current; the log of what was tried is [CAMPAIGN_LOG.md](CAMPAIGN_LOG.md), the re
 - Use all the CPU. Let runs take as long as they need.
 - **Belts only, no robots** (user, 2026-11-26 23:26): layouts must be belt-built; **sinks are allowed**
   (`blocks.local_sinks`: by-products end in a chest or Py's fluid void beside their block).
+- **Chemical and below first** (user, 2026-11-27 16:00): make sure automation, py-1, logistic, military, py-2 and
+  chemical work before continuing with py-3, production, py-4 (utility and space were stopped earlier).
+  Production's stitch is paused (SIGSTOP, pid in `pgrep -f resume=solves/production`), py-3 runs at the queue's end.
 - Push only to the branch `claude/practical-davinci-i6iqkj-6m4aie` (the user chose that; not main).
 - **Do not stop** unless (a) stuck and progress stalls, (b) a very important decision, (c) **2026-11-29 20:00 CET
   (19:00 UTC)**: then report progress. The user is in exam season and will not intervene much.
