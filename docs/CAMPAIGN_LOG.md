@@ -217,3 +217,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   warm start gave every machine two crafts' worth of each ingredient, a catalyst too, which overfills a ring where
   two machines hand their catalyst to each other. **Check fix (fair kit):** a catalyst (an item the recipe gives
   back) is primed with one craft's worth, as a player puts one in. Restarted as logi_L2c (18:15 UTC).
+- **py2_L3b at hour 2.3**: 8 pack crafts, then 1 and 0 an hour after the starters. Chain: the pack lacks casein,
+  casein the casein pulps, the casein mixture lacks milk. The milk barrel emptier (a furnace-type barrel machine,
+  recipe nil while idle, planned empty-milk-barrel) stands switched off by the check's script (1,691 samples
+  disabled_by_script) with 3 milk barrels in its input; the korlex milker holds all its ingredients and is switched
+  off too. Which rule holds them is not traced yet (not flagged short, not capped). The desktop's py-2 never held
+  under the rules either. Left running.
