@@ -210,3 +210,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   in. Two check fixes (L3 rules, script): a maker counts as full of a carrier only while its output holds that
   carrier; `--relief-own-jam` also lets out a product it takes while its input holds a craft of it (surplus at the
   output limit). The running L3/L2 runs keep the old check; new runs take these.
+- 17:00 UTC: logi_L3, py2_L3, chem_L3 stopped and restarted as *_L3b with the fixed check.
