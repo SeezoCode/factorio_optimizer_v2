@@ -211,3 +211,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   carrier; `--relief-own-jam` also lets out a product it takes while its input holds a craft of it (surplus at the
   output limit). The running L3/L2 runs keep the old check; new runs take these.
 - 17:00 UTC: logi_L3, py2_L3, chem_L3 stopped and restarted as *_L3b with the fixed check.
+- 17:10 UTC: logi_L2 (mod) stopped at hour 1.1 (no cage handed in: the same carrier-kit fault) and restarted as logi_L2b.
