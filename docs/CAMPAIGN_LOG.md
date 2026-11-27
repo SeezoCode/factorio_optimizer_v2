@@ -79,3 +79,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - **Py science 1 L3 (rules)**: PASS over 24 game hours, 100.0% of plan.
 - **Py science 1 L2 (mod)**: PASS over 24 game hours, 100.0% of plan.
 - **Military science L5 (fed)**: PASS, 99.8% of plan over 3 measured hours.
+- **Chemical science m2 solved** 04:25 UTC: 487 machines in 19 blocks, 561 x 486, after 1 h 55 min of stitching (converged once it had the cores). Ladder queued. Py-3 continued; production resumes after py-3.
