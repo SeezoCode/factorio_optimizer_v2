@@ -9,7 +9,8 @@ for _, m in pairs(storage.run.machines) do
     for _, it in pairs(e.get_inventory(defines.inventory.crafter_input).get_contents()) do inp[#inp + 1] = it.name .. "=" .. it.count end
     for _, it in pairs(e.get_inventory(defines.inventory.crafter_output).get_contents()) do outp[#outp + 1] = it.name .. "=" .. it.count end
     out[#out + 1] = string.format("%s at %d,%d status %s in [%s] out [%s] crafts %d", RECIPE, e.position.x, e.position.y, tostring(e.status), table.concat(inp, " "), table.concat(outp, " "), e.products_finished)
-    for _, i in pairs(e.surface.find_entities_filtered { type = "inserter", area = { { e.position.x - 4, e.position.y - 4 }, { e.position.x + 4, e.position.y + 4 } } }) do
+    local bb = e.bounding_box
+    for _, i in pairs(e.surface.find_entities_filtered { type = "inserter", area = { { bb.left_top.x - 3, bb.left_top.y - 3 }, { bb.right_bottom.x + 3, bb.right_bottom.y + 3 } } }) do
       local into, from = i.drop_target == e, i.pickup_target == e
       if into or from then
         local b = into and i.pickup_target or i.drop_target

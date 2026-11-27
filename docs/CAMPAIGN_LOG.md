@@ -192,3 +192,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   space is bigger than utility. With 4 cores and about 51 hours left, the CPU goes to production's and py-4's
   stitches and to the medium sciences' runs. Utility and space stay unsolved on belts here; see the report.
 - **User (16:00 UTC): make sure the sciences at chemical and below work before continuing.** Production's stitch paused (SIGSTOP), py-3 runs moved to the end of the queue, 4 games at once: logistic, py-2 and chemical get the machine (L4 running, then L3 with 12 h windows, L2; L1 again once it has the parts these factories need).
+- Logistic at L1 traced further (probe on logi_L4): the two mukmoux renders hand their programmable speaker (a
+  catalyst, 1 in, 1 out) to each other directly; the stall at L1 was upstream, caged mukmoux short because the calf
+  breeder lacked water barrels and the barrel filler did not run under the built pull. That is the barrel loop the
+  desktop nights of 11-17 to 11-23 fought with script rules (L3) and the mod (L2). Building all those rules from
+  combinators is a large project, so for logistic, py-2 and chemical the plan is L4, L3, L2 (the mod, a player can
+  install it), and L1 only with time left. `probes/machine.lua` now searches around the machine's bounding box.
