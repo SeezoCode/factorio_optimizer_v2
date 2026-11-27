@@ -53,3 +53,13 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   Built into a snapshot `/opt/fo/current` (solves now run from there: a rebuild of `build/install` under a running
   solve can crash it; one was stopped seconds before its copy step). `resume.sh` continues m2b with it (01:53 UTC).
 - **Automation science L0 (plain)**: PASS over 24 game hours, 100% of plan at the port; 72 to 74 pack crafts every hour after hour 2, nothing handed in after the warm-up, no flow control. **Conquered at every level, L5 to L0.**
+- **Validator fix: a fluid void takes its fluid at any temperature.** Production science s2 spent 100 minutes on
+  blocks 5 (the uf6 enrichment cascade: uf6#10 to uf6#397) and 20 (outlet gas at 250 to 1000), rejected again and
+  again as FLUID_MIX ("uf6 and uf6#20 share one pipe network") or FLUID_MISSING at an `*-pyvoid-*` building. A local
+  sink's void building has its recipe's fluid under the game's plain name (uf6-pyvoid-fluid takes "uf6") while the
+  pipe from the maker carries the program's temperature variant: the validator counted two fluids on one net (and
+  the void as unfed). In the game the void takes uf6 at any temperature. Now a void's connection drains whatever
+  variant of its fluid the net carries. Snapshot `/opt/fo/1127-0210`.
+- Both solve queues stopped (their loops had the old binary path baked in); chemical m2 left to finish (a waiter
+  writes its end line); production s2 resumed with the fix (02:10 UTC), keeping its 18 laid-out blocks.
+- Tests: BlueprintTest (with a new whitelist round trip), OverflowLastTest, SpoilageTest pass.

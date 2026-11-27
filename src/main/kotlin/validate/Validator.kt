@@ -1,5 +1,6 @@
 package validate
 
+import data.gameName
 import data.GameConstants
 import data.RootData
 import data.fluidBoxes
@@ -1451,12 +1452,22 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             // (A local one leaves through the building that destroys it: its connection is the drain.)
             else if (!o.local) drains.getOrPut(find(i)) { mutableSetOf() } += o.item
         }
+        // A fluid void (a local sink's sinkhole or exhaust pipe) takes its fluid at any temperature, under the game's
+        // name: it drains whatever variant of that fluid its network carries (uf6#20 into uf6-pyvoid-fluid).
+        val isVoid = { m: Int -> GameConstants.isFluidVoidRecipe(ents[m].recipe) }
         connList.forEachIndexed { k, (m, c) ->
             if (!attached[k]) return@forEachIndexed
             val r = find(ents.size + k)
             if (c.fluid == null) { err(ErrorType.FLUID_LEAK, c.tile, "a pipe touches an unused fluid connection of ${ents[m].recipe}"); return@forEachIndexed }
+            if (isVoid(m) && c.flow != GameConstants.Flow.OUTPUT) return@forEachIndexed
             if (c.flow == GameConstants.Flow.OUTPUT) supplies.getOrPut(r) { mutableSetOf() } += c.fluid
             else drains.getOrPut(r) { mutableSetOf() } += c.fluid
+        }
+        connList.forEachIndexed { k, (m, c) ->
+            if (!attached[k] || c.fluid == null || !isVoid(m) || c.flow == GameConstants.Flow.OUTPUT) return@forEachIndexed
+            val r = find(ents.size + k)
+            val g = gameName(c.fluid)
+            drains.getOrPut(r) { mutableSetOf() } += (supplies[r].orEmpty().filter { gameName(it) == g }.ifEmpty { listOf(c.fluid) })
         }
         (supplies.keys + drains.keys).forEach { r ->
             val all = (supplies[r] ?: emptySet()) + (drains[r] ?: emptySet())
@@ -1486,7 +1497,8 @@ class Validator(private val layout: Layout, private val spec: ValidationSpec) {
             val r = find(ents.size + k)
             val linked = attached[k]
             val tiny = machineInfo(ents[m])?.fluidDemand?.get(f)?.let { it <= TINY_RATE } == true
-            if (c.flow == GameConstants.Flow.INPUT && !tiny && (!linked || supplies[r]?.contains(f) != true)) {
+            val supplied = if (isVoid(m)) supplies[r]?.any { gameName(it) == gameName(f) } == true else supplies[r]?.contains(f) == true
+            if (c.flow == GameConstants.Flow.INPUT && !tiny && (!linked || !supplied)) {
                 err(ErrorType.FLUID_MISSING, c.tile, "${ents[m].recipe} gets no $f here")
             }
             if (c.flow == GameConstants.Flow.OUTPUT && (!linked || drains[r]?.contains(f) != true)) {
