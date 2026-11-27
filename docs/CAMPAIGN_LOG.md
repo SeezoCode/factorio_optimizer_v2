@@ -171,3 +171,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - **Chemical science L5 (fed)**: PASS, 99.8% of plan over 3 measured hours; fed by the check: 361 items.
 - 13:50 UTC: py-4 s4 (blocks of 16): all 51 blocks laid out in 1 h 15 min; stitching (nice 5, behind production). Production's global routing: floorplan 1 down to 14 corridor sides over capacity (from 5,234).
 - **Military science L1 (built)**: PASS over 24 game hours, 100.0% of plan. **Military science conquered at L1** (L0 running).
+- **Py science 3 L5 (fed)**: PASS, 99.8% of plan over 3 measured hours; fed by the check: 447 items. Every laid-out science now passes L5.
