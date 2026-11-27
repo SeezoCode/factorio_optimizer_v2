@@ -133,3 +133,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   for py-4 (its m2 solve, with no local sinks at all, stopped with 23 of 26 blocks laid out: its stitch would have
   had the same edge links), then utility, space: queue `solves/queue_s3.log`.
 - **Logistic science L5 (fed)**: PASS, 99.8% of plan over 3 measured hours (418 machines in game, 1.2x real time).
+- **Py science 1 L1 (built) PASS over 24 game hours** (py1_L1d, 08:30 UTC): 24 to 25 pack crafts every hour from
+  hour 6 (24.5 due), the port at 100% of plan, nothing handed in after the warm-up. Built parts that did it: the
+  pull deciders, one self-exit (coarse: the moss farm's exit to the port belt works only while it holds 30 coarse),
+  the overflow exits (18,470 items in the last 4 h, 1.28/s: sodium hydroxide 10,500, ash 7,000; a real chest needs a
+  sink there) and Py's fluid voids. No reserve gate was placed (all 609 candidates were belt ends, which queue by
+  themselves). **Py science 1 conquered at L1.**

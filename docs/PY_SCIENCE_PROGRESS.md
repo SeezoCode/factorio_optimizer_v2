@@ -9,18 +9,18 @@ written by `tools/py-campaign/progress.py`; the sections below it are written by
 | Science | Machines | Fairest pass | L5 fed | L4 ideal | L3 rules | L2 mod | L1 built | L0 plain |
 |---|---:|---|---|---|---|---|---|---|
 | Automation science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
-| pY science pack 1 | 50 | **L2 mod** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | running, 21.6 h | stopped |
+| pY science pack 1 | 50 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | stopped |
 | Logistic science pack | 386 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · |
 | Military science pack | 13 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · |
 | pY science pack 2 | 411 | — | running, 3.2 h | · | · | · | · | · |
 | Chemical science pack | 487 | — | running, 0 h | · | · | · | · | · |
-| pY science pack 3 | 569 | — | · | · | · | · | · | · |
+| pY science pack 3 | 569 | — | running, 0 h | · | · | · | · | · |
 | Production science pack | solving | | · | · | · | · | · | · |
 | pY science pack 4 | solving | | · | · | · | · | · | · |
 | Utility science pack | solving | | · | · | · | · | · | · |
 | Space science pack | solving | | · | · | · | · | · | · |
 
-Updated 2026-11-27 08:27 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+Updated 2026-11-27 08:36 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
 <!-- campaign:end -->
 
 ## Conquered
@@ -30,6 +30,9 @@ Sciences that passed at some level, newest last, with the fairest level they pas
 - **Automation science: L0, the plain blueprint** (2026-11-27 02:00 UTC). Passed at every level from L5 to L0; at
   L0 with a warm start and nothing else: 72 to 74 pack crafts every hour from hour 3 to 24 against 72 due, the
   port at 100% of plan. Layout `automation-science-pack_m2`: 13 machines in one 76 x 76 block.
+- **Py science 1: L1, real parts only** (2026-11-27 08:30 UTC). Passed L5 to L2 and the built L1 (pull from deciders,
+  a self-exit for the moss farm's coarse, overflow exits, Py's fluid voids, no script): 24 h, 24 to 25 pack crafts
+  every hour from hour 6, the port at 100%. The plain blueprint (L0) fails on the coarse loop; see below.
 
 ## By science
 
@@ -60,11 +63,17 @@ Ahead of plan in the first hours at every level (the warm start's stocks), then 
 | L3 rules | py1_L3 | pass, 24 h, 100%: 24 to 25 pack crafts every hour from hour 3 (24.5 due) |
 | L2 mod | py1_L2 | pass, 24 h, 100%, hour for hour as L3 |
 | L1f | py1_L1f | stopped at hour 2.9: 4 pack crafts, no machine working (the old L1's script quotas with built pull) |
-| L1 built | py1_L1 | **fail**: 66 pack crafts by hour 2.4, none after; stopped at hour 10 |
+| L1 built (first form: pull only) | py1_L1 | **fail**: 66 pack crafts by hour 2.4, none after; stopped at hour 10 |
+| L1 built (gates on every item) | py1_L1b | **fail**: 2 pack crafts by hour 6.4, the gates kept the slow items' belts still |
+| L1 built (gates for loop items, pickup-tile gates) | py1_L1c | **fail**: the pickup-tile gate shut the moss farm's own coarse return (a deadlock of the check's making) |
+| **L1 built** (pull, self-exit, gates for loop items) | py1_L1d | **pass, 24 h, 100%**: 24 to 25 every hour from hour 6 |
 | L0 plain | py1_L0 | **fail**: 52 by hour 2.4, 2 after; stopped at hour 7 |
 
 Why L1 and L0 fail: the moss farm's coarse loop. The farm takes 15 coarse a craft and gives coarse back (0.036/s made,
 0.031/s used); the 2% surplus leaves by an output port at the end of the farm's belt, which takes its share whether
 the farm is short or not. Once the farm fell behind, the port kept draining the loop and it never restarted; moss,
 fawogae substrate and the pack stopped behind it. The rules and the mod shut that port for a loop's own item and
-keep a reserve in front of the farm. The fair-level fix still to build: a reserve gate from real parts.
+keep a reserve in front of the farm. The fair-level fix (L1): a **self-exit** from real parts. The farm's inserter
+onto the port belt gets a green wire from the farm (reading its contents) and the condition coarse >= 30, so the
+farm's own two-tile return fills first and only what it cannot hold leaves. For L0 the planner would have to put that
+wire and condition into the blueprint itself.
