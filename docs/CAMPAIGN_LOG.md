@@ -179,3 +179,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - Production's global routing: one floorplan fitted at 14:05 (1257 x 1069, 934 links, 15 rounds) and is in fine
   routing; another is down to 20 sides over capacity.
 - **Military science L0 (plain)**: PASS over 24 game hours, 100.0% of plan. **Military science conquered at L0** (the plain blueprint).
+- **Logistic, py-2 and chemical at L1: stopped** (15:35 UTC) at game hour 0.5 to 1.8, each with 2 pack crafts (the
+  warm start) and none after. Logistic traced: the calf breeder (mukmoux-calf-3) lacks water barrels and nothing in
+  the factory makes them; the mukmoux render (full-render-mukmoux-music) stands with its output full of programmable
+  speakers, a catalyst it takes back and nothing returns to it (the desktop's script rule `--relief-own-jam` was for
+  this); dozens of machines at 0 crafts, switched off by the pull deciders. Built L1 needs more parts for these
+  factories (a carrier filler loop, a catalyst return), and each 12-hour attempt costs about 12 real hours.
+  **Changed order**: L4 (ideal) for the four medium sciences now, then L3 (12 h windows), L1 again later.
