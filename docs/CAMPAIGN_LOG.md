@@ -315,3 +315,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   maker does hear the breeders' demand; it stood short of fiberboard, behind it treated wood, creosote, naphthalene oil,
   high distillate and the oil refinery short of steam (from the geothermal exchanger on the same pipe segment).
   Restarted as **logi_L1f** (the same fixes) to see whether that recurs; no code change from this.
+- 23:10 UTC: **logi_L2s (mod + starters) past hour 3.5, where logi_L2d's loop died: 34 packs of 23 due**; py2_L2
+  20 of 14 (266% in the last stretch). chem_L2 stopped at hour 3.0, 8 of 18 (34% in hour 3): its packs now wait on
+  rubber, behind it latex, creamy latex, saps and the mk04 sap trees, whose maker lacks fertilizer while the mulcher
+  stands waiting for space with 15 fertilizer in its output, and the mod holds fertilizer-3 off. Started
+  **chem_L2s** (mod + starters, `--loop-deep 7`).
