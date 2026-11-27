@@ -158,3 +158,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   with `blocks.corridor` 40 instead of 20 (09:28 UTC; the blocks are kept, the floorplan is new), at priority. The
   s3 queue went on to py-4.
 - **Military science L3 (rules)**: PASS over 24 game hours, 100.0% of plan.
+- **Production s3 with 40-tile corridors: no convergence either** (2 h): 906, 1,125, 2,556, 2,510, 2,593 conflicts at
+  about 1,050 to 1,240 tiles a side. Resumed again (11:30 UTC) with `blocks.stitch` "global" (corridors sized on a
+  coarse grid from every link's demand before any fine routing; docs/STITCH_REWRITE.md), corridors 40.
