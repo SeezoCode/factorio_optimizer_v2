@@ -80,3 +80,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - **Py science 1 L2 (mod)**: PASS over 24 game hours, 100.0% of plan.
 - **Military science L5 (fed)**: PASS, 99.8% of plan over 3 measured hours.
 - **Chemical science m2 solved** 04:25 UTC: 487 machines in 19 blocks, 561 x 486, after 1 h 55 min of stitching (converged once it had the cores). Ladder queued. Py-3 continued; production resumes after py-3.
+- **L1 redefined** (04:35 UTC): it was the fair set plus `--flow --no-pull --pull-built`, but `--flow` brings the
+  check's script quotas and belt gates, so it was not "real parts only". Now L1 = the fair set plus `--pull-built`
+  (pull from deciders and enable conditions built in the game), no script flow rules. The two runs of the old kind
+  are kept as level **L1f**: automation passed it (24 h, 100%); py-1 under it made 4 pack crafts in 2.9 h with no
+  machine working (stopped). Both rerun under the new L1.

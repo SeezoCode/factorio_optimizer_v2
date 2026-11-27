@@ -12,7 +12,7 @@ solves/<run>. Levels go from the most help to none (see docs/CAMPAIGN_CONTEXT.md
     L4 ideal    ideal transport (virtual robots, fluids too), every machine metered to its plan, surplus deleted
     L3 rules    belts as built; the check's flow rules by script (the rule set that passes logistic science)
     L2 mod      the same rules run by the factory-flow mod, as a player would install it
-    L1 built    real parts only: overflow exits and voids built in game, pull from deciders on wires
+    L1 built    real parts only: overflow exits and voids built in game, pull from deciders on wires (no script rules)
     L0 plain    the blueprint as built, a warm start and loop starters during the warm-up, nothing else
 """
 import json, os, re, subprocess, sys, time
@@ -31,7 +31,10 @@ LEVELS = {
            7200, 6 * 3600),
     "L3": ("rules", FAIR + RULES, 7200, 22 * 3600),
     "L2": ("mod", FAIR + ["--flow-mod"] + RULES[1:], 7200, 22 * 3600),
-    "L1": ("built", FAIR + "--flow --no-pull --pull-built".split(), 7200, 22 * 3600),
+    # Real parts only: overflow exits, voids and pull built from deciders and enable conditions; no script flow rules.
+    # (Until 2026-11-27 04:30 L1 was FAIR + --flow --no-pull --pull-built, whose quotas and gates are the check's script:
+    # those runs are kept as level L1f.)
+    "L1": ("built", FAIR + ["--pull-built"], 7200, 22 * 3600),
     "L0": ("plain", ["--prime-all"], 7200, 22 * 3600),
 }
 

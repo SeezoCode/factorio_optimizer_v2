@@ -27,7 +27,7 @@ Since 2026-11-26: every one of the 11 Pyanodon sciences (`jobs/py_sciences/`, 0.
 in the game, first with a lot of help from the check and then with less and less, down to the blueprint alone. The
 levels: **L5 fed** (every lack fed, jams deleted), **L4 ideal** (ideal transport, every machine metered to its
 plan), **L3 rules** (belts as built, the check's flow rules by script), **L2 mod** (the same rules in the
-factory-flow mod a player installs), **L1 built** (real parts only: overflow exits, voids, pull from deciders),
+factory-flow mod a player installs), **L1 built** (real parts only: overflow exits, voids, pull from deciders; no script rules),
 **L0 plain** (the blueprint, a warm start, loop starters in the warm-up). Detail per science:
 [docs/PY_SCIENCE_PROGRESS.md](docs/PY_SCIENCE_PROGRESS.md); what was tried: [docs/CAMPAIGN_LOG.md](docs/CAMPAIGN_LOG.md).
 
