@@ -124,3 +124,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   positions (inserter targets are not set right after the build). Py-1: one such exit (coarse). **L1 is now** the
   fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`; py1_L1d started 06:34 UTC.
 - py1_L1d at hour 6.8 (07:08 UTC): 222 pack crafts, 166 due, 144% of plan over the last 3.8 h, every recipe at 90% or more, none at nothing. The self-exit keeps the moss loop alive past the starters (every earlier L1 or L0 run was dead by hour 3).
+- 07:15 UTC: py-4's solve continued (nice 10) beside production's stitch, which had not converged in 1.5 h with priority (1,900 to 4,000 conflicts per attempt); the waiter for it removed.
