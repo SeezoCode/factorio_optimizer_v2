@@ -3781,7 +3781,10 @@ local function relief(run)
                 local limit = mult * amount * (p.probability or 1)
                 local n = sc.out and sc.out.get_item_count(p.name) or 0
                 local inside = e.get_item_count(p.name) - n
-                if n >= limit and inside < ing.amount then
+                -- (Also with a craft's worth inside: what stands at the limit in its output is then surplus. Py
+                -- logistic science's mukmoux renders hand their programmable speaker to each other; with both inputs
+                -- full of speakers, each stood with five in its output and crafted nothing more.)
+                if n >= limit then
                   local removed = sc.out.remove { name = p.name, count = math.floor(n - limit) + 1 }
                   if removed > 0 then record(p.name, removed); run.own_jam = (run.own_jam or 0) + removed end
                 end
@@ -5224,12 +5227,19 @@ script.on_event(defines.events.on_tick, function()
       end
       carrier = run.carrier_base
     end
+    -- (A maker counts as standing full of a carrier only while its output holds that carrier: Py logistic science's
+    -- mukmoux render stood full of programmable speakers, its catalyst, with no cage in its output; counted full for
+    -- every product, it kept the kit from ever priming the cage ring, and the render and the caging machine waited
+    -- on each other for good.)
     local full = {}
     for _, m in pairs(run.machines) do
       local e = m.e
       if e.valid and (e.status == defines.entity_status.full_output or e.status == defines.entity_status.waiting_for_space_in_destination) then
         local r = e.get_recipe()
-        if r then for _, p in pairs(r.products) do full[p.name] = true end end
+        local out = r and e.get_inventory(defines.inventory.crafter_output)
+        if r then for _, p in pairs(r.products) do
+          if p.type ~= "item" or not out or out.get_item_count(p.name) > 0 then full[p.name] = true end
+        end end
       end
     end
     run.bootstrapped = run.bootstrapped or {}

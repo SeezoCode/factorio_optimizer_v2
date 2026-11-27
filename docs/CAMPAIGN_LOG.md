@@ -203,3 +203,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   ores ("makers none here": coal, lead ore, phosphate rock) while muddy sludge was made at up to 25 times its plan
   with its virtual stock at 0. The virtual-robot and fluid-stock helpers do not carry these factories. L4 was the
   optional rung for them; L3 (rules) and L2 (mod), where the desktop held logistic, get the slots.
+- **logi_L3 traced at hour 1.9** (2 pack crafts, none in hour 2): the cage ring never started. The mukmoux render
+  (makes cages) stood full of programmable speakers (its catalyst: both renders hand theirs to each other and both
+  inputs held enough), and lacked caged mukmoux; the caging machine lacked cages. The carrier kit hands a machine its
+  carrier only "while no maker of it stands full": the render stood full (of speakers), so no cage was ever handed
+  in. Two check fixes (L3 rules, script): a maker counts as full of a carrier only while its output holds that
+  carrier; `--relief-own-jam` also lets out a product it takes while its input holds a craft of it (surplus at the
+  output limit). The running L3/L2 runs keep the old check; new runs take these.
