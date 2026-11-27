@@ -71,7 +71,7 @@ Set up as in [CLOUD_SETUP.md](CLOUD_SETUP.md); the container is lost when the se
 | L1 | built | fair set + `--pull-built --reserve-built --reserve-items` (real parts only: built pull and reserve gates; before 04:35 on 11-27 it had `--flow --no-pull --pull-built`: those runs are level L1f) | 2 h / 22 h |
 | L0 | plain | `--prime-all` only | 2 h / 22 h |
 
-Fair set: `--prime-all --carrier-kit --seed-stop 7200 --real-voids --relief --relief-exits` (a warm start, empty
+Fair set: `--prime-all --carrier-kit --seed-stop 7200 --real-voids --relief --relief-exits --exit-catalyst` (a warm start, empty
 carriers and loop starters in the first two hours only, Py's own voids for fluids, overflow exits built from real
 parts). Rule set (from the night logs of 2026-11-17 to 11-25): `--flow --quota-window 1800 --loop-first --out-share
 --rate-cap 2 --cap-slow --cap-fill --loop-stock 2 --reserve 4 --loop-keep 2 --loop-share --loop-fluids

@@ -223,3 +223,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   disabled_by_script) with 3 milk barrels in its input; the korlex milker holds all its ingredients and is switched
   off too. Which rule holds them is not traced yet (not flagged short, not capped). The desktop's py-2 never held
   under the rules either. Left running.
+- **logi_L2c stopped at hour 1.3**: the renders jammed on speakers again (one craft's worth each at the start, but
+  the two hand theirs to each other and any imbalance, plus the speaker maker's 1%, piles up in one output; the
+  caging machine then stood full too). The check already has `--exit-catalyst` (a built overflow exit takes a
+  catalyst once the input holds its share and the output stands at its limit; written for py-2's mukmoux pasture):
+  **now part of the fair set** (L2, L1). Restarted as logi_L2d (19:00 UTC).

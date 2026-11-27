@@ -21,7 +21,9 @@ import json, os, re, subprocess, sys, time
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 QUEUE = os.path.join(ROOT, "solves", "campaign_queue.json")
 
-FAIR = "--prime-all --carrier-kit --seed-stop 7200 --real-voids --relief --relief-exits".split()
+# (--exit-catalyst from 2026-11-27 19:00: a built overflow exit takes a catalyst too once the machine's input holds
+# its share and its output stands at the limit; Py logistic science's two mukmoux renders jammed on their speakers.)
+FAIR = "--prime-all --carrier-kit --seed-stop 7200 --real-voids --relief --relief-exits --exit-catalyst".split()
 RULES = ("--flow --quota-window 1800 --loop-first --out-share --rate-cap 2 --cap-slow --cap-fill --loop-stock 2 "
          "--reserve 4 --loop-keep 2 --loop-share --loop-fluids --loop-keep-time 3600 --quota-catalyst --loop-short-on "
          "--loop-short-reach --loop-dead-end --seed-carrier-cut --share-wait-on --seed-own-wait --relief-own-jam "
