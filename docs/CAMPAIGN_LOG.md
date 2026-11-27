@@ -305,3 +305,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   6 of 12. Chemical is no deadlock but throughput: its nuclear sample waits on pu-238, behind it the salt solution,
   sb-silicate, silicate solution, teos, and silicon, which waits for coal dust (20 a craft), a by-product of tailings
   separation and grade-4 zinc, both working; 190 recipes run over 150% of plan, and the plan's margin is 2%.
+- logi_L1e, hour 0.4: the kit handed in 172 empty barrels (none in logi_L1d), the water-barrel fillers made 168 and
+  202 water barrels (18 and 71 by hour 1.6 before), the outlet-gas reheaters craft on demand (27 and 9); 2 packs of
+  3 due.
