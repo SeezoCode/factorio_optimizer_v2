@@ -34,8 +34,8 @@ factory-flow mod a player installs), **L1 built** (real parts only: overflow exi
 <!-- campaign:start -->
 | Science | Machines | Fairest pass | L5 fed | L4 ideal | L3 rules | L2 mod | L1 built | L0 plain |
 |---|---:|---|---|---|---|---|---|---|
-| Automation science pack | 13 | **L2 mod** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | running, 19.2 h | running, 0 h |
-| pY science pack 1 | 50 | — | running, 0 h | · | · | · | · | · |
+| Automation science pack | 13 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | running, 4.8 h |
+| pY science pack 1 | 50 | — | running, 1.6 h | running, 0 h | · | · | · | · |
 | Logistic science pack | 386 | — | · | · | · | · | · | · |
 | Military science pack | 13 | — | · | · | · | · | · | · |
 | pY science pack 2 | solving | | · | · | · | · | · | · |
@@ -46,7 +46,7 @@ factory-flow mod a player installs), **L1 built** (real parts only: overflow exi
 | Utility science pack | solving | | · | · | · | · | · | · |
 | Space science pack | solving | | · | · | · | · | · | · |
 
-Updated 2026-11-27 00:50 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+Updated 2026-11-27 01:01 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
 <!-- campaign:end -->
 
 ## Examples
