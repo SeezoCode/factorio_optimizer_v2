@@ -235,3 +235,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   starters and a six-hour warm-up, then 10 h measured, to see whether the loop only needs longer to fill.
 - py2_L3b: 8 pack crafts by hour 2, none in hours 3 and 4 (the milk barrels, above). chem_L3b: 12 by hour 2.8 (17
   due), slowing.
+- py2_L3b stopped at hour 3.4 (no packs in two hours) to free its slot for logi_L3c.
