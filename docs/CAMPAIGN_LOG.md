@@ -152,3 +152,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   12-hour window (2 h warm-up, 10 h measured), then L4, L3, L2 only to find where a failing L1 breaks. Military
   (13 machines, about 20x) keeps the full ladder.
 - **Military science L4 (ideal)**: PASS, 100.0% of plan over 6 measured hours.
+- **Production s3 (`local_sinks` 1000) stitch: no better** after 1 h 25 min (2,000 to 5,000 conflicts, three
+  floorplans in turn, no trend down). Local sinks did take the surplus out of the corridors (559 small by-products
+  end beside their blocks, 26 links run to the edge), so the 600 belts between blocks are what does not fit. Resumed
+  with `blocks.corridor` 40 instead of 20 (09:28 UTC; the blocks are kept, the floorplan is new), at priority. The
+  s3 queue went on to py-4.
