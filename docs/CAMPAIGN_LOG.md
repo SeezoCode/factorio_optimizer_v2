@@ -63,3 +63,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - Both solve queues stopped (their loops had the old binary path baked in); chemical m2 left to finish (a waiter
   writes its end line); production s2 resumed with the fix (02:10 UTC), keeping its 18 laid-out blocks.
 - Tests: BlueprintTest (with a new whitelist round trip), OverflowLastTest, SpoilageTest pass.
+- **Py science 2 m2b solved** (resumed with the whitelist fix) 02:21 UTC: 411 machines in 27 blocks, 487 x 549. Ladder queued; the queue is now breadth-first (every science's L5, then L4, ...).
