@@ -132,3 +132,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   surplus fluid into Py's void beside its block; with the void fix this now validates), 3 threads, 6 GB heap. Same
   for py-4 (its m2 solve, with no local sinks at all, stopped with 23 of 26 blocks laid out: its stitch would have
   had the same edge links), then utility, space: queue `solves/queue_s3.log`.
+- **Logistic science L5 (fed)**: PASS, 99.8% of plan over 3 measured hours (418 machines in game, 1.2x real time).
