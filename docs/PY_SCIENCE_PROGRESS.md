@@ -43,7 +43,28 @@ Sciences that passed at some level, newest last, with the fairest level they pas
 | L4 ideal | auto_L4 | pass, 100% over 6 measured hours; nothing deleted |
 | L3 rules | auto_L3 | pass, 24 h, 100%; 72 to 75 crafts an hour from hour 5 |
 | L2 mod | auto_L2 | pass, 24 h, 100% |
-| L1 built | auto_L1 | pass, 24 h, 100%; the built overflow exits took 4,000 ash in the last 4 h (a real chest would need emptying or a burner) |
+| L1f (old L1: built pull plus the check's quotas and gates) | auto_L1f | pass, 24 h, 100%; the built overflow exits took 4,000 ash in the last 4 h (a real chest would need emptying or a burner) |
+| L1 built | auto_L1 | queued (rerun with real parts only) |
 | L0 plain | auto_L0 | pass, 24 h, 100%; no flow control, nothing handed in after the warm-up |
 
 Ahead of plan in the first hours at every level (the warm start's stocks), then exactly the port's rate.
+
+### Py science 1
+
+50 machines, 129 x 138 (2% margin).
+
+| Level | Run | Result |
+|---|---|---|
+| L5 fed | py1_L5 | pass, 99.8% over 3 measured hours; 42 items fed |
+| L4 ideal | py1_L4 | pass, 100% over 6 measured hours |
+| L3 rules | py1_L3 | pass, 24 h, 100%: 24 to 25 pack crafts every hour from hour 3 (24.5 due) |
+| L2 mod | py1_L2 | pass, 24 h, 100%, hour for hour as L3 |
+| L1f | py1_L1f | stopped at hour 2.9: 4 pack crafts, no machine working (the old L1's script quotas with built pull) |
+| L1 built | py1_L1 | **fail**: 66 pack crafts by hour 2.4, none after; stopped at hour 10 |
+| L0 plain | py1_L0 | **fail**: 52 by hour 2.4, 2 after; stopped at hour 7 |
+
+Why L1 and L0 fail: the moss farm's coarse loop. The farm takes 15 coarse a craft and gives coarse back (0.036/s made,
+0.031/s used); the 2% surplus leaves by an output port at the end of the farm's belt, which takes its share whether
+the farm is short or not. Once the farm fell behind, the port kept draining the loop and it never restarted; moss,
+fawogae substrate and the pack stopped behind it. The rules and the mod shut that port for a loop's own item and
+keep a reserve in front of the farm. The fair-level fix still to build: a reserve gate from real parts.
