@@ -285,3 +285,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   arqad comb (saps) into the loop, the last loop user stood at the belt's dead end, and a belt ending at its last user
   gets no gate. **The deep rule now takes the users at the nearest distance only** (bones: the bonemeal maker; saps:
   the two mukmoux food makers), in verify.py and tag.py alike. logi_L1c stopped at hour 0.8 for **logi_L1d**.
+- logi_L1d (nearest-distance rule): 10 reserve gates from real parts, now **bones** (gate on the tile past the
+  bonemeal maker's pickup, sensor three tiles back), **saps** (past the mukmoux food maker's pickup) and **mukmoux**
+  (past caged-mukmoux), all shut at the start as meant: what passes the loop's own users now queues at them first.
