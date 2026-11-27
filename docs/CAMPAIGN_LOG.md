@@ -112,3 +112,14 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   recipe gives back (catalysts, own by-products). Py-1: 3 gates (seaweed 2, coarse 1). L1 is now
   `--pull-built --reserve-built --reserve-self` on the fair set; py1_L1c started.
 - **Automation science L1 (built, with gates on every item)**: PASS over 24 game hours, 100% of plan (auto_L1, started under the `--reserve-items` version of L1).
+- **py1_L1c (L1 with gates for loop and given-back items): stopped at hour 3.5**, the pack at 61 crafts. Traced live:
+  the moss farm stood short of coarse with 38 coarse in its own output. Its coarse goes onto two belts: a two-tile
+  return that ends at its own pickup tile, and a belt through long undergrounds to the port (256 coarse queued in
+  them). The new pickup-tile gate shut the return's last tile, a shut tile takes nothing in, so the inserter never
+  got coarse: a deadlock of my making. Pickup-tile gates removed. Without gates (py1_L1) the farm lost half its
+  coarse to the port belt until that belt backed up, more than its 17% surplus.
+- **New in the check: `--self-exit-built`.** For a machine whose recipe gives back an item it takes, an inserter
+  carrying that item onto a belt the machine does not take it back from gets a green wire from the machine (read
+  contents, craft in hand excluded) and works only while the machine holds two crafts' worth (coarse >= 30). Found by
+  positions (inserter targets are not set right after the build). Py-1: one such exit (coarse). **L1 is now** the
+  fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`; py1_L1d started 06:52 UTC.

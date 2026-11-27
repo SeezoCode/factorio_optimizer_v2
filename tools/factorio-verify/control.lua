@@ -1422,6 +1422,70 @@ local function start(params)
     rb.signals_used = next_name
   end
 
+  -- params.self_exit_built: a machine's own items first, from real parts. A machine whose recipe gives back an item it
+  -- takes (a catalyst, or its own by-product: Py's moss farm takes 15 coarse a craft and gives coarse back) drops it
+  -- onto its own return belt and onto a belt that leads away (to a port, a sink or other users). Until that belt
+  -- backs up, half of what it gives back leaves, and the farm needs most of it: Py science 1's moss farm lost its
+  -- loop that way at every fair level. Each inserter carrying only such items onto a belt the machine does not take
+  -- them back from gets a green wire from the machine (reading its contents, without the craft in hand) and works
+  -- only while the machine holds two crafts' worth of the item or more: below that, everything goes to the return.
+  if run.params.self_exit_built then
+    local se = { machines = 0, exits = 0, mixed = 0, failed = 0, by_item = {} }
+    run.se = se
+    for _, m in pairs(run.machines) do
+      local e = m.e
+      local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+      if r then
+        local back = {}
+        for _, ing in pairs(r.ingredients) do
+          if ing.type == "item" then for _, p in pairs(r.products) do if p.name == ing.name then back[ing.name] = ing.amount end end end
+        end
+        if next(back) then
+          se.machines = se.machines + 1
+          -- (By positions: right after the build an inserter's pickup and drop targets are not set yet.)
+          local bb = e.bounding_box
+          local function inside(p) return p.x > bb.left_top.x and p.x < bb.right_bottom.x and p.y > bb.left_top.y and p.y < bb.right_bottom.y end
+          local function belt_net(p)
+            for _, x in pairs(e.surface.find_entities_filtered { position = p, type = { "transport-belt", "underground-belt", "splitter" } }) do
+              return run.net_of[x.unit_number], x
+            end
+          end
+          local near = e.surface.find_entities_filtered { type = "inserter", area = { { bb.left_top.x - 3, bb.left_top.y - 3 }, { bb.right_bottom.x + 3, bb.right_bottom.y + 3 } } }
+          local takes = {}
+          for _, ie in pairs(near) do
+            if inside(ie.drop_position) then local n = belt_net(ie.pickup_position); if n then takes[n] = true end end
+          end
+          for _, ie in pairs(near) do
+            local dn = inside(ie.pickup_position) and belt_net(ie.drop_position)
+            if dn and not takes[dn] then
+            local f = ie.get_filter(1)
+              local fname = type(f) == "table" and f.name or f
+              local item = fname and back[fname] and fname
+              if not item then
+                -- unfiltered out of a machine with one item product: that product
+                local n, only = 0, nil
+                for _, p in pairs(r.products) do if p.type == "item" then n = n + 1; only = p.name end end
+                if not fname and n == 1 and back[only] then item = only end
+              end
+              if item then
+                local ok = pcall(function()
+                  local cbm = e.get_or_create_control_behavior()
+                  cbm.circuit_read_contents = true
+                  pcall(function() cbm.include_in_crafting = false end)
+                  e.get_wire_connector(defines.wire_connector_id.circuit_green, true).connect_to(ie.get_wire_connector(defines.wire_connector_id.circuit_green, true), false)
+                  local cb = ie.get_or_create_control_behavior()
+                  cb.circuit_condition = { first_signal = { type = "item", name = item }, comparator = "≥", constant = 2 * back[item] }
+                  cb.circuit_enable_disable = true
+                end)
+                if ok then se.exits = se.exits + 1; se.by_item[item] = (se.by_item[item] or 0) + 1 else se.failed = se.failed + 1 end
+              elseif fname == nil then se.mixed = se.mixed + 1 end
+            end
+          end
+        end
+      end
+    end
+  end
+
   -- params.loop_valves (with params.loop_first.fluids): a user outside a fluid's production loop takes the fluid
   -- through Py's overflow valve, which lets through only what lies above 80% full in the pipe behind it, so it gets
   -- the loop's surplus and no more. Switched off, such a user still fills its input box from the pipe: on Py science
@@ -2135,7 +2199,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
-    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
+    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, self_exits = run.se, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
     reserve = run.rs and (function()
       local o = { gates = #run.rs.gates, built = run.rs.built, at_pickup = run.rs.at_pickup, skipped = run.rs.skipped, why = run.rs.why, err = run.rs.err, by_item = {} }
       for _, g in pairs(run.rs.gates) do if not g.dead then o.by_item[g.item] = (o.by_item[g.item] or 0) + 1 end end
@@ -3430,10 +3494,9 @@ local function reserve_gates(run)
           -- dives underground) the pickup tile itself is the gate: an inserter takes from a stopped belt, and the
           -- queue stands up the belt from it. Py science 1's moss farm takes its coarse from the last tile before the
           -- coarse port.)
-          if run.params.reserve_built and not (gate and gate.valid and gate.type == "transport-belt") and pb.type == "transport-belt" and not run.rs.taken[pb.unit_number] then
-            gate, steps = pb, 0
-            run.rs.at_pickup = (run.rs.at_pickup or 0) + 1
-          end
+          -- (Not the pickup tile itself as a built gate: a shut belt tile takes nothing in either, the queue never
+          -- reaches the inserter, and Py science 1's moss farm deadlocked on its own two-tile coarse return. A belt
+          -- that ends at its last user queues by itself.)
           if gate and gate.valid and gate.type == "transport-belt" and not run.rs.taken[gate.unit_number] then
             -- (The queue is N tiles from the gate back, and reaches the pickup tile at least.)
             local sensor = pb

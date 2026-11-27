@@ -790,6 +790,10 @@ def main():
                          "contents (hold) on a green wire to the gate tile, which moves only while the sensor holds T "
                          "(default 4) or more of anything. Implies the loop membership of --loop-first, which without "
                          "--flow holds nothing back")
+    ap.add_argument("--self-exit-built", action="store_true",
+                    help="a machine's own items first, from real parts: an inserter carrying an item its recipe gives "
+                         "back (catalyst, own by-product) onto a belt the machine does not take it back from works only "
+                         "while the machine holds two crafts' worth (a green wire from the machine reading its contents)")
     ap.add_argument("--reserve-self", action="store_true",
                     help="with --reserve: also a gate past the last user of an item its recipe gives back (a catalyst or "
                          "its own by-product: Py's moss farm and its coarse), loop item or not")
@@ -1198,6 +1202,9 @@ def main():
         params["dead_end"] = True
     if args.pull_built:
         params["pull_built"] = True
+    if args.self_exit_built:
+        params["self_exit_built"] = True
+        print("self-exit-built: an exit carrying an item a machine gives back works only while that machine holds two crafts' worth (wired in the game)")
         print("pull-built: demand deciders and enable conditions built in the game")
     if args.relief_exits:
         params["relief_exits"] = True
