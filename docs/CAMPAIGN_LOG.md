@@ -228,3 +228,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   caging machine then stood full too). The check already has `--exit-catalyst` (a built overflow exit takes a
   catalyst once the input holds its share and the output stands at its limit; written for py-2's mukmoux pasture):
   **now part of the fair set** (L2, L1). Restarted as logi_L2d (19:00 UTC).
+- **logi_L3b at hour 3.8**: 27 pack crafts by hour 3, none after. The chain is one long loop: the pack's animal
+  samples lack bones; bones come from the renders; the mukmoux render lacks caged mukmoux, back through mukmoux,
+  calves, mukmoux food, saps, sap trees, bonemeal, to bones. The fish render (bones too) stands switched off by the
+  script (likely loop-first holding it off the fish loop). Queued **logi_L3c**: the same rules with six hours of
+  starters and a six-hour warm-up, then 10 h measured, to see whether the loop only needs longer to fill.
+- py2_L3b: 8 pack crafts by hour 2, none in hours 3 and 4 (the milk barrels, above). chem_L3b: 12 by hour 2.8 (17
+  due), slowing.
