@@ -139,3 +139,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   the overflow exits (18,470 items in the last 4 h, 1.28/s: sodium hydroxide 10,500, ash 7,000; a real chest needs a
   sink there) and Py's fluid voids. No reserve gate was placed (all 609 candidates were belt ends, which queue by
   themselves). **Py science 1 conquered at L1.**
+- TODO (deliverable): a player's blueprint with the L1 parts. `--export-built` already blueprints the whole test surface after set-up (pull deciders, self-exit wires, overflow exits, voids), but as the test copy (infinity chests at the ports); `tools/factory-flow/tag.py --built` merges only exits and voids into the run's own blueprint so far.
