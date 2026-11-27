@@ -106,6 +106,9 @@ As of 2026-11-27 02:25 UTC:
 - **Scheduler**: `launch.py sched --max 2` (2 games while 3 solves run; raise to 3 or 4 when solves finish).
 - **Planner fixes this campaign**: multi-item inserter whitelists (PathFinder, Blueprint, Validator, OverflowLast,
   Resume); fluid voids drain any temperature variant (Validator). Snapshot /opt/fo/1127-0210.
+- **Memory**: the container is held to 16 GB, no swap (an OOM kill ends a solve silently). At most two solver JVMs
+  at once (about 4 GB each; `JAVA_OPTS=-Xmx6g` for a big stitch), and no Gradle daemon left running (build with
+  `--no-daemon`, or `./gradlew --stop` after).
 - **Known hard cases**: big fluid-heavy blocks (pressured air, water unrouted at 0 conflicts): smaller blocks help;
   the uf6 cascade block of production; utility and space planned to 2,206 and 4,269 machines on the desktop
   (2026-11-09: "beyond what the stitcher manages").
