@@ -301,7 +301,7 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
      without `--flow` or the mod now turns on `bootstrap` (the kit's records and hand-ins only, empty carriers in
      the warm-up, as before).
   logi_L1d stopped for **logi_L1e** (both fixes, `--loop-deep 7`).
-- Hour 2 (22:40 UTC): logi_L2s (mod + starters) 21 packs of 14 due, 182% in the last stretch; py2_L2 12 of 9; chem_L2
+- Hour 2 (22:20 UTC): logi_L2s (mod + starters) 21 packs of 14 due, 182% in the last stretch; py2_L2 12 of 9; chem_L2
   6 of 12. Chemical is no deadlock but throughput: its nuclear sample waits on pu-238, behind it the salt solution,
   sb-silicate, silicate solution, teos, and silicon, which waits for coal dust (20 a craft), a by-product of tailings
   separation and grade-4 zinc, both working; 190 recipes run over 150% of plan, and the plan's margin is 2%.
