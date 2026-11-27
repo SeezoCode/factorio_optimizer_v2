@@ -308,3 +308,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - logi_L1e, hour 0.4: the kit handed in 172 empty barrels (none in logi_L1d), the water-barrel fillers made 168 and
   202 water barrels (18 and 71 by hour 1.6 before), the outlet-gas reheaters craft on demand (27 and 9); 2 packs of
   3 due.
+- logi_L1e stood again by hour 1.3 (2 packs of 8 due), many makers "disabled by control behavior". Checked and ruled
+  out: the demand wire is one green network (the 123 "power networks" the check reports are counted before its power
+  hubs, four tiles apart, join each other; 527 poles, one electric and one green network). The fish breeders' biomass
+  comes by plan from one starch maker alone (its belt network is the only biomass net that feeds them), and that
+  maker does hear the breeders' demand; it stood short of fiberboard, behind it treated wood, creosote, naphthalene oil,
+  high distillate and the oil refinery short of steam (from the geothermal exchanger on the same pipe segment).
+  Restarted as **logi_L1f** (the same fixes) to see whether that recurs; no code change from this.
