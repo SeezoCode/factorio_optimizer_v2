@@ -125,3 +125,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`; py1_L1d started 06:34 UTC.
 - py1_L1d at hour 6.8 (07:08 UTC): 222 pack crafts, 166 due, 144% of plan over the last 3.8 h, every recipe at 90% or more, none at nothing. The self-exit keeps the moss loop alive past the starters (every earlier L1 or L0 run was dead by hour 3).
 - 07:15 UTC: py-4's solve continued (nice 10) beside production's stitch, which had not converged in 1.5 h with priority (1,900 to 4,000 conflicts per attempt); the waiter for it removed.
+- **Production s2 (`local_sinks` 0.1) stitch given up** (07:50 UTC) after 2 h 40 min of stitching: 1,600 to 4,400
+  conflicts per attempt at about 1000 x 1050, no trend down, with priority and nothing else stitching. 1,020 machines
+  in 24 blocks, 606 belts between blocks, and nearly every fluid's pipe tree reaching the factory edge for its 2%
+  surplus ("edge takes 2.2/s"). **New attempt s3: `local_sinks` 1000** (every by-product item into a chest and every
+  surplus fluid into Py's void beside its block; with the void fix this now validates), 3 threads, 6 GB heap. Same
+  for py-4 (its m2 solve, with no local sinks at all, stopped with 23 of 26 blocks laid out: its stitch would have
+  had the same edge links), then utility, space: queue `solves/queue_s3.log`.

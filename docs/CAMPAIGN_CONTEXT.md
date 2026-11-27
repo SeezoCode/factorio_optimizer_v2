@@ -96,6 +96,8 @@ port over the measured window) over the level's full measured window.
 
 As of 2026-11-27 06:00 UTC:
 
+- **07:50**: big sciences re-solved as **s3** (`local_sinks` 1000: all surplus local), queue_s3: production,
+  py-4, utility, space (3 threads, 6 GB). The s2/m2 attempts of production and py-4 are in `solves/failed_*`.
 - **Layouts** (solves/): automation_m2 (13 machines), py-science-pack-1_m2 (50), military_m2 (13), logistic_m2
   (386, 515 x 548), py-science-pack-2_m2b (411, 487 x 549), chemical_m2 (487, 561 x 486), py-science-pack-3_m2
   (569, 746 x 726). **Solving**: production_s2 (resume, in its stitch: 1,000 to 1,600 conflicts at about 1050 x
