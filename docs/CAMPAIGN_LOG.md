@@ -161,3 +161,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - **Production s3 with 40-tile corridors: no convergence either** (2 h): 906, 1,125, 2,556, 2,510, 2,593 conflicts at
   about 1,050 to 1,240 tiles a side. Resumed again (11:30 UTC) with `blocks.stitch` "global" (corridors sized on a
   coarse grid from every link's demand before any fine routing; docs/STITCH_REWRITE.md), corridors 40.
+- **Py-4 s3 (blocks of up to 30 by weight, `local_sinks` 1000): stopped** at 2 h 20 min with 6 of 26 blocks never laid
+  out: block 20 (47 machines, 8,320 tiles of machine area) and 23 found no route at all in 34 and 38 tries at a box
+  that no longer grew (345 x 230), block 4 came within 7 conflicts, 24 to 26 never got a turn. Re-solving as **s4**
+  with `max_machines` 16 and `fluid_weight` 1.5 (as py-2 needed blocks of 12), local sinks 1000, 2 threads (12:10
+  UTC). The s3 queue (utility, space after py-4) is stopped; they wait.
