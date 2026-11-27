@@ -88,3 +88,12 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - **Py science 3 m2 solved** 04:43 UTC: 569 machines, 746 x 726 (2 h 20 min, paused an hour for chemical's stitch). Ladder queued; production's resume started after it.
 - Production's resume: the waiter did start it at 04:44, but I misread the log, killed the waiter (and with it that
   resume) and started it again by hand at 04:50 (6 GB heap). One resume runs, beside py-4's solve (planning).
+- **Py science 1 at L1 (built) and L0 (plain): fail.** Both made their packs through the warm-up (66 and 52 pack
+  crafts by hour 2.4) and none after the starters ended; stopped at hours 10 and 7. Traced at L1: the pack lacks
+  fawogae substrate, which lacks moss; the moss farm (Moss-4-without-sludge: takes 15 coarse a craft, gives coarse
+  back, 0.036/s made against 0.031/s used with the 2% margin) lacks coarse. The surplus coarse leaves through an
+  output port at the end of the moss farm's belt, which takes its planned rate whether the farm is short or not, so
+  once the farm fell behind its loop drained for good. The rules (L3) and the mod (L2) shut the port of a loop's own
+  item and hold a reserve (`--reserve`): both pass 24 h. In-game equivalent not built yet: a **reserve gate from real
+  parts** (the belt tile past a loop's last user, enabled only while the tile N back holds items, read by wire).
+  That is the next step for L1/L0 once every science has its upper levels.
