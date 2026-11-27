@@ -198,3 +198,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   desktop nights of 11-17 to 11-23 fought with script rules (L3) and the mod (L2). Building all those rules from
   combinators is a large project, so for logistic, py-2 and chemical the plan is L4, L3, L2 (the mod, a player can
   install it), and L1 only with time left. `probes/machine.lua` now searches around the machine's bounding box.
+- **L4 (ideal transport) on logistic, py-2, chemical: stopped as inconclusive** (16:30 UTC) at game hour 1.4 to 1.9:
+  3 to 5 pack crafts (the warm start) and none after; most machines switched off by the meters, several lacking raw
+  ores ("makers none here": coal, lead ore, phosphate rock) while muddy sludge was made at up to 25 times its plan
+  with its virtual stock at 0. The virtual-robot and fluid-stock helpers do not carry these factories. L4 was the
+  optional rung for them; L3 (rules) and L2 (mod), where the desktop held logistic, get the slots.
