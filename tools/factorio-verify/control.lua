@@ -139,6 +139,10 @@ local function warm_start(run, e, r)
   end)
   local carrier = {}
   for _, name in pairs(run.params.seed_carriers or {}) do carrier[name] = true end
+  -- (A catalyst, an item the recipe gives back, one craft's worth too, as a player puts one in: two each overfilled
+  -- the ring of Py logistic science's two mukmoux renders, which hand their programmable speaker to each other; both
+  -- stood with their outputs full of speakers, made no cages, and the cage ring never started.)
+  for _, p in pairs(r.products) do carrier[p.name] = carrier[p.name] or (p.type == "item" and true) or nil end
   for _, ing in pairs(r.ingredients) do
     if ing.type == "item" then
       pcall(function()

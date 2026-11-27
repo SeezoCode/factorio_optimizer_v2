@@ -212,3 +212,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   output limit). The running L3/L2 runs keep the old check; new runs take these.
 - 17:00 UTC: logi_L3, py2_L3, chem_L3 stopped and restarted as *_L3b with the fixed check.
 - 17:10 UTC: logi_L2 (mod) stopped at hour 1.1 (no cage handed in: the same carrier-kit fault) and restarted as logi_L2b.
+- **logi_L2b (mod) stopped at hour 1.8** (2 pack crafts): the renders stood full of programmable speakers (8 in one
+  output), the caging machine full of caged mukmoux it could not deliver. The mod has no relief-own-jam. Root: the
+  warm start gave every machine two crafts' worth of each ingredient, a catalyst too, which overfills a ring where
+  two machines hand their catalyst to each other. **Check fix (fair kit):** a catalyst (an item the recipe gives
+  back) is primed with one craft's worth, as a player puts one in. Restarted as logi_L2c (18:15 UTC).
