@@ -50,6 +50,11 @@ LEVELS = {
     # --self-exit-built: an exit carrying an item a machine gives back works only while it holds two crafts' worth
     # (py-1's moss farm lost half its coarse to the port belt until that backed up).
     "L1": ("built", FAIR + ["--pull-built", "--self-exit-built", "--reserve-built", "--reserve-self"], 7200, 22 * 3600),
+    # Built parts with starters all along (from 2026-11-28 00:00): logistic at L1 (logi_L1f, with every fix of the
+    # 27th) stood by hour 1 for good: its mukmoux food takes tin only from the hot-air casters, whose molten tin waits
+    # on sintered tin, lime, coke, filtration media, nanofibrils, xyhiphoe cubs, blood meal and the blood of the
+    # mukmoux render, so the loop is one cycle of some 15 recipes that two hours of starters never closed.
+    "L1s": ("built+starters", [f for f in FAIR if f not in ("--seed-stop", "7200")] + ["--pull-built", "--self-exit-built", "--reserve-built", "--reserve-self", "--seed-through"], 7200, 10 * 3600),
     "L0": ("plain", ["--prime-all"], 7200, 22 * 3600),
 }
 

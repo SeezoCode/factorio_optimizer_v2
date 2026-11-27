@@ -14,7 +14,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SCI = ["automation-science-pack", "py-science-pack-1", "logistic-science-pack", "military-science-pack",
        "py-science-pack-2", "chemical-science-pack", "py-science-pack-3", "production-science-pack",
        "py-science-pack-4", "utility-science-pack", "space-science-pack"]
-LEVELS = ["L5", "L4", "L3s", "L2s", "L3", "L2", "L1", "L0"]
+LEVELS = ["L5", "L4", "L3s", "L2s", "L1s", "L3", "L2", "L1", "L0"]
 
 
 def category(name, ent):

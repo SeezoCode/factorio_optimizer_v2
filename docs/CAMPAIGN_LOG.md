@@ -320,3 +320,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   rubber, behind it latex, creamy latex, saps and the mk04 sap trees, whose maker lacks fertilizer while the mulcher
   stands waiting for space with 15 fertilizer in its output, and the mod holds fertilizer-3 off. Started
   **chem_L2s** (mod + starters, `--loop-deep 7`).
+- 23:55 UTC: **logi_L1f (L1, every fix) stood from hour 1: 2 packs by hour 2.4 of 15 due.** The kit and the gas ring
+  work now; what stands is one cycle of some 15 recipes: the mukmoux food takes tin only from the hot-air casters
+  (the plain tin furnace feeds other belts and its decider stays off), their molten tin waits on sintered tin,
+  lime, coke, filtration media, nanofibrils, xyhiphoe cubs, blood meal and the blood of the mukmoux render, and the
+  render on the mukmoux the food makes. Two hours of starters never closed it; under the mod with starters all
+  along (logi_L2s) it runs (49 packs of 32 due at hour 5.2). **New level L1s: built parts + starters all along**
+  (ranked with L3s and L2s on the help side). logi_L1f stopped; **logi_L1s** started (`--loop-deep 7`).

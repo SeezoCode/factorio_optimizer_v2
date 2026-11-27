@@ -62,7 +62,7 @@ button:active{transform:translateY(1px)}
     <p class="lede" id="lede">Each of the 11 Pyanodon sciences at 0.02 packs/s, laid out by the optimizer and run in Factorio 2.1.24 headless. Columns go from the most help the check gives (<b>L5</b>, every lack fed) to none (<b>L0</b>, the blueprint as built).</p>
   </div>
   <div class="scroll"><table>
-    <thead><tr><th>Science</th><th title="per layout: plain belts / belts with local sinks">Machines</th><th title="every lack fed, jams deleted">L5 fed</th><th title="ideal transport, metered">L4 ideal</th><th title="the check's flow rules, loop starters all along">L3s</th><th title="the factory-flow mod, loop starters all along">L2s</th><th title="belts, the check's flow rules">L3 rules</th><th title="the same rules in the factory-flow mod">L2 mod</th><th title="real parts only">L1 built</th><th title="plain blueprint">L0 plain</th></tr></thead>
+    <thead><tr><th>Science</th><th title="per layout: plain belts / belts with local sinks">Machines</th><th title="every lack fed, jams deleted">L5 fed</th><th title="ideal transport, metered">L4 ideal</th><th title="the check's flow rules, loop starters all along">L3s</th><th title="the factory-flow mod, loop starters all along">L2s</th><th title="real parts only, loop starters all along">L1s</th><th title="belts, the check's flow rules">L3 rules</th><th title="the same rules in the factory-flow mod">L2 mod</th><th title="real parts only">L1 built</th><th title="plain blueprint">L0 plain</th></tr></thead>
     <tbody id="board"></tbody>
   </table></div>
 </div></div>
@@ -96,7 +96,7 @@ button:active{transform:translateY(1px)}
 {
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const LV = ['L5','L4','L3s','L2s','L3','L2','L1','L0'];
+const LV = ['L5','L4','L3s','L2s','L1s','L3','L2','L1','L0'];
 let status = null, cur = null, data = null, view = {s:1, x:0, y:0}, index = null;
 const cv = $('cv'), map = $('map');
 const cellTxt = r => !r ? '<span class="cell none">·</span>' :
