@@ -32,3 +32,11 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - **Automation science L3 (rules)**: PASS over 24 game hours (2 h warm-up, 22 measured): 100.0% of plan at the port.
 - **Automation science L2 (mod)**: PASS over 24 game hours: 100.0% of plan at the port.
 - **Automation science L1 (built)**: PASS over 24 game hours: 100.0% of plan. Pull from deciders on wires, overflow exits and voids built from real parts, no script flow rules.
+- **Py science 2 m2 (blocks of up to 20 by weight): did not lay out.** Every block but block 9 had a layout within
+  25 minutes; block 9 (29 machines, about 25 fluids) never did: dowfroth-250 (into a flotation cell and a centrifugal
+  pan), pressured air or water unrouted at 0 conflicts, boxes grown to 400 x 600 in 55 minutes. As on the desktop's
+  Py science 3 (2026-11-09), a connection that finds no path at any size: the block is too fluid-heavy. Stopped;
+  re-solving as **m2b** with `blocks.max_machines` 12 and `fluid_weight` 1.5 (01:08 UTC).
+- **Production science s2 (`local_sinks` 0.1)**, 40 minutes in: 12 of 25 blocks without a layout; block 5 fails the
+  validator with FLUID_MIX (uf6 and uf6#20, the same fluid at two temperatures, on one pipe net). Left running.
+- Games cut from 3 to 2 at a time while three solves run (4 cores): the solves gate everything after them.
