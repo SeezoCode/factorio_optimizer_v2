@@ -111,3 +111,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   user the slow items' belts barely move. New `--reserve-self` instead: gates for a loop's items and for items a
   recipe gives back (catalysts, own by-products). Py-1: 3 gates (seaweed 2, coarse 1). L1 is now
   `--pull-built --reserve-built --reserve-self` on the fair set; py1_L1c started.
+- **Automation science L1 (built, with gates on every item)**: PASS over 24 game hours, 100% of plan (auto_L1, started under the `--reserve-items` version of L1).

@@ -9,7 +9,8 @@ while true; do
     grep -h "end solves" "$q" 2>/dev/null | while read -r l; do grep -qxF "$l" $seen || { echo "SOLVE: $l" | cut -c1-220; echo "$l" >> $seen; }; done
   done
   for f in solves/*/verify.out; do
-    if grep -qE "^(PASS|FAIL)" "$f" && ! grep -qxF "$f" $seen; then echo "RUN: $f $(grep -E '^(PASS|FAIL)' "$f" | head -1)"; echo "$f" >> $seen; fi
+    k="$f $(stat -c %Y "$(dirname "$f")/cmd.txt" 2>/dev/null)"  # a run name used again is a new run
+    if grep -qE "^(PASS|FAIL)" "$f" && ! grep -qxF "$k" $seen && ! grep -qxF "$f" $seen; then echo "RUN: $f $(grep -E '^(PASS|FAIL)' "$f" | head -1)"; echo "$k" >> $seen; fi
     if grep -qE "Traceback|^Error|creating the game failed" "$f" && ! grep -qxF "ERR $f" $seen; then echo "RUN ERROR: $f $(grep -E 'Traceback|^Error|creating the game failed' "$f" | head -1 | cut -c1-150)"; echo "ERR $f" >> $seen; fi
   done
   if ! pgrep -f "launch.py sched" >/dev/null; then grep -qxF SCHEDDEAD $seen || { echo "SCHEDULER DEAD"; echo SCHEDDEAD >> $seen; }; else sed -i '/^SCHEDDEAD$/d' $seen; fi
