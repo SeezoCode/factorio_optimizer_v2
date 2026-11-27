@@ -86,4 +86,5 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   are kept as level **L1f**: automation passed it (24 h, 100%); py-1 under it made 4 pack crafts in 2.9 h with no
   machine working (stopped). Both rerun under the new L1.
 - **Py science 3 m2 solved** 04:43 UTC: 569 machines, 746 x 726 (2 h 20 min, paused an hour for chemical's stitch). Ladder queued; production's resume started after it.
-- Waiters built as `bash -c 'while pgrep -f PATTERN ...'` never fire: pgrep finds the waiter's own command line. Production's resume started by hand at 04:50 UTC (6 GB heap), beside py-4's solve (planning).
+- Production's resume: the waiter did start it at 04:44, but I misread the log, killed the waiter (and with it that
+  resume) and started it again by hand at 04:50 (6 GB heap). One resume runs, beside py-4's solve (planning).
