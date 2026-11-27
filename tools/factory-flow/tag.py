@@ -80,7 +80,7 @@ def carriers(plan):
     return {base(n) for n in names}
 
 
-def loops(plan, ports=None):
+def loops(plan, ports=None, deep=None, targets=()):
     """(inside, outside): item -> the recipes using it that are in the item's own production loop, and those that are
     not, for every item with users of both kinds. A user is in the loop when what it makes comes back to a maker of
     the item within three recipes (0: it makes the item itself, a catalyst's farm). Py logistic science is one loop of
@@ -115,12 +115,27 @@ def loops(plan, ports=None):
                     todo.append((w, d + 1))
         return None
 
+    use = defaultdict(lambda: defaultdict(float))
+    for m in plan.get("machines", []):
+        for k, v in m.get("demand", {}).items():
+            use[base(k)][base(m["recipe"])] += v
     inside, outside = defaultdict(set), defaultdict(set)
     for item, mks in makers.items():
-        for n, r in recs.items():
-            if item in r["in"]:
-                d = back(mks, n)
-                (inside if d is not None and d <= 3 else outside)[item].add(n)
+        ds = {n: back(mks, n) for n, r in recs.items() if item in r["in"]}
+        # (deep D, as the check's --loop-deep: an item none of whose users is within three steps, but one is within D,
+        # has as its loop the users within a step of the nearest, where those take at least half of the plan's use of
+        # it and no maker of a target is among the others. Logistic science's mukmoux loop (bones, bonemeal, sap
+        # trees, saps, mukmoux food, calves, mukmoux, the renderer) is four to six steps round.)
+        lim = 3
+        if deep and not any(d is not None and d <= 3 for d in ds.values()):
+            dd = min((d for d in ds.values() if d is not None and d <= deep), default=None)
+            if dd is not None:
+                ins_ = [n for n, d in ds.items() if d is not None and d <= dd + 1]
+                tot = sum(use[item].values()) or 1
+                if sum(use[item][n] for n in ins_) / tot >= 0.5 and not any(recs[n]["out"] & set(targets) for n in ds if n not in ins_):
+                    lim = dd + 1
+        for n, d in ds.items():
+            (inside if d is not None and d <= lim else outside)[item].add(n)
     # (Fluid loops too, found over the graph with fluid inputs counted as well; items keep the classification above.
     # The mod uses them under its loop-fluids setting. Not a fluid that an input pipe brings: it does not run out.
     # The margin layout's syngas goes round by way of refined syngas and oleochemicals, and the plastic maker and four
@@ -155,7 +170,7 @@ def overflow_ports(plan, ports, targets):
             and (o["rate"] <= 1e-12 or base(o["item"]) in used)]
 
 
-def tag(bp_obj, plan, ports, targets, recipes=None):
+def tag(bp_obj, plan, ports, targets, recipes=None, deep=None):
     """Adds the tags in place; returns (machines tagged, overflow belts tagged)."""
     bp = bp_obj["blueprint"]
     intake = planned_intake(plan)
@@ -167,7 +182,7 @@ def tag(bp_obj, plan, ports, targets, recipes=None):
     by_tile = {}
     for e in bp["entities"]:
         by_tile[(int(e["position"]["x"] // 1), int(e["position"]["y"] // 1))] = e
-    inside, outside = loops(plan, ports)
+    inside, outside = loops(plan, ports, deep, targets)
     # (The recipes the plan has for each kind of machine: a furnace whose blueprint names none is one of them.)
     of_machine = defaultdict(set)
     for m in plan.get("machines", []):
@@ -309,6 +324,8 @@ def main():
                                       "defaults to the job's own data file")
     ap.add_argument("--built", help="the test copy as the in-game check built it (verify.py --relief-exits --real-voids "
                                     "--export-built FILE): its overflow exits and fluid voids are added to the blueprint")
+    ap.add_argument("--loop-deep", type=int, default=None, metavar="D",
+                    help="an item with no user within three recipe steps of a maker, but one within D, is a loop item too")
     ap.add_argument("-o", "--output", help="where to write the tagged string (default <out>/flow_blueprint.txt)")
     a = ap.parse_args()
     job = json.load(open(a.job))
@@ -320,7 +337,7 @@ def main():
     plan = json.load(open(rebalanced if os.path.exists(rebalanced) else os.path.join(a.out, "plan.json")))
     ports = json.load(open(os.path.join(a.out, "ports.json")))
     bp = decode(open(os.path.join(a.out, a.blueprint)).read())
-    machines, ends = tag(bp, plan, ports, targets, recipes)
+    machines, ends = tag(bp, plan, ports, targets, recipes, a.loop_deep)
     added = {}
     if a.built:
         # (Pipes: the kinds the blueprint itself uses; the check extends a port with the neighbouring pipe's own kind.)

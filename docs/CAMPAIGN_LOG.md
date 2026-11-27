@@ -275,3 +275,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   mukmoux, meat, moss, starch, gravel, worm (27 loop items, was 19); chemical 5, py-2 4 more.
 - **New level L2s (mod + starters all along)**, ranked with L3s on the help side: logi_L2s started. **logi_L1b
   restarted as logi_L1c with `--loop-deep 7`**; chem_L1b and py2_L1b queued with it.
+- The mod's own loop classification (tools/factory-flow/tag.py `loops`) had the same three-step rule: given the same
+  deep rule (`deep`, from verify's `--loop-deep`; tag.py `--loop-deep` for a player's blueprint). Logistic: 47 loop
+  items, 55 with D = 7 (bones, gravel, meat, moss, mukmoux, saps, starch, worm). Under the mod the check's script
+  reserve never acted (it learns the networks from --flow's records); the built reserve gates work from the layout.
+  Queued **logi_L2e: L2 + `--loop-deep 7 --reserve-built`**.

@@ -1354,7 +1354,7 @@ def main():
         recipes = json.load(open(data_file))["recipes"] if data_file else {}
         bp_obj = flow_tag.decode(bp)
         tagged, ends = flow_tag.tag(bp_obj, json.load(open(built_plan_path(out))), ports or {},
-                                    {t["name"] for t in (job or {}).get("targets", [])}, recipes)
+                                    {t["name"] for t in (job or {}).get("targets", [])}, recipes, args.loop_deep)
         if args.with_built:
             # The player's blueprint: the overflow exits and fluid voids an earlier run built from real parts, merged
             # in (tag.py --built does the same for the blueprint itself). The test copy's infinity pipes where a real
