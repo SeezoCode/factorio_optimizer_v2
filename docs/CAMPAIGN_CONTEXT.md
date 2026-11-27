@@ -97,7 +97,7 @@ port over the measured window) over the level's full measured window.
 
 (Rewrite this section as the campaign goes; history is in CAMPAIGN_LOG.md.)
 
-As of 2026-11-27 21:20 UTC:
+As of 2026-11-27 23:30 UTC:
 
 - **Laid out** (solves/): automation_m2 (13 machines), py-science-pack-1_m2 (50), military_m2 (13), logistic_m2
   (386), py-science-pack-2_m2b (411), chemical_m2 (487), py-science-pack-3_m2 (569).
@@ -106,12 +106,20 @@ As of 2026-11-27 21:20 UTC:
   converged, fine routing 1,857-2,283 conflicts); py-science-pack-4_s4 (51 blocks done; a waiter starts its stitch
   after production's JVM exits). Utility and space stopped (beyond this machine on belts).
 - **Results**: automation and military conquered at L0, py-1 at L1. Logistic, py-2, chemical, py-3 passed L5.
-  L4 (virtual bots) broke on the big ones; L3 (rules) fails on them: its flow governors (quota stop on fluids,
-  rate cap) hold the planned makers (logistic: both hot-air tin casters stopped by the hot-air quota, the tin
-  furnace capped; no solder, no speakers, no bones). L2 (the mod, no quotas) runs best: logi_L2d 28 packs of 20
-  due by hour 3.3, then the mukmoux bones loop drained at hour 3.5 (watching with `samp_bash.sh` + `ls_logi.lua`).
-- **Running now**: logi_L2d, py2_L2, chem_L2, logi_L1b. Queue: chem_L1b, py2_L1b, logi_L0, logi_L3d and
-  chem_L3d (`--rate-cap 4 --quota-fluid-net`), py2_L0, chem_L0, then py-3's ladder.
+  L4 broke on the big ones; L3's governors (hot-air quota, rate cap) hold logistic's tin makers. L2 (the mod) runs
+  best; logi_L2d's mukmoux bones loop drained by hour 3.5 (stock stranded past its users), logi_L2s (L2 + starters
+  all along) holds past it (34 packs of 23 due at hour 3.7). py2_L2 ahead of plan at hour 3.5. Chemical behind at
+  L2 (rubber / saps / fertilizer; chem_L2 stopped), chem_L2s started.
+- **Check fixes today**: `--loop-deep D` (verify.py and the mod's tag.py; long Py loops become loop items, users at
+  the nearest distance only, at least half the use, no target maker outside); `--pull-built` counts a heated fluid
+  product even where the fluid is also an ingredient (outlet-gas ring); `--carrier-kit` turns on `bootstrap` without
+  `--flow` or the mod (the kit did nothing at L1). New level L2s.
+- **Running now**: logi_L1f (L1 + loop-deep, all fixes), logi_L2s, py2_L2, chem_L2s. Queue: logi_L2e (L2 +
+  loop-deep + built reserve gates), chem_L1b, py2_L1b (both with loop-deep), logi_L0, logi_L3d, chem_L3d, py2_L0,
+  chem_L0, then py-3's ladder.
+- **Probes worth knowing**: `probes/sum.py <run>`, `probes/chainlive.py <run> <pack>`, `probes/lua.py <run> <file>`
+  (Lua 5.2: no `//`; in Factorio 2.1 an entity has no `fluidbox` key, use `fluids_count`, `get_fluid(i)`,
+  `get_fluid_box_prototype(i)`, `has_fluid_segment(i)`), `probes/samp_bash.sh` with `ls_logi.lua`.
 - **Scheduler**: `launch.py sched --max 4` (one copy only: `pgrep -af launch.py`), games at nice 10 (go.sh); renice a stitching solve to -5.
 - **Check additions this campaign**: `--reserve-built`, `--reserve-self`, `--self-exit-built`. L1 =
   fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`.

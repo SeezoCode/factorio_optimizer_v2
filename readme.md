@@ -36,17 +36,17 @@ factory-flow mod a player installs), **L1 built** (real parts only: overflow exi
 |---|---:|---|---|---|---|---|---|---|---|---|
 | Automation science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | · | · | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
 | pY science pack 1 | 50 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | · | · | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | stopped |
-| Logistic science pack | 386 | **L5 fed** | **pass** 3.6 h | stopped | · | running, 0 h | stopped | stopped | running, 0 h | · |
+| Logistic science pack | 386 | **L5 fed** | **pass** 3.6 h | stopped | · | running, 3.6 h | stopped | stopped | running, 1.2 h | · |
 | Military science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | · | · | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
-| pY science pack 2 | 411 | **L5 fed** | **pass** 3.6 h | stopped | stopped | · | stopped | running, 0 h | stopped | · |
-| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | stopped | stopped | · | stopped | running, 0 h | stopped | · |
+| pY science pack 2 | 411 | **L5 fed** | **pass** 3.6 h | stopped | stopped | · | stopped | running, 3.6 h | stopped | · |
+| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | stopped | stopped | running, 0 h | stopped | stopped | stopped | · |
 | pY science pack 3 | 569 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · | · | · |
 | Production science pack | stitch paused (chemical and below first) | | · | · | · | · | · | · | · | · |
 | pY science pack 4 | stitch waiting (chemical and below first) | | · | · | · | · | · | · | · | · |
 | Utility science pack | stopped: too big for this machine on belts | | · | · | · | · | · | · | · | · |
 | Space science pack | stopped: too big for this machine on belts | | · | · | · | · | · | · | · | · |
 
-Updated 2026-11-27 21:08 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+Updated 2026-11-27 23:28 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
 <!-- campaign:end -->
 
 ## Examples
