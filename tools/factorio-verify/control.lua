@@ -1241,14 +1241,18 @@ local function start(params)
     end
     -- One machine's products as a decider sees them: each with its signal, its limit, and the demand signals the
     -- machine can serve (items: per belt network it drops the item onto, and its hand-overs; fluids: per pipe network).
-    local function products_of(m, r)
+    -- (heated: for pull, a fluid product at a temperature of its own counts even where the fluid is also an
+    -- ingredient. Py logistic science's outlet gas goes round reheat (to 1000), warmer stone brick (500) and warm stone
+    -- brick (250); as "its own catalyst" the reheater's gas was no product, its decider listened only for molten salt,
+    -- and the ring, the hot air, the glass, the lamps for the fish breeders and the meat for the packs all stood.)
+    local function products_of(m, r, heated)
       local e = m.e
       local own = {}
       for _, ing in pairs(r.ingredients) do own[ing.name] = true end
       local function used(name) for u in pairs(used_by[name] or {}) do if u ~= e.unit_number then return true end end return false end
       local list = {}
       for _, p in pairs(r.products) do
-        if not own[p.name] then
+        if not own[p.name] or (heated and p.type == "fluid" and p.temperature ~= nil) then
           local amount = p.amount or ((p.amount_min or 0) + (p.amount_max or 0)) / 2
           local c
           if p.type == "item" then
@@ -1401,7 +1405,7 @@ local function start(params)
             local free, conds, seen = false, {}, {}
             for _, p in pairs(r.products) do if target[p.name] then free = true end end
             local any_used = false
-            for _, c in pairs(products_of(m, r)) do
+            for _, c in pairs(products_of(m, r, true)) do
               if c.any_used then any_used = true end
               for _, dsg in pairs(c.demand) do
                 if not seen[dsg.name] then

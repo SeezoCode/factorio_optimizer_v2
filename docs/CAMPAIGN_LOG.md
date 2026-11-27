@@ -288,3 +288,16 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - logi_L1d (nearest-distance rule): 10 reserve gates from real parts, now **bones** (gate on the tile past the
   bonemeal maker's pickup, sensor three tiles back), **saps** (past the mukmoux food maker's pickup) and **mukmoux**
   (past caged-mukmoux), all shut at the start as meant: what passes the loop's own users now queues at them first.
+- **logi_L1d (built parts) stood at hour 1.6 with 2 packs of 10 due, 109 recipes at nothing.** Two faults of the
+  built level, both now fixed:
+  1. *The outlet-gas ring had no pull.* Py's outlet gas goes round reheat (to 1000), warmer stone brick (500) and warm
+     stone brick (250). `--pull-built` skipped a product that is also an ingredient (a catalyst), so the reheater's
+     gas was no product and its decider listened only for molten salt; the reheater and the warm-brick maker stood
+     switched off by their deciders, the hot air, glass, lamps, fish breeders, fish, meat and packs behind them.
+     Now a fluid product at a temperature of its own counts for pull even where the fluid is also an ingredient.
+  2. *The carrier kit never handed in anything at L1* (carriers handed in: none; logi_L2d had 82 barrels by hour 3):
+     the kit works from the shortage records of `--flow` or `--bootstrap`, and L1 has neither. Both water-barrel
+     fillers stood with water and no empty barrel; the calves without water barrels gave none back. `--carrier-kit`
+     without `--flow` or the mod now turns on `bootstrap` (the kit's records and hand-ins only, empty carriers in
+     the warm-up, as before).
+  logi_L1d stopped for **logi_L1e** (both fixes, `--loop-deep 7`).

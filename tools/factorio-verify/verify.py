@@ -1423,6 +1423,11 @@ def main():
               f"the check puts in loop carriers as a player would")
     if args.carrier_kit:
         params["carrier_kit"] = args.carrier_kit
+        # (The kit hands in where --flow's or --bootstrap's shortage records show a starved carrier user: without
+        # either, as at the built level (L1), it never handed in anything. Py logistic science's water-barrel fillers
+        # stood with water and no empty barrels, the mukmoux calves without water barrels, and no barrel came back.)
+        if not (args.flow or getattr(args, "flow_mod", False)):
+            params["bootstrap"] = True
         # (No overflow takes a carrier: --void-full, --relief and --relief-exits leave them in the machine.)
         params["void_except"] = {**{c: True for c in params.get("seed_carriers", [])}, **params.get("void_except", {})}
         print(f"carrier-kit: empty carriers only, {'during the warm-up' if args.carrier_kit == 'warmup' else 'counted through the run'}; "
