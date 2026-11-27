@@ -65,3 +65,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - Tests: BlueprintTest (with a new whitelist round trip), OverflowLastTest, SpoilageTest pass.
 - **Py science 2 m2b solved** (resumed with the whitelist fix) 02:21 UTC: 411 machines in 27 blocks, 487 x 549. Ladder queued; the queue is now breadth-first (every science's L5, then L4, ...).
 - **The void fix works**: production s2's resume (02:10) laid out blocks 5 and 20 to 24 within 16 minutes, where 100 minutes before it had none; all 24 blocks laid out.
+- **Production s2 resume killed by the memory limit** (03:15 UTC, in its stitch: 606 conflicts at 1159 x 966). The
+  container's cgroup holds 16 GB and has no swap; three solver JVMs (about 4 GB each), two games and an idle Gradle
+  daemon (1.5 GB) were too much. Gradle daemons stopped; production resumes when chemical's stitch ends (a waiter),
+  with `-Xmx6g`. Note: the desktop's valid production (993 x 880) and py-4 (1092 x 1145) stitches had robot links
+  for items under 0.1/s; on belts alone (the user's rule) every such link is a corridor belt, so these stitches
+  are harder than any done before.
