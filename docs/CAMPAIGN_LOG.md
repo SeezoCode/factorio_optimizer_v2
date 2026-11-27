@@ -167,3 +167,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   with `max_machines` 16 and `fluid_weight` 1.5 (as py-2 needed blocks of 12), local sinks 1000, 2 threads (12:10
   UTC). The s3 queue (utility, space after py-4) is stopped; they wait.
 - 12:20 UTC: utility then space started as s4 (blocks of 16, local sinks 1000, 2 threads, nice 8), queue_s4b.log.
+- **Military science L2 (mod)**: PASS over 24 game hours, 100.0% of plan.
