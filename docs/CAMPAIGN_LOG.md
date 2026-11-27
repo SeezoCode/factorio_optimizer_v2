@@ -247,3 +247,12 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   crafts; its leave only for users behind their own plan) is the likely brake: users running ahead of their plan
   hold a slow maker at its cap. chem_L3s (starters all along) 1 pack craft in hour 2. Queued **logi_L3d and
   chem_L3d: L3 with `--rate-cap 4`**. logi_L2d (the mod) meanwhile leads: 28 pack crafts by hour 3.3 (20 due).
+- **logi_L3c traced to two of L3's governors (live debug of the tin makers, hour 3.1):** the planned tin source,
+  both hot-air tin plate casters, stands *stopped by the quota* on hot air (`quota:hot-air`: over their share
+  while another hot-air user is behind, on whatever pipe); the plain tin plate furnace, which had carried the load
+  (89 crafts against a plan of 1.1 in three hours), stands held by the rate cap and by the quota on tin ore. Solder,
+  mukmoux food and so the speakers and caged mukmoux starve: no bones, no animal samples, no packs. L2 (the mod)
+  runs without the flow quotas and leads (28 crafts by hour 3.3, 20 due), so **L3 tuning is worth less than the
+  fairer levels**: stopped logi_L3c and chem_L3s (5 crafts of 12 due), started **py2_L2 and chem_L2** (FAIR now
+  with the exit-catalyst), queued **logi_L1b, chem_L1b, py2_L1b** (built parts with the self-exit and reserve
+  fixes that passed py-1), then logi_L0, and L3d variants (`--rate-cap 4 --quota-fluid-net`) after them.
