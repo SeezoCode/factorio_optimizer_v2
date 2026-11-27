@@ -186,3 +186,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   this); dozens of machines at 0 crafts, switched off by the pull deciders. Built L1 needs more parts for these
   factories (a carrier filler loop, a catalyst return), and each 12-hour attempt costs about 12 real hours.
   **Changed order**: L4 (ideal) for the four medium sciences now, then L3 (12 h windows), L1 again later.
+- **Utility and space stopped** (15:55 UTC). Utility plans to 3,187 machines (3,629 once blocks round up) in 170
+  blocks of up to 16; after 2 h of block search 18 blocks had layouts, and the stitch of 170 blocks on belts would
+  come after. Production (1,020 machines, 24 blocks) has not stitched in 8 hours of attempts on this machine, and
+  space is bigger than utility. With 4 cores and about 51 hours left, the CPU goes to production's and py-4's
+  stitches and to the medium sciences' runs. Utility and space stay unsolved on belts here; see the report.

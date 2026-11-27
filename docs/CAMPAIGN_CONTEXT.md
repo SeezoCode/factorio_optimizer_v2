@@ -100,8 +100,8 @@ As of 2026-11-27 12:15 UTC:
   (386), py-science-pack-2_m2b (411), chemical_m2 (487), py-science-pack-3_m2 (569).
 - **Solving**: production_s3 (`local_sinks` 1000; blocks done; stitch resumed with corridors 40 and
   `blocks.stitch` "global", job `solves/jobs/production-science-pack_s3_c40g.json`, resume log
-  `solve_resume.log`); py-science-pack-4_s4 (blocks of 16, local sinks, queue_s4.log). Utility and space not
-  started (their queue was stopped; start them when a solve slot frees: `solve.sh s4 0.02 2 utility-science-pack`).
+  `solve_resume.log`); py-science-pack-4_s4 (blocks of 16, local sinks, queue_s4.log). Utility (3,629 machines, 170 blocks)
+  and space were stopped at 15:55 on the 27th: beyond this machine on belts (see CAMPAIGN_LOG).
 - **Results**: automation conquered at L0. Py-1 conquered at L1 (pull, self-exit, overflow exits, voids; player's
   blueprint with those parts in `solves/py-science-pack-1_m2/player_L1_blueprint.txt`). Military passed L5, L4, L3;
   L2 running, then L1, L0. Logistic and py-2 passed L5; chemical and py-3 L5 running. Big ones next go straight to L1
