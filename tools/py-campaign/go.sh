@@ -14,5 +14,6 @@ for f in best_output_string.txt blocks.json plan.json plan_rebalanced.json ports
 # a single-block run has no resume/: its job (written by solve_queue.sh) goes there, where verify.py and the probes look
 [ -e solves/$name/resume/job.json ] || { mkdir -p solves/$name/resume; cp solves/jobs/$src.json solves/$name/resume/job.json; }
 echo "$src $*" > solves/$name/cmd.txt
-setsid nohup python3 tools/factorio-verify/verify.py solves/$name "$@" > solves/$name/verify.out 2>&1 < /dev/null &
+# Games at a lower priority than solves (a stitch works to wall-clock deadlines and starves under contention).
+setsid nohup nice -n 10 python3 tools/factorio-verify/verify.py solves/$name "$@" > solves/$name/verify.out 2>&1 < /dev/null &
 echo "started $name"
