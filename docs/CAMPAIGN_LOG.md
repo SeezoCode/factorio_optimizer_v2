@@ -78,3 +78,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   games cut to one so chemical's stitch has the cores; py-3 continues after (kill -CONT).
 - **Py science 1 L3 (rules)**: PASS over 24 game hours, 100.0% of plan.
 - **Py science 1 L2 (mod)**: PASS over 24 game hours, 100.0% of plan.
+- **Military science L5 (fed)**: PASS, 99.8% of plan over 3 measured hours.
