@@ -52,3 +52,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   (`PlacedEntity.whitelist`; blueprint writer and reader, validator, overflow rule and resume files know it).
   Built into a snapshot `/opt/fo/current` (solves now run from there: a rebuild of `build/install` under a running
   solve can crash it; one was stopped seconds before its copy step). `resume.sh` continues m2b with it (01:53 UTC).
+- **Automation science L0 (plain)**: PASS over 24 game hours, 100% of plan at the port; 72 to 74 pack crafts every hour after hour 2, nothing handed in after the warm-up, no flow control. **Conquered at every level, L5 to L0.**
