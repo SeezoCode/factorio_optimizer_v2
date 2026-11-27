@@ -9,6 +9,8 @@ root. Output (samples, snapshots) goes to `out/`, which git ignores.
   state). Lines starting with `--` are dropped (the probe goes over RCON as one line).
 - `samp.sh <probe.lua> <run...>`: the probe every two minutes into `out/samp2/<run>.jsonl` (`ls.lua`: loop items on
   belts and in machines). `sa.py <run...>` reads them: pack crafts and loop stocks by game hour.
+- `samp_bash.sh`: the same in bash, for machines without zsh (the cloud container); `ls_logi.lua` is `ls.lua` with
+  logistic's mukmoux loop items added.
 - `sum.py <run> [hours]`: pack crafts by hour, how the recipes kept to plan over the last hours, what was handed in.
 - `chainlive.py <run> <recipe>`: from the target recipe down, what each stopped machine lacks right now.
 - `fq.lua`, `mq.lua`, `nq.lua`, `sq2.lua`, `kt.lua`, `dt2.lua`, `gall.lua`, `why.lua`: one-off probes (a machine's
