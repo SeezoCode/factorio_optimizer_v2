@@ -3335,7 +3335,11 @@ local function reserve_gates(run)
           -- (params.reserve_items: every item, past its last user on each belt. Py science 1 with its inputs at the
           -- plan stood with the fertilizer maker 17 biomass short and 236 parked past it toward a shut port: with
           -- unlimited inputs more came, at the plan's rate what parks is lost.)
-          if ing.type == "item" and (run.params.reserve_all or run.params.reserve_items or (lf.inside[it] or {})[r.name]) then
+          -- (params.reserve_self: also an item the recipe gives back, a catalyst or its own by-product: Py's moss farm
+          -- takes 15 coarse a craft and gives coarse back, and no outside user makes it a loop item.)
+          local gives_back = false
+          if run.params.reserve_self then for _, p in pairs(r.products) do if p.name == it then gives_back = true end end end
+          if ing.type == "item" and (run.params.reserve_all or run.params.reserve_items or gives_back or (lf.inside[it] or {})[r.name]) then
             -- (Seen bringing it, or a network a maker of the item drops onto: a user below a gate that never opened
             -- was never seen taking the item, and the gate stayed above it for good.)
             local nets = {}

@@ -106,3 +106,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   counts as a loop item, and all its candidates were belt ends: no gate). **L1 is now** the fair set +
   `--pull-built --reserve-built --reserve-items`. py1_L1b (24 h) queued to test it.
 - 05:25 UTC: production s2 in its stitch; py-4's solve (blocks, 14 of 26 laid out) paused with SIGSTOP (pid 30458) so the stitch has the cores. Continue it with kill -CONT when production's stitch ends.
+- **py1_L1b (L1 with gates on every item, `--reserve-items`): fail**, stopped at hour 6.4 with 2 pack crafts and 45
+  of 47 recipes at nothing: a gate opens only once 4 items stand at its sensor, and with one past every item's last
+  user the slow items' belts barely move. New `--reserve-self` instead: gates for a loop's items and for items a
+  recipe gives back (catalysts, own by-products). Py-1: 3 gates (seaweed 2, coarse 1). L1 is now
+  `--pull-built --reserve-built --reserve-self` on the fair set; py1_L1c started.

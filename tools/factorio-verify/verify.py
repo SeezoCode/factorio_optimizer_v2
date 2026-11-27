@@ -790,6 +790,9 @@ def main():
                          "contents (hold) on a green wire to the gate tile, which moves only while the sensor holds T "
                          "(default 4) or more of anything. Implies the loop membership of --loop-first, which without "
                          "--flow holds nothing back")
+    ap.add_argument("--reserve-self", action="store_true",
+                    help="with --reserve: also a gate past the last user of an item its recipe gives back (a catalyst or "
+                         "its own by-product: Py's moss farm and its coarse), loop item or not")
     ap.add_argument("--reserve-items", action="store_true",
                     help="with --reserve: a gate past the last user of every item on each belt, not only of a loop's "
                          "items (what parks past the last user is lost once the inputs come at the plan's rate). "
@@ -1585,6 +1588,8 @@ def main():
             params["reserve_all"] = True
         if args.reserve_items:
             params["reserve_items"] = True
+        if args.reserve_self:
+            params["reserve_self"] = True
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
     if args.flow and built_plan_path(args.target) and os.path.exists(built_plan_path(args.target)):
         # Machines the plan has only to get rid of something (sinks.burn): every product goes to a burner or to other
