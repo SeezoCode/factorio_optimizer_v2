@@ -4,6 +4,7 @@
     python3 tools/py-campaign/launch.py add <run> <layout> <level> [extra verify flags...]   # queue a run
     python3 tools/py-campaign/launch.py sched [--max N]     # start queued runs while fewer than N games run (loops)
     python3 tools/py-campaign/launch.py status              # every run: level, alive, game hour, verdict
+    python3 tools/py-campaign/launch.py stop <run...>        # stop runs with their game servers
 
 <layout> is a folder in solves/ with a solved layout (solves/<science>_<suffix> from solve_queue.sh); <run> becomes
 solves/<run>. Levels go from the most help to none (see docs/CAMPAIGN_CONTEXT.md):
@@ -129,6 +130,14 @@ def main():
             time.sleep(30)
     elif cmd == "status":
         status()
+    elif cmd == "stop":
+        # Stop a run and its game server (killing verify.py alone leaves the server running and holding a slot).
+        for run in sys.argv[2:]:
+            pids = subprocess.run(["pgrep", "-f", f"verify.py solves/{run} "], capture_output=True, text=True).stdout.split()
+            for pid in pids:
+                subprocess.run(["pkill", "-P", pid])
+                subprocess.run(["kill", pid])
+            print(run, "stopped" if pids else "not running")
 
 
 if __name__ == "__main__":
