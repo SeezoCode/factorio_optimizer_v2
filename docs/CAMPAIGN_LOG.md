@@ -169,3 +169,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - 12:20 UTC: utility then space started as s4 (blocks of 16, local sinks 1000, 2 threads, nice 8), queue_s4b.log.
 - **Military science L2 (mod)**: PASS over 24 game hours, 100.0% of plan.
 - **Chemical science L5 (fed)**: PASS, 99.8% of plan over 3 measured hours; fed by the check: 361 items.
+- 13:50 UTC: py-4 s4 (blocks of 16): all 51 blocks laid out in 1 h 15 min; stitching (nice 5, behind production). Production's global routing: floorplan 1 down to 14 corridor sides over capacity (from 5,234).
