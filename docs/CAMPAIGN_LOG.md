@@ -41,3 +41,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   validator with FLUID_MIX (uf6 and uf6#20, the same fluid at two temperatures, on one pipe net). Left running.
 - Games cut from 3 to 2 at a time while three solves run (4 cores): the solves gate everything after them.
 - **Py science 1 L5 (fed)**: PASS, 99.8% of plan over 3 measured hours.
+- **Py science 1 L4 (ideal)**: PASS, 100.0% of plan over 6 measured hours.
