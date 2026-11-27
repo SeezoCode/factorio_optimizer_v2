@@ -157,3 +157,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   end beside their blocks, 26 links run to the edge), so the 600 belts between blocks are what does not fit. Resumed
   with `blocks.corridor` 40 instead of 20 (09:28 UTC; the blocks are kept, the floorplan is new), at priority. The
   s3 queue went on to py-4.
+- **Military science L3 (rules)**: PASS over 24 game hours, 100.0% of plan.
