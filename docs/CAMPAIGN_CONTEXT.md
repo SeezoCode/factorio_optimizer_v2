@@ -65,7 +65,7 @@ Set up as in [CLOUD_SETUP.md](CLOUD_SETUP.md); the container is lost when the se
 | L4 | ideal | `--prime-full --flow --virtual-bots --vb-fluids --meter 1.02 --meter-start --void-full` | 2 h / 6 h |
 | L3 | rules | fair set + the rule set that passes logistic science (script) | 2 h / 22 h |
 | L2 | mod | the same by the factory-flow mod (`--flow-mod`) | 2 h / 22 h |
-| L1 | built | fair set + `--pull-built` (real parts only; before 04:35 on 11-27 it also had `--flow --no-pull`: those runs are level L1f) | 2 h / 22 h |
+| L1 | built | fair set + `--pull-built --reserve-built --reserve-items` (real parts only: built pull and reserve gates; before 04:35 on 11-27 it had `--flow --no-pull --pull-built`: those runs are level L1f) | 2 h / 22 h |
 | L0 | plain | `--prime-all` only | 2 h / 22 h |
 
 Fair set: `--prime-all --carrier-kit --seed-stop 7200 --real-voids --relief --relief-exits` (a warm start, empty

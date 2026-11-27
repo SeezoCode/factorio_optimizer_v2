@@ -35,7 +35,9 @@ LEVELS = {
     # Real parts only: overflow exits, voids and pull built from deciders and enable conditions; no script flow rules.
     # (Until 2026-11-27 04:30 L1 was FAIR + --flow --no-pull --pull-built, whose quotas and gates are the check's script:
     # those runs are kept as level L1f.)
-    "L1": ("built", FAIR + ["--pull-built"], 7200, 22 * 3600),
+    # From 2026-11-27 05:30 also reserve gates from real parts past the last user of every item on each belt (a
+    # loop's own item, coarse at Py science 1's moss farm, drained to its port without them).
+    "L1": ("built", FAIR + ["--pull-built", "--reserve-built", "--reserve-items"], 7200, 22 * 3600),
     "L0": ("plain", ["--prime-all"], 7200, 22 * 3600),
 }
 

@@ -784,6 +784,12 @@ def main():
                          "the pickup tile of an inserter bringing a loop's item to one of the loop's users stays shut "
                          "until the tile N back up the belt (default 4) has a lane full, so N tiles of queue stand at "
                          "the user before anything goes on")
+    ap.add_argument("--reserve-built", nargs="?", type=int, const=4, default=None, metavar="T",
+                    help="reserve gates from real parts, no script: at the --reserve gate tiles (past the last of a "
+                         "loop's own users of a loop item on each belt), the sensor tile N=4 back up the belt reads its "
+                         "contents (hold) on a green wire to the gate tile, which moves only while the sensor holds T "
+                         "(default 4) or more of anything. Implies the loop membership of --loop-first, which without "
+                         "--flow holds nothing back")
     ap.add_argument("--reserve-items", action="store_true",
                     help="with --reserve: a gate past the last user of every item on each belt, not only of a loop's "
                          "items (what parks past the last user is lost once the inputs come at the plan's rate). "
@@ -1415,6 +1421,10 @@ def main():
         params["out_share"] = args.out_share
         params["out_share_mode"] = args.out_share_mode
         print(f"out-share: a maker's inserters onto several belt networks carry each network's planned share (within {args.out_share:g} times), mode {args.out_share_mode}")
+    if args.reserve_built and not args.loop_first:
+        args.loop_first = 1800  # the membership only: without --flow loop-first holds nothing back
+    if args.reserve_built and not args.reserve:
+        args.reserve = 4
     if args.loop_first:
         lp = built_plan_path(args.target)
         if not (lp and os.path.exists(lp)):
@@ -1568,6 +1578,9 @@ def main():
             params["loop_share"] = True
         if args.reserve:
             params["reserve"] = args.reserve
+        if args.reserve_built:
+            params["reserve_built"] = args.reserve_built
+            print(f"reserve-built: gates past a loop's last user on each belt, from real parts (a sensor tile {args.reserve} back reads its contents on a wire; the gate moves while it holds {args.reserve_built} or more)")
         if args.reserve_all:
             params["reserve_all"] = True
         if args.reserve_items:

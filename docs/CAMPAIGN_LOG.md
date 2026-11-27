@@ -97,3 +97,11 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   item and hold a reserve (`--reserve`): both pass 24 h. In-game equivalent not built yet: a **reserve gate from real
   parts** (the belt tile past a loop's last user, enabled only while the tile N back holds items, read by wire).
   That is the next step for L1/L0 once every science has its upper levels.
+- **New in the check: `--reserve-built [T]`, reserve gates from real parts** (05:30 UTC). At the `--reserve` gate
+  tiles (with `--reserve-items`: past the last user of every item on each belt), the sensor tile N=4 back up the belt
+  reads its contents (hold) onto a green wire to the gate tile, whose enable condition is "anything >= T" (4); no
+  script opens or shuts anything. Without `--flow` the gate places come from the layout (the networks the item's
+  makers drop onto). Where the belt ends at the last user (a port right after it) the pickup tile itself is the
+  gate. Py science 1: 32 gates, 12 of them at pickup tiles, coarse included (without `--reserve-items` only seaweed
+  counts as a loop item, and all its candidates were belt ends: no gate). **L1 is now** the fair set +
+  `--pull-built --reserve-built --reserve-items`. py1_L1b (24 h) queued to test it.

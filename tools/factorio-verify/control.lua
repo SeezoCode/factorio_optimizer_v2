@@ -2137,7 +2137,7 @@ local function finish(run)
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
     belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
     reserve = run.rs and (function()
-      local o = { gates = #run.rs.gates, skipped = run.rs.skipped, by_item = {} }
+      local o = { gates = #run.rs.gates, built = run.rs.built, at_pickup = run.rs.at_pickup, skipped = run.rs.skipped, why = run.rs.why, err = run.rs.err, by_item = {} }
       for _, g in pairs(run.rs.gates) do if not g.dead then o.by_item[g.item] = (o.by_item[g.item] or 0) + 1 end end
       return o end)() or nil,
     out_share = run.os and (function()
@@ -3307,6 +3307,24 @@ local function reserve_gates(run)
     end
     -- The pickup tiles of a loop's own users, by item and belt network: from the networks seen bringing the item to
     -- the machine (run.brought), every inserter of the machine on such a network.
+    -- (params.reserve_built, without --flow nothing records what is brought or made where: the networks the item's
+    -- makers drop onto, from the layout itself.)
+    local makes_on = run.makes_on
+    if run.params.reserve_built and not makes_on then
+      run.rs.makes_on = run.rs.makes_on or {}
+      for _, m in pairs(run.machines) do
+        local e = m.e
+        local r = e.valid and (e.get_recipe() or (m.plan_recipe and prototypes.recipe[m.plan_recipe]))
+        if r then for _, p in pairs(r.products) do
+          if p.type == "item" then
+            local t = run.rs.makes_on[p.name] or {}
+            for net in pairs((run.drops or {})[e.unit_number] or {}) do t[net] = true end
+            run.rs.makes_on[p.name] = t
+          end
+        end end
+      end
+      makes_on = run.rs.makes_on
+    end
     local cands = {}
     for _, m in pairs(run.machines) do
       local e = m.e
@@ -3322,7 +3340,7 @@ local function reserve_gates(run)
             -- was never seen taking the item, and the gate stayed above it for good.)
             local nets = {}
             for net in pairs(((run.brought or {})[e.unit_number] or {})[it] or {}) do nets[net] = true end
-            for net in pairs((run.feeds or {})[e.unit_number] or {}) do if ((run.makes_on or {})[it] or {})[net] then nets[net] = true end end
+            for net in pairs((run.feeds or {})[e.unit_number] or {}) do if ((makes_on or {})[it] or {})[net] then nets[net] = true end end
             for _, i in pairs((run.into or {})[e.unit_number] or {}) do
               local net = i.valid and (run.ins_net or {})[i.unit_number]
               if net and nets[net] then
@@ -3404,6 +3422,14 @@ local function reserve_gates(run)
             gate, steps, near = pb, 0, true
             run.rs.near = (run.rs.near or 0) + 1
           end
+          -- (params.reserve_built: where no plain belt tile follows the pickup tile (the belt ends there, at a port, or
+          -- dives underground) the pickup tile itself is the gate: an inserter takes from a stopped belt, and the
+          -- queue stands up the belt from it. Py science 1's moss farm takes its coarse from the last tile before the
+          -- coarse port.)
+          if run.params.reserve_built and not (gate and gate.valid and gate.type == "transport-belt") and pb.type == "transport-belt" and not run.rs.taken[pb.unit_number] then
+            gate, steps = pb, 0
+            run.rs.at_pickup = (run.rs.at_pickup or 0) + 1
+          end
           if gate and gate.valid and gate.type == "transport-belt" and not run.rs.taken[gate.unit_number] then
             -- (The queue is N tiles from the gate back, and reaches the pickup tile at least.)
             local sensor = pb
@@ -3412,6 +3438,24 @@ local function reserve_gates(run)
               if #ins ~= 1 or ins[1].type ~= "transport-belt" then break end
               sensor = ins[1]
             end
+            if run.params.reserve_built then
+              -- From real parts: the sensor tile reads what it holds (hold mode) onto a green wire to the gate, which
+              -- moves while the sensor holds T or more of anything (a lane of a straight belt holds 4).
+              local ok, err = pcall(function()
+                local scb = sensor.get_or_create_control_behavior()
+                scb.read_contents = true
+                scb.read_contents_mode = defines.control_behavior.transport_belt.content_read_mode.hold
+                gate.get_wire_connector(defines.wire_connector_id.circuit_green, true).connect_to(sensor.get_wire_connector(defines.wire_connector_id.circuit_green, true), false)
+                local cb = gate.get_or_create_control_behavior()
+                cb.circuit_condition = { first_signal = { type = "virtual", name = "signal-anything" }, comparator = "≥", constant = math.floor(run.params.reserve_built) }
+                cb.circuit_enable_disable = true
+              end)
+              if ok then
+                run.rs.taken[gate.unit_number] = true
+                run.rs.gates[#run.rs.gates + 1] = { e = gate, s = sensor, item = c.item, built = true, key = key, pb = pb.unit_number, pbe = pb }
+                run.rs.built = (run.rs.built or 0) + 1
+              else run.rs.skipped = run.rs.skipped + 1; run.rs.err = tostring(err) end
+            else
             if not run.rs.anchor then
               local at = run.surface.find_non_colliding_position("constant-combinator", gate.position, 50, 1)
               run.rs.anchor = at and run.surface.create_entity { name = "constant-combinator", position = at, force = gate.force }
@@ -3427,6 +3471,7 @@ local function reserve_gates(run)
               run.rs.taken[gate.unit_number] = true
               run.rs.gates[#run.rs.gates + 1] = { e = gate, s = sensor, item = c.item, closed = false, shut_s = 0, key = key, pb = pb.unit_number, pbe = pb }
             else run.rs.skipped = run.rs.skipped + 1 end
+            end
           else
             run.rs.skipped = run.rs.skipped + 1
             run.rs.why = run.rs.why or {}
@@ -3439,7 +3484,7 @@ local function reserve_gates(run)
   end
   if not run.rs or game.tick % 6 ~= 0 then return end
   for _, g in pairs(run.rs.gates) do
-    if g.e.valid and g.s.valid and not g.dead then
+    if g.e.valid and g.s.valid and not g.dead and not g.built then
       local full = false
       -- (Full: a lane of that tile takes nothing more at its back. Counting four items a lane was wrong on a curve,
       -- whose inner lane holds two: such a gate never opened, and the users below it got nothing.)
