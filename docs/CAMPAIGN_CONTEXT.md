@@ -97,19 +97,22 @@ port over the measured window) over the level's full measured window.
 
 (Rewrite this section as the campaign goes; history is in CAMPAIGN_LOG.md.)
 
-As of 2026-11-27 12:15 UTC:
+As of 2026-11-27 21:20 UTC:
 
 - **Laid out** (solves/): automation_m2 (13 machines), py-science-pack-1_m2 (50), military_m2 (13), logistic_m2
   (386), py-science-pack-2_m2b (411), chemical_m2 (487), py-science-pack-3_m2 (569).
-- **Solving**: production_s3 (`local_sinks` 1000; blocks done; stitch resumed with corridors 40 and
-  `blocks.stitch` "global", job `solves/jobs/production-science-pack_s3_c40g.json`, resume log
-  `solve_resume.log`); py-science-pack-4_s4 (blocks of 16, local sinks, queue_s4.log). Utility (3,629 machines, 170 blocks)
-  and space were stopped at 15:55 on the 27th: beyond this machine on belts (see CAMPAIGN_LOG).
-- **Results**: automation conquered at L0. Py-1 conquered at L1 (pull, self-exit, overflow exits, voids; player's
-  blueprint with those parts in `solves/py-science-pack-1_m2/player_L1_blueprint.txt`). Military passed L5, L4, L3;
-  L2 running, then L1, L0. Logistic and py-2 passed L5; chemical and py-3 L5 running. Big ones next go straight to L1
-  with a 12 h window (queue), then L4.
-- **Scheduler**: `launch.py sched --max 3`, games at nice 10 (go.sh); renice a stitching solve to -5.
+- **Solving, paused for the user's priority** ("make sure the sciences at chemical and below work before
+  continuing"): production_s3's stitch (JVM pid 22654 under SIGSTOP; `kill -CONT` to resume; global routing
+  converged, fine routing 1,857-2,283 conflicts); py-science-pack-4_s4 (51 blocks done; a waiter starts its stitch
+  after production's JVM exits). Utility and space stopped (beyond this machine on belts).
+- **Results**: automation and military conquered at L0, py-1 at L1. Logistic, py-2, chemical, py-3 passed L5.
+  L4 (virtual bots) broke on the big ones; L3 (rules) fails on them: its flow governors (quota stop on fluids,
+  rate cap) hold the planned makers (logistic: both hot-air tin casters stopped by the hot-air quota, the tin
+  furnace capped; no solder, no speakers, no bones). L2 (the mod, no quotas) runs best: logi_L2d 28 packs of 20
+  due by hour 3.3, then the mukmoux bones loop drained at hour 3.5 (watching with `samp_bash.sh` + `ls_logi.lua`).
+- **Running now**: logi_L2d, py2_L2, chem_L2, logi_L1b. Queue: chem_L1b, py2_L1b, logi_L0, logi_L3d and
+  chem_L3d (`--rate-cap 4 --quota-fluid-net`), py2_L0, chem_L0, then py-3's ladder.
+- **Scheduler**: `launch.py sched --max 4` (one copy only: `pgrep -af launch.py`), games at nice 10 (go.sh); renice a stitching solve to -5.
 - **Check additions this campaign**: `--reserve-built`, `--reserve-self`, `--self-exit-built`. L1 =
   fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`.
 - **Planner fixes**: multi-item inserter whitelists; fluid voids drain any temperature variant. Snapshot

@@ -256,3 +256,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   fairer levels**: stopped logi_L3c and chem_L3s (5 crafts of 12 due), started **py2_L2 and chem_L2** (FAIR now
   with the exit-catalyst), queued **logi_L1b, chem_L1b, py2_L1b** (built parts with the self-exit and reserve
   fixes that passed py-1), then logi_L0, and L3d variants (`--rate-cap 4 --quota-fluid-net`) after them.
+- Stopped py2_L3s too (7 crafts in hour 1, none in hour 2; the L3 governors are the known brake) for logi_L1b.
