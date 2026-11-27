@@ -146,3 +146,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   overflow exits (fast inserter, steel chest), 32 valves with 19 exhaust vents and 13 sinkholes, 442 wires. In
   `solves/py-science-pack-1_m2/player_L1_blueprint.txt`; the builds page has a second copy button for it.
 - **Py science 2 L5 (fed)**: PASS, 99.8% of plan over 3 measured hours; 310 items fed.
+- **Queue strategy changed** (09:15 UTC): the big factories run at about real time in game (logistic 1.2x, chemical
+  1.0x, py-3 0.9x with three games at once), so a 24-hour level costs a day of a slot. With about 58 hours left: L5
+  as the sanity check (does the layout run at all), then **L1 straight away** (the goal: real parts only), with a
+  12-hour window (2 h warm-up, 10 h measured), then L4, L3, L2 only to find where a failing L1 breaks. Military
+  (13 machines, about 20x) keeps the full ladder.
