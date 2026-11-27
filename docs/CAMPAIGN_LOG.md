@@ -241,3 +241,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   starting the loops. Queued for chemical and py-2; logistic runs logi_L3c (six hours of starters) meanwhile.
 - logi_L3b stopped at about hour 4 (27 pack crafts by hour 3, none after): logistic fails L3 with two hours of starters on this layout; logi_L3c tests six.
 - chem_L3b stopped at hour 4.1: 14 pack crafts (3, 8, 2, 1, 0 by hour), faded after the starters; chemical fails L3 with two hours of starters. chem_L3s (starters all along) running.
+- **logi_L3c (six hours of starters) stalled at hour 3 as well**, so not a start-up gap: the chain now ends at tin
+  plate. Its maker stands switched off by the script with 4 tin plates in its output while solder and mukmoux food
+  lack tin plate; the fish render (bones) is switched off too. The rate cap (2x plan over ten minutes, plus three
+  crafts; its leave only for users behind their own plan) is the likely brake: users running ahead of their plan
+  hold a slow maker at its cap. chem_L3s (starters all along) 1 pack craft in hour 2. Queued **logi_L3d and
+  chem_L3d: L3 with `--rate-cap 4`**. logi_L2d (the mod) meanwhile leads: 28 pack crafts by hour 3.3 (20 due).
