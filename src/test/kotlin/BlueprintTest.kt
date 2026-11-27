@@ -114,6 +114,23 @@ class BlueprintTest {
     }
 
     @Test
+    fun `a whitelist of several items is written and read back as one`() {
+        // Py's simik render: eight products, two onto the mixed belt, a long-handed inserter with three slots.
+        val l = Layout(6, 3, listOf(
+            PlacedEntity("long-handed-inserter", Kind.INSERTER, 0, 0, Dir.N, whitelist = listOf("brain", "keratin")),
+            PlacedEntity("long-handed-inserter", Kind.INSERTER, 2, 0, Dir.N, item = "meat"),
+        ))
+        val bp = l.toBlueprint()
+        assertEquals(listOf("brain", "keratin"), bp.entities[0].filters!!.map { it.name })
+        assertEquals(null, bp.entities[0].filterMode)
+        val back = bp.toLayout(6, 3).entities.sortedBy { it.x }
+        assertEquals(listOf("brain", "keratin"), back[0].whitelist)
+        assertEquals(null, back[0].item)
+        assertEquals("meat", back[1].item)
+        assertEquals(null, back[1].whitelist)
+    }
+
+    @Test
     fun `inserter pickup and drop follow the direction`() {
         val ins = Fixtures.e("long-handed-inserter", 5, 5, Dir.N)
         assertEquals(Tile(5, 3), ins.pickupTile)
