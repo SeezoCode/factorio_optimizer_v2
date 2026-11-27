@@ -32,6 +32,9 @@ LEVELS = {
     "L5": ("fed", "--prime-full --feed-short full --void-full".split(), 3600, 3 * 3600),
     "L4": ("ideal", "--prime-full --flow --virtual-bots --vb-fluids --meter 1.02 --meter-start --void-full".split(),
            7200, 6 * 3600),
+    # L3 with the loop starters topped up all along (--seed-through, no --seed-stop): whether a science's only gap
+    # under the rules is starting its loops.
+    "L3s": ("rules+starters", [f for f in FAIR if f not in ("--seed-stop", "7200")] + RULES + ["--seed-through"], 7200, 10 * 3600),
     "L3": ("rules", FAIR + RULES, 7200, 22 * 3600),
     "L2": ("mod", FAIR + ["--flow-mod"] + RULES[1:], 7200, 22 * 3600),
     # Real parts only: overflow exits, voids and pull built from deciders and enable conditions; no script flow rules.

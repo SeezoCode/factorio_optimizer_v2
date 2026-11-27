@@ -236,3 +236,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - py2_L3b: 8 pack crafts by hour 2, none in hours 3 and 4 (the milk barrels, above). chem_L3b: 12 by hour 2.8 (17
   due), slowing.
 - py2_L3b stopped at hour 3.4 (no packs in two hours) to free its slot for logi_L3c.
+- **New rung L3s** (rules + starters): the L3 rule set with the loop starters topped up all along (`--seed-through`,
+  no `--seed-stop`), 2 h warm-up and 10 h measured. A pass there and a fail at L3 says the only gap under the rules is
+  starting the loops. Queued for chemical and py-2; logistic runs logi_L3c (six hours of starters) meanwhile.
