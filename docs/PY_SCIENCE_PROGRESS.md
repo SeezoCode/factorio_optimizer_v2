@@ -33,6 +33,8 @@ Sciences that passed at some level, newest last, with the fairest level they pas
 - **Py science 1: L1, real parts only** (2026-11-27 08:30 UTC). Passed L5 to L2 and the built L1 (pull from deciders,
   a self-exit for the moss farm's coarse, overflow exits, Py's fluid voids, no script): 24 h, 24 to 25 pack crafts
   every hour from hour 6, the port at 100%. The plain blueprint (L0) fails on the coarse loop; see below.
+- **Military science: L1, real parts only** (2026-11-27 14:15 UTC). Passed L5, L4, L3, L2 and L1, each over its full
+  window; at L1 36 to 38 pack crafts every hour (36.7 due), nothing taken by the overflow exits. L0 running.
 
 ## By science
 
@@ -77,3 +79,32 @@ keep a reserve in front of the farm. The fair-level fix (L1): a **self-exit** fr
 onto the port belt gets a green wire from the farm (reading its contents) and the condition coarse >= 30, so the
 farm's own two-tile return fills first and only what it cannot hold leaves. For L0 the planner would have to put that
 wire and condition into the blueprint itself.
+
+### Military science
+
+13 machines in one block, 78 x 78 (2% margin).
+
+| Level | Run | Result |
+|---|---|---|
+| L5 fed | mil_L5 | pass, 99.8% over 3 measured hours; 14 items fed |
+| L4 ideal | mil_L4 | pass, 100% over 6 measured hours |
+| L3 rules | mil_L3 | pass, 24 h, 100% |
+| L2 mod | mil_L2 | pass, 24 h, 100% |
+| L1 built | mil_L1 | pass, 24 h, 100%: 36 to 38 pack crafts every hour; no self-exit needed, nothing overflowed |
+| L0 plain | mil_L0 | running |
+
+### Logistic, Py science 2, chemical, Py science 3
+
+Laid out (386, 411, 487 and 569 machines). Each passed L5 (fed: 99.8% of plan over 3 measured hours, with 292, 310,
+361 and 447 items fed). In game these factories run at about real time (0.7 to 1.3 times with three games at once),
+so a 24-hour level costs a day of a slot: they go from L5 straight to L1 (real parts only) with a 12-hour window,
+and to the levels between only to find where L1 breaks. Logistic and py-2 at L1 started 2026-11-27 14:10 and 14:30.
+
+### Production, Py science 4, utility, space
+
+The big four. On belts only (no robot links, the user's rule) their stitch is the hard part: production has 1,020
+machines in 24 blocks with about 600 belts between blocks. The default corridor router did not converge in 7 hours
+of attempts (with sinks at 0.1 or 1000, corridors of 20 or 40); global routing (corridors sized on a coarse grid
+first) did: one floorplan fitted at 1257 x 1069 after 15 rounds (2026-11-27 14:05) and is in fine routing. Py
+science 4 needed blocks of at most 16 (51 blocks) to lay out every block; its stitch waits for global routing after
+production. Utility: 170 blocks of up to 16, laying out. Space after utility.
