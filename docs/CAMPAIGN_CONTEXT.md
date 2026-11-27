@@ -94,24 +94,23 @@ port over the measured window) over the level's full measured window.
 
 (Rewrite this section as the campaign goes; history is in CAMPAIGN_LOG.md.)
 
-As of 2026-11-27 06:00 UTC:
+As of 2026-11-27 12:15 UTC:
 
-- **07:50**: big sciences re-solved as **s3** (`local_sinks` 1000: all surplus local), queue_s3: production,
-  py-4, utility, space (3 threads, 6 GB). The s2/m2 attempts of production and py-4 are in `solves/failed_*`.
-- **Layouts** (solves/): automation_m2 (13 machines), py-science-pack-1_m2 (50), military_m2 (13), logistic_m2
-  (386, 515 x 548), py-science-pack-2_m2b (411, 487 x 549), chemical_m2 (487, 561 x 486), py-science-pack-3_m2
-  (569, 746 x 726). **Solving**: production_s2 (resume, in its stitch: 1,000 to 1,600 conflicts at about 1050 x
-  1000; pid in `pgrep -f resume=solves/production`), py-science-pack-4_m2 (blocks 14 of 26; **paused** with SIGSTOP
-  for production's stitch, a waiter continues it when production's JVM exits). Then utility and space (queue_m2c,
-  after py-4). Failed folders kept as `solves/failed_*`.
-- **Results**: automation passed L5..L0 (L0 = conquered; its L1 pass was the old L1f; new L1 auto_L1 running). Py-1
-  passed L5, L4, L3, L2; L1 and L0 fail on the moss farm's coarse draining to its port; the new L1 (built reserve
-  gates for loop items and given-back items) runs as py1_L1c. Military passed L5. Logistic L5 and py-2 L5 running.
-- **Scheduler**: `launch.py sched --max 3`, breadth-first queue by level. Lower to 1 or 2 while a stitch runs.
-- **Planner fixes this campaign**: multi-item inserter whitelists; fluid voids drain any temperature variant.
-  Snapshot /opt/fo/1127-0210. **Check additions**: `--reserve-built`, `--reserve-self`.
-- **Known hard cases**: stitches of big factories on belts only (no robot links): production, py-4, utility, space.
-  Fluid-heavy blocks (smaller blocks help). Loops whose item drains to a port at the fair levels.
+- **Laid out** (solves/): automation_m2 (13 machines), py-science-pack-1_m2 (50), military_m2 (13), logistic_m2
+  (386), py-science-pack-2_m2b (411), chemical_m2 (487), py-science-pack-3_m2 (569).
+- **Solving**: production_s3 (`local_sinks` 1000; blocks done; stitch resumed with corridors 40 and
+  `blocks.stitch` "global", job `solves/jobs/production-science-pack_s3_c40g.json`, resume log
+  `solve_resume.log`); py-science-pack-4_s4 (blocks of 16, local sinks, queue_s4.log). Utility and space not
+  started (their queue was stopped; start them when a solve slot frees: `solve.sh s4 0.02 2 utility-science-pack`).
+- **Results**: automation conquered at L0. Py-1 conquered at L1 (pull, self-exit, overflow exits, voids; player's
+  blueprint with those parts in `solves/py-science-pack-1_m2/player_L1_blueprint.txt`). Military passed L5, L4, L3;
+  L2 running, then L1, L0. Logistic and py-2 passed L5; chemical and py-3 L5 running. Big ones next go straight to L1
+  with a 12 h window (queue), then L4.
+- **Scheduler**: `launch.py sched --max 3`, games at nice 10 (go.sh); renice a stitching solve to -5.
+- **Check additions this campaign**: `--reserve-built`, `--reserve-self`, `--self-exit-built`. L1 =
+  fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`.
+- **Planner fixes**: multi-item inserter whitelists; fluid voids drain any temperature variant. Snapshot
+  /opt/fo/1127-0210 (`current`).
 - **One stitch at a time, with the cores**: a factory's stitch works to wall-clock deadlines; under contention it does
   not converge. Pause other solves (`kill -STOP <pid>`, later `kill -CONT`) and run few games while one stitches.
   py-3's solve (pid in `pgrep -f out=solves/py-science-pack-3_m2`) was paused at 03:30 for chemical's stitch.
