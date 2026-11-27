@@ -8,7 +8,7 @@ unless BUILDS_SUFFIX is set), drawn from its blueprint (entities as compact rows
 campaign's runs on it by help level (verdict, hours, pack crafts). Publish <out dir> as an artifact
 (index.html + data/*.json + status.json).
 """
-import json, os, re, shutil, sys
+import subprocess, json, os, re, shutil, sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SCI = ["automation-science-pack", "py-science-pack-1", "logistic-science-pack", "military-science-pack",
@@ -43,6 +43,9 @@ def layout_dir(s):
     return c[-1] if c else None
 
 
+LIVE = " ".join(l + " " for l in subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True).stdout.splitlines() if "verify.py" in l)
+
+
 def runs_for(layout):
     out = {}
     for d in sorted(os.listdir(os.path.join(ROOT, "solves"))):
@@ -54,6 +57,9 @@ def runs_for(layout):
         lvl = open(os.path.join(p, "level.txt")).read().strip()
         txt = open(os.path.join(p, "verify.out")).read() if os.path.exists(os.path.join(p, "verify.out")) else ""
         verdict = "pass" if re.search(r"^PASS", txt, re.M) else "fail" if re.search(r"^FAIL", txt, re.M) else "running"
+        # (A run stopped by hand has no verdict line: running only while its check still runs.)
+        if verdict == "running" and ("solves/" + d + " ") not in LIVE:
+            verdict = "fail"
         prog = re.findall(r"(warmup|measure): (\d+) of (\d+) game seconds", txt)
         hours = 0.0
         if prog:

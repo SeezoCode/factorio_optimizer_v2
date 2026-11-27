@@ -11,6 +11,11 @@ spec = importlib.util.spec_from_file_location("bp", os.path.join(HERE, "builds_p
 bp = importlib.util.module_from_spec(spec); spec.loader.exec_module(bp)
 ROOT = bp.ROOT
 NAMES = {"L5": "fed", "L4": "ideal", "L3s": "rules+starters", "L2s": "mod+starters", "L3": "rules", "L2": "mod", "L1": "built", "L0": "plain"}
+# Sciences without a layout yet: why (the campaign's state, CAMPAIGN_CONTEXT.md).
+NOT_LAID = {"production-science-pack": "stitch paused (chemical and below first)",
+            "py-science-pack-4": "stitch waiting (chemical and below first)",
+            "utility-science-pack": "stopped: too big for this machine on belts",
+            "space-science-pack": "stopped: too big for this machine on belts"}
 PAGE = "https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk"
 
 
@@ -41,7 +46,7 @@ def table():
         ds = bp.layout_dirs(s)
         name = data["items"].get(s, {}).get("translated_name", s)
         if not ds:
-            rows.append(f"| {name} | solving | | " + " | ".join("·" for _ in bp.LEVELS) + " |")
+            rows.append(f"| {name} | {NOT_LAID.get(s, 'solving')} | | " + " | ".join("·" for _ in bp.LEVELS) + " |")
             continue
         runs = {}
         for d in ds:
