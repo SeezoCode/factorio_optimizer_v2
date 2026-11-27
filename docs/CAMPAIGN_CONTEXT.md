@@ -92,14 +92,20 @@ port over the measured window) over the level's full measured window.
 
 ## Current state
 
-(Update this section as the campaign goes.)
+(Rewrite this section as the campaign goes; history is in CAMPAIGN_LOG.md.)
 
-- 2026-11-26 23:20 UTC: solve queue m2 (2% margin, 4 threads) running in order automation, py-1, logistic,
-  military, py-2, chemical, py-3, production, py-4, utility, space. Automation solved in 3 s (13 machines, 76x76).
-  Py's planner spends minutes per job in its fixed-charge MIP (600 s limit per call).
-- Automation science L3 test run (10 + 10 game minutes): PASS. Full ladder (L5..L0) queued 23:20.
-- 23:25 UTC: a robot-layout queue (r2) was started and stopped a minute later: the user wants belts only.
-- 23:26 UTC: second solve queue **s2** = belts with local sinks (`tools/py-campaign/solve.sh`, JOB_PATCH
-  `{"blocks": {"local_sinks": 0.1}}` (1000 failed on production: fluid voids at every block), 2% margin, 2 threads), big sciences first: production, utility, py-4, space,
-  py-3, chemical, py-2. Log `solves/queue_s2.log`. The m2 queue (plain belts) works from the small end; when the
-  two meet, stop the duplicates. (`solve_queue.sh` is the m2 queue's running copy: do not edit it while it runs.)
+As of 2026-11-27 02:25 UTC:
+
+- **Layouts** (solves/): automation_m2 (13 machines, one block), py-science-pack-1_m2 (50), military_m2 (13, one
+  block), logistic_m2 (386, 515 x 548), py-science-pack-2_m2b (411, 487 x 549; blocks of 12, needed the whitelist
+  fix). Solving: chemical_m2 (stitching, old build/install binary; a waiter logs its end to queue_m2.log),
+  production_s2 (resume with the void fix, `local_sinks` 0.1), py-3 then py-4, utility, space (queue_m2c, m2
+  settings). Failed folders kept as `solves/failed_*`.
+- **Runs**: automation passed L5..L0 (conquered at L0). Py-1 passed L5, L4; L3 and L2 running; L1, L0 queued.
+  Queue is breadth-first by level (all L5, then L4, ...): military, logistic, py-2 next.
+- **Scheduler**: `launch.py sched --max 2` (2 games while 3 solves run; raise to 3 or 4 when solves finish).
+- **Planner fixes this campaign**: multi-item inserter whitelists (PathFinder, Blueprint, Validator, OverflowLast,
+  Resume); fluid voids drain any temperature variant (Validator). Snapshot /opt/fo/1127-0210.
+- **Known hard cases**: big fluid-heavy blocks (pressured air, water unrouted at 0 conflicts): smaller blocks help;
+  the uf6 cascade block of production; utility and space planned to 2,206 and 4,269 machines on the desktop
+  (2026-11-09: "beyond what the stitcher manages").
