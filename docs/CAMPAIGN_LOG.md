@@ -71,3 +71,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   with `-Xmx6g`. Note: the desktop's valid production (993 x 880) and py-4 (1092 x 1145) stitches had robot links
   for items under 0.1/s; on belts alone (the user's rule) every such link is a corridor belt, so these stitches
   are harder than any done before.
+- **Stitches starve under contention** (03:30 UTC): chemical m2's stitch made no progress in an hour (900 to 2,400
+  conflicts every round at about 500 x 500), with the desktop's settings and a smaller plan (487 machines against the
+  desktop's 598, which stitched on 5 threads). The stitch's stages run to wall-clock deadlines, so with 4 cores
+  shared by three solves and two games each attempt does a fraction of the work. Py-3's solve paused (SIGSTOP) and
+  games cut to one so chemical's stitch has the cores; py-3 continues after (kill -CONT).

@@ -106,6 +106,9 @@ As of 2026-11-27 02:25 UTC:
 - **Scheduler**: `launch.py sched --max 2` (2 games while 3 solves run; raise to 3 or 4 when solves finish).
 - **Planner fixes this campaign**: multi-item inserter whitelists (PathFinder, Blueprint, Validator, OverflowLast,
   Resume); fluid voids drain any temperature variant (Validator). Snapshot /opt/fo/1127-0210.
+- **One stitch at a time, with the cores**: a factory's stitch works to wall-clock deadlines; under contention it does
+  not converge. Pause other solves (`kill -STOP <pid>`, later `kill -CONT`) and run few games while one stitches.
+  py-3's solve (pid in `pgrep -f out=solves/py-science-pack-3_m2`) was paused at 03:30 for chemical's stitch.
 - **Memory**: the container is held to 16 GB, no swap (an OOM kill ends a solve silently). At most two solver JVMs
   at once (about 4 GB each; `JAVA_OPTS=-Xmx6g` for a big stitch), and no Gradle daemon left running (build with
   `--no-daemon`, or `./gradlew --stop` after).
