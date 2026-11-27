@@ -172,3 +172,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - 13:50 UTC: py-4 s4 (blocks of 16): all 51 blocks laid out in 1 h 15 min; stitching (nice 5, behind production). Production's global routing: floorplan 1 down to 14 corridor sides over capacity (from 5,234).
 - **Military science L1 (built)**: PASS over 24 game hours, 100.0% of plan. **Military science conquered at L1** (L0 running).
 - **Py science 3 L5 (fed)**: PASS, 99.8% of plan over 3 measured hours; fed by the check: 447 items. Every laid-out science now passes L5.
+- 14:50 UTC: **py-4 s4 stitch stopped** (default router: 7,175 and 12,475 conflicts at about 1,200 x 1,340) and to
+  free memory (13 GB of 16 in use with three solvers and three games). Its 51 blocks are kept; it resumes with
+  `blocks.stitch` "global" and corridors 40 (`solves/jobs/py-science-pack-4_s4_g.json`) after production's stitch.
+  Utility s4: 170 blocks of up to 16, 18 laid out after 1 h of blocks.
+- Production's global routing: one floorplan fitted at 14:05 (1257 x 1069, 934 links, 15 rounds) and is in fine
+  routing; another is down to 20 sides over capacity.
