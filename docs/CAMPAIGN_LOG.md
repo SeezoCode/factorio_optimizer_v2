@@ -64,3 +64,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   writes its end line); production s2 resumed with the fix (02:10 UTC), keeping its 18 laid-out blocks.
 - Tests: BlueprintTest (with a new whitelist round trip), OverflowLastTest, SpoilageTest pass.
 - **Py science 2 m2b solved** (resumed with the whitelist fix) 02:21 UTC: 411 machines in 27 blocks, 487 x 549. Ladder queued; the queue is now breadth-first (every science's L5, then L4, ...).
+- **The void fix works**: production s2's resume (02:10) laid out blocks 5 and 20 to 24 within 16 minutes, where 100 minutes before it had none; all 24 blocks laid out.
