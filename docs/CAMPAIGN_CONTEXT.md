@@ -94,6 +94,6 @@ port over the measured window) over the level's full measured window.
 - Automation science L3 test run (10 + 10 game minutes): PASS. Full ladder (L5..L0) queued 23:20.
 - 23:25 UTC: a robot-layout queue (r2) was started and stopped a minute later: the user wants belts only.
 - 23:26 UTC: second solve queue **s2** = belts with local sinks (`tools/py-campaign/solve.sh`, JOB_PATCH
-  `{"blocks": {"local_sinks": 1000}}`, 2% margin, 2 threads), big sciences first: production, utility, py-4, space,
+  `{"blocks": {"local_sinks": 0.1}}` (1000 failed on production: fluid voids at every block), 2% margin, 2 threads), big sciences first: production, utility, py-4, space,
   py-3, chemical, py-2. Log `solves/queue_s2.log`. The m2 queue (plain belts) works from the small end; when the
   two meet, stop the duplicates. (`solve_queue.sh` is the m2 queue's running copy: do not edit it while it runs.)
