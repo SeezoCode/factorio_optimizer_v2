@@ -11,16 +11,16 @@ written by `tools/py-campaign/progress.py`; the sections below it are written by
 | Automation science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
 | pY science pack 1 | 50 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | stopped |
 | Logistic science pack | 386 | **L5 fed** | **pass** 3.6 h | · | · | · | running, 0 h | · |
-| Military science pack | 13 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | running, 14.4 h |
+| Military science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
 | pY science pack 2 | 411 | **L5 fed** | **pass** 3.6 h | · | · | · | running, 0 h | · |
-| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · |
+| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | · | · | · | running, 0 h | · |
 | pY science pack 3 | 569 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · |
 | Production science pack | solving | | · | · | · | · | · | · |
 | pY science pack 4 | solving | | · | · | · | · | · | · |
 | Utility science pack | solving | | · | · | · | · | · | · |
 | Space science pack | solving | | · | · | · | · | · | · |
 
-Updated 2026-11-27 14:29 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+Updated 2026-11-27 15:02 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
 <!-- campaign:end -->
 
 ## Conquered
@@ -33,8 +33,8 @@ Sciences that passed at some level, newest last, with the fairest level they pas
 - **Py science 1: L1, real parts only** (2026-11-27 08:30 UTC). Passed L5 to L2 and the built L1 (pull from deciders,
   a self-exit for the moss farm's coarse, overflow exits, Py's fluid voids, no script): 24 h, 24 to 25 pack crafts
   every hour from hour 6, the port at 100%. The plain blueprint (L0) fails on the coarse loop; see below.
-- **Military science: L1, real parts only** (2026-11-27 14:15 UTC). Passed L5, L4, L3, L2 and L1, each over its full
-  window; at L1 36 to 38 pack crafts every hour (36.7 due), nothing taken by the overflow exits. L0 running.
+- **Military science: L0, the plain blueprint** (2026-11-27 15:05 UTC). Passed every level from L5 to L0, each over
+  its full window; at L1 and L0 36 to 38 pack crafts every hour (36.7 due).
 
 ## By science
 
@@ -91,7 +91,7 @@ wire and condition into the blueprint itself.
 | L3 rules | mil_L3 | pass, 24 h, 100% |
 | L2 mod | mil_L2 | pass, 24 h, 100% |
 | L1 built | mil_L1 | pass, 24 h, 100%: 36 to 38 pack crafts every hour; no self-exit needed, nothing overflowed |
-| L0 plain | mil_L0 | running |
+| L0 plain | mil_L0 | pass, 24 h, 100% |
 
 ### Logistic, Py science 2, chemical, Py science 3
 

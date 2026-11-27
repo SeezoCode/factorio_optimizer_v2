@@ -37,16 +37,16 @@ factory-flow mod a player installs), **L1 built** (real parts only: overflow exi
 | Automation science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
 | pY science pack 1 | 50 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | stopped |
 | Logistic science pack | 386 | **L5 fed** | **pass** 3.6 h | · | · | · | running, 0 h | · |
-| Military science pack | 13 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | running, 14.4 h |
+| Military science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
 | pY science pack 2 | 411 | **L5 fed** | **pass** 3.6 h | · | · | · | running, 0 h | · |
-| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · |
+| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | · | · | · | running, 0 h | · |
 | pY science pack 3 | 569 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · |
 | Production science pack | solving | | · | · | · | · | · | · |
 | pY science pack 4 | solving | | · | · | · | · | · | · |
 | Utility science pack | solving | | · | · | · | · | · | · |
 | Space science pack | solving | | · | · | · | · | · | · |
 
-Updated 2026-11-27 14:29 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+Updated 2026-11-27 15:02 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
 <!-- campaign:end -->
 
 ## Examples

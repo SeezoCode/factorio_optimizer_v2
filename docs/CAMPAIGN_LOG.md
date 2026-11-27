@@ -178,3 +178,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   Utility s4: 170 blocks of up to 16, 18 laid out after 1 h of blocks.
 - Production's global routing: one floorplan fitted at 14:05 (1257 x 1069, 934 links, 15 rounds) and is in fine
   routing; another is down to 20 sides over capacity.
+- **Military science L0 (plain)**: PASS over 24 game hours, 100.0% of plan. **Military science conquered at L0** (the plain blueprint).
