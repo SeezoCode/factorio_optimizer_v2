@@ -145,3 +145,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   the circuit settings of every wired entity: self-exit and pull conditions, read modes). Py-1: 156 deciders, 6
   overflow exits (fast inserter, steel chest), 32 valves with 19 exhaust vents and 13 sinkholes, 442 wires. In
   `solves/py-science-pack-1_m2/player_L1_blueprint.txt`; the builds page has a second copy button for it.
+- **Py science 2 L5 (fed)**: PASS, 99.8% of plan over 3 measured hours; 310 items fed.
