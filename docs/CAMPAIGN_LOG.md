@@ -348,3 +348,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   full**; and **what lies on their tile goes back into the machine's output once a second** (report `ground_back`,
   `ground_lost`), as an inserter a player sets there would. chem_L2s stopped for **chem_L2sb**; logi_L2e (hour 1)
   for **logi_L2f** (logistic's mk03 mulcher, in the mukmoux loop, stood waiting for space too).
+- 01:35 UTC: **logi_L2s at hour 7.9: 79 packs of 49 due, 193% in the last hour.** **py2_L2 stood from hour 6**
+  (29 of 29 due by hour 7.1, none since): its packs wait on solidified sarcorus, behind it the cottongut seeds on
+  oleochemicals, and oleochemicals-from-skin on bacteria-1, its own fluid loop (10 in, 11 out a craft) that outside
+  users drain once the starters stop at hour 2. Stopped for **py2_L2s** (mod + starters all along, `--loop-deep 7
+  --reserve-built --loop-valves`: with --reserve-built the check's loop classification comes back under the mod, so
+  the valves before the loop's outside users get built).
