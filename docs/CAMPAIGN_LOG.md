@@ -394,3 +394,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   start), py3_L4 dropped (L4 helpers broken there). Now: **py3_L2s** (started), logi_L3d and chem_L3d (L3 with rate
   cap 4, quota by pipe network, loop-deep: L3 ranks fairer than L2s), py3_L2, py3_L3s.
 - Builds page republished (version 7, the same link): the L2s and L1s columns, logistic's L2s pass.
+- 04:10 UTC: chem_L3sb (rules + starters) 3 packs of 11 due by hour 1.8, none in hour 2, short on four branches at
+  once: optical fiber (plastic, and nbfe coating behind a cladding chain), nuclear samples (automation packs short of
+  native flora; pu-238), advanced circuits (vacuum tubes, graphite, coke: the hot-residual coke maker stood full of
+  coke, then switched off by the script with some of its exits held by the share rule, one graphite maker off and
+  two short) and stainless steel (meat for phosphate). py2_L2sb 13 of 10 by hour 2.5; logi_L2g, py3_L2s running.
