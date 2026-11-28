@@ -468,3 +468,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   + loop-deep + kit through the run + rate cap 1.5 + place chests). logi_L2k (L2) 20 of 15 by 2.5; py2_L2se 13 of 9 by
   2.2; py3_L2sb 14 of 35 by 1.4 (56% lately): acrylic, acetone; the acetone maker lacks copper plate while the mod holds
   both copper-plate makers off.
+- 14:10 UTC: chem_L2se slowed in hour 3 (12 of 14): the nuclear-sample chain all working but slow (teos waits on
+  ethanol, the honey-to-ethanol reactor on manure bacteria), and small parts 02 behind bolts behind iron sticks (the
+  stick maker holds 23 in its output). py2_L2se slowed in hour 3 (13 of 11): arqad honey, honeycomb, ulric, water
+  barrels; the filler stands without empty barrels (3,223 filled so far); the kit handed in only 39 (it gives only
+  while no barrel maker, here the animals, stands full). logi_L2k 26 of 18 by hour 3.0; py3_L2sb 20 of 43 by hour
+  1.8 (12 in hour 2).
