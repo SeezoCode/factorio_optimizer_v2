@@ -464,3 +464,7 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   half an hour and then about 24 hours of solver time in fine routing without a stitched factory (preview "did not
   stitch" at 87,600 s; conflicts swinging between about 800 and 2,500). Its 24 blocks are laid out and kept
   (solves/production-science-pack_s3/resume). The core goes to a fourth game slot (sched --max 4): py3_L2sb next.
+- 13:45 UTC (restarted runs): **chem_L2se at plan: 11 packs of 11 due by hour 1.9** (6, 5; 94% in the last hour; L2s
+  + loop-deep + kit through the run + rate cap 1.5 + place chests). logi_L2k (L2) 20 of 15 by 2.5; py2_L2se 13 of 9 by
+  2.2; py3_L2sb 14 of 35 by 1.4 (56% lately): acrylic, acetone; the acetone maker lacks copper plate while the mod holds
+  both copper-plate makers off.
