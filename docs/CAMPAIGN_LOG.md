@@ -448,3 +448,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   fallback where no chest fits. Restarted all three games on it: **py2_L2sd** (L2s + loop-deep + kit through the
   run), **chem_L2sd** (the same + rate cap 1.5), **logi_L2j** (L2 + loop-deep: logistic's mulchers were throttled the
   same way); py3_L2sb queued (py-3's limestone extractors too).
+- 11:25 UTC, the place-chest runs: py2_L2sd 20 packs of 14 due by hour 3.4; chem_L2sd 13 of 18 by hour 2.9 (6 and 4
+  in hours 2 and 3: chemical's best yet, 72%); logi_L2j (L2 + loop-deep, no starters) 24 of 23 by hour 3.8, its
+  mukmoux loop short at hour 3 again, this time through moss: the moss farms lack coarse, the soil separator soil.
+  Every L2 logistic run without starters loses that long loop at a different link. Production's stitch: best
+  floorplan 798 conflicts (fine routing), still widening.
