@@ -482,3 +482,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   window so far, right at the 95% line): batteries now, behind them nas batteries, pbsb alloy, simik lead, bio ore,
   z3 reagent short of methanol, and the filtration-media / xyhiphoe / fish-egg / fish-food loop. py2_L2se 47 of 32
   by 7.9 (steady); chem_L2se 35 of 41 by 6.8; py3_L2sb stood from hour 5 (61 of 132).
+- 18:30 UTC: py3_L2sb stopped (61 packs of 135 due by hour 5.5, none since hour 5): py-3 stays at L5. Its slot goes to logi_L1t.
