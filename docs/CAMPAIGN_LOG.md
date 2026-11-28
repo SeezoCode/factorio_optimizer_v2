@@ -406,3 +406,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   Restarted as **py2_L2sc** with `--carrier-kit run` (the kit's empty carriers through the run, at L2s like the
   starters; logistic's L2s pass had the kit in the warm-up only). chem_L3sb 6 of 15 by hour 2.4, the last stretch
   at 86%; py3_L2s 6 of 24 in its first hour.
+- 05:15 UTC: py3_L2s stopped at hour 2.0 (8 packs of 49 due): its packs wait on moss; the moss farms lack limestone
+  while the limestone extractors, far off, stand with their belts backed up (not traced further: py-3 comes after
+  chemical in the user's order). logi_L2g 46 of 31 by hour 5.0; chem_L3sb 11 of 22 (58% in the last stretch);
+  py2_L2sc 8 of 6 by hour 1.4. Queue: **chem_L3d** next; logi_L3d last (an L2 pass, if logi_L2g holds, ranks above
+  any L3 pass).
