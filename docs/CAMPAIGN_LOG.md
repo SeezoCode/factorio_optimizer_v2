@@ -453,3 +453,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   mukmoux loop short at hour 3 again, this time through moss: the moss farms lack coarse, the soil separator soil.
   Every L2 logistic run without starters loses that long loop at a different link. Production's stitch: best
   floorplan 798 conflicts (fine routing), still widening.
+- 11:55 UTC: **chem_L2sd catching up: 7 packs in hour 4 (126% of plan)**, 20 of 24 by hour 3.9 (mod + starters,
+  kit through the run, rate cap 1.5, place chests). logi_L2j recovered: 7 in hour 5, 35 of 32 by hour 5.2. py2_L2sd
+  24 of 19 by hour 4.6, slowing (4, 2). Production: floorplan 2/3 at 830 conflicts.
