@@ -411,3 +411,9 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   chemical in the user's order). logi_L2g 46 of 31 by hour 5.0; chem_L3sb 11 of 22 (58% in the last stretch);
   py2_L2sc 8 of 6 by hour 1.4. Queue: **chem_L3d** next; logi_L3d last (an L2 pass, if logi_L2g holds, ranks above
   any L3 pass).
+- 05:55 UTC: **logi_L2g (L2 + loop-deep, no starters) stood from hour 5** (47 packs of 37 due by hour 6.1, 1 in hour
+  6): the mukmoux loop again, now at fertilizer: the sap-tree maker 1 short while 747 fertilizer lay on four belt
+  networks (322, 193, 161, 71) out of its reach, and the overflow took 1,533 saps in four hours. Loop-deep moved the
+  stand from hour 3.5 to hour 5; the stock still strands past the users. The built reserve gates are the fix for
+  that, and logi_L2f (with them) gridlocked its brick ring at hour 2, cause unsettled. Stopped logi_L2g; **logi_L2h**
+  = logi_L2f's settings again, to see whether the gridlock recurs.
