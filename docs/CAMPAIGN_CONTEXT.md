@@ -114,6 +114,11 @@ As of 2026-11-27 23:30 UTC:
   the nearest distance only, at least half the use, no target maker outside); `--pull-built` counts a heated fluid
   product even where the fluid is also an ingredient (outlet-gas ring); `--carrier-kit` turns on `bootstrap` without
   `--flow` or the mod (the kit did nothing at L1). New level L2s.
+- **Check fixes of the 28th**: machines that place results on their own tile (`vector_to_place_result`: Py's wood
+  processing units, sand/limestone extractors, classifiers, casting units) get a steel chest there, emptied into
+  their output every ten ticks (they had been held to about one item a second); relief_limit is one craft for them
+  and "waiting for space in destination" counts as full. `--loop-valves` breaks the mod's fluid pull (not for L2).
+  Built reserve gates under the mod gridlock logistic's brick ring at hour 2 (3 of 3); not used at L2.
 - **Running now**: logi_L1f (L1 + loop-deep, all fixes), logi_L2s, py2_L2, chem_L2s. Queue: logi_L2e (L2 +
   loop-deep + built reserve gates), chem_L1b, py2_L1b (both with loop-deep), logi_L0, logi_L3d, chem_L3d, py2_L0,
   chem_L0, then py-3's ladder.
