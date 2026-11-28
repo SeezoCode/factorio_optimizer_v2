@@ -327,3 +327,13 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   render on the mukmoux the food makes. Two hours of starters never closed it; under the mod with starters all
   along (logi_L2s) it runs (49 packs of 32 due at hour 5.2). **New level L1s: built parts + starters all along**
   (ranked with L3s and L2s on the help side). logi_L1f stopped; **logi_L1s** started (`--loop-deep 7`).
+- 00:45 UTC: **logi_L1s (built + starters all along) stood like L1f: 2 packs by hour 1.6.** The demand wiring works
+  (clay's steam decider fires, the electric boiler hears it and refills it: snapshots catch the cycle's off phase).
+  What stands is distribution: the two water-barrel fillers drop onto four belt networks; three of them (Scrondrix,
+  cottongut, one more) held 183, 151 and 108 water barrels, the mukmoux calves' 13, and the fillers stood without
+  empty barrels (531 handed in by the kit). The mod's share rule spreads a maker's output by the plan's shares and
+  by who waits; L1 has no built part for that. Stopped for **logi_L2e** (L2 + `--loop-deep 7 --reserve-built`, no
+  starters): logistic's fairer rung if it holds.
+- chem_L2s, hour 2.2: rubber, latex, creamy latex, saps; the mod holds the mk04 sap mulchers (one stands full of
+  fertilizer, 15, its fertilizer belt backed up and not the tree maker's; its relief exit shut below the limit), the
+  tree maker (9 of 10 bonemeal, 3 of 4 fertilizer) and the bonemeal maker. Watching to hour 3.
