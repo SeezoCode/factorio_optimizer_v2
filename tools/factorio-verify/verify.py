@@ -1632,6 +1632,13 @@ def main():
         if args.reserve_self:
             params["reserve_self"] = True
         print(f"loop-first: {len(both)} items of production loops go to the loop's own users first ({', '.join(sorted(both)[:12])}{', ...' if len(both) > 12 else ''})")
+        # (Under the mod the loop membership is for the built reserve gates alone: as params.loop_first it also woke the
+        # check's own loop rules (splitter priority, loop keep, dead ends) beside the mod's, and logistic's stone-brick
+        # ring gridlocked at hour 2 in two runs of two (logi_L2f, logi_L2h), each of its three machines full of its
+        # product, 59, 40 and 62 bricks both times; without --reserve-built it never did.)
+        if getattr(args, "flow_mod", False) and args.reserve_built:
+            params["reserve_lf"] = params.pop("loop_first")
+            print("reserve-built under the mod: the loop membership goes to the reserve gates only")
     if args.flow and built_plan_path(args.target) and os.path.exists(built_plan_path(args.target)):
         # Machines the plan has only to get rid of something (sinks.burn): every product goes to a burner or to other
         # such machines. They take their ingredients last.

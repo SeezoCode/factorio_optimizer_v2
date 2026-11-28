@@ -3367,7 +3367,7 @@ local function splitter_priority(run)
 end
 
 local function reserve_gates(run)
-  local lf = run.params.loop_first
+  local lf = run.params.loop_first or run.params.reserve_lf
   if not run.params.reserve or not lf or run.phase == nil then return end
   local t = game.tick - run.t0
   if t >= 600 and t % 600 == 0 and (t <= 36000 or t % 36000 == 0) then

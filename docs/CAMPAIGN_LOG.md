@@ -425,3 +425,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   stitch still widening (factory floorplan 3/3: 2,722 corridor sides over capacity; preview 2/3: 2,163 conflicts).
   One more chemical try, **chem_L2sc**: L2s + loop-deep + the kit through the run + `--rate-cap 1.5` (the mod's cap,
   2 in the rules; plastic went to fish food at 269% of plan).
+- 07:10 UTC: **logi_L2h gridlocked its brick ring at hour 2 exactly as logi_L2f did** (59, 40, 62 bricks in the three
+  machines' outputs): deterministic, and only with `--reserve-built`. No gate stands on a brick belt; what
+  --reserve-built also did under the mod was set the check's loop membership (params.loop_first), which wakes the
+  check's own loop rules (splitter priority, loop keep, dead ends) beside the mod's. Now under the mod the membership
+  goes to the reserve gates alone (params.reserve_lf). **logi_L2i**: L2 + loop-deep + reserve-built, isolated.
