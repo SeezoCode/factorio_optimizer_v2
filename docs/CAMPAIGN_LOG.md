@@ -354,7 +354,7 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   users drain once the starters stop at hour 2. Stopped for **py2_L2s** (mod + starters all along, `--loop-deep 7
   --reserve-built --loop-valves`: with --reserve-built the check's loop classification comes back under the mod, so
   the valves before the loop's outside users get built).
-- 02:15 UTC: the ground pickup moves a lot: chem_L2sb by hour 1.3 put back 3,063 coarse, 2,386 limestone, 1,474 raw
+- 02:00 UTC: the ground pickup moves a lot: chem_L2sb by hour 1.3 put back 3,063 coarse, 2,386 limestone, 1,474 raw
   fiber, 545 chromium, 467 gravel, 402 fertilizer, 393 sb dust, 279 aluminium plate, 273 nickel plate, 227 iron oxide,
   173 saps (none lost); logi_L2f by hour 1.7 858 raw fiber, 818 soil, 180 bedding, 172 yotoi leaves, 155 saps (32 soil
   lost). Every machine placing results on its own tile spills continually; without the pickup each stood after its
