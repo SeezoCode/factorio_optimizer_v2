@@ -66,10 +66,18 @@ Set up as in [CLOUD_SETUP.md](CLOUD_SETUP.md); the container is lost when the se
 |---|---|---|---|
 | L5 | fed | `--prime-full --feed-short full --void-full` | 1 h / 3 h |
 | L4 | ideal | `--prime-full --flow --virtual-bots --vb-fluids --meter 1.02 --meter-start --void-full` | 2 h / 6 h |
-| L3 | rules | fair set + the rule set that passes logistic science (script) | 2 h / 22 h |
-| L2 | mod | the same by the factory-flow mod (`--flow-mod`) | 2 h / 22 h |
-| L1 | built | fair set + `--pull-built --reserve-built --reserve-items` (real parts only: built pull and reserve gates; before 04:35 on 11-27 it had `--flow --no-pull --pull-built`: those runs are level L1f) | 2 h / 22 h |
+| L3s | rules + starters | fair set without `--seed-stop`, + rule set + `--seed-through` (loop starters all along) | 2 h / 10 h |
+| L2s | mod + starters | the same with the factory-flow mod (`--flow-mod`) in place of `--flow` | 2 h / 10 h |
+| L1s | built + starters | L1 + `--seed-through` (starters all along) | 2 h / 10 h |
+| L3 | rules | fair set + the rule set (script) | 2 h / 22 h (big factories 10 h) |
+| L2 | mod | fair set + `--flow-mod` + the rule set less `--flow` | 2 h / 22 h (big factories 10 h) |
+| L1 | built | fair set + `--pull-built --self-exit-built --reserve-built --reserve-self` (real parts only; before 04:35 on 11-27 it had `--flow --no-pull --pull-built`: those runs are level L1f) | 2 h / 22 h (big factories 10 h) |
 | L0 | plain | `--prime-all` only | 2 h / 22 h |
+
+Ranking for "fairest pass" (launch.py, builds_page.py): L5, L4, L3s, L2s, L1s, L3, L2, L1, L0 (a level with starters
+all along counts as more help than any level without). Extras a run adds (`--loop-deep 7`, `--carrier-kit run`,
+`--rate-cap 1.5`, ...) are listed per run in solves/<run>/cmd.txt; check fixes (place chests, ground pickup, relief
+limits, heated fluids, the kit's bootstrap) apply to every run started after them.
 
 Fair set: `--prime-all --carrier-kit --seed-stop 7200 --real-voids --relief --relief-exits --exit-catalyst` (a warm start, empty
 carriers and loop starters in the first two hours only, Py's own voids for fluids, overflow exits built from real

@@ -12,8 +12,8 @@ bp = importlib.util.module_from_spec(spec); spec.loader.exec_module(bp)
 ROOT = bp.ROOT
 NAMES = {"L5": "fed", "L4": "ideal", "L3s": "rules+starters", "L2s": "mod+starters", "L1s": "built+starters", "L3": "rules", "L2": "mod", "L1": "built", "L0": "plain"}
 # Sciences without a layout yet: why (the campaign's state, CAMPAIGN_CONTEXT.md).
-NOT_LAID = {"production-science-pack": "stitch paused (chemical and below first)",
-            "py-science-pack-4": "stitch waiting (chemical and below first)",
+NOT_LAID = {"production-science-pack": "24 blocks laid out; stitch did not converge (about 24 h of fine routing)",
+            "py-science-pack-4": "51 blocks laid out; stitch not run (after production)",
             "utility-science-pack": "stopped: too big for this machine on belts",
             "space-science-pack": "stopped: too big for this machine on belts"}
 PAGE = "https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk"

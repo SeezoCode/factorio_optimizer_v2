@@ -10,17 +10,17 @@ written by `tools/py-campaign/progress.py`; the sections below it are written by
 |---|---:|---|---|---|---|---|---|---|---|---|---|
 | Automation science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | · | · | · | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
 | pY science pack 1 | 50 | **L1 built** | **pass** 3.6 h | **pass** 7.2 h | · | · | · | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | stopped |
-| Logistic science pack | 386 | **L2s mod+starters** | **pass** 3.6 h | stopped | · | **pass** 10.8 h | stopped | stopped | running, 1.2 h | stopped | running, 0 h |
+| Logistic science pack | 386 | **L2s mod+starters** | **pass** 3.6 h | stopped | · | **pass** 10.8 h | stopped | stopped | running, 2.4 h | stopped | stopped |
 | Military science pack | 13 | **L0 plain** | **pass** 3.6 h | **pass** 7.2 h | · | · | · | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h | **pass** 21.6 h |
-| pY science pack 2 | 411 | **L5 fed** | **pass** 3.6 h | stopped | stopped | running, 1.2 h | · | stopped | stopped | stopped | · |
-| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | stopped | running, 0 h | stopped | · | stopped | stopped | stopped | · |
-| pY science pack 3 | 569 | **L5 fed** | **pass** 3.6 h | · | · | · | · | · | · | · | · |
-| Production science pack | stitch paused (chemical and below first) | | · | · | · | · | · | · | · | · | · |
-| pY science pack 4 | stitch waiting (chemical and below first) | | · | · | · | · | · | · | · | · | · |
+| pY science pack 2 | 411 | **L5 fed** | **pass** 3.6 h | stopped | stopped | running, 2.4 h | · | stopped | stopped | stopped | · |
+| Chemical science pack | 487 | **L5 fed** | **pass** 3.6 h | stopped | stopped | running, 2.4 h | · | stopped | stopped | stopped | · |
+| pY science pack 3 | 569 | **L5 fed** | **pass** 3.6 h | · | · | running, 1.2 h | · | · | stopped | · | · |
+| Production science pack | 24 blocks laid out; stitch did not converge (about 24 h of fine routing) | | · | · | · | · | · | · | · | · | · |
+| pY science pack 4 | 51 blocks laid out; stitch not run (after production) | | · | · | · | · | · | · | · | · | · |
 | Utility science pack | stopped: too big for this machine on belts | | · | · | · | · | · | · | · | · | · |
 | Space science pack | stopped: too big for this machine on belts | | · | · | · | · | · | · | · | · | · |
 
-Updated 2026-11-28 03:41 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
+Updated 2026-11-28 14:28 UTC. Hours are game hours (warm-up included); a pass is the in-game check's verdict over the level's whole run. Builds drawn tile for tile: [the builds page](https://claude.ai/artifact/7rqXsL9UZFaMF8m7fdcyEk) (private link).
 <!-- campaign:end -->
 
 ## Conquered
