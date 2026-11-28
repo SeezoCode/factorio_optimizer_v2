@@ -430,3 +430,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   --reserve-built also did under the mod was set the check's loop membership (params.loop_first), which wakes the
   check's own loop rules (splitter priority, loop keep, dead ends) beside the mod's. Now under the mod the membership
   goes to the reserve gates alone (params.reserve_lf). **logi_L2i**: L2 + loop-deep + reserve-built, isolated.
+- 08:35 UTC: **logi_L2i gridlocked the brick ring at hour 2 again** (61, 40, 62), with the loop membership given to
+  the gates alone. So the built reserve gates themselves bring it on: three runs of three with them, none of five
+  without. No gate stands on a brick belt (the ring at 250,88; the ten gates on barrel, bones, fertilizer, guar
+  seeds, guts, iron plate, meat, mukmoux, saps elsewhere; the barrel gate shut at the time). The likely path is
+  indirect: a shut gate starves something, the hot-air users stop a while, the ring fills past what its belts and
+  outputs hold, and bricks (carriers) no overflow takes. A ring-jam rule would be needed; logistic passes L2s,
+  so the reserve-gate L2 path is dropped. logi_L2i stopped; py3_L2 takes the slot.
