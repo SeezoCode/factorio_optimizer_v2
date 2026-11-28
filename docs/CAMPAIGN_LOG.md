@@ -417,3 +417,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   stand from hour 3.5 to hour 5; the stock still strands past the users. The built reserve gates are the fix for
   that, and logi_L2f (with them) gridlocked its brick ring at hour 2, cause unsettled. Stopped logi_L2g; **logi_L2h**
   = logi_L2f's settings again, to see whether the gridlock recurs.
+- 06:00 UTC: chem_L3sb stopped (11 packs of 27 due by hour 4.4, none in hour 5). **Production's stitch resumed
+  early** (`kill -CONT 22654`, nice -5; it had stood paused since 2026-11-27 12:00 in global routing, best preview
+  49 corridor sides over capacity) with three game slots (sched --max 3): chem_L3d, py2_L2sc, logi_L2h.
