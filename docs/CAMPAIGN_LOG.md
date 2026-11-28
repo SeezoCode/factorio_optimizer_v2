@@ -399,3 +399,10 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   native flora; pu-238), advanced circuits (vacuum tubes, graphite, coke: the hot-residual coke maker stood full of
   coke, then switched off by the script with some of its exits held by the share rule, one graphite maker off and
   two short) and stainless steel (meat for phosphate). py2_L2sb 13 of 10 by hour 2.5; logi_L2g, py3_L2s running.
+- 04:35 UTC: **logi_L2g (L2 + `--loop-deep 7`, no starters after hour 2) holds past hour 3.5: 31 packs of 21 due**
+  (logi_L2d without loop-deep stood there). py2_L2sb at plan (13 of 13 by hour 3.1) and slowing: honey, honeycomb,
+  the arqad hive, ulric and its water barrels; the one water-barrel filler stood without empty barrels while 174 lay
+  on belts toward the factory's six other barrel fillers (honey, btx, hydrofluoric acid, molten iron, naphtha, wax).
+  Restarted as **py2_L2sc** with `--carrier-kit run` (the kit's empty carriers through the run, at L2s like the
+  starters; logistic's L2s pass had the kit in the warm-up only). chem_L3sb 6 of 15 by hour 2.4, the last stretch
+  at 86%; py3_L2s 6 of 24 in its first hour.
