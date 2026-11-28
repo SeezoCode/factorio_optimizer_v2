@@ -125,6 +125,22 @@ As of 2026-11-27 23:30 UTC:
 - **Probes worth knowing**: `probes/sum.py <run>`, `probes/chainlive.py <run> <pack>`, `probes/lua.py <run> <file>`
   (Lua 5.2: no `//`; in Factorio 2.1 an entity has no `fluidbox` key, use `fluids_count`, `get_fluid(i)`,
   `get_fluid_box_prototype(i)`, `has_fluid_segment(i)`), `probes/samp_bash.sh` with `ls_logi.lua`.
+- **Production's stitch stopped for good 2026-11-28 12:05 UTC** (the container restarted; it had not stitched in about
+  24 hours of fine routing). Blocks kept in solves/production-science-pack_s3/resume; resume with
+  `resume.sh production-science-pack_s3 --config=solves/jobs/production-science-pack_s3_c40g.json` (global routing,
+  corridors 40). Four game slots now (`sched --max 4`). Background tasks do not survive a container restart: after
+  one, restart the scheduler and the runs (verify runs cannot resume; start them under new names).
+- **Check fixes of the 28th**: machines that place results on their own tile (`vector_to_place_result`: Py's wood
+  processing units, sand/limestone extractors, classifiers, casting units) get a steel chest there, emptied into
+  their output every ten ticks (they had been held to about one item a second); relief_limit is one craft for them
+  and "waiting for space in destination" counts as full. `--loop-valves` breaks the mod's fluid pull (not for L2).
+  Built reserve gates under the mod gridlock logistic's brick ring at hour 2 (3 of 3); not used at L2.
+- **Running now**: logi_L1f (L1 + loop-deep, all fixes), logi_L2s, py2_L2, chem_L2s. Queue: logi_L2e (L2 +
+  loop-deep + built reserve gates), chem_L1b, py2_L1b (both with loop-deep), logi_L0, logi_L3d, chem_L3d, py2_L0,
+  chem_L0, then py-3's ladder.
+- **Probes worth knowing**: `probes/sum.py <run>`, `probes/chainlive.py <run> <pack>`, `probes/lua.py <run> <file>`
+  (Lua 5.2: no `//`; in Factorio 2.1 an entity has no `fluidbox` key, use `fluids_count`, `get_fluid(i)`,
+  `get_fluid_box_prototype(i)`, `has_fluid_segment(i)`), `probes/samp_bash.sh` with `ls_logi.lua`.
 - **Production's stitch resumed 2026-11-28 06:00 UTC** (pid 22654, nice -5; `kill -STOP` to pause again) with three
   game slots (`launch.py sched --max 3`). When it ends (solves/queue_resume.log), its L5 check goes into the queue,
   and the py-4 waiter starts py-4's stitch. Logistic passed L2s (03:45).

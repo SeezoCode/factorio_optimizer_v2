@@ -456,3 +456,11 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - 11:55 UTC: **chem_L2sd catching up: 7 packs in hour 4 (126% of plan)**, 20 of 24 by hour 3.9 (mod + starters,
   kit through the run, rate cap 1.5, place chests). logi_L2j recovered: 7 in hour 5, 35 of 32 by hour 5.2. py2_L2sd
   24 of 19 by hour 4.6, slowing (4, 2). Production: floorplan 2/3 at 830 conflicts.
+- **12:05 UTC: the container restarted** (uptime 0): every game, the scheduler and production's stitch were gone;
+  the files (/opt, the repo, solves/) were kept. Lost mid-run: chem_L2sd (20 of 24 by hour 3.9, catching up),
+  logi_L2j (35 of 32 by hour 5.2), py2_L2sd (24 of 19 by hour 4.6). Restarted the same settings as **chem_L2se,
+  logi_L2k, py2_L2se**.
+- **Production's stitch not restarted**: since 2026-11-27 11:30 (with a day's pause) it had global routing fit within
+  half an hour and then about 24 hours of solver time in fine routing without a stitched factory (preview "did not
+  stitch" at 87,600 s; conflicts swinging between about 800 and 2,500). Its 24 blocks are laid out and kept
+  (solves/production-science-pack_s3/resume). The core goes to a fourth game slot (sched --max 4): py3_L2sb next.
