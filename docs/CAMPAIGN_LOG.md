@@ -378,3 +378,8 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
     while?).
   Stopped both; **py2_L2sb** (L2s + `--loop-deep 7`, no valves, no built reserve) and **logi_L2g** (L2 +
   `--loop-deep 7`, no built reserve) next.
+- chem_L2sb stopped at hour 2.4 (9 packs of 14.4 due, 62%): its packs wait on optical fiber (74% of plan), short of
+  plastic, while both plastic makers run at 149% and 161% of plan: plastic goes to users far above their plan
+  (fish food 01 269%, guar gum 577%, dhilmos food 471%, sb oxide 148%). The mod has a rate cap but no fair share of
+  an ingredient among its users; L3's rules have the quota (a user over its share is held while one behind waits).
+  Queued **chem_L3sb** (L3s + `--loop-deep 7`, with every fix of today).
