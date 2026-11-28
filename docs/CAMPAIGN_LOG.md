@@ -437,3 +437,14 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   indirect: a shut gate starves something, the hot-air users stop a while, the ring fills past what its belts and
   outputs hold, and bricks (carriers) no overflow takes. A ring-jam rule would be needed; logistic passes L2s,
   so the reserve-gate L2 path is dropped. logi_L2i stopped; py3_L2 takes the slot.
+- 08:55 UTC: **the place-result machines were throttled to about one item a second all along.** py2_L2sc stood from
+  hour 6 (35 packs of 30 due by 7.4): flasks, stoppers, rubber, latex, creamy latex, saps; all three mk03 sap mulchers
+  "waiting for space" with an item on their drop tile and one or two biomass in their outputs. These machines place
+  every result on that tile, main products too (the ground pickup's counts: 3,063 coarse, 2,386 limestone, 1,474 raw
+  fiber in chemical's first 1.3 hours), and the pickup freed one item a second. Live test: a steel chest set on each
+  mulcher's drop tile, and in 20 seconds each was working with about five crafts in its chest (438 saps, 45
+  fertilizer, 22 biomass...). **Check fix: a chest on every such drop tile, emptied into the machine's output every
+  ten ticks** (a full output leaves it in the chest; a full chest stops the machine); the ground pickup stays as the
+  fallback where no chest fits. Restarted all three games on it: **py2_L2sd** (L2s + loop-deep + kit through the
+  run), **chem_L2sd** (the same + rate cap 1.5), **logi_L2j** (L2 + loop-deep: logistic's mulchers were throttled the
+  same way); py3_L2sb queued (py-3's limestone extractors too).

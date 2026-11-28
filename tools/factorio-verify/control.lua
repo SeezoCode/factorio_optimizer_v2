@@ -2212,7 +2212,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
-    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, self_exits = run.se, ground_back = run.ground_back, ground_lost = run.ground_lost, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
+    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, self_exits = run.se, ground_back = run.ground_back, ground_lost = run.ground_lost, place_chests = run.place_chest_count, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
     reserve = run.rs and (function()
       local o = { gates = #run.rs.gates, built = run.rs.built, at_pickup = run.rs.at_pickup, skipped = run.rs.skipped, why = run.rs.why, err = run.rs.err, by_item = {} }
       for _, g in pairs(run.rs.gates) do if not g.dead then o.by_item[g.item] = (o.by_item[g.item] or 0) + 1 end end
@@ -4165,16 +4165,45 @@ end
 -- into the machine's output, where its inserters take it (what does not fit is destroyed). Counted in the report
 -- (ground_back, ground_lost). Chemical science's mk04 sap mulchers stood so with 15 fertilizer in the output, and
 -- the saps, creamy latex, latex, rubber and packs behind them stopped at hour 2.
+-- (A chest on the tile, emptied into the output every ten ticks: such a machine places every result there, its main
+-- products too (chemical science's ground pickup moved 3,063 coarse, 2,386 limestone and 1,474 raw fiber in 1.3 hours),
+-- so one spilled item a second capped it near one item a second: Py science 2's three sap mulchers stood "waiting for
+-- space" with a craft of 114 saps to place. Into the chest a craft lands at once; what the output cannot take stays,
+-- and a full chest stops the machine as a full output would. Where no chest fits, the ground pickup alone.)
 local function ground_pickup(run)
-  if game.tick % 60 ~= 23 then return end
   if not run.place_machines then
-    run.place_machines = {}
+    run.place_machines, run.place_chests = {}, {}
     for _, m in pairs(run.machines or {}) do
       local e = m.e
       local v = e.valid and e.prototype.vector_to_place_result
-      if v and (v[1] ~= 0 or v[2] ~= 0 or (v.x or 0) ~= 0 or (v.y or 0) ~= 0) then run.place_machines[#run.place_machines + 1] = e end
+      if v and (v[1] ~= 0 or v[2] ~= 0 or (v.x or 0) ~= 0 or (v.y or 0) ~= 0) then
+        run.place_machines[#run.place_machines + 1] = e
+        local d = e.drop_position
+        for _, g in pairs(e.surface.find_entities_filtered { name = "item-on-ground", position = d, radius = 0.6 }) do
+          local st = g.stack
+          if st and st.valid_for_read then pcall(function() e.get_output_inventory().insert { name = st.name, count = st.count, quality = st.quality } end) end
+          g.destroy()
+        end
+        local ok, c = pcall(function() return e.surface.create_entity { name = "steel-chest", position = d, force = e.force } end)
+        if ok and c then run.place_chests[#run.place_chests + 1] = { e = e, c = c } end
+      end
+    end
+    run.place_chest_count = #run.place_chests
+  end
+  if game.tick % 10 == 3 then
+    for _, pc in pairs(run.place_chests) do
+      if pc.e.valid and pc.c.valid then
+        local inv, out = pc.c.get_inventory(defines.inventory.chest), pc.e.get_output_inventory()
+        if out and not inv.is_empty() then
+          for _, it in pairs(inv.get_contents()) do
+            local put = out.insert { name = it.name, count = it.count, quality = it.quality }
+            if put > 0 then inv.remove { name = it.name, count = put, quality = it.quality } end
+          end
+        end
+      end
     end
   end
+  if game.tick % 60 ~= 23 then return end
   for _, e in pairs(run.place_machines) do
     if e.valid then
       for _, g in pairs(e.surface.find_entities_filtered { name = "item-on-ground", position = e.drop_position, radius = 0.6 }) do
