@@ -477,3 +477,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - 15:30 UTC: **logi_L2k (L2, no starters) past hour 5 with 12 packs in it: 47 of 31 due** (8 8 9 10 12): the runs
   that stood at hour 3.5 (L2d) and hour 5 (L2g) had neither the place chests nor (L2d) loop-deep. py2_L2se 24 of 18
   by 4.4; chem_L2se 18 of 23 by 3.8 (62% lately); py3_L2sb 37 of 73 by 3.0 (58%).
+- 16:30 UTC queue for the night (after the four running): logi_L1t (L1s + loop-deep), py2_L2f (L2 + loop-deep), chem_L3sc (L3s + loop-deep + kit through the run), py3_L3s (+ loop-deep); logi_L3d dropped.
