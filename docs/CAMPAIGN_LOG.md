@@ -474,3 +474,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   barrels; the filler stands without empty barrels (3,223 filled so far); the kit handed in only 39 (it gives only
   while no barrel maker, here the animals, stands full). logi_L2k 26 of 18 by hour 3.0; py3_L2sb 20 of 43 by hour
   1.8 (12 in hour 2).
+- 15:30 UTC: **logi_L2k (L2, no starters) past hour 5 with 12 packs in it: 47 of 31 due** (8 8 9 10 12): the runs
+  that stood at hour 3.5 (L2d) and hour 5 (L2g) had neither the place chests nor (L2d) loop-deep. py2_L2se 24 of 18
+  by 4.4; chem_L2se 18 of 23 by 3.8 (62% lately); py3_L2sb 37 of 73 by 3.0 (58%).
