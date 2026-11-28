@@ -393,3 +393,4 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - Queue rewritten (scheduler stopped): L0 for the big factories dropped (certain to stand early; logi_L0 stopped at
   start), py3_L4 dropped (L4 helpers broken there). Now: **py3_L2s** (started), logi_L3d and chem_L3d (L3 with rate
   cap 4, quota by pipe network, loop-deep: L3 ranks fairer than L2s), py3_L2, py3_L3s.
+- Builds page republished (version 7, the same link): the L2s and L1s columns, logistic's L2s pass.
