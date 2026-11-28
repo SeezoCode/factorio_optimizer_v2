@@ -337,3 +337,14 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - chem_L2s, hour 2.2: rubber, latex, creamy latex, saps; the mod holds the mk04 sap mulchers (one stands full of
   fertilizer, 15, its fertilizer belt backed up and not the tree maker's; its relief exit shut below the limit), the
   tree maker (9 of 10 bonemeal, 3 of 4 fertilizer) and the bonemeal maker. Watching to hour 3.
+- 01:20 UTC: **chem_L2s stood from hour 2 (5 packs of 17 due by hour 2.8).** Traced to Py machines that place
+  their results on a tile of their own (`vector_to_place_result`: wood processing units, sand extractors and
+  classifiers, casting units). The check builds nothing on those tiles; with a product it cannot hand on (the mk04
+  sap mulcher's fertilizer belt backed up, 14 fertilizer in its output, 9 a craft) such a machine spills a result
+  onto the ground and stands "waiting for space in destination", starting no craft. Its relief exit opened at two
+  crafts' worth (18) and the relief rule knew only "full output", so it never opened: no saps, no creamy latex, latex,
+  rubber, packs. Items lay on such tiles in all three big runs (chemical: 26; py-2 and logistic: a mulcher each).
+  Two check fixes: **relief_limit is one craft for such machines, and "waiting for space in destination" counts as
+  full**; and **what lies on their tile goes back into the machine's output once a second** (report `ground_back`,
+  `ground_lost`), as an inserter a player sets there would. chem_L2s stopped for **chem_L2sb**; logi_L2e (hour 1)
+  for **logi_L2f** (logistic's mk03 mulcher, in the mukmoux loop, stood waiting for space too).

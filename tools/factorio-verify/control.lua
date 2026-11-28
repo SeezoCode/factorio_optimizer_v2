@@ -389,8 +389,13 @@ end
 
 -- How many crafts' expected worth of a product in its output stops a machine taking ingredients: the game's overload
 -- multiplier, one more than the crafts it finishes in a second, at least two.
-local FULL_OUT_STATUS = { [defines.entity_status.full_output] = true }
+local FULL_OUT_STATUS = { [defines.entity_status.full_output] = true, [defines.entity_status.waiting_for_space_in_destination] = true }
+-- (A machine that places its results on a tile of its own (vector_to_place_result) stops at one craft's worth: it
+-- passes its output on as it goes, and with a product it cannot place it starts no craft. Chemical science's mk04 sap
+-- mulcher (wpu-mk04, 9 fertilizer a craft) stood with 14 while its exit opened at 18.)
 local function relief_limit(e, r)
+  local v = e.valid and e.prototype.vector_to_place_result
+  if v and (v[1] ~= 0 or v[2] ~= 0 or (v.x or 0) ~= 0 or (v.y or 0) ~= 0) then return 1 end
   return math.max(2, math.ceil(e.crafting_speed / r.energy) + 1)
 end
 
@@ -2207,7 +2212,7 @@ local function finish(run)
     measured_s = secs, warmup_s = run.warmup / 60, tick = game.tick, build = run.build, warnings = run.warnings,
     machines = {}, outputs = {}, inputs = {}, fluid_outputs = {}, stuck_inserters = {}, idle_inserters = 0, stuck_belts = {},
     inserters = #run.inserters, belts = #run.belts, fed = run.fed, fed_measure = run.fed_measure, bootstrapped = run.bootstrapped, bootstrapped_measure = run.bootstrapped_measure, carrier_base = run.carrier_base, debug = run.debug,
-    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, self_exits = run.se, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
+    belt_hold = run.bh, learned_recipes = run.learned, loop_held_s = run.loop_held_s, loop_gates = run.loop_gates, self_exits = run.se, ground_back = run.ground_back, ground_lost = run.ground_lost, disposal_held_s = run.disposal_held_s, cap_filled_s = run.cap_filled,
     reserve = run.rs and (function()
       local o = { gates = #run.rs.gates, built = run.rs.built, at_pickup = run.rs.at_pickup, skipped = run.rs.skipped, why = run.rs.why, err = run.rs.err, by_item = {} }
       for _, g in pairs(run.rs.gates) do if not g.dead then o.by_item[g.item] = (o.by_item[g.item] or 0) + 1 end end
@@ -4153,10 +4158,49 @@ local function virtual_pumps(run)
   end
 end
 
+-- A machine that places its results on a tile of its own (vector_to_place_result: Py's wood processing units, sand
+-- extractors and classifiers) and finds nothing there spills a result onto the ground, and then stands "waiting for
+-- space in destination" for as long as the item lies there, whatever its output holds. The check builds nothing on
+-- such tiles (on_drop_tile); a player would set an inserter there. So once a second what lies on the tile goes back
+-- into the machine's output, where its inserters take it (what does not fit is destroyed). Counted in the report
+-- (ground_back, ground_lost). Chemical science's mk04 sap mulchers stood so with 15 fertilizer in the output, and
+-- the saps, creamy latex, latex, rubber and packs behind them stopped at hour 2.
+local function ground_pickup(run)
+  if game.tick % 60 ~= 23 then return end
+  if not run.place_machines then
+    run.place_machines = {}
+    for _, m in pairs(run.machines or {}) do
+      local e = m.e
+      local v = e.valid and e.prototype.vector_to_place_result
+      if v and (v[1] ~= 0 or v[2] ~= 0 or (v.x or 0) ~= 0 or (v.y or 0) ~= 0) then run.place_machines[#run.place_machines + 1] = e end
+    end
+  end
+  for _, e in pairs(run.place_machines) do
+    if e.valid then
+      for _, g in pairs(e.surface.find_entities_filtered { name = "item-on-ground", position = e.drop_position, radius = 0.6 }) do
+        local st = g.valid and g.stack
+        if st and st.valid_for_read then
+          local name, count = st.name, st.count
+          local out = e.get_output_inventory()
+          local put = out and out.insert { name = name, count = count, quality = st.quality } or 0
+          run.ground_back = run.ground_back or {}
+          if put > 0 then run.ground_back[name] = (run.ground_back[name] or 0) + put end
+          if put < count then
+            run.ground_lost = run.ground_lost or {}
+            run.ground_lost[name] = (run.ground_lost[name] or 0) + count - put
+          end
+          g.destroy()
+        end
+      end
+    end
+  end
+end
+
 script.on_event(defines.events.on_tick, function()
   local run = storage.run
   if not run or run.phase == "done" or run.phase == nil then return end
   flows(run, run.phase == "measure")
+  ground_pickup(run)
   -- Rocket silos launch each finished rocket (nothing comes back without Space Age's platforms; the parts are what count).
   if run.silos and game.tick % 30 == 0 then
     for _, s in pairs(run.silos) do
