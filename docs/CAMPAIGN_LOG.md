@@ -383,3 +383,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   (fish food 01 269%, guar gum 577%, dhilmos food 471%, sb oxide 148%). The mod has a rate cap but no fair share of
   an ingredient among its users; L3's rules have the quota (a user over its share is held while one behind waits).
   Queued **chem_L3sb** (L3s + `--loop-deep 7`, with every fix of today).
+- chem_L1b and py2_L1b started before a queue reorder took (the scheduler writes the queue back as it starts a run
+  and overwrote the reorder) and were stopped at once for chem_L3sb (no results). Edit the queue only with the
+  scheduler stopped (now in CAMPAIGN_CONTEXT). Running: logi_L2s, py2_L2sb, logi_L2g, chem_L3sb.
