@@ -390,3 +390,6 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   73 due over 12 game hours, 8 to 13 every hour, the port at 100%. Starters while measuring: 16,031 guar seeds, 7,679
   seaweed, 6,961 biomass, 5,098 ash and fluids (tailings 166k, sulfuric acid 30k, oxygen 30k, slacked lime 16k,
   ammonia 10k); the kit 100 barrels and 16 empty honeycombs in the warm-up. Logistic's fairest pass so far.
+- Queue rewritten (scheduler stopped): L0 for the big factories dropped (certain to stand early; logi_L0 stopped at
+  start), py3_L4 dropped (L4 helpers broken there). Now: **py3_L2s** (started), logi_L3d and chem_L3d (L3 with rate
+  cap 4, quota by pipe network, loop-deep: L3 ranks fairer than L2s), py3_L2, py3_L3s.
