@@ -364,3 +364,17 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   chain (teos, silicate solution, sb silicate, salt solution) all working, at 55-63% of plan since the start; behind
   it the ethanol from arqad honey, the honeycomb ring and the arqad hive, which now works without pause at its full
   speed (6, its 40 arqad modules in; plan 0.051 crafts/s of 0.06): a slow start, catching up, or not. Hour 3 decides.
+- 02:50 UTC: three runs of the new code stood: chem_L2sb (8 of 14 by hour 2.3, none in the last 0.3 h), logi_L2f
+  (15 of 18 by hour 3, none in hour 3), py2_L2s (5 of 9, none since hour 1). logi_L2s (older code) at hour 10.3:
+  105 of 63.
+  - **py2_L2s: `--loop-valves` under the mod breaks fluid pull.** The bio-sample maker stood without pressured water
+    behind a loop valve (its input on segment 2107, the maker's output on 379); the mod hears who waits on a fluid by
+    segment, never heard it, and held the pressured-water maker off. (The check's own pull counts the pipe behind a
+    valve as in front of it; the mod does not.) Not for the mod's levels.
+  - **logi_L2f: the stone-brick ring gridlocked at hour 2**: warm brick (62 in its output), warmer brick (40) and the
+    hot-air maker (59 stone bricks) each stood full of its product and without its input, their output inserters
+    waiting on backed-up belts; bricks are carriers no overflow takes, so nothing makes room. No reserve gate stands
+    on those belts. Cause not settled (too many bricks in the ring once the mod held the hot-air maker off for a
+    while?).
+  Stopped both; **py2_L2sb** (L2s + `--loop-deep 7`, no valves, no built reserve) and **logi_L2g** (L2 +
+  `--loop-deep 7`, no built reserve) next.
