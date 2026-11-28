@@ -386,3 +386,7 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - chem_L1b and py2_L1b started before a queue reorder took (the scheduler writes the queue back as it starts a run
   and overwrote the reorder) and were stopped at once for chem_L3sb (no results). Edit the queue only with the
   scheduler stopped (now in CAMPAIGN_CONTEXT). Running: logi_L2s, py2_L2sb, logi_L2g, chem_L3sb.
+- **03:45 UTC: Logistic science PASSES at L2s** (logi_L2s: the mod + loop starters all along): 124 pack crafts of
+  73 due over 12 game hours, 8 to 13 every hour, the port at 100%. Starters while measuring: 16,031 guar seeds, 7,679
+  seaweed, 6,961 biomass, 5,098 ash and fluids (tailings 166k, sulfuric acid 30k, oxygen 30k, slacked lime 16k,
+  ammonia 10k); the kit 100 barrels and 16 empty honeycombs in the warm-up. Logistic's fairest pass so far.
