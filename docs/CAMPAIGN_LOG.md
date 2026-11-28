@@ -360,3 +360,7 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   lost). Every machine placing results on its own tile spills continually; without the pickup each stood after its
   first spill. (Once a second, one spilled item each time: a cap on such machines above one item a second; watch.)
   logi_L2f (L2, no starters) 15 packs of 10 due at hour 1.7; logi_L2s 92 of 55 at hour 9.0; chem_L2sb 5 of 8.
+- 02:30 UTC, chem_L2sb hour 1.9: 7 packs of 11 due (3 in hour 2; chem_L2s had 1). No stop now: the nuclear-sample
+  chain (teos, silicate solution, sb silicate, salt solution) all working, at 55-63% of plan since the start; behind
+  it the ethanol from arqad honey, the honeycomb ring and the arqad hive, which now works without pause at its full
+  speed (6, its 40 arqad modules in; plan 0.051 crafts/s of 0.06): a slow start, catching up, or not. Hour 3 decides.
