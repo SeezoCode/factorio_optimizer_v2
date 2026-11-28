@@ -120,10 +120,9 @@ As of 2026-11-27 23:30 UTC:
 - **Probes worth knowing**: `probes/sum.py <run>`, `probes/chainlive.py <run> <pack>`, `probes/lua.py <run> <file>`
   (Lua 5.2: no `//`; in Factorio 2.1 an entity has no `fluidbox` key, use `fluids_count`, `get_fluid(i)`,
   `get_fluid_box_prototype(i)`, `has_fluid_segment(i)`), `probes/samp_bash.sh` with `ls_logi.lua`.
-- **Decision point, 2026-11-28 12:00 UTC**: if chemical still has no pass below L5 by then, resume production's
-  stitch (`kill -CONT 22654`, renice it to -5) with two game slots (`launch.py sched --max 2`), so production gets laid
-  out and checked at L5 before the deadline (29.11 19:00 UTC); py-4's stitch follows it (waiter). Logistic passed L2s
-  (03:45); logi_L2g (L2) holding at hour 5.
+- **Production's stitch resumed 2026-11-28 06:00 UTC** (pid 22654, nice -5; `kill -STOP` to pause again) with three
+  game slots (`launch.py sched --max 3`). When it ends (solves/queue_resume.log), its L5 check goes into the queue,
+  and the py-4 waiter starts py-4's stitch. Logistic passed L2s (03:45).
 - **Scheduler**: `launch.py sched --max 4` (one copy only: `pgrep -af launch.py`). It writes the queue back each time it starts a run: stop it (`kill`) before editing `solves/campaign_queue.json`, restart it after (`nohup python3 tools/py-campaign/launch.py sched --max 4 >> solves/sched.log 2>&1 &`); restart it too after editing launch.py (LEVELS are read once), games at nice 10 (go.sh); renice a stitching solve to -5.
 - **Check additions this campaign**: `--reserve-built`, `--reserve-self`, `--self-exit-built`. L1 =
   fair set + `--pull-built --self-exit-built --reserve-built --reserve-self`.
