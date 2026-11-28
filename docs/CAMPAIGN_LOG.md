@@ -478,3 +478,7 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
   that stood at hour 3.5 (L2d) and hour 5 (L2g) had neither the place chests nor (L2d) loop-deep. py2_L2se 24 of 18
   by 4.4; chem_L2se 18 of 23 by 3.8 (62% lately); py3_L2sb 37 of 73 by 3.0 (58%).
 - 16:30 UTC queue for the night (after the four running): logi_L1t (L1s + loop-deep), py2_L2f (L2 + loop-deep), chem_L3sc (L3s + loop-deep + kit through the run), py3_L3s (+ loop-deep); logi_L3d dropped.
+- 18:10 UTC: **logi_L2k stood from hour 7.8** at 74 packs (55 due by hour 9; about 58 of 61 due in the measured
+  window so far, right at the 95% line): batteries now, behind them nas batteries, pbsb alloy, simik lead, bio ore,
+  z3 reagent short of methanol, and the filtration-media / xyhiphoe / fish-egg / fish-food loop. py2_L2se 47 of 32
+  by 7.9 (steady); chem_L2se 35 of 41 by 6.8; py3_L2sb stood from hour 5 (61 of 132).
