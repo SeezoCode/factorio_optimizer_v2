@@ -420,7 +420,7 @@ open). Context and the help levels: [CAMPAIGN_CONTEXT.md](CAMPAIGN_CONTEXT.md).
 - 06:00 UTC: chem_L3sb stopped (11 packs of 27 due by hour 4.4, none in hour 5). **Production's stitch resumed
   early** (`kill -CONT 22654`, nice -5; it had stood paused since 2026-11-27 12:00 in global routing, best preview
   49 corridor sides over capacity) with three game slots (sched --max 3): chem_L3d, py2_L2sc, logi_L2h.
-- 06:50 UTC: chem_L3d (L3, rate cap 4, quota by pipe network) stood like the others: 5 packs of 12 due by hour 2.0.
+- 06:45 UTC: chem_L3d (L3, rate cap 4, quota by pipe network) stood like the others: 5 packs of 12 due by hour 2.0.
   py2_L2sc 21 of 16 by hour 3.8 (116% lately); logi_L2h 17 of 10 by hour 1.6, no brick gridlock yet. Production's
   stitch still widening (factory floorplan 3/3: 2,722 corridor sides over capacity; preview 2/3: 2,163 conflicts).
   One more chemical try, **chem_L2sc**: L2s + loop-deep + the kit through the run + `--rate-cap 1.5` (the mod's cap,
